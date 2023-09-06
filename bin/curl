@@ -1,0 +1,19 @@
+#!/bin/bash
+set -eo pipefail
+
+dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+if [[ -n "$TOKEN" ]]; then
+    auth="Authorization: Bearer $TOKEN"
+elif [[ -n "$EMAIL" ]]; then
+    auth=$("$dir"/auth "$EMAIL")
+else
+    auth=$("$dir"/auth)
+fi
+
+if [[ -z "$auth" ]]; then
+  echo "Error: no auth token"
+fi
+
+curl -H "$auth" -H "Content-Type: application/json" "$@"
+

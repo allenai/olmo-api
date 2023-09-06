@@ -16,7 +16,6 @@ steps:
     '--build-arg', 'BUILDKIT_INLINE_CACHE=1',
     '.',
   ]
-  dir: 'api'
   waitFor: [ 'api.pull' ]
 - id: 'api.push'
   name: 'gcr.io/cloud-builders/docker'
@@ -41,7 +40,7 @@ steps:
     '--tla-str', 'buildId=$BUILD_ID',
     './webapp.jsonnet'
   ]
-  dir: 'api/.skiff'
+  dir: '.skiff'
   waitFor: [ '-' ]
 - id: 'deploy'
   name: 'gcr.io/ai2-reviz/rudder'
@@ -50,7 +49,7 @@ steps:
     '-f',
     'webapp.yaml'
   ]
-  dir: 'api/.skiff'
+  dir: '.skiff'
   waitFor: [ 'api.push', 'config' ]
 substitutions:
   _ENV: prod

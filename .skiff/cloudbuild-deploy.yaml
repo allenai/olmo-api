@@ -1,0 +1,70 @@
+# This file tells Google Cloud Build how to deploy the application.
+# It can be attached to a variety of triggers, the default being whenever
+# someone merges changes to the `main` branch.
+steps:
+- id: 'api.pull'
+  name: 'gcr.io/cloud-builders/docker'
+  args: [ 'pull', 'gcr.io/$PROJECT_ID/$REPO_NAME-api:latest' ]
+  waitFor: [ '-' ]
+- id: 'api.build'
+  name: 'gcr.io/cloud-builders/docker'
+  args: [
+    'build',
+    '-t', 'gcr.io/$PROJECT_ID/$REPO_NAME-api:latest',
+    '-t', 'gcr.io/$PROJECT_ID/$REPO_NAME-api:$COMMIT_SHA',
+    '--cache-from', 'gcr.io/$PROJECT_ID/$REPO_NAME-api:latest',
+    '--build-arg', 'BUILDKIT_INLINE_CACHE=1',
+    '.',
+  ]
+  dir: 'api'
+  waitFor: [ 'api.pull' ]
+- id: 'api.push'
+  name: 'gcr.io/cloud-builders/docker'
+  args: [
+    'push',
+    'gcr.io/$PROJECT_ID/$REPO_NAME-api:$COMMIT_SHA',
+  ]
+  waitFor: [ 'api.build' ]
+# Generate our Kubernetes configuration
+- id: 'config'
+  name: 'gcr.io/ai2-reviz/jsonnet'
+  args: [
+    'eval',
+    '-y',
+    '--output-file', './webapp.yaml',
+    '--tla-str', 'env=$_ENV',
+    '--tla-str', 'apiImage=gcr.io/$PROJECT_ID/$REPO_NAME-api:$COMMIT_SHA',
+    '--tla-str', 'sha=$COMMIT_SHA',
+    '--tla-str', 'cause=Automated Skiff Deploy SHA:$COMMIT_SHA BUILD:$BUILD_ID',
+    '--tla-str', 'branch=$BRANCH_NAME',
+    '--tla-str', 'repo=$REPO_NAME',
+    '--tla-str', 'buildId=$BUILD_ID',
+    './webapp.jsonnet'
+  ]
+  dir: 'api/.skiff'
+  waitFor: [ '-' ]
+- id: 'deploy'
+  name: 'gcr.io/ai2-reviz/rudder'
+  args: [
+    'deploy',
+    '-f',
+    'webapp.yaml'
+  ]
+  dir: 'api/.skiff'
+  waitFor: [ 'api.push', 'config' ]
+substitutions:
+  _ENV: prod
+images: [
+  'gcr.io/$PROJECT_ID/$REPO_NAME-api:$COMMIT_SHA',
+  'gcr.io/$PROJECT_ID/$REPO_NAME-api:latest',
+]
+artifacts:
+  objects:
+    location: 'gs://skiff-archive/$REPO_NAME/$_ENV/$BUILD_ID/$COMMIT_SHA'
+    paths: ['api/.skiff/webapp.yaml']
+options:
+  env:
+    - "DOCKER_BUILDKIT=1"
+# Google is quite slow at scaling up A100s
+timeout: 60m
+

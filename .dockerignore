@@ -1,0 +1,12 @@
+**.pyc
+**/__pycache__
+.dockerignore
+.venv/
+.skiff/
+skiff.json
+docs/
+bin/
+secret/
+schema/
+docker-compose.yml
+Dockerfile

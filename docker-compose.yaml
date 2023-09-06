@@ -1,0 +1,31 @@
+version: "3"
+services:
+  db:
+    image: postgres:15
+    ports:
+      - 5555:5432
+    environment:
+      POSTGRES_PASSWORD: llmz
+      POSTGRES_DB: llmx
+    command:
+      - postgres
+      - -c
+      - log_statement=all
+      - -c
+      - log_destination=stderr
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./schema:/docker-entrypoint-initdb.d
+  api:
+    build: .
+    entrypoint: [ "/api/dev.sh" ]
+    volumes:
+      - ./:/api
+      - ./secret:/secret
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=DEBUG
+    ports:
+      - 8080:8000
+volumes:
+  pgdata:

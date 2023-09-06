@@ -1,0 +1,6 @@
+{
+    "appName": "llmx-api",
+    "contact": "sams",
+    "team": "olmo",
+    "replicas": { "prod": 2 }
+}

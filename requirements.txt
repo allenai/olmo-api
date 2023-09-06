@@ -1,0 +1,6 @@
+Flask==2.3.1
+python-json-logger==2.0.7
+requests==2.31.0
+psycopg[binary,pool]==3.1.9
+pytest==7.4.0
+./vendor/inferd-0.1.0-0_d5606d7-py3-none-any.whl

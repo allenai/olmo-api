@@ -2,10 +2,6 @@
 # It can be attached to a variety of triggers, the default being whenever
 # someone merges changes to the `main` branch.
 steps:
-- id: 'api.pull'
-  name: 'gcr.io/cloud-builders/docker'
-  args: [ 'pull', 'gcr.io/$PROJECT_ID/$REPO_NAME-api:latest' ]
-  waitFor: [ '-' ]
 - id: 'api.build'
   name: 'gcr.io/cloud-builders/docker'
   args: [
@@ -16,7 +12,6 @@ steps:
     '--build-arg', 'BUILDKIT_INLINE_CACHE=1',
     '.',
   ]
-  waitFor: [ 'api.pull' ]
 - id: 'api.push'
   name: 'gcr.io/cloud-builders/docker'
   args: [

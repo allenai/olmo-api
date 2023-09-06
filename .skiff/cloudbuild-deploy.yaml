@@ -55,7 +55,7 @@ images: [
 artifacts:
   objects:
     location: 'gs://skiff-archive/$REPO_NAME/$_ENV/$BUILD_ID/$COMMIT_SHA'
-    paths: ['api/.skiff/webapp.yaml']
+    paths: ['.skiff/webapp.yaml']
 options:
   env:
     - "DOCKER_BUILDKIT=1"

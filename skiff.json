@@ -1,5 +1,5 @@
 {
-    "appName": "llmx-api",
+    "appName": "olmo-api",
     "contact": "sams",
     "team": "olmo",
     "replicas": { "prod": 2 }

@@ -30,7 +30,7 @@ port to the current InferD service to get things working.
     docker compose up --build
     ```
 
-### Schema Reset
+### Reset Schema
 
 The API uses a local database for persistence. If you'd like to delete all
 data or reapply the schema, run:

@@ -83,3 +83,10 @@ GRANT SELECT, UPDATE, INSERT ON TABLE label TO app;
 ALTER TABLE message ADD COLUMN IF NOT EXISTS final BOOLEAN NOT NULL DEFAULT false;
 UPDATE message SET final = true;
 
+-- Add the original column that's used to track edits.
+ALTER TABLE message ADD COLUMN IF NOT EXISTS original TEXT NULL;
+
+-- We always drop and re-add the constraint so that the effect is idempotent
+ALTER TABLE message DROP CONSTRAINT IF EXISTS message_original_fkey;
+ALTER TABLE message ADD CONSTRAINT message_original_fkey FOREIGN KEY (original) REFERENCES message(id);
+

@@ -163,12 +163,8 @@ class Server(Blueprint):
             raise exceptions.BadRequest("parent and child must have different roles")
 
         original = request.json.get("original")
-        if original is not None:
-            omsg = self.dbc.message.get(original)
-            if omsg is None:
-                raise exceptions.BadRequest(f"original message {original} not found")
-            if parent is not None and parent.id == omsg.id:
-                raise exceptions.BadRequest("original message cannot be parent")
+        if original is not None and parent is not None and original == parent.id:
+            raise exceptions.BadRequest("original message cannot be parent")
 
         msg = self.dbc.message.create(
             content,

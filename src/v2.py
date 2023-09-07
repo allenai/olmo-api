@@ -151,16 +151,30 @@ class Server(Blueprint):
         if content.strip() == "":
             raise exceptions.BadRequest("empty content")
 
+        try:
+            role = message.Role(request.json.get("role", str(message.Role.User)))
+        except ValueError as e:
+            raise exceptions.BadRequest(str(e))
+
+        if role == message.Role.Assistant and parent is None:
+            raise exceptions.BadRequest("assistant messages must have a parent")
+
+        if parent is not None and parent.role == role:
+            raise exceptions.BadRequest("parent and child must have different roles")
+
         msg = self.dbc.message.create(
             content,
             token.client,
-            message.Role.User,
+            role,
             opts,
             root=parent.root if parent is not None else None,
             parent=parent.id if parent is not None else None,
             template=request.json.get("template"),
-            final=False
+            final=role==message.Role.Assistant
         )
+
+        if role == message.Role.Assistant:
+            return jsonify(msg)
 
         # Resolve the message chain if we need to.
         chain = [msg]

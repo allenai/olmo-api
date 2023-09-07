@@ -173,7 +173,7 @@ class Server(Blueprint):
             final=role==message.Role.Assistant
         )
 
-        if role == message.Role.Assistant:
+        if msg.role == message.Role.Assistant:
             return jsonify(msg)
 
         # Resolve the message chain if we need to.

@@ -107,6 +107,7 @@ MessageRow = tuple[
     Optional[list[dict[str, Any]]],
     Optional[str],
     bool,
+    Optional[str],
 
     # Label fields
     Optional[str],
@@ -146,6 +147,7 @@ class Message:
     children: Optional[list['Message']] = None
     completion: Optional[str] = None
     final: bool = False
+    original: Optional[str] = None
     labels: list[label.Label] = field(default_factory=list)
 
     def flatten(self) -> list['Message']:
@@ -160,8 +162,9 @@ class Message:
     def from_row(r: MessageRow) -> 'Message':
         labels = []
         # If the label id is not None, unpack the label.
-        if r[13] is not None:
-            labels = [label.Label.from_row(cast(label.LabelRow, r[13:]))]
+        li = 14
+        if r[li] is not None:
+            labels = [label.Label.from_row(cast(label.LabelRow, r[li:]))]
 
         return Message(
             id=r[0],
@@ -178,6 +181,7 @@ class Message:
             children=None,
             completion=r[11],
             final=r[12],
+            original=r[13],
             labels=labels,
         )
 
@@ -236,14 +240,15 @@ class Store:
         logprobs: Optional[list[LogProbs]] = None,
         completion: Optional[obj.ID] = None,
         final: bool = True,
+        original: Optional[str] = None
     ) -> Message:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 q = """
                     INSERT INTO
-                        message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final)
+                        message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original)
                     VALUES
-                        (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING
                         id,
                         content,
@@ -258,6 +263,7 @@ class Store:
                         logprobs,
                         completion,
                         final,
+                        original,
                         -- The trailing NULLs are for labels that wouldn't make sense to try
                         -- to JOIN. This simplifies the code for unpacking things.
                         NULL,
@@ -280,7 +286,8 @@ class Store:
                     template,
                     [Json(asdict(lp)) for lp in logprobs] if logprobs is not None else None,
                     completion,
-                    final
+                    final,
+                    original
                 )).fetchone()
                 assert row is not None
                 return(Message.from_row(row))
@@ -303,6 +310,7 @@ class Store:
                         message.logprobs,
                         message.completion,
                         message.final,
+                        message.original,
                         label.id,
                         label.message,
                         label.rating,
@@ -358,6 +366,7 @@ class Store:
                         logprobs,
                         completion,
                         final,
+                        original,
                         -- The trailing NULLs are for labels that wouldn't make sense to try
                         -- to JOIN. This simplifies the code for unpacking things.
                         NULL,
@@ -399,6 +408,7 @@ class Store:
                         updated.logprobs,
                         updated.completion,
                         updated.final,
+                        updated.original,
                         label.id,
                         label.message,
                         label.rating,
@@ -441,6 +451,7 @@ class Store:
                         message.logprobs,
                         message.completion,
                         message.final,
+                        message.original,
                         label.id,
                         label.message,
                         label.rating,

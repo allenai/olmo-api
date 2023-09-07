@@ -1,9 +1,11 @@
 from psycopg_pool import ConnectionPool
 from psycopg.types.json import Json
+from psycopg import errors
 from dataclasses import dataclass, field, asdict, replace
 from datetime import datetime
 from typing import Optional, Any, cast
 from enum import StrEnum
+from werkzeug import exceptions
 from .. import obj
 from . import label
 
@@ -107,6 +109,7 @@ MessageRow = tuple[
     Optional[list[dict[str, Any]]],
     Optional[str],
     bool,
+    Optional[str],
 
     # Label fields
     Optional[str],
@@ -146,6 +149,7 @@ class Message:
     children: Optional[list['Message']] = None
     completion: Optional[str] = None
     final: bool = False
+    original: Optional[str] = None
     labels: list[label.Label] = field(default_factory=list)
 
     def flatten(self) -> list['Message']:
@@ -160,8 +164,9 @@ class Message:
     def from_row(r: MessageRow) -> 'Message':
         labels = []
         # If the label id is not None, unpack the label.
-        if r[13] is not None:
-            labels = [label.Label.from_row(cast(label.LabelRow, r[13:]))]
+        li = 14
+        if r[li] is not None:
+            labels = [label.Label.from_row(cast(label.LabelRow, r[li:]))]
 
         return Message(
             id=r[0],
@@ -178,6 +183,7 @@ class Message:
             children=None,
             completion=r[11],
             final=r[12],
+            original=r[13],
             labels=labels,
         )
 
@@ -236,54 +242,73 @@ class Store:
         logprobs: Optional[list[LogProbs]] = None,
         completion: Optional[obj.ID] = None,
         final: bool = True,
+        original: Optional[str] = None
     ) -> Message:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
-                q = """
-                    INSERT INTO
-                        message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final)
-                    VALUES
-                        (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    RETURNING
-                        id,
+                try:
+                    q = """
+                        INSERT INTO
+                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original)
+                        VALUES
+                            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        RETURNING
+                            id,
+                            content,
+                            creator,
+                            role,
+                            opts,
+                            root,
+                            created,
+                            deleted,
+                            parent,
+                            template,
+                            logprobs,
+                            completion,
+                            final,
+                            original,
+                            -- The trailing NULLs are for labels that wouldn't make sense to try
+                            -- to JOIN. This simplifies the code for unpacking things.
+                            NULL,
+                            NULL,
+                            NULL,
+                            NULL,
+                            NULL,
+                            NULL,
+                            NULL
+                    """
+                    mid = obj.NewID("msg")
+                    row = cur.execute(q, (
+                        mid,
                         content,
                         creator,
                         role,
-                        opts,
-                        root,
-                        created,
-                        deleted,
+                        Json(asdict(opts)),
+                        root or mid,
                         parent,
                         template,
-                        logprobs,
+                        [Json(asdict(lp)) for lp in logprobs] if logprobs is not None else None,
                         completion,
                         final,
-                        -- The trailing NULLs are for labels that wouldn't make sense to try
-                        -- to JOIN. This simplifies the code for unpacking things.
-                        NULL,
-                        NULL,
-                        NULL,
-                        NULL,
-                        NULL,
-                        NULL,
-                        NULL
-                """
-                mid = obj.NewID("msg")
-                row = cur.execute(q, (
-                    mid,
-                    content,
-                    creator,
-                    role,
-                    Json(asdict(opts)),
-                    root or mid,
-                    parent,
-                    template,
-                    [Json(asdict(lp)) for lp in logprobs] if logprobs is not None else None,
-                    completion,
-                    final
-                )).fetchone()
-                assert row is not None
-                return(Message.from_row(row))
+                        original
+                    )).fetchone()
+                    assert row is not None
+                    return(Message.from_row(row))
+                except errors.ForeignKeyViolation as e:
+                    # TODO: the dao probably shouldn't throw HTTP exceptions, instead it should
+                    # throw something more generic that the server translates
+                    match e.diag.constraint_name:
+                        case "message_completion_fkey":
+                            raise exceptions.BadRequest(f"completion \"{completion}\" not found")
+                        case "message_original_fkey":
+                            raise exceptions.BadRequest(f"original \"{original}\" not found")
+                        case "message_parent_fkey":
+                            raise exceptions.BadRequest(f"parent \"{parent}\" not found")
+                        case "message_root_fkey":
+                            raise exceptions.BadRequest(f"root \"{root}\" not found")
+                        case "message_template_fkey":
+                            raise exceptions.BadRequest(f"template \"{template}\" not found")
+                    raise exceptions.BadRequest(f"unknown foreign key violation: {e.diag.constraint_name}")
 
     def get(self, id: str, labels_for: Optional[str] = None) -> Optional[Message]:
         with self.pool.connection() as conn:
@@ -303,6 +328,7 @@ class Store:
                         message.logprobs,
                         message.completion,
                         message.final,
+                        message.original,
                         label.id,
                         label.message,
                         label.rating,
@@ -335,42 +361,50 @@ class Store:
         """
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
-                q = """
-                    UPDATE
-                        message
-                    SET
-                        content = COALESCE(%s, content),
-                        completion = COALESCE(%s, completion),
-                        final = true
-                    WHERE
-                        id = %s
-                    RETURNING
-                        id,
-                        content,
-                        creator,
-                        role,
-                        opts,
-                        root,
-                        created,
-                        deleted,
-                        parent,
-                        template,
-                        logprobs,
-                        completion,
-                        final,
-                        -- The trailing NULLs are for labels that wouldn't make sense to try
-                        -- to JOIN. This simplifies the code for unpacking things.
-                        NULL,
-                        NULL,
-                        NULL,
-                        NULL,
-                        NULL,
-                        NULL,
-                        NULL
-                """
-                row = cur.execute(q, (content, completion, id)).fetchone()
-                assert row is not None
-                return Message.from_row(row)
+                try:
+                    q = """
+                        UPDATE
+                            message
+                        SET
+                            content = COALESCE(%s, content),
+                            completion = COALESCE(%s, completion),
+                            final = true
+                        WHERE
+                            id = %s
+                        RETURNING
+                            id,
+                            content,
+                            creator,
+                            role,
+                            opts,
+                            root,
+                            created,
+                            deleted,
+                            parent,
+                            template,
+                            logprobs,
+                            completion,
+                            final,
+                            original,
+                            -- The trailing NULLs are for labels that wouldn't make sense to try
+                            -- to JOIN. This simplifies the code for unpacking things.
+                            NULL,
+                            NULL,
+                            NULL,
+                            NULL,
+                            NULL,
+                            NULL,
+                            NULL
+                    """
+                    row = cur.execute(q, (content, completion, id)).fetchone()
+                    assert row is not None
+                    return Message.from_row(row)
+                except errors.ForeignKeyViolation as e:
+                    match e.diag.constraint_name:
+                        case "message_completion_fkey":
+                            raise exceptions.BadRequest(f"completion \"{completion}\" not found")
+                    raise exceptions.BadRequest(f"unknown foreign key violation: {e.diag.constraint_name}")
+
 
     def delete(self, id: str, labels_for: Optional[str] = None) -> Message:
         with self.pool.connection() as conn:
@@ -399,6 +433,7 @@ class Store:
                         updated.logprobs,
                         updated.completion,
                         updated.final,
+                        updated.original,
                         label.id,
                         label.message,
                         label.rating,
@@ -441,6 +476,7 @@ class Store:
                         message.logprobs,
                         message.completion,
                         message.final,
+                        message.original,
                         label.id,
                         label.message,
                         label.rating,

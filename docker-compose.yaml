@@ -26,6 +26,6 @@ services:
       - PYTHONUNBUFFERED=1
       - LOG_LEVEL=DEBUG
     ports:
-      - 8080:8000
+      - 8000:8000
 volumes:
   pgdata:

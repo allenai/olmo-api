@@ -13,8 +13,6 @@ import dataclasses
 import os
 import json
 
-INFERD_TULU_MODEL_ID = "allenai/tulu65b"
-
 class Server(Blueprint):
     def __init__(self, dbc: db.Client, inferd: InferDStub):
         super().__init__("api", __name__)
@@ -199,8 +197,8 @@ class Server(Blueprint):
         deadline = Timestamp()
         deadline.FromDatetime(datetime.now(tz=timezone.utc) + timedelta(seconds=120))
 
-        # TODO: model_id should be sent by the client
-        req = InferRequest(model_id=INFERD_TULU_MODEL_ID, input=input, deadline=deadline)
+        model = request.json.get("model", "meta-llama/Llama-2-70b-chat-hf")
+        req = InferRequest(model_id=model, input=input, deadline=deadline)
 
         # Create a message that will eventually capture the streamed response.
         # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message
@@ -245,7 +243,7 @@ class Server(Blueprint):
                 prompt,
                 [completion.CompletionOutput(output, "unknown", None)],
                 msg.opts,
-                INFERD_TULU_MODEL_ID,
+                model,
                 sha,
                 tokenize_ms=-1,
                 generation_ms=gen,

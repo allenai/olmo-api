@@ -21,7 +21,7 @@ class Field:
     max: Any
     step: Optional[int | float] = None
 
-max_tokens = Field("max_tokens", 256, 1, 2048, 1)
+max_tokens = Field("max_tokens", 2048, 1, 4096, 1)
 temperature = Field("temperature", 1.0, 0.0, 2.0, 0.01)
 num = Field("n", 1, 1, 50, 1)
 top_p = Field("top_p", 1.0, 0.0, 1.0, 0.01)

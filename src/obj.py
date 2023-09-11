@@ -15,5 +15,5 @@ def NewID(prefix: str) -> ID:
     while len(id) <= 8:
         id += string.ascii_uppercase[secrets.randbelow(len(string.ascii_uppercase))]
         id += string.digits[secrets.randbelow(len(string.digits))]
-    return f"{prefix}-{id}"
+    return f"{prefix}_{id}"
 

@@ -26,6 +26,8 @@ class Result:
 @dataclass
 class SearchMeta:
     took_ms: int
+    total: int
+    overflow: bool # if true, there are > 10k results
 
 @dataclass
 class SearchResults:
@@ -57,7 +59,8 @@ class Client:
             from_=offset,
         )
 
-        meta = SearchMeta(took_ms=res["took"])
+        meta = SearchMeta(took_ms=res["took"], total=res["hits"]["total"]["value"],
+                          overflow=res["hits"]["total"]["relation"] == "gte")
         results = [Result.from_hit(hit) for hit in res["hits"]["hits"]]
 
         return SearchResults(meta, results)

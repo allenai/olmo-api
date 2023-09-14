@@ -21,7 +21,7 @@ services:
     entrypoint: [ "/api/dev.sh" ]
     volumes:
       - ./:/api
-      - ./secret:/secret
+      - ./config.json:/secret/cfg/config.json
     environment:
       - PYTHONUNBUFFERED=1
       - LOG_LEVEL=DEBUG

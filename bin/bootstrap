@@ -1,0 +1,28 @@
+#!/bin/bash
+set -euo pipefail
+
+dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+gcloud container clusters get-credentials --project ai2-reviz --zone us-west1-b skiff-prod
+prod=$(kubectl get secret/cfg --namespace olmo-api --output jsonpath="{.data.config\.json}" | base64 -D)
+
+local=$(cat <<EOF
+{
+  "db": {
+    "conninfo": "postgres://app:llmz@db:5432/llmx?sslmode=disable",
+    "min_size": 1,
+    "max_size": 2
+  },
+  "inferd": {
+    "address": "host.docker.internal:10000"
+  },
+  "server": {
+    "proxies": 1
+  }
+}
+EOF
+)
+
+# Merge the local defaults into the production config.
+echo "$prod" "$local" | jq -s '.[0] * .[1]' > "$dir/../config.json"
+echo "wrote \"$dir/../config.json\""

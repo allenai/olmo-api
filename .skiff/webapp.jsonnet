@@ -275,11 +275,11 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
                     nodeSelector: nodeSelector,
                     volumes: [
                         {
-                            name: 'db',
+                            name: 'cfg',
                             secret: {
-                                secretName: 'db'
+                                secretName: 'cfg'
                             }
-                        }
+                        },
                     ],
                     containers: [
                         {
@@ -289,15 +289,6 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
                                 {
                                     name: 'SHA',
                                     value: sha
-                                },
-                                {
-                                    name: "INFERD_ADDR",
-                                    valueFrom: {
-                                        secretKeyRef: {
-                                            name: "inferd",
-                                            key: "INFERD_ADDR"
-                                        }
-                                    }
                                 },
                             ],
                             # The "probes" below allow Kubernetes to determine
@@ -355,8 +346,8 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
                             },
                             volumeMounts: [
                                 {
-                                    name: 'db',
-                                    mountPath: '/secret/db',
+                                    name: 'cfg',
+                                    mountPath: '/secret/cfg',
                                     readOnly: true
                                 }
                             ]

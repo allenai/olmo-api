@@ -24,7 +24,13 @@ port to the current InferD service to get things working.
     kubectl port-forward -n inferd service/system 10000
     ```
 
-3. Next open another terminal and launch the application like so:
+3. Then generate a local `config.json` file:
+
+    ```
+    ./bin/bootstrap
+    ```
+
+4. Next open another terminal and launch the application like so:
 
     ```
     docker compose up --build
@@ -51,3 +57,4 @@ docker compose exec api pytest
 ## More Documentation
 
 - [Database Access](./docs/db.md)
+

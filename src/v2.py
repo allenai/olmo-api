@@ -5,20 +5,22 @@ from inferd.msg.inferd_pb2_grpc import InferDStub
 from inferd.msg.inferd_pb2 import InferRequest
 from google.protobuf.struct_pb2 import Struct
 from google.protobuf.timestamp_pb2 import Timestamp
-from . import db, util, auth
+from . import db, util, auth, dsearch
 from .dao.token import Token
 from .dao import message, label, completion
 
 import dataclasses
 import os
 import json
+import elasticsearch8 as es8
 
 class Server(Blueprint):
-    def __init__(self, dbc: db.Client, inferd: InferDStub):
+    def __init__(self, dbc: db.Client, inferd: InferDStub, didx: dsearch.Client):
         super().__init__("api", __name__)
 
         self.dbc = dbc
         self.inferd = inferd
+        self.didx = didx
 
         self.get("/whoami")(self.whoami)
 
@@ -45,6 +47,8 @@ class Server(Blueprint):
         self.get("/labels")(self.labels)
 
         self.get("/completions")(self.completions)
+
+        self.get("/data/search")(self.data_search)
 
     def authn(self) -> Token:
         provided = auth.token_from_request(request)
@@ -343,4 +347,31 @@ class Server(Blueprint):
     def completions(self):
         self.authn()
         return jsonify(self.dbc.completion.list())
+
+    def data_search(self):
+        self.authn()
+
+        query = request.args.get("query", "").strip()
+        if query == "":
+            raise exceptions.BadRequest("empty query")
+
+        try:
+            size = int(request.args.get("size", "10"))
+        except ValueError as e:
+            raise exceptions.BadRequest(f"invalid size: {e}")
+        if size < 0:
+            raise exceptions.BadRequest("size must be positive")
+        if size > 100:
+            raise exceptions.BadRequest("size > 100 not supported")
+
+        try:
+            offset = int(request.args.get("offset", "0"))
+        except ValueError as e:
+            raise exceptions.BadRequest(f"invalid from: {e}")
+        if offset < 0:
+            raise exceptions.BadRequest("offset must be positive")
+        if offset > 10_000 - size:
+            raise exceptions.BadRequest(f"max offset is {10_000-size}")
+
+        return jsonify(self.didx.search(query, size, offset))
 

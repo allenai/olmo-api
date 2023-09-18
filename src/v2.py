@@ -356,7 +356,7 @@ class Server(Blueprint):
             raise exceptions.BadRequest("empty query")
 
         try:
-            size = request.args.get("size", 10, type=int)
+            size = int(request.args.get("size", 10))
         except ValueError as e:
             raise exceptions.BadRequest(f"invalid size: {e}")
         if size < 0:
@@ -365,7 +365,7 @@ class Server(Blueprint):
             raise exceptions.BadRequest("size > 100 not supported")
 
         try:
-            offset = request.args.get("offset", 0, type=int)
+            offset = int(request.args.get("offset", 0))
         except ValueError as e:
             raise exceptions.BadRequest(f"invalid from: {e}")
         if offset < 0:

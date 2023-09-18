@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Self, Any, Optional, Mapping
 
 import elasticsearch8 as es8
@@ -13,39 +13,55 @@ def first_n_words(s: str, n: int) -> str:
     return " ".join(words[:n]) + ("…" if len(words) > n else "")
 
 @dataclass
-class Result:
+class Doc:
     id: str
     dolma_id: str
     text: str
     first_n: str
     source: str
-    highlights: dict[str, list[HTML]]
-    score: float
     url: Optional[str] = None
 
     @classmethod
-    def from_hit(cls, hit: dict[str, Any]) -> Self:
+    def from_dict(cls, d: Mapping[str, Any]) -> Self:
         # TODO: common-crawl documents use the URL as an id; eventually some sort of post-processing
         # step will enrich each record with a URL (if there is one)
         url = None
-        source = hit["_source"]["source"]
+        source = d["_source"]["source"]
         if source == "common-crawl":
-            url = hit["_source"]["id"]
+            url = d["_source"]["id"]
 
         # TODO: we extract the first 8 words right now b/c there's no consistent title and/or
         # short representation
-        text = hit["_source"]["text"]
+        text = d["_source"]["text"]
         first_n = first_n_words(text, 8)
 
         return cls(
-            id=hit["_id"],
-            dolma_id=hit["_source"]["id"],
+            id=d["_id"],
+            dolma_id=d["_source"]["id"],
             text=text,
             first_n=first_n,
-            source=source,
+            source=d["_source"]["source"],
+            url=url,
+        )
+
+@dataclass
+class Result(Doc):
+    highlights: Mapping[str, list[HTML]] = field(default_factory=dict)
+    score: float = 0.0
+
+    @classmethod
+    def from_hit(cls, hit: Mapping[str, Any]) -> Self:
+        d = Doc.from_dict(hit)
+
+        return cls(
+            id=d.id,
+            dolma_id=d.dolma_id,
+            text=d.text,
+            first_n=d.first_n,
+            source=d.source,
             highlights=hit["highlight"],
             score=hit["_score"],
-            url=url,
+            url=d.url,
         )
 
 @dataclass
@@ -104,4 +120,11 @@ class Client:
         results = [Result.from_hit(hit) for hit in res["hits"]["hits"]]
 
         return SearchResults(meta, results)
+
+    def doc(self, id: str) -> Optional[Doc]:
+        try:
+            d = self.es.get(index="docs", id=id)
+            return Doc.from_dict(d) # type: ignore
+        except es8.exceptions.NotFoundError:
+            return None
 

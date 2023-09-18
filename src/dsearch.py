@@ -128,3 +128,7 @@ class Client:
         except es8.exceptions.NotFoundError:
             return None
 
+    def doc_count(self) -> int:
+        stats = self.es.indices.stats(index="docs", metric=["docs"])
+        return stats["_all"]["primaries"]["docs"]["count"]
+

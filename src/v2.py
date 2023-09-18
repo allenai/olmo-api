@@ -50,6 +50,7 @@ class Server(Blueprint):
 
         self.get("/data/search")(self.data_search)
         self.get("/data/doc/<string:id>")(self.data_doc)
+        self.get("/data/meta")(self.data_meta)
 
     def authn(self) -> Token:
         provided = auth.token_from_request(request)
@@ -387,4 +388,8 @@ class Server(Blueprint):
         if doc is None:
             raise exceptions.NotFound()
         return jsonify(doc)
+
+    def data_meta(self):
+        self.authn()
+        return jsonify({ "count": self.didx.doc_count() })
 

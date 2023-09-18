@@ -5,22 +5,47 @@ import elasticsearch8 as es8
 
 HTML = str
 
+def first_n_words(s: str, n: int) -> str:
+    # We take the first n * 32 characters as to avoid processing the entire text, which might be
+    # large. This is for obvious reasons imperfect but probably good enough for manifesting a short,
+    # representative snippet.
+    words = [s.strip(".,;:!?") for s in s[:n*32].split(" ")]
+    return " ".join(words[:n]) + ("…" if len(words) > n else "")
+
 @dataclass
 class Result:
     id: str
+    dolma_id: str
     text: str
+    first_n: str
     source: str
     highlights: dict[str, list[HTML]]
     score: float
+    url: Optional[str] = None
 
     @classmethod
     def from_hit(cls, hit: dict[str, Any]) -> Self:
+        # TODO: common-crawl documents use the URL as an id; eventually some sort of post-processing
+        # step will enrich each record with a URL (if there is one)
+        url = None
+        source = hit["_source"]["source"]
+        if source == "common-crawl":
+            url = hit["_source"]["id"]
+
+        # TODO: we extract the first 8 words right now b/c there's no consistent title and/or
+        # short representation
+        text = hit["_source"]["text"]
+        first_n = first_n_words(text, 8)
+
         return cls(
             id=hit["_id"],
-            text=hit["_source"]["text"],
-            source=hit["_source"]["source"],
+            dolma_id=hit["_source"]["id"],
+            text=text,
+            first_n=first_n,
+            source=source,
             highlights=hit["highlight"],
             score=hit["_score"],
+            url=url,
         )
 
 @dataclass

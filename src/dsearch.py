@@ -10,7 +10,7 @@ def first_n_words(s: str, n: int) -> str:
     # large. This is for obvious reasons imperfect but probably good enough for manifesting a short,
     # representative snippet.
     words = [s.strip(".,;:!?") for s in s[:n*32].split(" ")]
-    return " ".join(words[:n]) + "…"
+    return " ".join(words[:n]) + ("…" if len(words) > n else "")
 
 @dataclass
 class Result:

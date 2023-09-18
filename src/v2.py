@@ -351,12 +351,12 @@ class Server(Blueprint):
     def data_search(self):
         self.authn()
 
-        query = request.args.get("query", "").strip()
+        query = request.args.get("query", default="", type=lambda s: s.strip())
         if query == "":
             raise exceptions.BadRequest("empty query")
 
         try:
-            size = int(request.args.get("size", "10"))
+            size = request.args.get("size", 10, type=int)
         except ValueError as e:
             raise exceptions.BadRequest(f"invalid size: {e}")
         if size < 0:
@@ -365,7 +365,7 @@ class Server(Blueprint):
             raise exceptions.BadRequest("size > 100 not supported")
 
         try:
-            offset = int(request.args.get("offset", "0"))
+            offset = request.args.get("offset", 0, type=int)
         except ValueError as e:
             raise exceptions.BadRequest(f"invalid from: {e}")
         if offset < 0:
@@ -373,5 +373,10 @@ class Server(Blueprint):
         if offset > 10_000 - size:
             raise exceptions.BadRequest(f"max offset is {10_000-size}")
 
-        return jsonify(self.didx.search(query, size, offset))
+        filters = None
+        sources = request.args.getlist("source", type=lambda s: s.strip())
+        if len(sources) > 0:
+            filters = dsearch.Filters(sources)
+
+        return jsonify(self.didx.search(query, size, offset, filters))
 

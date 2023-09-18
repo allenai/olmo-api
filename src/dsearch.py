@@ -32,7 +32,7 @@ class Result:
         if source == "common-crawl":
             url = hit["_source"]["id"]
 
-        # TODO: we extract the first 16 words right now b/c there's no consistent title and/or
+        # TODO: we extract the first 8 words right now b/c there's no consistent title and/or
         # short representation
         text = hit["_source"]["text"]
         first_n = first_n_words(text, 8)

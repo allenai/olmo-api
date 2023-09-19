@@ -1,16 +1,14 @@
 from typing import Any
-from e2e import base
+from . import base, util
 from datetime import datetime, timezone
 
 import requests
-import pytest
+import json
 
 class TestMessageEndpoints(base.IntegrationTest):
     messages: list[tuple[str, dict[str, Any]]] = []
 
     def runTest(self):
-        pytest.skip("Skipped until non-streaming responses are again supported...")
-
         u1 = self.user("test1@localhost")
         u2 = self.user("test2@localhost")
 
@@ -19,14 +17,15 @@ class TestMessageEndpoints(base.IntegrationTest):
             "content": "I'm a magical labrador named Murphy, who are you? ",
         })
         r.raise_for_status()
-        msgs = [r.json()]
+
+        msgs = [json.loads(util.last_response_line(r))]
         m1 = msgs[0]
         self.messages.append((m1["id"], u1))
         for c in m1["children"]:
             self.messages.append((c["id"], u1))
 
         defaults = [
-            ("max_tokens", 256),
+            ("max_tokens", 2048),
             ("temperature", 1.0),
             ("n", 1),
             ("top_p", 1.0),
@@ -41,12 +40,13 @@ class TestMessageEndpoints(base.IntegrationTest):
         fields = [
             # We don't test values numbers close to most maximums b/c they surpass the thresholds
             # of what our tiny local models can do...
-            ("max_tokens",  [0, 1.0, "three", 1026],    [1, 32]),
+            ("max_tokens",  [0, 1.0, "three", 4097],    [1, 32]),
             ("temperature", [-1.0, "three", 2.1],       [0, 0.5, 1]),
-            ("n",           [-1, 1.0, "three", 51],     [1, 3]),
             ("top_p",       [-1, "three", 1.1],         [0.1, 0.5, 1]),
-            ("logprobs",    [-1, 1.0, "three", 6],      [1]),
-            ("stop",        [["the", 1], "the"],        [[], ["the", "labrador"]]),
+
+            # TODO: test these cases, once supported (they were disabled when streaming was added)
+            ("n",           [-1, 1.0, "three", 51],     []),
+            ("logprobs",    [-1, 1.0, "three", 6],      []),
         ]
         for (name, invalid, valid) in fields:
             for v in invalid:
@@ -54,14 +54,14 @@ class TestMessageEndpoints(base.IntegrationTest):
                     "content": f"Testing invalid value \"{v}\" for {name}",
                     "opts": { name: v }
                 })
-                assert r.status_code == 400
+                assert r.status_code == 400, f"Expected 400 for invalid value {v} for {name}"
             for v in valid:
                 r = requests.post(f"{self.origin}/v2/message", headers=self.auth(u1), json={
                     "content": f"Testing valid value \"{v}\" for {name}",
                     "opts": { name: v }
                 })
-                r.raise_for_status()
-                msg = r.json()
+                assert r.status_code == 200, f"Expected 200 for valid value {v} for {name}"
+                msg = json.loads(util.last_response_line(r))
                 self.messages.append((msg["id"], u1))
                 for default_name, default_value in defaults:
                     actual = msg["opts"][default_name]
@@ -98,7 +98,7 @@ class TestMessageEndpoints(base.IntegrationTest):
             "parent": c1["id"],
         })
         r.raise_for_status()
-        c2 = r.json()
+        c2 = json.loads(util.last_response_line(r))
         self.messages.append((c2["id"], u1))
         for c in c2["children"]:
             self.messages.append((c["id"], u1))
@@ -127,7 +127,7 @@ class TestMessageEndpoints(base.IntegrationTest):
             "content": "I'm a wizardly horse named Grasshopper, who are you? ",
         })
         r.raise_for_status()
-        m2 = r.json()
+        m2 = json.loads(util.last_response_line(r))
         self.messages.append((m2["id"], u2))
         for c in m2["children"]:
             self.messages.append((c["id"], u2))

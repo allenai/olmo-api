@@ -1,4 +1,4 @@
-from e2e import base
+from . import base
 from datetime import datetime, timezone
 from typing import Any
 

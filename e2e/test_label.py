@@ -1,17 +1,15 @@
-from e2e import base
+from . import base, util
 from datetime import datetime, timezone
 from typing import Any
 
 import requests
-import pytest
+import json
 
 class TestLabelEndpoints(base.IntegrationTest):
     messages: list[tuple[str, dict[str, Any]]] = []
     labels: list[tuple[str, dict[str, Any]]] = []
 
     def runTest(self):
-        pytest.skip("Skipped until non-streaming responses are again supported...")
-
         u1 = self.user("test1@localhost")
         u2 = self.user("test2@localhost")
 
@@ -21,7 +19,7 @@ class TestLabelEndpoints(base.IntegrationTest):
         for c  in content:
             r = requests.post(f"{self.origin}/v2/message", headers=self.auth(u1), json={ "content": c })
             r.raise_for_status()
-            m = r.json()
+            m = json.loads(util.last_response_line(r))
             self.messages.append((m["id"], u1))
             msgs.append(m)
         m1, m2 = msgs

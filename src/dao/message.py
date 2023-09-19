@@ -226,6 +226,22 @@ class Message:
 
         return roots, msgs
 
+@dataclass
+class MessageListOpts:
+    offset: Optional[int] = None
+    limit: Optional[int] = None
+
+@dataclass
+class MessageListMeta:
+    total: int
+    offset: Optional[int] = None
+    limit: Optional[int] = None
+
+@dataclass
+class MessageList:
+    messages: list[Message]
+    meta: MessageListMeta
+
 class Store:
     def __init__(self, pool: ConnectionPool):
         self.pool = pool
@@ -458,11 +474,66 @@ class Store:
                 return Message.from_row(row)
 
     # TODO: allow listing non-final messages
-    def list(self, labels_for:Optional[str] = None, creator: Optional[str] = None, deleted: bool = False) -> list[Message]:
+    def list(
+        self,
+        labels_for: Optional[str] = None,
+        creator: Optional[str] = None,
+        deleted: bool = False,
+        opts: MessageListOpts = MessageListOpts()
+    ) -> MessageList:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
-                q = """
+                count = """
                     SELECT
+                        COUNT(*)
+                    FROM
+                        message
+                    WHERE
+                        (creator = %(creator)s OR %(creator)s IS NULL)
+                    AND
+                        (deleted IS NULL OR %(deleted)s)
+                    AND
+                        final = true
+                    AND
+                        parent IS NULL
+                """
+
+                roots = """
+                    SELECT
+                        message.id
+                    FROM
+                        message
+                    WHERE
+                        (creator = %(creator)s OR %(creator)s IS NULL)
+                    AND
+                        (deleted IS NULL OR %(deleted)s)
+                    AND
+                        final = true
+                    AND
+                        parent IS NULL
+                    ORDER BY
+                        created DESC,
+                        id
+                """
+                args = {
+                    "creator": creator,
+                    "deleted": deleted
+                }
+
+                if opts.limit is not None:
+                    roots += "\nLIMIT %(limit)s "
+                    args["limit"] = opts.limit
+
+                if opts.offset is not None:
+                    roots += "\nOFFSET %(offset)s "
+                    args["offset"] = opts.offset
+
+                q = f"""
+                    WITH
+                        count AS ({count}),
+                        root_ids AS ({roots})
+                    SELECT
+                        (SELECT * FROM count) AS total,
                         message.id,
                         message.content,
                         message.creator,
@@ -491,20 +562,26 @@ class Store:
                     ON
                         label.message = message.id
                     AND
-                        label.creator = %s
+                        label.creator = %(labels_for)s
                     AND
                         label.deleted IS NULL
                     WHERE
-                        (message.creator = %s OR %s)
+                        (message.creator = %(creator)s OR %(creator)s IS NULL)
                     AND
-                        (message.deleted IS NULL OR %s)
+                        (message.deleted IS NULL OR %(deleted)s)
                     AND
-                        final = true
+                        message.final = true
+                    AND
+                        message.root IN (SELECT * FROM root_ids)
                     ORDER BY
                         message.created DESC,
                         message.id
                 """
-                rows = cur.execute(q, (labels_for, creator, True if creator is None else False, deleted)).fetchall()
-                roots, _ = Message.tree(Message.group_by_id([Message.from_row(r) for r in rows]))
-                return roots
+                args["labels_for"] = labels_for
 
+                rows = cur.execute(q, args).fetchall()
+
+                total = rows[0][0]
+                roots, _ = Message.tree(Message.group_by_id([Message.from_row(r[1:]) for r in rows]))
+
+                return MessageList(roots, MessageListMeta(total, opts.offset, opts.limit))

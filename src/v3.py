@@ -11,11 +11,17 @@ class Server(V2Server):
             offset = int(request.args.get("offset", 0))
         except ValueError as e:
             raise exceptions.BadRequest(f"invalid offset: {e}")
+        if offset < 0:
+            raise exceptions.BadRequest("invalid offset: must be >= 0")
 
         try:
             limit = int(request.args.get("limit", 10))
         except ValueError as e:
             raise exceptions.BadRequest(f"invalid limit: {e}")
+        if limit < 0:
+            raise exceptions.BadRequest("invalid limit: must be >= 0")
+        if limit > 100:
+            raise exceptions.BadRequest("invalid limit: must be <= 100")
 
         try:
             return jsonify(self.dbc.message.list(

@@ -17,63 +17,63 @@ CREATE TABLE IF NOT EXISTS prompt_template (
 GRANT SELECT, UPDATE, INSERT ON TABLE prompt_template TO app;
 
 CREATE TABLE IF NOT EXISTS client_token (
-    token TEXT NOT NULL PRIMARY KEY,
-    client TEXT NOT NULL, -- this might be an email, i.e "sams@allenai.org" or an identifier i.e. "system-x"
-    created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    expires TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '1 day'
+  token TEXT NOT NULL PRIMARY KEY,
+  client TEXT NOT NULL, -- this might be an email, i.e "sams@allenai.org" or an identifier i.e. "system-x"
+  created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '1 day'
 );
 
 GRANT SELECT, UPDATE, INSERT ON TABLE client_token TO app;
 
 CREATE TABLE IF NOT EXISTS completion (
-    id TEXT NOT NULL PRIMARY KEY,
-    input TEXT NOT NULL,
-    outputs JSONB NOT NULL,
-    opts JSONB NOT NULL,
-    model TEXT NOT NULL,
-    sha TEXT NOT NULL,
-    created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    tokenize_ms INTEGER NOT NULL,
-    generation_ms INTEGER NOT NULL,
-    queue_ms INTEGER NOT NULL,
-    input_tokens INTEGER NOT NULL,
-    output_tokens INTEGER NOT NULL
+  id TEXT NOT NULL PRIMARY KEY,
+  input TEXT NOT NULL,
+  outputs JSONB NOT NULL,
+  opts JSONB NOT NULL,
+  model TEXT NOT NULL,
+  sha TEXT NOT NULL,
+  created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  tokenize_ms INTEGER NOT NULL,
+  generation_ms INTEGER NOT NULL,
+  queue_ms INTEGER NOT NULL,
+  input_tokens INTEGER NOT NULL,
+  output_tokens INTEGER NOT NULL
 );
 
 GRANT SELECT, UPDATE, INSERT ON TABLE completion TO app;
 
 CREATE TABLE IF NOT EXISTS message (
-    id TEXT NOT NULL PRIMARY KEY,
-    content TEXT NOT NULL,
-    creator TEXT NOT NULL,
-    role TEXT NOT NULL,
-    opts JSONB NOT NULL,
-    root TEXT NOT NULL,
-    created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted TIMESTAMPTZ NULL,
-    parent TEXT NULL,
-    template TEXT NULL,
-    logprobs JSONB[] NULL,
-    completion TEXT NULL,
+  id TEXT NOT NULL PRIMARY KEY,
+  content TEXT NOT NULL,
+  creator TEXT NOT NULL,
+  role TEXT NOT NULL,
+  opts JSONB NOT NULL,
+  root TEXT NOT NULL,
+  created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted TIMESTAMPTZ NULL,
+  parent TEXT NULL,
+  template TEXT NULL,
+  logprobs JSONB[] NULL,
+  completion TEXT NULL,
 
-    FOREIGN KEY (root) REFERENCES message(id),
-    FOREIGN KEY (parent) REFERENCES message(id),
-    FOREIGN KEY (template) REFERENCES prompt_template(id),
-    FOREIGN KEY (completion) REFERENCES completion(id)
+  FOREIGN KEY (root) REFERENCES message(id),
+  FOREIGN KEY (parent) REFERENCES message(id),
+  FOREIGN KEY (template) REFERENCES prompt_template(id),
+  FOREIGN KEY (completion) REFERENCES completion(id)
 );
 
 GRANT SELECT, UPDATE, INSERT ON TABLE message TO app;
 
 CREATE TABLE IF NOT EXISTS label (
-    id TEXT NOT NULL PRIMARY KEY,
-    message TEXT NOT NULL,
-    rating INTEGER NOT NULL,
-    creator TEXT NOT NULL,
-    comment TEXT NULL,
-    created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted TIMESTAMPTZ NULL,
+  id TEXT NOT NULL PRIMARY KEY,
+  message TEXT NOT NULL,
+  rating INTEGER NOT NULL,
+  creator TEXT NOT NULL,
+  comment TEXT NULL,
+  created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted TIMESTAMPTZ NULL,
 
-    FOREIGN KEY (message) REFERENCES message(id)
+  FOREIGN KEY (message) REFERENCES message(id)
 );
 
 GRANT SELECT, UPDATE, INSERT ON TABLE label TO app;

@@ -17,9 +17,12 @@ class Server(V2Server):
         except ValueError as e:
             raise exceptions.BadRequest(f"invalid limit: {e}")
 
-        return jsonify(self.dbc.message.list(
-            labels_for=token.client,
-            creator=request.args.get("creator"),
-            deleted="deleted" in request.args,
-            opts=message.MessageListOpts(offset, limit),
-        ))
+        try:
+            return jsonify(self.dbc.message.list(
+                labels_for=token.client,
+                creator=request.args.get("creator"),
+                deleted="deleted" in request.args,
+                opts=message.MessageListOpts(offset, limit),
+            ))
+        except message.OffsetOverflowError as e:
+            raise exceptions.BadRequest(str(e))

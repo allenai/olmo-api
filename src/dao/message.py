@@ -9,6 +9,12 @@ from werkzeug import exceptions
 from .. import obj
 from . import label
 
+class OffsetOverflowError(RuntimeError):
+    def __init__(self, offset: int, total: int):
+        self.offset = offset
+        self.total = total
+        super().__init__(f"offset {offset} is >= than total {total}")
+
 class Role(StrEnum):
     User = "user"
     Assistant = "assistant"
@@ -483,24 +489,10 @@ class Store:
     ) -> MessageList:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
-                count = """
-                    SELECT
-                        COUNT(*)
-                    FROM
-                        message
-                    WHERE
-                        (creator = %(creator)s OR %(creator)s IS NULL)
-                    AND
-                        (deleted IS NULL OR %(deleted)s)
-                    AND
-                        final = true
-                    AND
-                        parent IS NULL
-                """
-
                 roots = """
                     SELECT
-                        message.id
+                        message.id,
+                        COUNT(*) OVER() AS total
                     FROM
                         message
                     WHERE
@@ -529,11 +521,9 @@ class Store:
                     args["offset"] = opts.offset
 
                 q = f"""
-                    WITH
-                        count AS ({count}),
-                        root_ids AS ({roots})
+                    WITH root_ids AS ({roots})
                     SELECT
-                        (SELECT * FROM count) AS total,
+                        (SELECT total FROM root_ids LIMIT 1),
                         message.id,
                         message.content,
                         message.creator,
@@ -572,7 +562,7 @@ class Store:
                     AND
                         message.final = true
                     AND
-                        message.root IN (SELECT * FROM root_ids)
+                        message.root IN (SELECT id FROM root_ids)
                     ORDER BY
                         message.created DESC,
                         message.id
@@ -580,6 +570,17 @@ class Store:
                 args["labels_for"] = labels_for
 
                 rows = cur.execute(q, args).fetchall()
+
+                # This should only happen in two circumstances:
+                # 1. There's no messages
+                # 2. The offset is greater than the number of root messages
+                if len(rows) == 0:
+                    args["offset"] = 0
+                    row = cur.execute(q, args).fetchone()
+                    total = row[0] if row is not None else 0
+                    if opts.offset is not None and opts.offset >= total:
+                        raise OffsetOverflowError(opts.offset, total)
+                    return MessageList([], MessageListMeta(total, opts.offset, opts.limit))
 
                 total = rows[0][0]
                 roots, _ = Message.tree(Message.group_by_id([Message.from_row(r[1:]) for r in rows]))

@@ -146,11 +146,55 @@ class TestMessageEndpoints(base.IntegrationTest):
             r.raise_for_status()
             assert r.json() == m
 
+        # Make sure /v3/messages is paginated
+        r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1))
+        r.raise_for_status()
+        msglist = r.json()
+        assert msglist["meta"]["total"] > 0
+        assert msglist["meta"]["offset"] == 0
+        assert msglist["meta"]["limit"] == 10
+        ids = [m["id"] for m in msglist["messages"]]
+        assert m1["id"] in ids
+        assert m2["id"] in ids
+        assert ids.index(m2["id"]) < ids.index(m1["id"])
+
+        r = requests.get(f"{self.origin}/v3/messages?offset=1", headers=self.auth(u1))
+        r.raise_for_status()
+        offset_msglist = r.json()
+        assert offset_msglist["meta"]["total"] > 0
+        assert offset_msglist["meta"]["offset"] == 1
+        assert offset_msglist["meta"]["limit"] == 10
+        offset_ids = [m["id"] for m in offset_msglist["messages"]]
+        assert msglist["messages"][0]["id"] not in offset_ids
+        for m in msglist["messages"][1:]:
+            assert m["id"] in offset_ids
+        assert m1["id"] in ids
+        assert m2["id"] in ids
+        assert ids.index(m2["id"]) < ids.index(m1["id"])
+
+        r = requests.get(f"{self.origin}/v3/messages?offset=1&limit=1", headers=self.auth(u1))
+        r.raise_for_status()
+        limit_msglist = r.json()
+        assert limit_msglist["meta"]["total"] > 0
+        assert limit_msglist["meta"]["offset"] == 1
+        assert limit_msglist["meta"]["limit"] == 1
+        assert len(limit_msglist["messages"]) == 1
+        assert limit_msglist["messages"][0]["id"] == offset_msglist["messages"][0]["id"]
+
         # List by author
         r = requests.get(f"{self.origin}/v2/messages", headers=self.auth(u1), params={ "creator": u1["client"] })
         r.raise_for_status()
         msgs = r.json()
         ids = [m["id"] for m in msgs]
+        assert m1["id"] in ids
+        assert m2["id"] not in ids
+
+        r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1), params={ "creator": u1["client"] })
+        r.raise_for_status()
+        u1_msglist = r.json()
+        assert u1_msglist["meta"]["total"] > 0
+        assert u1_msglist["meta"]["total"] < msglist["meta"]["total"]
+        ids = [m["id"] for m in u1_msglist["messages"]]
         assert m1["id"] in ids
         assert m2["id"] not in ids
 

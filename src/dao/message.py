@@ -578,7 +578,7 @@ class Store:
                     args["offset"] = 0
                     row = cur.execute(q, args).fetchone()
                     total = row[0] if row is not None else 0
-                    if opts.offset is not None and opts.offset >= total:
+                    if total > 0 and opts.offset is not None and opts.offset > 0 and opts.offset >= total:
                         raise OffsetOverflowError(opts.offset, total)
                     return MessageList([], MessageListMeta(total, opts.offset, opts.limit))
 

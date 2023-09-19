@@ -9,6 +9,12 @@ from werkzeug import exceptions
 from .. import obj
 from . import label
 
+class OffsetOverflowError(RuntimeError):
+    def __init__(self, offset: int, total: int):
+        self.offset = offset
+        self.total = total
+        super().__init__(f"offset {offset} is >= than total {total}")
+
 class Role(StrEnum):
     User = "user"
     Assistant = "assistant"
@@ -225,6 +231,22 @@ class Message:
             msgs[m.parent].children = sorted(siblings + [m], key=lambda x: x.created)
 
         return roots, msgs
+
+@dataclass
+class MessageListOpts:
+    offset: Optional[int] = None
+    limit: Optional[int] = None
+
+@dataclass
+class MessageListMeta:
+    total: int
+    offset: Optional[int] = None
+    limit: Optional[int] = None
+
+@dataclass
+class MessageList:
+    messages: list[Message]
+    meta: MessageListMeta
 
 class Store:
     def __init__(self, pool: ConnectionPool):
@@ -458,11 +480,50 @@ class Store:
                 return Message.from_row(row)
 
     # TODO: allow listing non-final messages
-    def list(self, labels_for:Optional[str] = None, creator: Optional[str] = None, deleted: bool = False) -> list[Message]:
+    def list(
+        self,
+        labels_for: Optional[str] = None,
+        creator: Optional[str] = None,
+        deleted: bool = False,
+        opts: MessageListOpts = MessageListOpts()
+    ) -> MessageList:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
-                q = """
+                roots = """
                     SELECT
+                        message.id,
+                        COUNT(*) OVER() AS total
+                    FROM
+                        message
+                    WHERE
+                        (creator = %(creator)s OR %(creator)s IS NULL)
+                    AND
+                        (deleted IS NULL OR %(deleted)s)
+                    AND
+                        final = true
+                    AND
+                        parent IS NULL
+                    ORDER BY
+                        created DESC,
+                        id
+                """
+                args = {
+                    "creator": creator,
+                    "deleted": deleted
+                }
+
+                if opts.limit is not None:
+                    roots += "\nLIMIT %(limit)s "
+                    args["limit"] = opts.limit
+
+                if opts.offset is not None:
+                    roots += "\nOFFSET %(offset)s "
+                    args["offset"] = opts.offset
+
+                q = f"""
+                    WITH root_ids AS ({roots})
+                    SELECT
+                        (SELECT total FROM root_ids LIMIT 1),
                         message.id,
                         message.content,
                         message.creator,
@@ -491,20 +552,37 @@ class Store:
                     ON
                         label.message = message.id
                     AND
-                        label.creator = %s
+                        label.creator = %(labels_for)s
                     AND
                         label.deleted IS NULL
                     WHERE
-                        (message.creator = %s OR %s)
+                        (message.creator = %(creator)s OR %(creator)s IS NULL)
                     AND
-                        (message.deleted IS NULL OR %s)
+                        (message.deleted IS NULL OR %(deleted)s)
                     AND
-                        final = true
+                        message.final = true
+                    AND
+                        message.root IN (SELECT id FROM root_ids)
                     ORDER BY
                         message.created DESC,
                         message.id
                 """
-                rows = cur.execute(q, (labels_for, creator, True if creator is None else False, deleted)).fetchall()
-                roots, _ = Message.tree(Message.group_by_id([Message.from_row(r) for r in rows]))
-                return roots
+                args["labels_for"] = labels_for
 
+                rows = cur.execute(q, args).fetchall()
+
+                # This should only happen in two circumstances:
+                # 1. There's no messages
+                # 2. The offset is greater than the number of root messages
+                if len(rows) == 0:
+                    args["offset"] = 0
+                    row = cur.execute(q, args).fetchone()
+                    total = row[0] if row is not None else 0
+                    if total > 0 and opts.offset is not None and opts.offset > 0 and opts.offset >= total:
+                        raise OffsetOverflowError(opts.offset, total)
+                    return MessageList([], MessageListMeta(total, opts.offset, opts.limit))
+
+                total = rows[0][0]
+                roots, _ = Message.tree(Message.group_by_id([Message.from_row(r[1:]) for r in rows]))
+
+                return MessageList(roots, MessageListMeta(total, opts.offset, opts.limit))

@@ -209,8 +209,19 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
                                         }
                                     }
                                 }
+                            },
+                            {
+                                path: '/v3/whoami',
+                                pathType: 'Exact',
+                                backend: {
+                                    service: {
+                                        name: fullyQualifiedName,
+                                        port: {
+                                            number: apiPort
+                                        }
+                                    }
+                                }
                             }
-
                         ]
                     }
                 } for host in allenAIHosts

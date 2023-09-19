@@ -284,11 +284,12 @@ class Server(Blueprint):
 
     def messages(self):
         token = self.authn()
-        return jsonify(self.dbc.message.list(
+        ml = self.dbc.message.list(
             labels_for=token.client,
             creator=request.args.get("creator"),
-            deleted="deleted" in request.args)
+            deleted="deleted" in request.args
         )
+        return jsonify(ml.messages)
 
     def schema(self):
         self.authn()

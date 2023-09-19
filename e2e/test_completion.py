@@ -1,24 +1,23 @@
-from e2e import base
+from . import base, util
 from typing import Any
 
 import requests
-import pytest
+import json
 
 class TestCompletionEndpoints(base.IntegrationTest):
     messages: list[tuple[str, dict[str, Any]]] = []
 
     def runTest(self):
-        pytest.skip("Skipped until non-streaming responses are again supported...")
-
         u1 = self.user("test1@localhost")
         u2 = self.user("test2@localhost")
 
         r = requests.post(f"{self.origin}/v2/message", headers=self.auth(u1), json={
             "content": "Is Grasshopper a unicorn?",
-            "opts": { "n": 2 }
+            # TODO: restore when n > 1 is supported
+            # "opts": { "n": 2 }
         })
         r.raise_for_status()
-        m = r.json()
+        m = json.loads(util.last_response_line(r))
         self.messages.append((m["id"], u1))
 
         r = requests.get(f"{self.origin}/v2/completions", headers=self.auth(u2))

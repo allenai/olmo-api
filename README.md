@@ -47,8 +47,7 @@ docker compose down --volumes && docker compose up --build
 
 ### Tests
 
-There are a bunch of tests, though most of them are skipped at the moment. You
-can run them like so:
+There are some end-to-end tests. They are slow. You can run them like so:
 
 ```
 docker compose exec api pytest

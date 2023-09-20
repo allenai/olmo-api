@@ -187,30 +187,6 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
                     http: {
                         paths: [
                             {
-                                path: '/v1/token',
-                                pathType: 'Exact',
-                                backend: {
-                                    service: {
-                                        name: fullyQualifiedName,
-                                        port: {
-                                            number: apiPort
-                                        }
-                                    }
-                                }
-                            },
-                            {
-                                path: '/v2/whoami',
-                                pathType: 'Exact',
-                                backend: {
-                                    service: {
-                                        name: fullyQualifiedName,
-                                        port: {
-                                            number: apiPort
-                                        }
-                                    }
-                                }
-                            },
-                            {
                                 path: '/v3/whoami',
                                 pathType: 'Exact',
                                 backend: {

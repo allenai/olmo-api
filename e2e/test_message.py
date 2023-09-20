@@ -13,7 +13,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         u2 = self.user("test2@localhost")
 
         # Create a message belonging to u1
-        r = requests.post(f"{self.origin}/v2/message", headers=self.auth(u1), json={
+        r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
             "content": "I'm a magical labrador named Murphy, who are you? ",
         })
         r.raise_for_status()
@@ -50,13 +50,13 @@ class TestMessageEndpoints(base.IntegrationTest):
         ]
         for (name, invalid, valid) in fields:
             for v in invalid:
-                r = requests.post(f"{self.origin}/v2/message", headers=self.auth(u1), json={
+                r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
                     "content": f"Testing invalid value \"{v}\" for {name}",
                     "opts": { name: v }
                 })
                 assert r.status_code == 400, f"Expected 400 for invalid value {v} for {name}"
             for v in valid:
-                r = requests.post(f"{self.origin}/v2/message", headers=self.auth(u1), json={
+                r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
                     "content": f"Testing valid value \"{v}\" for {name}",
                     "opts": { name: v }
                 })
@@ -69,8 +69,8 @@ class TestMessageEndpoints(base.IntegrationTest):
                     if actual != expected:
                         raise AssertionError(f"Value for {default_name} was {actual}, expected {expected}")
 
-        # Verify GET /v2/message/:id
-        r = requests.get(f"{self.origin}/v2/message/{m1['id']}", headers=self.auth(u1))
+        # Verify GET /v3/message/:id
+        r = requests.get(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
         msgs.append(r.json())
         for m in msgs:
             assert m["id"] is not None
@@ -84,16 +84,16 @@ class TestMessageEndpoints(base.IntegrationTest):
             assert m["logprobs"] is None
             assert len(m["children"]) == 1
 
-        # Check /v2/message/:id works as expected for children
+        # Check /v3/message/:id works as expected for children
         c1 = m1["children"][0]
-        r = requests.get(f"{self.origin}/v2/message/{c1['id']}", headers=self.auth(u1))
+        r = requests.get(f"{self.origin}/v3/message/{c1['id']}", headers=self.auth(u1))
         c1 = r.json()
         assert c1["id"] == m1["children"][0]["id"]
         assert c1["parent"] == m1["id"]
         assert c1["children"] is None
 
         # Make sure that creating messages with parents works as expected
-        r = requests.post(f"{self.origin}/v2/message", headers=self.auth(u1), json={
+        r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
             "content": "Complete this thought: I like ",
             "parent": c1["id"],
         })
@@ -107,7 +107,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert len(c2["children"]) == 1
 
         # Verify the full tree
-        r = requests.get(f"{self.origin}/v2/message/{m1['id']}", headers=self.auth(u1))
+        r = requests.get(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
         r.raise_for_status()
         expect = [
             (m1["id"], "user", 1),
@@ -123,7 +123,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert actual == expect
 
         # Create a message belonging to u2
-        r = requests.post(f"{self.origin}/v2/message", headers=self.auth(u2), json={
+        r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u2), json={
             "content": "I'm a wizardly horse named Grasshopper, who are you? ",
         })
         r.raise_for_status()
@@ -132,21 +132,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         for c in m2["children"]:
             self.messages.append((c["id"], u2))
 
-        # Makes sure /v2/messages works. We don't verify that *only* the messages
-        # created in this test are returned so that the tests are repeatable w/o a database reset.
-        r = requests.get(f"{self.origin}/v2/messages", headers=self.auth(u1))
-        r.raise_for_status()
-        msgs = r.json()
-        ids = [m["id"] for m in msgs]
-        assert m1["id"] in ids
-        assert m2["id"] in ids
-        assert ids.index(m2["id"]) < ids.index(m1["id"])
-        for m in msgs:
-            r = requests.get(f"{self.origin}/v2/message/{m['id']}", headers=self.auth(u1))
-            r.raise_for_status()
-            assert r.json() == m
-
-        # Make sure /v3/messages is paginated
+        # Verify listing messages
         r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1))
         r.raise_for_status()
         msglist = r.json()
@@ -157,6 +143,10 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert m1["id"] in ids
         assert m2["id"] in ids
         assert ids.index(m2["id"]) < ids.index(m1["id"])
+        for m in msglist["messages"]:
+            r = requests.get(f"{self.origin}/v3/message/{m['id']}", headers=self.auth(u1))
+            r.raise_for_status()
+            assert r.json() == m
 
         r = requests.get(f"{self.origin}/v3/messages?offset=1", headers=self.auth(u1))
         r.raise_for_status()
@@ -182,13 +172,6 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert limit_msglist["messages"][0]["id"] == offset_msglist["messages"][0]["id"]
 
         # List by author
-        r = requests.get(f"{self.origin}/v2/messages", headers=self.auth(u1), params={ "creator": u1["client"] })
-        r.raise_for_status()
-        msgs = r.json()
-        ids = [m["id"] for m in msgs]
-        assert m1["id"] in ids
-        assert m2["id"] not in ids
-
         r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1), params={ "creator": u1["client"] })
         r.raise_for_status()
         u1_msglist = r.json()
@@ -198,46 +181,48 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert m1["id"] in ids
         assert m2["id"] not in ids
 
-        r = requests.get(f"{self.origin}/v2/messages", headers=self.auth(u1), params={ "creator": u2["client"] })
+        r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1), params={ "creator": u2["client"] })
         r.raise_for_status()
-        msgs = r.json()
-        ids = [m["id"] for m in msgs]
-        assert m2["id"] in ids
+        u2_msglist = r.json()
+        assert u2_msglist["meta"]["total"] > 0
+        assert u2_msglist["meta"]["total"] < msglist["meta"]["total"]
+        ids = [m["id"] for m in u2_msglist["messages"]]
         assert m1["id"] not in ids
+        assert m2["id"] in ids
 
         # Make sure u2 can't delete u1
-        r = requests.delete(f"{self.origin}/v2/message/{m1['id']}", headers=self.auth(u2))
+        r = requests.delete(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u2))
         assert r.status_code == 403
 
         # Delete the message
-        r = requests.delete(f"{self.origin}/v2/message/{m1['id']}", headers=self.auth(u1))
+        r = requests.delete(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
         r.raise_for_status()
         deleted = r.json()["deleted"]
         assert deleted is not None
 
         # Verify that deletes are idempotent
-        r = requests.delete(f"{self.origin}/v2/message/{m1['id']}", headers=self.auth(u1))
+        r = requests.delete(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
         r.raise_for_status()
         assert r.json()["deleted"] == deleted
 
         # Don't list deleted messages by default
-        r = requests.get(f"{self.origin}/v2/messages", headers=self.auth(u1))
+        r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1))
         r.raise_for_status()
-        msgs = r.json()
-        ids = [m["id"] for m in msgs]
+        msglist = r.json()
+        ids = [m["id"] for m in msglist["messages"]]
         assert m1["id"] not in ids
 
         # Unless ?deleted is set
-        r = requests.get(f"{self.origin}/v2/messages?deleted", headers=self.auth(u1))
+        r = requests.get(f"{self.origin}/v3/messages?deleted", headers=self.auth(u1))
         r.raise_for_status()
-        msgs = r.json()
-        ids = [m["id"] for m in msgs]
+        msglist = r.json()
+        ids = [m["id"] for m in msglist["messages"]]
         assert m1["id"] in ids
         assert m2["id"] in ids
         assert ids.index(m2["id"]) < ids.index(m1["id"])
 
     def tearDown(self):
         for (id, user) in self.messages:
-            r = requests.delete(f"{self.origin}/v2/message/{id}", headers=self.auth(user))
+            r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
             r.raise_for_status()
 

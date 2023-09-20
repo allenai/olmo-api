@@ -11,7 +11,7 @@ class TestCompletionEndpoints(base.IntegrationTest):
         u1 = self.user("test1@localhost")
         u2 = self.user("test2@localhost")
 
-        r = requests.post(f"{self.origin}/v2/message", headers=self.auth(u1), json={
+        r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
             "content": "Is Grasshopper a unicorn?",
             # TODO: restore when n > 1 is supported
             # "opts": { "n": 2 }
@@ -20,7 +20,7 @@ class TestCompletionEndpoints(base.IntegrationTest):
         m = json.loads(util.last_response_line(r))
         self.messages.append((m["id"], u1))
 
-        r = requests.get(f"{self.origin}/v2/completions", headers=self.auth(u2))
+        r = requests.get(f"{self.origin}/v3/completions", headers=self.auth(u2))
         r.raise_for_status()
         completions = [ c["id"] for c in r.json() ]
         for c in m["children"]:
@@ -29,6 +29,6 @@ class TestCompletionEndpoints(base.IntegrationTest):
 
     def tearDown(self):
         for (id, user) in self.messages:
-            r = requests.delete(f"{self.origin}/v2/message/{id}", headers=self.auth(user))
+            r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
             r.raise_for_status()
 

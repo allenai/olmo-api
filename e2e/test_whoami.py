@@ -65,11 +65,3 @@ class TestAuth(base.IntegrationTest):
 
         assert r.json()["token"] == cookie.value
 
-
-
-
-
-
-
-
-

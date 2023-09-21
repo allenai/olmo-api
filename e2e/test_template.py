@@ -13,7 +13,9 @@ class TestPromptTemplateEndpoints(base.IntegrationTest):
         for r in [
             requests.post(f"{self.origin}/v3/templates/prompt", json={}),
             requests.get(f"{self.origin}/v3/templates/prompts"),
-            requests.get(f"{self.origin}/v3/templates/prompt/1"),
+            requests.get(f"{self.origin}/v3/templates/prompt/XXX"),
+            requests.patch(f"{self.origin}/v3/templates/prompt/XXX"),
+            requests.delete(f"{self.origin}/v3/templates/prompt/XXX")
         ]:
             assert r.status_code == 401
 

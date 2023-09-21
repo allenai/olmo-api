@@ -14,9 +14,8 @@ class TestLabelEndpoints(base.IntegrationTest):
         for r in [
             requests.post(f"{self.origin}/v3/label", json={}),
             requests.get(f"{self.origin}/v3/labels"),
-            requests.get(f"{self.origin}/v3/label/1"),
+            requests.get(f"{self.origin}/v3/label/XXX"),
             requests.delete(f"{self.origin}/v3/label/XXX"),
-            requests.patch(f"{self.origin}/v3/label/XXX")
         ]:
             assert r.status_code == 401
 

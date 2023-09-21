@@ -9,6 +9,14 @@ class TestPromptTemplateEndpoints(base.IntegrationTest):
     prompts:list[tuple[str, dict[str, Any]]] = []
 
     def runTest(self):
+        # Make sure all endpoints require auth
+        for r in [
+            requests.post(f"{self.origin}/v3/templates/prompt", json={}),
+            requests.get(f"{self.origin}/v3/templates/prompts"),
+            requests.get(f"{self.origin}/v3/templates/prompt/1"),
+        ]:
+            assert r.status_code == 401
+
         u1 = self.user("test1@localhost")
         u2 = self.user("test2@localhost")
 

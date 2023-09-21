@@ -1,5 +1,6 @@
-from flask import Blueprint, jsonify, current_app, request, Response
+from flask import Blueprint, jsonify, current_app, request, Response, redirect
 from werkzeug import exceptions
+from werkzeug.wrappers import response
 from datetime import datetime, timezone, timedelta
 from inferd.msg.inferd_pb2_grpc import InferDStub
 from inferd.msg.inferd_pb2 import InferRequest
@@ -56,6 +57,8 @@ class Server(Blueprint):
         self.get("/data/doc/<string:id>")(self.data_doc)
         self.get("/data/meta")(self.data_meta)
 
+        self.get("/login/<string:token>")(self.login)
+
     def token(self) -> Optional[Token]:
         provided = request.cookies.get(
             "token",
@@ -80,6 +83,17 @@ class Server(Blueprint):
 
         return token
 
+    def set_auth_cookie(self, resp: Response | response.Response, token: Token) -> Response | response.Response:
+        resp.set_cookie(
+            key="token",
+            value=token.token,
+            expires=token.expires,
+            httponly=True,
+            secure=True,
+            samesite="Strict",
+        )
+        return resp
+
     def whoami(self):
         token = self.token()
         if token is None or token.expired():
@@ -90,18 +104,22 @@ class Server(Blueprint):
 
             token = self.dbc.token.create(email)
 
-        resp = jsonify(AuthenticatedClient(token.client))
+        return self.set_auth_cookie(jsonify(AuthenticatedClient(token.client)), token)
 
-        resp.set_cookie(
-            key="token",
-            value=token.token,
-            expires=token.expires,
-            httponly=True,
-            secure=True,
-            samesite="Strict",
-        )
+    def login(self, token: str):
+        if self.token() is not None:
+            raise exceptions.Conflict("already logged in")
 
-        return resp
+        # Validate the token
+        resolved = self.dbc.token.get(token)
+        if resolved is None or resolved.expired():
+            raise exceptions.Unauthorized()
+
+        # Generate a new one
+        nt = self.dbc.token.create(resolved.client)
+
+        # TODO: configurable redirect
+        return self.set_auth_cookie(redirect("https://olmo.allenai.org"), nt)
 
     def prompts(self):
         self.authn()

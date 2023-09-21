@@ -9,6 +9,15 @@ class TestMessageEndpoints(base.IntegrationTest):
     messages: list[tuple[str, dict[str, Any]]] = []
 
     def runTest(self):
+        # Make sure all endpoints fail w/o auth
+        for r in [
+            requests.get(f"{self.origin}/v3/messages"),
+            requests.post(f"{self.origin}/v3/message", json={}),
+            requests.get(f"{self.origin}/v3/message/XXX"),
+            requests.delete(f"{self.origin}/v3/message/XXX"),
+        ]:
+            assert r.status_code == 401
+
         u1 = self.user("test1@localhost")
         u2 = self.user("test2@localhost")
 

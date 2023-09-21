@@ -1,7 +1,7 @@
 from typing import Optional
 from psycopg_pool import ConnectionPool
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 import secrets
 
@@ -11,6 +11,9 @@ class Token:
     client: str
     created: datetime
     expires: datetime
+
+    def expired(self) -> bool:
+        return datetime.now(timezone.utc) >= self.expires
 
 class Store:
     def __init__(self, pool: ConnectionPool):

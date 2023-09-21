@@ -8,6 +8,7 @@ from google.protobuf.timestamp_pb2 import Timestamp
 from . import db, util, auth, dsearch
 from .dao.token import Token
 from .dao import message, label, completion
+from typing import Optional
 
 import dataclasses
 import os
@@ -52,32 +53,53 @@ class Server(Blueprint):
         self.get("/data/doc/<string:id>")(self.data_doc)
         self.get("/data/meta")(self.data_meta)
 
-    def authn(self) -> Token:
-        provided = auth.token_from_request(request)
+    def token(self) -> Optional[Token]:
+        provided = request.cookies.get(
+            "token",
+            default=auth.token_from_request(request)
+        )
         if provided is None:
+            return None
+        return self.dbc.token.get(provided)
+
+    def authn(self) -> Token:
+        token = self.token()
+        if token is None or token.expired():
             raise exceptions.Unauthorized()
-        resolved = self.dbc.token.get(provided)
-        if resolved is None:
-            raise exceptions.Unauthorized()
-        if resolved.expires <= datetime.now(timezone.utc):
-            raise exceptions.Unauthorized()
+
         current_app.logger.info({
             "path": request.path,
-            "message": f"authorized client {resolved.client}",
-            "client": resolved.client,
-            "created": resolved.created,
-            "expires": resolved.expires,
+            "message": f"authorized client {token.client}",
+            "client": token.client,
+            "created": token.created,
+            "expires": token.expires,
         })
-        return resolved
+
+        return token
 
     def whoami(self):
-        # This value is set by NGINX for authenticated clients. See https://skiff.allenai.org/login.html
-        email = request.headers.get("X-Auth-Request-Email")
-        if email is None:
-            raise exceptions.Unauthorized()
+        token = self.token()
+        if token is None or token.expired():
+            # Use NGINX mediated auth; see https://skiff.allenai.org/login.html
+            email = request.headers.get("X-Auth-Request-Email")
+            if email is None:
+                raise exceptions.Unauthorized()
 
-        token = self.dbc.token.create(email)
-        return jsonify(token)
+            token = self.dbc.token.create(email)
+
+        # TODO: only send the client(email) property; we send everything now for backwards compat
+        resp = jsonify(token)
+
+        resp.set_cookie(
+            key="token",
+            value=token.token,
+            expires=token.expires,
+            httponly=True,
+            secure=True,
+            samesite="Strict",
+        )
+
+        return resp
 
     def prompts(self):
         self.authn()

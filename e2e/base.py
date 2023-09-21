@@ -8,7 +8,7 @@ class IntegrationTest(TestCase):
     origin = os.environ.get("ORIGIN", "http://localhost:8000")
 
     def user(self, email: str) -> dict[str, Any]:
-        r = requests.get(f"{self.origin}/v2/whoami", headers={"X-Auth-Request-Email": email})
+        r = requests.get(f"{self.origin}/v3/whoami", headers={"X-Auth-Request-Email": email})
         r.raise_for_status()
         return r.json()
 

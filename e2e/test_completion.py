@@ -8,6 +8,12 @@ class TestCompletionEndpoints(base.IntegrationTest):
     messages: list[tuple[str, dict[str, Any]]] = []
 
     def runTest(self):
+        # Make sure all endpoints fail w/o auth
+        for r in [
+            requests.get(f"{self.origin}/v3/completions"),
+        ]:
+            assert r.status_code == 401
+
         u1 = self.user("test1@localhost")
         u2 = self.user("test2@localhost")
 

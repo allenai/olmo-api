@@ -10,6 +10,15 @@ class TestLabelEndpoints(base.IntegrationTest):
     labels: list[tuple[str, dict[str, Any]]] = []
 
     def runTest(self):
+        # Make sure all endpoints require auth
+        for r in [
+            requests.post(f"{self.origin}/v3/label", json={}),
+            requests.get(f"{self.origin}/v3/labels"),
+            requests.get(f"{self.origin}/v3/label/XXX"),
+            requests.delete(f"{self.origin}/v3/label/XXX"),
+        ]:
+            assert r.status_code == 401
+
         u1 = self.user("test1@localhost")
         u2 = self.user("test2@localhost")
 

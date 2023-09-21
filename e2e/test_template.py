@@ -13,11 +13,11 @@ class TestPromptTemplateEndpoints(base.IntegrationTest):
         u2 = self.user("test2@localhost")
 
         # Verify case where no prompt exists.
-        r = requests.get(f"{self.origin}/v2/templates/prompt/notfound", headers=self.auth(u1))
+        r = requests.get(f"{self.origin}/v3/templates/prompt/notfound", headers=self.auth(u1))
         assert r.status_code == 404
 
         # Create prompt belonging to u1.
-        r = requests.post(f"{self.origin}/v2/templates/prompt", headers=self.auth(u1), json={
+        r = requests.post(f"{self.origin}/v3/templates/prompt", headers=self.auth(u1), json={
             "name": "Test Prompt #1",
             "content": "Murphy is a good dog who likes to "
         })
@@ -32,7 +32,7 @@ class TestPromptTemplateEndpoints(base.IntegrationTest):
         assert p1["deleted"] is None
 
         # Create prompt belonging to u2
-        r = requests.post(f"{self.origin}/v2/templates/prompt", headers=self.auth(u2), json={
+        r = requests.post(f"{self.origin}/v3/templates/prompt", headers=self.auth(u2), json={
             "name": "Test Prompt #2",
             "content": "Grasshopper is a silly horse that likes to "
         })
@@ -42,7 +42,7 @@ class TestPromptTemplateEndpoints(base.IntegrationTest):
 
         # Make sure both prompts are returned. We don't verify that *only* those prompts are
         # returned so that the tests are repeatable w/o a database reset.
-        r = requests.get(f"{self.origin}/v2/templates/prompts", headers=self.auth(u1))
+        r = requests.get(f"{self.origin}/v3/templates/prompts", headers=self.auth(u1))
         r.raise_for_status()
         prompts = r.json()
         ids = [ p["id"] for p in prompts ]
@@ -51,45 +51,45 @@ class TestPromptTemplateEndpoints(base.IntegrationTest):
         assert ids.index(p2["id"]) < ids.index(p1["id"])
 
         # Update p1.
-        r = requests.patch(f"{self.origin}/v2/templates/prompt/{p1['id']}", headers=self.auth(u1), json={
+        r = requests.patch(f"{self.origin}/v3/templates/prompt/{p1['id']}", headers=self.auth(u1), json={
             "name": "Test Prompt #1 (updated)",
         })
         r.raise_for_status()
         assert r.json()["name"] == "Test Prompt #1 (updated)"
 
         # Verify the update
-        r = requests.get(f"{self.origin}/v2/templates/prompt/{p1['id']}", headers=self.auth(u1))
+        r = requests.get(f"{self.origin}/v3/templates/prompt/{p1['id']}", headers=self.auth(u1))
         r.raise_for_status()
         assert r.json()["name"] == "Test Prompt #1 (updated)"
         assert r.json()["updated"] > p1["updated"]
 
         # Verify u2 can't update the prompt belonging to u1.
-        r = requests.patch(f"{self.origin}/v2/templates/prompt/{p1['id']}", headers=self.auth(u2), json={
+        r = requests.patch(f"{self.origin}/v3/templates/prompt/{p1['id']}", headers=self.auth(u2), json={
             "name": "Test Prompt #1 (updated)",
         })
         assert r.status_code == 403
 
         # Verify u2 can't delete the prompt belonging to u1.
-        r = requests.delete(f"{self.origin}/v2/templates/prompt/{p1['id']}", headers=self.auth(u2), json={
+        r = requests.delete(f"{self.origin}/v3/templates/prompt/{p1['id']}", headers=self.auth(u2), json={
             "name": "Test Prompt #1 (updated)",
         })
         assert r.status_code == 403
 
         # Delete p1.
-        r = requests.delete(f"{self.origin}/v2/templates/prompt/{p1['id']}", headers=self.auth(u1), json={
+        r = requests.delete(f"{self.origin}/v3/templates/prompt/{p1['id']}", headers=self.auth(u1), json={
             "name": "Test Prompt #1 (updated)",
         })
         r.raise_for_status()
         assert r.json()["deleted"] is not None
 
         # Update our record of p1, verify deletion.
-        r = requests.get(f"{self.origin}/v2/templates/prompt/{p1['id']}", headers=self.auth(u1))
+        r = requests.get(f"{self.origin}/v3/templates/prompt/{p1['id']}", headers=self.auth(u1))
         r.raise_for_status()
         p1 = r.json()
         assert p1["deleted"] is not None
 
         # Verify that deletion is idempotent.
-        r = requests.delete(f"{self.origin}/v2/templates/prompt/{p1['id']}", headers=self.auth(u1), json={
+        r = requests.delete(f"{self.origin}/v3/templates/prompt/{p1['id']}", headers=self.auth(u1), json={
             "name": "Test Prompt #1 (updated)",
         })
         r.raise_for_status()
@@ -97,14 +97,14 @@ class TestPromptTemplateEndpoints(base.IntegrationTest):
         assert r.json()["updated"] == p1["updated"]
 
         # Verify that p1 is no longer returned in the list of deleted prompts.
-        r = requests.get(f"{self.origin}/v2/templates/prompts", headers=self.auth(u1))
+        r = requests.get(f"{self.origin}/v3/templates/prompts", headers=self.auth(u1))
         r.raise_for_status()
         prompts = r.json()
         ids = [ p["id"] for p in prompts ]
         assert p1["id"] not in ids
 
         # Verify that ?deleted changes that.
-        r = requests.get(f"{self.origin}/v2/templates/prompts?deleted", headers=self.auth(u1))
+        r = requests.get(f"{self.origin}/v3/templates/prompts?deleted", headers=self.auth(u1))
         r.raise_for_status()
         prompts = r.json()
         ids = [ p["id"] for p in prompts ]
@@ -114,6 +114,6 @@ class TestPromptTemplateEndpoints(base.IntegrationTest):
 
     def tearDown(self):
         for (id, user) in self.prompts:
-            r = requests.delete(f"{self.origin}/v2/templates/prompt/{id}", headers=self.auth(user))
+            r = requests.delete(f"{self.origin}/v3/templates/prompt/{id}", headers=self.auth(user))
             r.raise_for_status()
 

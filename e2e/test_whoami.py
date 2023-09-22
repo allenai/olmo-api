@@ -2,7 +2,6 @@ from . import base
 from datetime import datetime, timezone
 
 import requests
-import time
 
 class TestAuth(base.IntegrationTest):
 
@@ -19,20 +18,21 @@ class TestAuth(base.IntegrationTest):
 
         payload = r.json()
 
-        # Verify expires in 24 hours; tolerate 1 second of error
-        expires = datetime.fromisoformat(payload["expires"])
-        expires_in = expires - datetime.now(timezone.utc)
-        assert 24 * 60 * 60 - expires_in.total_seconds() <= 1
-
         assert payload["client"] == "murphy@allenai.org"
-        assert payload.keys() == ["client"]
+        assert list(payload.keys()) == ["client"]
 
         cookies = [ c for c in r.cookies if c.name == "token" ]
         assert len(cookies) == 1
 
         cookie = cookies[0]
         assert cookie.value is not None
-        assert cookie.expires == time.mktime(expires.timetuple())
+
+        # Verify expires in 24 hours; tolerate 1 second of error
+        assert cookie.expires is not None
+        expires = datetime.fromtimestamp(cookie.expires, timezone.utc)
+        expires_in = expires - datetime.now(timezone.utc)
+        assert 24 * 60 * 60 - expires_in.total_seconds() <= 1
+
         assert cookie.secure is True
         assert cookie.get_nonstandard_attr("SameSite") == "Strict"
         assert cookie.has_nonstandard_attr("HttpOnly") is True
@@ -54,11 +54,12 @@ class TestAuth(base.IntegrationTest):
 
         # Reuse token in header
         r = requests.get(f"{self.origin}/v3/whoami", headers={
-            "Authorization": f"Bearer {payload['token']}"
+            "Authorization": f"Bearer {cookie.value}"
         })
         r.raise_for_status()
 
-        assert r.json()["token"] == payload['token']
+        new_cookies = [ c for c in r.cookies if c.name == "token" ]
+        assert new_cookies[0].value == cookie.value
 
         # Use token over email
         r = requests.get(f"{self.origin}/v3/whoami", cookies={

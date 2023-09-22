@@ -10,7 +10,10 @@ class IntegrationTest(TestCase):
     def user(self, email: str) -> dict[str, Any]:
         r = requests.get(f"{self.origin}/v3/whoami", headers={"X-Auth-Request-Email": email})
         r.raise_for_status()
-        return r.json()
+        token = r.cookies.get("token")
+        if token is None:
+            raise RuntimeError("no token in cookie")
+        return { "token": token }
 
     def auth(self, u: dict[str, Any]) -> dict[str, str]:
         return {

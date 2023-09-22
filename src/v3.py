@@ -13,7 +13,10 @@ from typing import Optional
 import dataclasses
 import os
 import json
-import elasticsearch8 as es8
+
+@dataclasses.dataclass
+class AuthenticatedClient:
+    client: str
 
 class Server(Blueprint):
     def __init__(self, dbc: db.Client, inferd: InferDStub, didx: dsearch.Client):
@@ -87,8 +90,7 @@ class Server(Blueprint):
 
             token = self.dbc.token.create(email)
 
-        # TODO: only send the client(email) property; we send everything now for backwards compat
-        resp = jsonify(token)
+        resp = jsonify(AuthenticatedClient(token.client))
 
         resp.set_cookie(
             key="token",

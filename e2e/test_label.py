@@ -1,13 +1,12 @@
 from . import base, util
 from datetime import datetime, timezone
-from typing import Any
 
 import requests
 import json
 
 class TestLabelEndpoints(base.IntegrationTest):
-    messages: list[tuple[str, dict[str, Any]]] = []
-    labels: list[tuple[str, dict[str, Any]]] = []
+    messages: list[tuple[str, base.AuthenticatedClient]] = []
+    labels: list[tuple[str, base.AuthenticatedClient]] = []
 
     def runTest(self):
         # Make sure all endpoints require auth
@@ -54,7 +53,7 @@ class TestLabelEndpoints(base.IntegrationTest):
         assert l1["id"] is not None
         assert l1["rating"] == 1
         assert l1["message"] == m1["id"]
-        assert l1["creator"] == u1["client"]
+        assert l1["creator"] == u1.client
         assert datetime.fromisoformat(l1["created"]) <= datetime.now(timezone.utc)
         assert l1["deleted"] is None
         assert l1["comment"] is None
@@ -111,7 +110,7 @@ class TestLabelEndpoints(base.IntegrationTest):
         assert l2["id"] is not None
         assert l2["rating"] == -1
         assert l2["message"] == m2["id"]
-        assert l2["creator" ] == u2["client"]
+        assert l2["creator" ] == u2.client
         assert datetime.fromisoformat(l2["created"]) <= datetime.now(timezone.utc)
         assert l2["deleted"] is None
         assert l2["comment"] == "Unicorns are not real"
@@ -130,7 +129,7 @@ class TestLabelEndpoints(base.IntegrationTest):
         assert r.json() == [l1]
 
         # Verify filtering by creator
-        r = requests.get(f"{self.origin}/v3/labels?creator={u2['client']}", headers=self.auth(u1))
+        r = requests.get(f"{self.origin}/v3/labels?creator={u2.client}", headers=self.auth(u1))
         r.raise_for_status()
         ids = [l["id"] for l in r.json()]
         assert l2["id"] in ids

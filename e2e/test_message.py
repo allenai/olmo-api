@@ -1,4 +1,3 @@
-from typing import Any
 from . import base, util
 from datetime import datetime, timezone
 
@@ -6,7 +5,7 @@ import requests
 import json
 
 class TestMessageEndpoints(base.IntegrationTest):
-    messages: list[tuple[str, dict[str, Any]]] = []
+    messages: list[tuple[str, base.AuthenticatedClient]] = []
 
     def runTest(self):
         # Make sure all endpoints fail w/o auth
@@ -84,7 +83,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         for m in msgs:
             assert m["id"] is not None
             assert m["content"] == "I'm a magical labrador named Murphy, who are you? "
-            assert m["creator"] == u1["client"]
+            assert m["creator"] == u1.client
             assert m["role"] == "user"
             assert datetime.fromisoformat(m["created"]) <= datetime.now(timezone.utc)
             assert m["deleted"] is None
@@ -181,7 +180,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert limit_msglist["messages"][0]["id"] == offset_msglist["messages"][0]["id"]
 
         # List by author
-        r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1), params={ "creator": u1["client"] })
+        r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1), params={ "creator": u1.client })
         r.raise_for_status()
         u1_msglist = r.json()
         assert u1_msglist["meta"]["total"] > 0
@@ -190,7 +189,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert m1["id"] in ids
         assert m2["id"] not in ids
 
-        r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1), params={ "creator": u2["client"] })
+        r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1), params={ "creator": u2.client })
         r.raise_for_status()
         u2_msglist = r.json()
         assert u2_msglist["meta"]["total"] > 0

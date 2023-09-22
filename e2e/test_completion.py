@@ -1,11 +1,10 @@
 from . import base, util
-from typing import Any
 
 import requests
 import json
 
 class TestCompletionEndpoints(base.IntegrationTest):
-    messages: list[tuple[str, dict[str, Any]]] = []
+    messages: list[tuple[str, base.AuthenticatedClient]] = []
 
     def runTest(self):
         # Make sure all endpoints fail w/o auth

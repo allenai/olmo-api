@@ -1,12 +1,11 @@
 from . import base
 from datetime import datetime, timezone
-from typing import Any
 
 import requests
 
 class TestPromptTemplateEndpoints(base.IntegrationTest):
     # Prompts (and Token belonging to their author) to delete after text execution
-    prompts:list[tuple[str, dict[str, Any]]] = []
+    prompts:list[tuple[str, base.AuthenticatedClient]] = []
 
     def runTest(self):
         # Make sure all endpoints require auth

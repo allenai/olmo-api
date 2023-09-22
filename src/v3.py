@@ -7,7 +7,7 @@ from inferd.msg.inferd_pb2 import InferRequest
 from google.protobuf.struct_pb2 import Struct
 from google.protobuf.timestamp_pb2 import Timestamp
 from . import db, util, auth, dsearch
-from .dao.token import Token
+from .dao.token import Token, TokenType
 from .dao import message, label, completion
 from typing import Optional
 
@@ -57,7 +57,8 @@ class Server(Blueprint):
         self.get("/data/doc/<string:id>")(self.data_doc)
         self.get("/data/meta")(self.data_meta)
 
-        self.get("/login/<string:token>")(self.login)
+        self.get("/login/<string:token>")(self.login_by_url)
+        self.post("/login")(self.create_login_url)
 
     def token(self) -> Optional[Token]:
         provided = request.cookies.get(
@@ -66,7 +67,7 @@ class Server(Blueprint):
         )
         if provided is None:
             return None
-        return self.dbc.token.get(provided)
+        return self.dbc.token.get(provided, TokenType.Client)
 
     def authn(self) -> Token:
         token = self.token()
@@ -102,24 +103,34 @@ class Server(Blueprint):
             if email is None:
                 raise exceptions.Unauthorized()
 
-            token = self.dbc.token.create(email)
+            token = self.dbc.token.create(email, TokenType.Client, timedelta(days=7))
 
         return self.set_auth_cookie(jsonify(AuthenticatedClient(token.client)), token)
 
-    def login(self, token: str):
+    def login_by_url(self, token: str):
         if self.token() is not None:
             raise exceptions.Conflict("already logged in")
 
         # Validate the token
-        resolved = self.dbc.token.get(token)
+        resolved = self.dbc.token.get(token, TokenType.Login)
         if resolved is None or resolved.expired():
             raise exceptions.Unauthorized()
 
         # Generate a new one
-        nt = self.dbc.token.create(resolved.client)
+        nt = self.dbc.token.create(resolved.client, TokenType.Client, timedelta(days=7))
 
-        # TODO: configurable redirect
+        # Invalidate the login token
+        expired = self.dbc.token.expire(resolved)
+        # If invalidation fails, invalidate the newly generated client token and return a 500
+        if expired is None:
+            self.dbc.token.expire(nt)
+            raise exceptions.InternalServerError()
+
+        # TODO: configurable redirect origin
         return self.set_auth_cookie(redirect("https://olmo.allenai.org"), nt)
+
+    def create_login_url(self):
+        pass
 
     def prompts(self):
         self.authn()

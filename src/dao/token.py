@@ -28,7 +28,7 @@ class Token:
 
     @classmethod
     def from_row(cls, d: Tuple[str, str, datetime, datetime, str]) -> Self:
-        return cls(d[0], d[1], d[2], d[3], TokenType([4]))
+        return cls(d[0], d[1], d[2], d[3], TokenType(d[4]))
 
 class Store:
     def __init__(self, pool: ConnectionPool):
@@ -58,7 +58,7 @@ class Store:
                 assert row is not None
                 return Token.from_row(row)
 
-    def get(self, token: str, token_type: Optional[TokenType] = None) -> Optional[Token]:
+    def get(self, token: str, token_type: TokenType) -> Optional[Token]:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 row = cur.execute(
@@ -70,7 +70,7 @@ class Store:
                         WHERE
                             token = %s
                         AND
-                            (token_type = %s OR %s IS NULL)
+                            token_type = %s
                     """,
                     (token, token_type)
                 ).fetchone()
@@ -82,7 +82,7 @@ class Store:
                 row = cur.execute(
                     """
                         UPDATE
-                            token
+                            client_token
                         SET expires = NOW()
                             WHERE token = %s
                         RETURNING token, client, created, expires, token_type

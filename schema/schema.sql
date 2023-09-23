@@ -94,9 +94,7 @@ ALTER TABLE message ADD CONSTRAINT message_original_fkey FOREIGN KEY (original) 
 -- A 'login' token is used to generate a 'client' token via a URL, and are single use.
 CREATE TYPE TOKEN_TYPE AS ENUM('client', 'login');
 
-ALTER TABLE client_token ADD COLUMN (
-  token_type TOKEN_TYPE NOT NULL DEFAULT 'client'
-);
+ALTER TABLE client_token ADD COLUMN IF NOT EXISTS token_type TOKEN_TYPE NOT NULL DEFAULT 'client';
 
 -- Make sure filtering by token type is fast
 CREATE INDEX IF NOT EXISTS token_type_idx ON client_token(token_type);

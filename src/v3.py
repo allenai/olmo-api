@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, current_app, request, Response, redirect
+from flask import Blueprint, jsonify, current_app, request, Response, redirect, current_app
 from werkzeug import exceptions
 from werkzeug.wrappers import response
 from datetime import datetime, timezone, timedelta
@@ -6,7 +6,7 @@ from inferd.msg.inferd_pb2_grpc import InferDStub
 from inferd.msg.inferd_pb2 import InferRequest
 from google.protobuf.struct_pb2 import Struct
 from google.protobuf.timestamp_pb2 import Timestamp
-from . import db, util, auth, dsearch
+from . import db, util, auth, dsearch, config
 from .dao.token import Token, TokenType
 from .dao import message, label, completion
 from typing import Optional
@@ -20,12 +20,13 @@ class AuthenticatedClient:
     client: str
 
 class Server(Blueprint):
-    def __init__(self, dbc: db.Client, inferd: InferDStub, didx: dsearch.Client):
+    def __init__(self, dbc: db.Client, inferd: InferDStub, didx: dsearch.Client, cfg: config.Config):
         super().__init__("v3", __name__)
 
         self.dbc = dbc
         self.inferd = inferd
         self.didx = didx
+        self.cfg = cfg
 
         self.get("/whoami")(self.whoami)
 
@@ -126,13 +127,25 @@ class Server(Blueprint):
             self.dbc.token.expire(nt)
             raise exceptions.InternalServerError()
 
-        # TODO: configurable redirect origin
-        return self.set_auth_cookie(redirect("https://olmo.allenai.org"), nt)
+        return self.set_auth_cookie(redirect(self.cfg.server.ui_origin), nt)
 
     def create_login_url(self):
-        # A hardcoded list of admins w/ superpowers
-        admins = ["sams@allenai.org", "michalg@allenai.org", "johannd@allenai.org", "michaelw@allenai.org", "katep@allenai.org"]
-        pass
+        token = self.authn()
+        if token.client not in self.cfg.server.admins:
+            raise exceptions.Forbidden()
+
+        try:
+            expires_in = int(request.args.get("expires_in", "24"))
+            if expires_in <= 0:
+                raise exceptions.BadRequest("expires_in must be positive")
+            if expires_in > 7 * 24:
+                raise exceptions.BadRequest("expires_in must be <= 7 days")
+        except ValueError as e:
+            raise exceptions.BadRequest(str(e))
+
+        login_token = self.dbc.token.create(token.client, TokenType.Login, timedelta(hours=expires_in))
+        path = current_app.url_for("v3.login_by_url", token=login_token.token)
+        return jsonify({ "url": f"{self.cfg.server.api_origin}{path}" })
 
     def prompts(self):
         self.authn()

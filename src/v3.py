@@ -130,6 +130,8 @@ class Server(Blueprint):
         return self.set_auth_cookie(redirect("https://olmo.allenai.org"), nt)
 
     def create_login_url(self):
+        # A hardcoded list of admins w/ superpowers
+        admins = ["sams@allenai.org", "michalg@allenai.org", "johannd@allenai.org", "michaelw@allenai.org", "katep@allenai.org"]
         pass
 
     def prompts(self):

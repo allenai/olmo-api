@@ -68,7 +68,7 @@ class Server(Blueprint):
         )
         if provided is None:
             return None
-        return self.dbc.token.get(provided, TokenType.Client)
+        return self.dbc.token.get(provided, TokenType.Auth)
 
     def authn(self) -> Token:
         token = self.token()
@@ -104,7 +104,7 @@ class Server(Blueprint):
             if email is None:
                 raise exceptions.Unauthorized()
 
-            token = self.dbc.token.create(email, TokenType.Client, timedelta(days=7))
+            token = self.dbc.token.create(email, TokenType.Auth, timedelta(days=7))
 
         return self.set_auth_cookie(jsonify(AuthenticatedClient(token.client)), token)
 
@@ -123,14 +123,14 @@ class Server(Blueprint):
             raise exceptions.Unauthorized()
 
         # Generate a new one
-        nt = self.dbc.token.create(resolved_invite.client, TokenType.Client, timedelta(days=7))
+        nt = self.dbc.token.create(resolved_invite.client, TokenType.Auth, timedelta(days=7))
 
         # Invalidate the invite token
         expired = self.dbc.token.expire(resolved_invite, TokenType.Invite)
 
         # If invalidation fails, invalidate the newly generated client token and return a 500
         if expired is None:
-            self.dbc.token.expire(nt, TokenType.Client)
+            self.dbc.token.expire(nt, TokenType.Auth)
             raise exceptions.Conflict()
 
         return self.set_auth_cookie(redirect(self.cfg.server.ui_origin), nt)

@@ -9,10 +9,10 @@ import secrets
 class TokenType(StrEnum):
     """
     Tokens types dictate how they can be used:
-    - A "client" token is used for authenticating API clients.
-    - A "invite" token is used to create a "client" token by making a GET request to a URL.
+    - An "auth" token is used for authenticating API clients.
+    - An "invite" token is used to create a "client" token by making a GET request to a URL.
     """
-    Client = "client"
+    Auth = "auth"
     Invite = "invite"
 
 @dataclass

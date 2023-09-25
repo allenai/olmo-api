@@ -90,3 +90,14 @@ ALTER TABLE message ADD COLUMN IF NOT EXISTS original TEXT NULL;
 ALTER TABLE message DROP CONSTRAINT IF EXISTS message_original_fkey;
 ALTER TABLE message ADD CONSTRAINT message_original_fkey FOREIGN KEY (original) REFERENCES message(id);
 
+-- Tokens can be used for different purposes. An 'auth' token is used for authenticating API clients.
+-- An 'invite' token is used to generate a single-use URL for creating a 'client' token.
+CREATE TYPE TOKEN_TYPE AS ENUM('auth', 'invite');
+
+ALTER TABLE client_token ADD COLUMN IF NOT EXISTS token_type TOKEN_TYPE NOT NULL DEFAULT 'auth',
+                         ADD COLUMN IF NOT EXISTS creator TEXT NULL,
+                         ADD COLUMN IF NOT EXISTS invite TEXT NULL REFERENCES client_token(token) UNIQUE;
+
+-- Make sure filtering by token type is fast
+CREATE INDEX IF NOT EXISTS token_type_idx ON client_token(token_type);
+

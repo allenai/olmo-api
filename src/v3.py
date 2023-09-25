@@ -6,7 +6,7 @@ from inferd.msg.inferd_pb2_grpc import InferDStub
 from inferd.msg.inferd_pb2 import InferRequest
 from google.protobuf.struct_pb2 import Struct
 from google.protobuf.timestamp_pb2 import Timestamp
-from . import db, util, auth, dsearch, config
+from . import db, util, auth, dsearch, config, parse
 from .dao.token import Token, TokenType
 from .dao import message, label, completion
 from typing import Optional
@@ -134,16 +134,16 @@ class Server(Blueprint):
         if token.client not in self.cfg.server.admins:
             raise exceptions.Forbidden()
 
-        try:
-            expires_in = int(request.args.get("expires_in", "24"))
-            if expires_in <= 0:
-                raise exceptions.BadRequest("expires_in must be positive")
-            if expires_in > 7 * 24:
-                raise exceptions.BadRequest("expires_in must be <= 7 days")
-        except ValueError as e:
-            raise exceptions.BadRequest(str(e))
+        expires_in = parse.timedelta(request.json.get("expires_in", "24h"))
+        if expires_in > timedelta(days=7):
+            raise exceptions.BadRequest("expires_in must be <= 7 days")
 
-        login_token = self.dbc.token.create(token.client, TokenType.Login, timedelta(hours=expires_in))
+        client = request.json.get("client")
+        if client is None:
+            raise exceptions.BadRequest("missing client")
+
+        login_token = self.dbc.token.create(client, TokenType.Login, expires_in, creator=token.client)
+
         path = current_app.url_for("v3.login_by_url", token=login_token.token)
         return jsonify({ "url": f"{self.cfg.server.api_origin}{path}" })
 

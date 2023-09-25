@@ -22,13 +22,14 @@ class Token:
     created: datetime
     expires: datetime
     token_type: TokenType
+    creator: Optional[str] = None
 
     def expired(self) -> bool:
         return datetime.now(timezone.utc) >= self.expires
 
     @classmethod
-    def from_row(cls, d: Tuple[str, str, datetime, datetime, str]) -> Self:
-        return cls(d[0], d[1], d[2], d[3], TokenType(d[4]))
+    def from_row(cls, d: Tuple[str, str, datetime, datetime, str, Optional[str]]) -> Self:
+        return cls(d[0], d[1], d[2], d[3], TokenType(d[4]), d[5])
 
 class Store:
     def __init__(self, pool: ConnectionPool):
@@ -38,7 +39,8 @@ class Store:
         self,
         client: str,
         token_type: TokenType = TokenType.Login,
-        expires_in: Optional[timedelta] = None
+        expires_in: Optional[timedelta] = None,
+        creator: Optional[str] = None
     ) -> Token:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
@@ -47,13 +49,13 @@ class Store:
                 row = cur.execute(
                     """
                         INSERT INTO
-                            client_token (token, client, expires, token_type)
+                            client_token (token, client, expires, token_type, creator)
                         VALUES
-                            (%s, %s, %s, %s)
+                            (%s, %s, %s, %s, %s)
                         RETURNING
-                            token, client, created, expires, token_type
+                            token, client, created, expires, token_type, creator
                     """,
-                    (token, client, expires, token_type)
+                    (token, client, expires, token_type, creator)
                 ).fetchone()
                 assert row is not None
                 return Token.from_row(row)
@@ -64,7 +66,7 @@ class Store:
                 row = cur.execute(
                     """
                         SELECT
-                            token, client, created, expires, token_type
+                            token, client, created, expires, token_type, creator
                         FROM
                             client_token
                         WHERE
@@ -85,7 +87,7 @@ class Store:
                             client_token
                         SET expires = NOW()
                             WHERE token = %s
-                        RETURNING token, client, created, expires, token_type
+                        RETURNING token, client, created, expires, token_type, creator
                     """,
                     (token.token,)
                 ).fetchone()

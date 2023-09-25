@@ -69,3 +69,14 @@ class TestCompletionEndpoints(base.IntegrationTest):
         r.raise_for_status()
         assert r.json()["client"] == "test2@localhost"
 
+        user_client_token = r.cookies.get("token")
+
+        # Make sure auth tokens can't be used as login URLs
+        r = requests.get(f"{self.origin}/v3/login/{token}")
+        assert r.status_code == 401
+
+        r = requests.get(f"{self.origin}/v3/login/{token}", cookies={
+            "token": user_client_token
+        })
+        assert r.status_code == 409
+

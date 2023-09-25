@@ -125,12 +125,13 @@ class Server(Blueprint):
         # Generate a new one
         nt = self.dbc.token.create(resolved_invite.client, TokenType.Client, timedelta(days=7))
 
-        # Invalidate the login token
-        expired = self.dbc.token.expire(resolved_invite)
+        # Invalidate the invite token
+        expired = self.dbc.token.expire(resolved_invite, TokenType.Invite)
+
         # If invalidation fails, invalidate the newly generated client token and return a 500
         if expired is None:
-            self.dbc.token.expire(nt)
-            raise exceptions.InternalServerError()
+            self.dbc.token.expire(nt, TokenType.Client)
+            raise exceptions.Conflict()
 
         return self.set_auth_cookie(redirect(self.cfg.server.ui_origin), nt)
 

@@ -78,18 +78,22 @@ class Store:
                 ).fetchone()
                 return Token.from_row(row) if row is not None else None
 
-    def expire(self, token: Token) -> Optional[Token]:
+    def expire(self, token: Token, token_type: TokenType) -> Optional[Token]:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 row = cur.execute(
                     """
                         UPDATE
                             client_token
-                        SET expires = NOW()
-                            WHERE token = %s
+                        SET
+                            expires = NOW()
+                        WHERE
+                            token = %s
+                        AND
+                            token_type = %s
                         RETURNING token, client, created, expires, token_type, creator
                     """,
-                    (token.token,)
+                    (token.token, token_type)
                 ).fetchone()
                 return Token.from_row(row) if row is not None else None
 

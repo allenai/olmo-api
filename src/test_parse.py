@@ -13,7 +13,7 @@ def test_parse_valid_timedelta():
         ("42s", timedelta(seconds=42)),
     ]
     for (input, expected) in tests:
-        assert parse.timedelta(input) == expected, f"Failed to parse timedelta parse.timedelta(\"{input}\") != {expected}"
+        assert parse.timedelta_from_str(input) == expected, f"Failed to parse timedelta parse.timedelta(\"{input}\") != {expected}"
 
 def test_parse_invalid_timedelta():
     tests = [
@@ -30,4 +30,4 @@ def test_parse_invalid_timedelta():
     ]
     for input in tests:
         with pytest.raises(ValueError):
-            parse.timedelta(input)
+            parse.timedelta_from_str(input)

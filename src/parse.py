@@ -1,6 +1,6 @@
 import datetime
 
-def timedelta(s: str) -> datetime.timedelta:
+def timedelta_from_str(s: str) -> datetime.timedelta:
     """
     Returns a datetime.timedelta from the given string, or raises a ValueError
     if the string is not a valid interval.

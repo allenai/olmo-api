@@ -24,7 +24,11 @@ def create_app():
     atexit.register(channel.close)
     inferd = InferDStub(channel)
 
-    es = es8.Elasticsearch(hosts=[cfg.es.endpoint], api_key=cfg.es.api_key)
+    es = es8.Elasticsearch(
+        hosts=[cfg.es.endpoint],
+        api_key=cfg.es.api_key,
+        timeout=60 # maximum time (in seconds) to wait for any operation to complete
+    )
     didx = dsearch.Client(es)
 
     @app.get("/health")

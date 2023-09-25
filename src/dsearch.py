@@ -113,6 +113,7 @@ class Client:
             },
             size=size,
             from_=offset,
+            timeout="30s", # return partial results after 30s
         )
 
         meta = SearchMeta(took_ms=res["took"], total=res["hits"]["total"]["value"],

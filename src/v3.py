@@ -58,8 +58,8 @@ class Server(Blueprint):
         self.get("/data/doc/<string:id>")(self.data_doc)
         self.get("/data/meta")(self.data_meta)
 
-        self.get("/login/<string:token>")(self.login_by_url)
-        self.post("/login")(self.create_login_url)
+        self.get("/invite/login")(self.login_by_invite_token)
+        self.post("/invite/token")(self.create_invite_token)
 
     def token(self) -> Optional[Token]:
         provided = request.cookies.get(
@@ -108,20 +108,25 @@ class Server(Blueprint):
 
         return self.set_auth_cookie(jsonify(AuthenticatedClient(token.client)), token)
 
-    def login_by_url(self, token: str):
+    def login_by_invite_token(self):
+        # If the user is already logged in, redirect to the UI
         if self.token() is not None:
-            raise exceptions.Conflict("already logged in")
+            return redirect(self.cfg.server.ui_origin)
+
+        invite = request.args.get("token")
+        if invite is None:
+            raise exceptions.BadRequest("missing token")
 
         # Validate the token
-        resolved = self.dbc.token.get(token, TokenType.Login)
-        if resolved is None or resolved.expired():
+        resolved_invite = self.dbc.token.get(invite, TokenType.Invite)
+        if resolved_invite is None or resolved_invite.expired():
             raise exceptions.Unauthorized()
 
         # Generate a new one
-        nt = self.dbc.token.create(resolved.client, TokenType.Client, timedelta(days=7))
+        nt = self.dbc.token.create(resolved_invite.client, TokenType.Client, timedelta(days=7))
 
         # Invalidate the login token
-        expired = self.dbc.token.expire(resolved)
+        expired = self.dbc.token.expire(resolved_invite)
         # If invalidation fails, invalidate the newly generated client token and return a 500
         if expired is None:
             self.dbc.token.expire(nt)
@@ -129,9 +134,9 @@ class Server(Blueprint):
 
         return self.set_auth_cookie(redirect(self.cfg.server.ui_origin), nt)
 
-    def create_login_url(self):
-        token = self.authn()
-        if token.client not in self.cfg.server.admins:
+    def create_invite_token(self):
+        grantor = self.authn()
+        if grantor.client not in self.cfg.server.admins:
             raise exceptions.Forbidden()
 
         if request.json is None:
@@ -144,13 +149,13 @@ class Server(Blueprint):
         except ValueError as e:
             raise exceptions.BadRequest(f"invalid expires_in: {str(e)}")
 
-        client = request.json.get("client")
-        if client is None:
+        grantee = request.json.get("client")
+        if grantee is None:
             raise exceptions.BadRequest("missing client")
 
-        login_token = self.dbc.token.create(client, TokenType.Login, expires_in, creator=token.client)
+        login_token = self.dbc.token.create(grantee, TokenType.Invite, expires_in, creator=grantor.client)
 
-        path = current_app.url_for("v3.login_by_url", token=login_token.token)
+        path = current_app.url_for("v3.login_by_invite_token", token=login_token.token)
         return jsonify({ "url": f"{self.cfg.server.api_origin}{path}" })
 
     def prompts(self):

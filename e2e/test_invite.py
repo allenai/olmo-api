@@ -1,19 +1,18 @@
-from . import base, util
+from . import base
 
 import requests
-import json
 import time
 
-class TestCompletionEndpoints(base.IntegrationTest):
+class TestInviteEndpoints(base.IntegrationTest):
 
     def runTest(self):
         # Creating login URLS requires auth
-        r = requests.post(f"{self.origin}/v3/login")
+        r = requests.post(f"{self.origin}/v3/invite/token")
         assert r.status_code == 401
 
         # ...and users must be admins
         non_admin = self.user("test1@localhost")
-        r = requests.post(f"{self.origin}/v3/login", cookies={
+        r = requests.post(f"{self.origin}/v3/invite/token", cookies={
             "token": non_admin.token
         })
         assert r.status_code == 403
@@ -24,16 +23,16 @@ class TestCompletionEndpoints(base.IntegrationTest):
         # Invalid intervals should return a 400
         invalid = [ f"{7 * 24 + 1}h", "0h", "-1h", "1", "1.5h", "1h30m", "1 minute"]
         for expires in invalid:
-            r = requests.post(f"{self.origin}/v3/login", cookies={
+            r = requests.post(f"{self.origin}/v3/invite/token", cookies={
                 "token": admin.token
             }, json={
-                "email": "test2@localhost",
-                "expires": expires
+                "client": "test2@localhost",
+                "expires_in": expires
             })
             assert r.status_code == 400
 
-        # Create a login URL that expires quickly
-        r = requests.post(f"{self.origin}/v3/login", cookies={
+        # Create an invite that expires quickly
+        r = requests.post(f"{self.origin}/v3/invite/token", cookies={
             "token": admin.token
         }, json={
             "client": "test2@localhost",
@@ -48,7 +47,7 @@ class TestCompletionEndpoints(base.IntegrationTest):
         assert r.status_code == 401
 
         # Validate the happy path
-        r = requests.post(f"{self.origin}/v3/login", cookies={
+        r = requests.post(f"{self.origin}/v3/invite/token", cookies={
             "token": admin.token
         }, json={
             "client": "test2@localhost",
@@ -72,11 +71,11 @@ class TestCompletionEndpoints(base.IntegrationTest):
         user_client_token = r.cookies.get("token")
 
         # Make sure auth tokens can't be used as login URLs
-        r = requests.get(f"{self.origin}/v3/login/{token}")
+        r = requests.get(f"{self.origin}/v3/invite/login", params={ "token": user_client_token })
         assert r.status_code == 401
 
-        r = requests.get(f"{self.origin}/v3/login/{token}", cookies={
+        r = requests.get(f"{self.origin}/v3/invite/login", params={ "token": user_client_token }, cookies={
             "token": user_client_token
-        })
-        assert r.status_code == 409
+        }, allow_redirects=False)
+        assert r.status_code == 302
 

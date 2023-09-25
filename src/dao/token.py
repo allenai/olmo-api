@@ -10,10 +10,10 @@ class TokenType(StrEnum):
     """
     Tokens types dictate how they can be used:
     - A "client" token is used for authenticating API clients.
-    - A "login" token is used for generating a "client" token using a URL.
+    - A "invite" token is used to create a "client" token by making a GET request to a URL.
     """
     Client = "client"
-    Login = "login"
+    Invite = "invite"
 
 @dataclass
 class Token:
@@ -38,7 +38,7 @@ class Store:
     def create(
         self,
         client: str,
-        token_type: TokenType = TokenType.Login,
+        token_type: TokenType,
         expires_in: Optional[timedelta] = None,
         creator: Optional[str] = None
     ) -> Token:

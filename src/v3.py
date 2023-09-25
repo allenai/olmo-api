@@ -1,13 +1,13 @@
-from flask import Blueprint, jsonify, current_app, request, Response
+from flask import Blueprint, jsonify, current_app, request, Response, redirect, current_app
 from werkzeug import exceptions
+from werkzeug.wrappers import response
 from datetime import datetime, timezone, timedelta
 from inferd.msg.inferd_pb2_grpc import InferDStub
 from inferd.msg.inferd_pb2 import InferRequest
 from google.protobuf.struct_pb2 import Struct
 from google.protobuf.timestamp_pb2 import Timestamp
-from . import db, util, auth, dsearch
-from .dao.token import Token
-from .dao import message, label, completion
+from . import db, util, auth, dsearch, config, parse
+from .dao import message, label, completion, token
 from typing import Optional
 
 import dataclasses
@@ -19,12 +19,13 @@ class AuthenticatedClient:
     client: str
 
 class Server(Blueprint):
-    def __init__(self, dbc: db.Client, inferd: InferDStub, didx: dsearch.Client):
+    def __init__(self, dbc: db.Client, inferd: InferDStub, didx: dsearch.Client, cfg: config.Config):
         super().__init__("v3", __name__)
 
         self.dbc = dbc
         self.inferd = inferd
         self.didx = didx
+        self.cfg = cfg
 
         self.get("/whoami")(self.whoami)
 
@@ -56,42 +57,34 @@ class Server(Blueprint):
         self.get("/data/doc/<string:id>")(self.data_doc)
         self.get("/data/meta")(self.data_meta)
 
-    def token(self) -> Optional[Token]:
+        self.get("/invite/login")(self.login_by_invite_token)
+        self.post("/invite/token")(self.create_invite_token)
+
+    def request_agent(self) -> Optional[token.Token]:
         provided = request.cookies.get(
             "token",
             default=auth.token_from_request(request)
         )
         if provided is None:
             return None
-        return self.dbc.token.get(provided)
+        return self.dbc.token.get(provided, token.TokenType.Auth)
 
-    def authn(self) -> Token:
-        token = self.token()
-        if token is None or token.expired():
+    def authn(self) -> token.Token:
+        agent = self.request_agent()
+        if agent is None or agent.expired():
             raise exceptions.Unauthorized()
 
         current_app.logger.info({
             "path": request.path,
-            "message": f"authorized client {token.client}",
-            "client": token.client,
-            "created": token.created,
-            "expires": token.expires,
+            "message": f"authorized client {agent.client}",
+            "client": agent.client,
+            "created": agent.created,
+            "expires": agent.expires,
         })
 
-        return token
+        return agent
 
-    def whoami(self):
-        token = self.token()
-        if token is None or token.expired():
-            # Use NGINX mediated auth; see https://skiff.allenai.org/login.html
-            email = request.headers.get("X-Auth-Request-Email")
-            if email is None:
-                raise exceptions.Unauthorized()
-
-            token = self.dbc.token.create(email)
-
-        resp = jsonify(AuthenticatedClient(token.client))
-
+    def set_auth_cookie(self, resp: Response | response.Response, token: token.Token) -> Response | response.Response:
         resp.set_cookie(
             key="token",
             value=token.token,
@@ -100,8 +93,74 @@ class Server(Blueprint):
             secure=True,
             samesite="Strict",
         )
-
         return resp
+
+    def whoami(self):
+        agent = self.request_agent()
+        if agent is None or agent.expired():
+            # Use NGINX mediated auth; see https://skiff.allenai.org/login.html
+            email = request.headers.get("X-Auth-Request-Email")
+            if email is None:
+                raise exceptions.Unauthorized()
+
+            agent = self.dbc.token.create(email, token.TokenType.Auth, timedelta(days=7))
+
+        return self.set_auth_cookie(jsonify(AuthenticatedClient(agent.client)), agent)
+
+    def login_by_invite_token(self):
+        # If the user is already logged in, redirect to the UI
+        if self.request_agent() is not None:
+            return redirect(self.cfg.server.ui_origin)
+
+        invite = request.args.get("token")
+        if invite is None:
+            raise exceptions.BadRequest("missing token")
+
+        # Validate the token
+        resolved_invite = self.dbc.token.get(invite, token.TokenType.Invite)
+        if resolved_invite is None or resolved_invite.expired():
+            raise exceptions.Unauthorized()
+
+        # Generate a new one
+        try:
+            nt = self.dbc.token.create(resolved_invite.client, token.TokenType.Auth, timedelta(days=7),
+                                       invite=resolved_invite.token)
+        except token.DuplicateInviteError as err:
+            raise exceptions.Conflict(str(err))
+
+        # Invalidate the invite token
+        expired = self.dbc.token.expire(resolved_invite, token.TokenType.Invite)
+
+        # If invalidation fails, invalidate the newly generated client token and return a 409
+        if expired is None:
+             self.dbc.token.expire(nt, token.TokenType.Auth)
+             raise exceptions.Conflict()
+
+        return self.set_auth_cookie(redirect(self.cfg.server.ui_origin), nt)
+
+    def create_invite_token(self):
+        grantor = self.authn()
+        if grantor.client not in self.cfg.server.admins:
+            raise exceptions.Forbidden()
+
+        if request.json is None:
+            raise exceptions.BadRequest("missing JSON body")
+
+        try:
+            expires_in = parse.timedelta_from_str(request.json.get("expires_in", ""))
+            if expires_in > timedelta(days=7):
+                raise ValueError("expires_in must be <= 7 days")
+        except ValueError as e:
+            raise exceptions.BadRequest(f"invalid expires_in: {str(e)}")
+
+        grantee = request.json.get("client")
+        if grantee is None:
+            raise exceptions.BadRequest("missing client")
+
+        invite = self.dbc.token.create(grantee, token.TokenType.Invite, expires_in, creator=grantor.client)
+
+        path = current_app.url_for("v3.login_by_invite_token", token=invite.token)
+        return jsonify({ "url": f"{self.cfg.server.api_origin}{path}" })
 
     def prompts(self):
         self.authn()
@@ -115,13 +174,13 @@ class Server(Blueprint):
         return jsonify(prompt)
 
     def update_prompt(self, id: str):
-        token = self.authn()
+        agent = self.authn()
         if request.json is None:
             raise exceptions.BadRequest("missing JSON body")
         prompt = self.dbc.template.prompt(id)
         if prompt is None:
             raise exceptions.NotFound()
-        if prompt.author != token.client:
+        if prompt.author != agent.client:
             raise exceptions.Forbidden()
 
         prompt = self.dbc.template.update_prompt(
@@ -132,28 +191,28 @@ class Server(Blueprint):
         return jsonify(prompt)
 
     def delete_prompt(self, id: str):
-        token = self.authn()
+        agent = self.authn()
         prompt = self.dbc.template.prompt(id)
         if prompt is None:
             raise exceptions.NotFound()
-        if prompt.author != token.client:
+        if prompt.author != agent.client:
             raise exceptions.Forbidden()
         return jsonify(self.dbc.template.delete_prompt(id))
 
     def create_prompt(self):
-        token = self.authn()
+        agent = self.authn()
         if request.json is None:
             raise exceptions.BadRequest("missing JSON body")
 
         prompt = self.dbc.template.create_prompt(
             request.json.get("name"),
             request.json.get("content"),
-            token.client
+            agent.client
         )
         return jsonify(prompt)
 
     def create_message(self):
-        token = self.authn()
+        agent = self.authn()
         if request.json is None:
             raise exceptions.BadRequest("no request body")
 
@@ -196,7 +255,7 @@ class Server(Blueprint):
 
         msg = self.dbc.message.create(
             content,
-            token.client,
+            agent.client,
             role,
             opts,
             root=parent.root if parent is not None else None,
@@ -234,7 +293,7 @@ class Server(Blueprint):
         # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message
         reply = self.dbc.message.create(
             "",
-            token.client,
+            agent.client,
             message.Role.Assistant,
             msg.opts,
             root=msg.root,
@@ -291,23 +350,23 @@ class Server(Blueprint):
         return Response(stream(), mimetype="application/jsonl")
 
     def message(self, id: str):
-        token = self.authn()
-        message = self.dbc.message.get(id, labels_for=token.client)
+        agent = self.authn()
+        message = self.dbc.message.get(id, labels_for=agent.client)
         if message is None:
             raise exceptions.NotFound()
         return jsonify(message)
 
     def delete_message(self, id: str):
-        token = self.authn()
+        agent = self.authn()
         message = self.dbc.message.get(id)
         if message is None:
             raise exceptions.NotFound()
-        if message.creator != token.client:
+        if message.creator != agent.client:
             raise exceptions.Forbidden()
-        return jsonify(self.dbc.message.delete(id, labels_for=token.client))
+        return jsonify(self.dbc.message.delete(id, labels_for=agent.client))
 
     def messages(self):
-        token = self.authn()
+        agent = self.authn()
 
         try:
             offset = int(request.args.get("offset", 0))
@@ -327,7 +386,7 @@ class Server(Blueprint):
 
         try:
             return jsonify(self.dbc.message.list(
-                labels_for=token.client,
+                labels_for=agent.client,
                 creator=request.args.get("creator"),
                 deleted="deleted" in request.args,
                 opts=message.MessageListOpts(offset, limit),
@@ -344,7 +403,7 @@ class Server(Blueprint):
         })
 
     def create_label(self):
-        token = self.authn()
+        agent = self.authn()
         if request.json is None:
             raise exceptions.BadRequest("missing JSON body")
 
@@ -360,11 +419,11 @@ class Server(Blueprint):
 
         existing = self.dbc.label.list(
             message=mid,
-            creator=token.client
+            creator=agent.client
         )
         if len(existing) > 0:
             raise exceptions.UnprocessableEntity(f"message {mid} already has label {existing[0].id}")
-        lbl = self.dbc.label.create(msg.id, rating, token.client, request.json.get("comment"))
+        lbl = self.dbc.label.create(msg.id, rating, agent.client, request.json.get("comment"))
         return jsonify(lbl)
 
     def label(self, id: str):
@@ -383,11 +442,11 @@ class Server(Blueprint):
         ))
 
     def delete_label(self, id: str):
-        token = self.authn()
+        agent = self.authn()
         label = self.dbc.label.get(id)
         if label is None:
             raise exceptions.NotFound()
-        if label.creator != token.client:
+        if label.creator != agent.client:
             raise exceptions.Forbidden()
         return jsonify(self.dbc.label.delete(id))
 

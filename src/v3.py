@@ -60,7 +60,7 @@ class Server(Blueprint):
         self.get("/invite/login")(self.login_by_invite_token)
         self.post("/invite/token")(self.create_invite_token)
 
-    def auth_token(self) -> Optional[token.Token]:
+    def request_agent(self) -> Optional[token.Token]:
         provided = request.cookies.get(
             "token",
             default=auth.token_from_request(request)
@@ -70,7 +70,7 @@ class Server(Blueprint):
         return self.dbc.token.get(provided, token.TokenType.Auth)
 
     def authn(self) -> token.Token:
-        agent = self.auth_token()
+        agent = self.request_agent()
         if agent is None or agent.expired():
             raise exceptions.Unauthorized()
 
@@ -96,7 +96,7 @@ class Server(Blueprint):
         return resp
 
     def whoami(self):
-        agent = self.auth_token()
+        agent = self.request_agent()
         if agent is None or agent.expired():
             # Use NGINX mediated auth; see https://skiff.allenai.org/login.html
             email = request.headers.get("X-Auth-Request-Email")
@@ -109,7 +109,7 @@ class Server(Blueprint):
 
     def login_by_invite_token(self):
         # If the user is already logged in, redirect to the UI
-        if self.auth_token() is not None:
+        if self.request_agent() is not None:
             return redirect(self.cfg.server.ui_origin)
 
         invite = request.args.get("token")

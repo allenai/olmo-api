@@ -17,6 +17,7 @@ def test_parse_valid_timedelta():
 
 def test_parse_invalid_timedelta():
     tests = [
+        "",
         "1",
         "1w",
         "1 hour",

@@ -13,8 +13,8 @@ def timedelta(s: str) -> datetime.timedelta:
     - compound expressions are not supported, i.e "1h30m"
     """
     number = int(s.strip()[:-1])
-    if number < 0:
-        raise ValueError(f"timedelta must be positive: {number}")
+    if number <= 0:
+        raise ValueError(f"timedelta must be a positive, non-zero integer: {number}")
 
     unit = s.strip()[-1]
     match unit:

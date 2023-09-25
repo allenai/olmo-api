@@ -134,9 +134,15 @@ class Server(Blueprint):
         if token.client not in self.cfg.server.admins:
             raise exceptions.Forbidden()
 
-        expires_in = parse.timedelta(request.json.get("expires_in", "24h"))
-        if expires_in > timedelta(days=7):
-            raise exceptions.BadRequest("expires_in must be <= 7 days")
+        if request.json is None:
+            raise exceptions.BadRequest("missing JSON body")
+
+        try:
+            expires_in = parse.timedelta(request.json.get("expires_in", ""))
+            if expires_in > timedelta(days=7):
+                raise ValueError("expires_in must be <= 7 days")
+        except ValueError as e:
+            raise exceptions.BadRequest(f"invalid expires_in: {str(e)}")
 
         client = request.json.get("client")
         if client is None:

@@ -164,9 +164,10 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
         }
     };
 
-    # This ingress allows users logged in via Skiff Login to obtain a shared
-    # bearer token that identifies all users of the in-browser UI. This is a
-    # temporary solution, a short lived, rotating token would be better.
+    # This ingress is configured to require users to log in via AI2's Skiff Login
+    # when requesting /v3/login/skiff. If they succeed they will receive a bearer
+    # token as a cookie, and subsequent API requests from the Olmo UI will use
+    # it for identification.
     local allenAIAuthIngress = {
         apiVersion: 'networking.k8s.io/v1',
         kind: 'Ingress',
@@ -187,7 +188,7 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
                     http: {
                         paths: [
                             {
-                                path: '/v3/whoami',
+                                path: '/v3/login/skiff',
                                 pathType: 'Exact',
                                 backend: {
                                     service: {

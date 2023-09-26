@@ -105,14 +105,18 @@ class Server(Blueprint):
 
     def login_by_skiff(self):
         # Use NGINX mediated auth; see https://skiff.allenai.org/login.html
-        if "X-Auth-Request-Email" not in request.headers:
+        email = request.headers.get("X-Auth-Request-Email")
+        if not email:
             # By construction, Skiff Login should guarantee the user header above for all requests, so
             # this shouldn't happen. But if it does, it's a bad request.
             raise exceptions.BadRequest()
 
-        # Now we know that the user is logged in by Skiff Login. Send them to
-        # the Olmo UI so they continue on with their day using Olmo.
-        return redirect(self.cfg.server.ui_origin)
+        # Now we know that the user is logged in by Skiff Login (via its policies), so we can
+        # create a new API token.
+        agent = self.dbc.token.create(email, token.TokenType.Auth, timedelta(days=7))
+
+        # And send them to the Olmo UI so they continue on with their day using Olmo.
+        return self.set_auth_cookie(redirect(self.cfg.server.ui_origin), agent)
 
     def login_by_invite_token(self):
         # If the user is already logged in, redirect to the UI

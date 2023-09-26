@@ -28,6 +28,7 @@ class Server(Blueprint):
         self.cfg = cfg
 
         self.get("/whoami")(self.whoami)
+        self.get("/login/skiff")(self.login_by_skiff)
 
         self.post("/templates/prompt")(self.create_prompt)
         self.get("/templates/prompt/<string:id>")(self.prompt)
@@ -98,14 +99,25 @@ class Server(Blueprint):
     def whoami(self):
         agent = self.request_agent()
         if agent is None or agent.expired():
-            # Use NGINX mediated auth; see https://skiff.allenai.org/login.html
-            email = request.headers.get("X-Auth-Request-Email")
-            if email is None:
-                raise exceptions.Unauthorized()
-
-            agent = self.dbc.token.create(email, token.TokenType.Auth, timedelta(days=7))
+            raise exceptions.Unauthorized()
 
         return self.set_auth_cookie(jsonify(AuthenticatedClient(agent.client)), agent)
+
+    def login_by_skiff(self):
+        # Use NGINX mediated auth; see https://skiff.allenai.org/login.html
+        email = request.headers.get("X-Auth-Request-Email")
+        if email is None:
+            # By construction, Skiff Login should guarantee the user header above for all requests, so
+            # this shouldn't happen. But if it does, it's clearly a bug in our configration of "the
+            # server", so an HTTP 500 Internal Server Error seems appropriate.
+            raise exceptions.InternalServerError()
+
+        # Now we know that the user is logged in by Skiff Login (via its policies), so we can
+        # create a new API token.
+        agent = self.dbc.token.create(email, token.TokenType.Auth, timedelta(days=7))
+
+        # And send them to the Olmo UI so they continue on with their day using Olmo.
+        return self.set_auth_cookie(redirect(self.cfg.server.ui_origin), agent)
 
     def login_by_invite_token(self):
         # If the user is already logged in, redirect to the UI

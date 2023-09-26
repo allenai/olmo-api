@@ -105,7 +105,7 @@ class Server(Blueprint):
 
     def login_by_skiff(self):
         # Use NGINX mediated auth; see https://skiff.allenai.org/login.html
-        if not request.headers.has_key("X-Auth-Request-Email"):
+        if "X-Auth-Request-Email" not in request.headers:
             # By construction, Skiff Login should guarantee the user header above for all requests, so
             # this shouldn't happen. But if it does, it's a bad request.
             raise exceptions.BadRequest

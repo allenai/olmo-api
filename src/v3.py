@@ -108,7 +108,7 @@ class Server(Blueprint):
         if "X-Auth-Request-Email" not in request.headers:
             # By construction, Skiff Login should guarantee the user header above for all requests, so
             # this shouldn't happen. But if it does, it's a bad request.
-            raise exceptions.BadRequest
+            raise exceptions.BadRequest()
 
         # Now we know that the user is logged in by Skiff Login. Send them to
         # the Olmo UI so they continue on with their day using Olmo.

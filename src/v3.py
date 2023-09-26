@@ -28,6 +28,7 @@ class Server(Blueprint):
         self.cfg = cfg
 
         self.get("/whoami")(self.whoami)
+        self.get("/login/skiff")(self.login_by_skiff)
 
         self.post("/templates/prompt")(self.create_prompt)
         self.get("/templates/prompt/<string:id>")(self.prompt)
@@ -101,6 +102,17 @@ class Server(Blueprint):
             raise exceptions.Unauthorized()
 
         return self.set_auth_cookie(jsonify(AuthenticatedClient(agent.client)), agent)
+
+    def login_by_skiff(self):
+        # Use NGINX mediated auth; see https://skiff.allenai.org/login.html
+        if not request.headers.has_key("X-Auth-Request-Email"):
+            # By construction, Skiff Login should guarantee the user header above for all requests, so
+            # this shouldn't happen. But if it does, it's a bad request.
+            raise exceptions.BadRequest
+
+        # Now we know that the user is logged in by Skiff Login. Send them where they want to go, or
+        # to the whoami API so they can reflect on their identity.
+        return redirect(request.args.get("return", default="/v3/whoami"))
 
     def login_by_invite_token(self):
         # If the user is already logged in, redirect to the UI

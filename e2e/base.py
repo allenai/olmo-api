@@ -13,11 +13,14 @@ class IntegrationTest(TestCase):
     origin = os.environ.get("ORIGIN", "http://localhost:8000")
 
     def user(self, email: str) -> AuthenticatedClient:
-        r = requests.get(f"{self.origin}/v3/whoami", headers={"X-Auth-Request-Email": email})
+        r = requests.get(f"{self.origin}/v3/login/skiff", headers={"X-Auth-Request-Email": email},
+                         allow_redirects=False)
         r.raise_for_status()
         token = r.cookies.get("token")
         if token is None:
             raise RuntimeError("no token in cookie")
+        r = requests.get(f"{self.origin}/v3/whoami", cookies={"token": token})
+        r.raise_for_status()
         client = r.json()["client"]
         return AuthenticatedClient(client, token)
 

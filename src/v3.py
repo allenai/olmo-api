@@ -110,9 +110,9 @@ class Server(Blueprint):
             # this shouldn't happen. But if it does, it's a bad request.
             raise exceptions.BadRequest
 
-        # Now we know that the user is logged in by Skiff Login. Send them where they want to go, or
-        # to the whoami API so they can reflect on their identity.
-        return redirect(request.args.get("return", default="/v3/whoami"))
+        # Now we know that the user is logged in by Skiff Login. Send them to
+        # the whoami API, so they can reflect on their identity.
+        return redirect("/v3/whoami")
 
     def login_by_invite_token(self):
         # If the user is already logged in, redirect to the UI

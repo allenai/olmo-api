@@ -12,7 +12,7 @@ port to the current InferD service to get things working.
 1. Start by connecting to the Kuberenetes cluster:
 
     ```
-    gcloud container clusters get-credentials
+    gcloud container clusters get-credentials \
         --project ai2-inferd \
         --region us-central1 \
         inferd-prod

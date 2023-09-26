@@ -111,8 +111,8 @@ class Server(Blueprint):
             raise exceptions.BadRequest
 
         # Now we know that the user is logged in by Skiff Login. Send them to
-        # the whoami API, so they can reflect on their identity.
-        return redirect("/v3/whoami")
+        # the Olmo UI so they continue on with their day using Olmo.
+        return redirect(self.cfg.server.ui_origin)
 
     def login_by_invite_token(self):
         # If the user is already logged in, redirect to the UI

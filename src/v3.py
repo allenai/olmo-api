@@ -106,7 +106,7 @@ class Server(Blueprint):
     def login_by_skiff(self):
         # Use NGINX mediated auth; see https://skiff.allenai.org/login.html
         email = request.headers.get("X-Auth-Request-Email")
-        if not email:
+        if email is None:
             # By construction, Skiff Login should guarantee the user header above for all requests, so
             # this shouldn't happen. But if it does, it's clearly a bug in our configration of "the
             # server", so an HTTP 500 Internal Server Error seems appropriate.

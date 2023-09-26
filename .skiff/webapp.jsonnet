@@ -156,6 +156,21 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
                                         }
                                     }
                                 }
+                            },
+                            {
+                                // These requests are safe for public because they either return your identity
+                                // information, or an error. They don't allow access to others' identities, not
+                                // have a way to change state.
+                                path: '/v3/whoami',
+                                pathType: 'Prefix',
+                                backend: {
+                                    service: {
+                                        name: fullyQualifiedName,
+                                        port: {
+                                            number: apiPort
+                                        }
+                                    }
+                                }
                             }
                         ]
                     }

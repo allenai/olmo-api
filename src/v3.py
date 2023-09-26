@@ -98,12 +98,7 @@ class Server(Blueprint):
     def whoami(self):
         agent = self.request_agent()
         if agent is None or agent.expired():
-            # Use NGINX mediated auth; see https://skiff.allenai.org/login.html
-            email = request.headers.get("X-Auth-Request-Email")
-            if email is None:
-                raise exceptions.Unauthorized()
-
-            agent = self.dbc.token.create(email, token.TokenType.Auth, timedelta(days=7))
+            raise exceptions.Unauthorized()
 
         return self.set_auth_cookie(jsonify(AuthenticatedClient(agent.client)), agent)
 

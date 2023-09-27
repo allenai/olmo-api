@@ -122,10 +122,13 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
 
     local defaultIngressAnno = {
         'nginx.ingress.kubernetes.io/ssl-redirect': 'true',
+        'nginx.ingress.kubernetes.io/proxy-read-timeout': '120'
+    };
+
+    local corsIngressAnno = {
         'nginx.ingress.kubernetes.io/enable-cors': 'true',
         'nginx.ingress.kubernetes.io/cors-allow-origin': 'https://olmo.allen.ai,https://*.olmo.allen.ai',
         'nginx.ingress.kubernetes.io/cors-allow-credentials': 'true',
-        'nginx.ingress.kubernetes.io/proxy-read-timeout': '120'
     };
 
     local allenAITLS = util.getTLSConfig(fullyQualifiedName + '-allen-dot-ai', allenAIHosts);
@@ -136,7 +139,10 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
             name: fullyQualifiedName + '-allen-dot-ai',
             namespace: namespaceName,
             labels: labels,
-            annotations: annotations + allenAITLS.ingressAnnotations + defaultIngressAnno
+            annotations: annotations +
+              allenAITLS.ingressAnnotations +
+              defaultIngressAnno +
+              corsIngressAnno
         },
         spec: {
             tls: [ allenAITLS.spec + { hosts: allenAIHosts } ],

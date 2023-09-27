@@ -130,8 +130,15 @@ class Server(Blueprint):
 
         # Validate the token
         resolved_invite = self.dbc.token.get(invite, token.TokenType.Invite)
-        if resolved_invite is None or resolved_invite.expired():
-            raise exceptions.Unauthorized()
+        if resolved_invite is None:
+            raise exceptions.Unauthorized(
+                "Your invite isn't valid. Please contact an administrator if this is an error."
+            )
+
+        if resolved_invite.expired():
+            raise exceptions.Unauthorized(
+                "Your invite has expired. Please contact an adminstrator."
+            )
 
         # Generate a new one
         try:

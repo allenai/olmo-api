@@ -1,0 +1,74 @@
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Error</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@allenai/varnish2@0.1.21/shellac.css">
+    <style>
+      body {
+        padding: var(--spacing-6);
+        background: rgb(38, 38, 38);
+      }
+
+      body {
+        display: flex;
+        justify-content: center;
+      }
+
+      body > div {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      main {
+        background: #fff;
+        border-radius: var(--shape-borderRadius);
+        padding: var(--spacing-4);
+        width: 100%;
+      }
+
+      main, footer {
+        max-width: 110ch;
+      }
+
+      main > p {
+        max-width: 68ch;
+      }
+
+      main h1:first-child {
+        margin-top: 0;
+      }
+
+      main p:last-child {
+        margin-bottom: 0;
+      }
+
+      h1 {
+        color: var(--palette-text-primary);
+      }
+
+      footer {
+        padding: var(--spacing-2);
+        color: #fff;
+      }
+
+      footer > a[href] {
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <main>
+        <h1>{{ title }}</h1>
+        <p>{{ message }}</hp>
+      </main>
+      <footer>
+        © <a href="https://allenai.org/">The Allen Institute for Artificial Intelligence</a>
+        — All Rights Reserved
+        • <a href="https://allenai.org/privacy-policy">Privacy Policy</a>
+        • <a href="https://allenai.org/terms">Terms of Use</a>
+        • <a href="https://allenai.org/business-code-of-conduct">Business Code of Conduct</a>
+    </div>
+  </body>
+</html>

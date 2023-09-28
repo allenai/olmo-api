@@ -306,7 +306,7 @@ class Server(Blueprint):
         deadline.FromDatetime(datetime.now(tz=timezone.utc) + timedelta(seconds=120))
 
         model = request.json.get("model", "allenai/tulu2-70b-qlora-bf16")
-        req = InferRequest(model_id=model, input=input, deadline=deadline)
+        req = InferRequest(compute_source_id=model, input=input, deadline=deadline)
 
         # Create a message that will eventually capture the streamed response.
         # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message

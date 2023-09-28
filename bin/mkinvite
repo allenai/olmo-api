@@ -8,7 +8,7 @@ import subprocess
 
 parser = argparse.ArgumentParser()
 parser.add_argument("email", type=str)
-parser.add_argument("--expires", type=str, default="10m")
+parser.add_argument("--expires", type=str, default="7d")
 args = parser.parse_args()
 
 token = os.environ["TOKEN"]
@@ -36,8 +36,7 @@ Hi {args.email},
 You've been invited to use the OLMo Demo. To do so click the URL below:
 {url}
 
-The above link will work for 7 days. Once clicked you'll have access to the
-demo for 7 days.
+Once clicked you'll have access to the demo for 7 days.
 
 If things don't work send a note to me (sams@allenai.org).
 

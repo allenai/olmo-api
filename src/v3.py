@@ -1,11 +1,10 @@
-from flask import Blueprint, jsonify, current_app, request, Response, redirect, current_app
+from flask import Blueprint, jsonify, request, Response, redirect, current_app
 from werkzeug import exceptions
 from werkzeug.wrappers import response
-from datetime import datetime, timezone, timedelta
+from datetime import timedelta
 from inferd.msg.inferd_pb2_grpc import InferDStub
 from inferd.msg.inferd_pb2 import InferRequest
 from google.protobuf.struct_pb2 import Struct
-from google.protobuf.timestamp_pb2 import Timestamp
 from . import db, util, auth, dsearch, config, parse
 from .dao import message, label, completion, token
 from typing import Optional
@@ -302,11 +301,9 @@ class Server(Blueprint):
             "messages": [ { "role": m.role, "content": m.content } for m in chain ],
             "opts": dataclasses.asdict(msg.opts),
         })
-        deadline = Timestamp()
-        deadline.FromDatetime(datetime.now(tz=timezone.utc) + timedelta(seconds=120))
 
         model = request.json.get("model", "allenai/tulu2-70b-qlora-bf16")
-        req = InferRequest(compute_source_id=model, input=input, deadline=deadline)
+        req = InferRequest(compute_source_id=model, input=input)
 
         # Create a message that will eventually capture the streamed response.
         # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message

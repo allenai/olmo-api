@@ -21,6 +21,10 @@ class InferD:
 @dataclass
 class Server:
     num_proxies: int
+    log_level: str
+    admins: list[str]
+    api_origin: str
+    ui_origin: str
 
 @dataclass
 class Config:
@@ -28,7 +32,6 @@ class Config:
     es: Elastic
     inferd: InferD
     server: Server
-    log_level: str = "INFO"
 
     @classmethod
     def load(cls, path: str = "/secret/cfg/config.json") -> Self:
@@ -38,6 +41,12 @@ class Config:
                 db=Database(**data["db"]),
                 es=Elastic(**data["es"]),
                 inferd=InferD(**data["inferd"]),
-                server=Server(**data["server"]),
+                server=Server(
+                    data["server"]["num_proxies"],
+                    data["server"].get("log_level", "INFO"),
+                    data["server"].get("admins", []),
+                    data["server"].get("origin", "http://localhost:8000"),
+                    data["server"].get("ui_origin", "http://localhost:8080"),
+                ),
             )
 

@@ -35,8 +35,9 @@ def create_app():
     def health(): # pyright: ignore
         return "", 204
 
-    app.register_blueprint(v3.Server(dbc, inferd, didx), url_prefix="/v3", name="v3")
-    app.register_error_handler(HTTPException, error.handle)
+    app.register_blueprint(v3.Server(dbc, inferd, didx, cfg), url_prefix="/v3", name="v3")
+    app.register_error_handler(HTTPException, error.handle_http)
+    app.register_error_handler(es8.ApiError, error.handle_es)
 
     ProxyFix(app, x_for=cfg.server.num_proxies, x_proto=cfg.server.num_proxies,
              x_host=cfg.server.num_proxies, x_port=cfg.server.num_proxies)
@@ -44,7 +45,7 @@ def create_app():
     if not app.debug:
         h = logging.StreamHandler()
         h.setFormatter(util.StackdriverJsonFormatter())
-        logging.basicConfig(level=cfg.log_level, handlers=[h])
+        logging.basicConfig(level=cfg.server.log_level, handlers=[h])
 
     return app
 

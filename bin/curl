@@ -1,19 +1,21 @@
 #!/bin/bash
 set -eo pipefail
 
-dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+cookies=$(mktemp /tmp/olmo-cookies.XXXXXX)
+trap "rm $cookies" EXIT
 
-if [[ -n "$TOKEN" ]]; then
-    auth="Authorization: Bearer $TOKEN"
-elif [[ -n "$EMAIL" ]]; then
-    auth=$("$dir"/auth "$EMAIL")
-else
-    auth=$("$dir"/auth)
-fi
+email="${EMAIL:-murphy@allenai.org}"
 
-if [[ -z "$auth" ]]; then
-  echo "Error: no auth token"
-fi
+curl \
+  -s \
+  -o /dev/null \
+  -c "$cookies" \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Request-Email: $email" \
+  "http://localhost:8000/v3/login/skiff"
 
-curl -H "$auth" -H "Content-Type: application/json" "$@"
+curl \
+  -b "$cookies" \
+  -H "Content-Type: application/json" \
+  "$@"
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from datetime import timedelta
+
 import argparse
 import os
 import json
@@ -8,7 +10,7 @@ import subprocess
 
 parser = argparse.ArgumentParser()
 parser.add_argument("email", type=str)
-parser.add_argument("--expires", type=str, default="7d")
+parser.add_argument("--expires", type=str, default=f"{int(timedelta(days=7).total_seconds())}s")
 args = parser.parse_args()
 
 token = os.environ["TOKEN"]

@@ -34,7 +34,7 @@ class TestMessageEndpoints(base.IntegrationTest):
 
         defaults = [
             ("max_tokens", 2048),
-            ("temperature", 1.0),
+            ("temperature", 0.0),
             ("n", 1),
             ("top_p", 1.0),
             ("logprobs", 0),
@@ -64,16 +64,21 @@ class TestMessageEndpoints(base.IntegrationTest):
                 })
                 assert r.status_code == 400, f"Expected 400 for invalid value {v} for {name}"
             for v in valid:
+                # top_p can only be set to a value that isn't 1.0 if temperature is > 0
+                opts = { name: v }
+                if name == "top_p" and v != 1.0:
+                    opts["temperature"] = 0.5
+
                 r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
                     "content": f"Testing valid value \"{v}\" for {name}",
-                    "opts": { name: v }
+                    "opts": opts
                 })
                 assert r.status_code == 200, f"Expected 200 for valid value {v} for {name}"
                 msg = json.loads(util.last_response_line(r))
                 self.messages.append((msg["id"], u1))
                 for default_name, default_value in defaults:
                     actual = msg["opts"][default_name]
-                    expected = v if default_name == name else default_value
+                    expected = opts.get(default_name, default_value)
                     if actual != expected:
                         raise AssertionError(f"Value for {default_name} was {actual}, expected {expected}")
 

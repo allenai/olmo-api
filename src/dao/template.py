@@ -5,15 +5,33 @@ from dataclasses import dataclass
 from werkzeug import exceptions
 from .. import obj
 
+PromptTemplateRow = tuple[str, str, str, str, datetime, datetime, Optional[datetime]]
+
 @dataclass
 class PromptTemplate:
     id: obj.ID
     name: str
     content: str
+    # deprecated: use creator
     author: str
+    creator: str
     created: datetime
     updated: datetime
     deleted: Optional[datetime]
+
+    @classmethod
+    def from_row(cls, row: PromptTemplateRow) -> "PromptTemplate":
+        [id, name, content, author, created, updated, deleted] = row
+        return cls(
+            id=id,
+            name=name,
+            content=content,
+            author=author,
+            creator=author,
+            created=created,
+            updated=updated,
+            deleted=deleted
+        )
 
 class Store:
     def __init__(self, pool: ConnectionPool):
@@ -35,7 +53,7 @@ class Store:
                         name,
                         id
                 """
-                return [PromptTemplate(*row) for row in cur.execute(q, (deleted,)).fetchall()]
+                return [PromptTemplate.from_row(row) for row in cur.execute(q, (deleted,)).fetchall()]
 
     def create_prompt(self, name, content, author) -> PromptTemplate:
         if name.strip() == "":
@@ -57,7 +75,7 @@ class Store:
                 """
                 row = cur.execute(q, (obj.NewID("pt"), name, content, author)).fetchone()
                 assert row is not None
-                return PromptTemplate(*row)
+                return PromptTemplate.from_row(row)
 
     def prompt(self, id: str) -> Optional[PromptTemplate]:
         with self.pool.connection() as conn:
@@ -71,9 +89,15 @@ class Store:
                         id = %s
                 """
                 row = cur.execute(q, (id,)).fetchone()
-                return PromptTemplate(*row) if row is not None else None
+                return PromptTemplate.from_row(row) if row is not None else None
 
-    def update_prompt(self, id: str, name: Optional[str] = None, content: Optional[str] = None) -> PromptTemplate:
+    def update_prompt(
+        self,
+        id: str,
+        name: Optional[str] = None,
+        content: Optional[str] = None,
+        deleted: Optional[bool] = None
+    ) -> PromptTemplate:
         if name is not None and name.strip() == "":
             raise exceptions.BadRequest("name must not be empty")
         if content is not None and content.strip() == "":
@@ -81,12 +105,13 @@ class Store:
 
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
-                q = """
+                q = f"""
                     UPDATE
                         prompt_template
                     SET
                         name = COALESCE(%s, name),
                         content = COALESCE(%s, content),
+                        deleted = {"NOW()" if deleted == True else "NULL" if deleted == False else "deleted"},
                         updated = NOW()
                     WHERE
                         id = %s
@@ -95,24 +120,5 @@ class Store:
                 """
                 row = cur.execute(q, (name, content, id)).fetchone()
                 assert row is not None
-                return PromptTemplate(*row)
-
-    def delete_prompt(self, id: str) -> PromptTemplate:
-        with self.pool.connection() as conn:
-            with conn.cursor() as cur:
-                q = """
-                    UPDATE
-                        prompt_template
-                    SET
-                        deleted = COALESCE(deleted, NOW()),
-                        updated = COALESCE(deleted, NOW())
-                    WHERE
-                        id = %s
-                    RETURNING
-                        id, name, content, author, created, updated, deleted
-                """
-                row = cur.execute(q, (id,)).fetchone()
-                assert row is not None
-                return PromptTemplate(*row)
-
+                return PromptTemplate.from_row(row)
 

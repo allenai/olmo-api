@@ -27,3 +27,6 @@ class IntegrationTest(TestCase):
     def auth(self, u: AuthenticatedClient) -> dict[str, str]:
         return { "Authorization": f"Bearer {u.token}" }
 
+    def json(self, h: dict[str, str]) -> dict[str, str]:
+        return { "Content-Type": "application/json", **h }
+

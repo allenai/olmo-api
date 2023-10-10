@@ -205,6 +205,7 @@ class Server(Blueprint):
             id,
             request.json.get("name"),
             request.json.get("content"),
+            request.json.get("deleted"),
         )
         return jsonify(prompt)
 
@@ -215,7 +216,7 @@ class Server(Blueprint):
             raise exceptions.NotFound()
         if prompt.author != agent.client:
             raise exceptions.Forbidden()
-        return jsonify(self.dbc.template.delete_prompt(id))
+        return jsonify(self.dbc.template.update_prompt(id, deleted=True))
 
     def create_prompt(self):
         agent = self.authn()

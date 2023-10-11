@@ -36,6 +36,8 @@ class TestPromptTemplateEndpoints(base.IntegrationTest):
         assert p1["id"] is not None
         assert p1["name"] == "Test Prompt #1"
         assert p1["content"] == "Murphy is a good dog who likes to "
+        assert p1["author"] == "test1@localhost"
+        assert p1["creator"] == "test1@localhost"
         assert datetime.fromisoformat(p1["created"]) < datetime.now(timezone.utc)
         assert datetime.fromisoformat(p1["created"]) == datetime.fromisoformat(p1["updated"])
         assert p1["deleted"] is None
@@ -79,14 +81,12 @@ class TestPromptTemplateEndpoints(base.IntegrationTest):
         assert r.status_code == 403
 
         # Verify u2 can't delete the prompt belonging to u1.
-        r = requests.delete(f"{self.origin}/v3/templates/prompt/{p1['id']}", headers=self.auth(u2), json={
-            "name": "Test Prompt #1 (updated)",
-        })
+        r = requests.delete(f"{self.origin}/v3/templates/prompt/{p1['id']}", headers=self.json(self.auth(u2)))
         assert r.status_code == 403
 
         # Delete p1.
-        r = requests.delete(f"{self.origin}/v3/templates/prompt/{p1['id']}", headers=self.auth(u1), json={
-            "name": "Test Prompt #1 (updated)",
+        r = requests.patch(f"{self.origin}/v3/templates/prompt/{p1['id']}", headers=self.auth(u1), json={
+            "deleted": True,
         })
         r.raise_for_status()
         assert r.json()["deleted"] is not None
@@ -97,15 +97,7 @@ class TestPromptTemplateEndpoints(base.IntegrationTest):
         p1 = r.json()
         assert p1["deleted"] is not None
 
-        # Verify that deletion is idempotent.
-        r = requests.delete(f"{self.origin}/v3/templates/prompt/{p1['id']}", headers=self.auth(u1), json={
-            "name": "Test Prompt #1 (updated)",
-        })
-        r.raise_for_status()
-        assert r.json()["deleted"] == p1["deleted"]
-        assert r.json()["updated"] == p1["updated"]
-
-        # Verify that p1 is no longer returned in the list of deleted prompts.
+        # Verify that p1 is no longer in the list of prompts.
         r = requests.get(f"{self.origin}/v3/templates/prompts", headers=self.auth(u1))
         r.raise_for_status()
         prompts = r.json()
@@ -120,6 +112,48 @@ class TestPromptTemplateEndpoints(base.IntegrationTest):
         assert p1["id"] in ids
         assert p2["id"] in ids
         assert ids.index(p1["id"]) < ids.index(p2["id"])
+
+        # Undelete p1
+        r = requests.patch(f"{self.origin}/v3/templates/prompt/{p1['id']}", headers=self.auth(u1), json={
+            "deleted": False,
+        })
+        r.raise_for_status()
+        assert r.json()["deleted"] is None
+        assert r.json()["id"] == p1["id"]
+        assert r.json()["updated"] > p1["updated"]
+        assert r.json()["name"] == p1["name"]
+        assert r.json()["content"] == p1["content"]
+        assert r.json()["author"] == p1["author"]
+        assert r.json()["creator"] == p1["creator"]
+
+        # Make sure it's back
+        r = requests.get(f"{self.origin}/v3/templates/prompts", headers=self.auth(u1))
+        r.raise_for_status()
+        prompts = r.json()
+        ids = [ p["id"] for p in prompts ]
+        assert p1["id"] in ids
+
+        # Verify DELETE instead of PATCH
+        r = requests.delete(f"{self.origin}/v3/templates/prompt/{p1['id']}", headers=self.auth(u1))
+        r.raise_for_status()
+        assert r.json()["deleted"] is not None
+        assert r.json()["updated"] > p1["updated"]
+
+        # Make sure it's gone again
+        r = requests.get(f"{self.origin}/v3/templates/prompts", headers=self.auth(u1))
+        r.raise_for_status()
+        prompts = r.json()
+        ids = [ p["id"] for p in prompts ]
+        assert p1["id"] not in ids
+
+        # Make sure a patch doesn't undelete it
+        r = requests.patch(f"{self.origin}/v3/templates/prompt/{p1['id']}", headers=self.auth(u1), json={
+            "name": "Test Prompt #1 (updated again!)",
+        })
+        r.raise_for_status()
+        assert r.json()["deleted"] is not None
+        assert r.json()["updated"] > p1["updated"]
+        assert r.json()["name"] == "Test Prompt #1 (updated again!)"
 
     def tearDown(self):
         for (id, user) in self.prompts:

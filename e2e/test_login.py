@@ -36,3 +36,20 @@ class TestLoginEndpoints(base.IntegrationTest):
         assert cookie.get_nonstandard_attr("SameSite") == "Strict"
         assert cookie.has_nonstandard_attr("HttpOnly") is True
 
+        # Verify valid redirect target
+        r = requests.get(f"{self.origin}/v3/login/skiff?redirect=http://localhost:8080/search?q=kibble", headers={
+            "X-Auth-Request-Email": "murphy@allenai.org"
+        }, allow_redirects=False)
+        r.raise_for_status()
+
+        assert r.status_code == 302
+        assert r.headers["Location"] == "http://localhost:8080/search?q=kibble"
+
+        # Verify that an invalid redirect target produces a 400
+        r = requests.get(f"{self.origin}/v3/login/skiff?redirect=http://haxx:8080/search?q=kibble", headers={
+            "X-Auth-Request-Email": "murphy@allenai.org"
+        }, allow_redirects=False)
+
+        assert r.status_code == 400
+
+

@@ -101,3 +101,16 @@ ALTER TABLE client_token ADD COLUMN IF NOT EXISTS token_type TOKEN_TYPE NOT NULL
 -- Make sure filtering by token type is fast
 CREATE INDEX IF NOT EXISTS token_type_idx ON client_token(token_type);
 
+CREATE TABLE IF NOT EXISTS datachip (
+  id TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
+  content TEXT NOT NULL,
+  creator TEXT NOT NULL,
+  created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted TIMESTAMPTZ NULL
+);
+
+
+GRANT SELECT, UPDATE, INSERT ON TABLE datachip TO app;
+

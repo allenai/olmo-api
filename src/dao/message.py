@@ -194,7 +194,8 @@ class Message:
         )
 
     def merge(self, m: 'Message') -> 'Message':
-        assert self.id == m.id
+        if self.id != m.id:
+            raise RuntimeError(f"cannot merge messages with different ids: {self.id} != {m.id}")
         return replace(self, labels=self.labels + m.labels)
 
     @staticmethod
@@ -314,7 +315,8 @@ class Store:
                         final,
                         original
                     )).fetchone()
-                    assert row is not None
+                    if row is None:
+                        raise RuntimeError("failed to create message")
                     return(Message.from_row(row))
                 except errors.ForeignKeyViolation as e:
                     # TODO: the dao probably shouldn't throw HTTP exceptions, instead it should
@@ -377,7 +379,7 @@ class Store:
                 _, msgs = Message.tree(Message.group_by_id([Message.from_row(r) for r in rows]))
                 return msgs.get(id)
 
-    def finalize(self, id: obj.ID, content: Optional[str] = None, completion: Optional[obj.ID] = None) -> Message:
+    def finalize(self, id: obj.ID, content: Optional[str] = None, completion: Optional[obj.ID] = None) -> Optional[Message]:
         """
         Used to finalize a Message produced via a streaming response.
         """
@@ -419,8 +421,7 @@ class Store:
                             NULL
                     """
                     row = cur.execute(q, (content, completion, id)).fetchone()
-                    assert row is not None
-                    return Message.from_row(row)
+                    return Message.from_row(row) if row is not None else None
                 except errors.ForeignKeyViolation as e:
                     match e.diag.constraint_name:
                         case "message_completion_fkey":
@@ -428,7 +429,7 @@ class Store:
                     raise exceptions.BadRequest(f"unknown foreign key violation: {e.diag.constraint_name}")
 
 
-    def delete(self, id: str, labels_for: Optional[str] = None) -> Message:
+    def delete(self, id: str, labels_for: Optional[str] = None) -> Optional[Message]:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 q = """
@@ -476,8 +477,7 @@ class Store:
 
                 """
                 row = cur.execute(q, (id, labels_for)).fetchone()
-                assert row is not None
-                return Message.from_row(row)
+                return Message.from_row(row) if row is not None else None
 
     # TODO: allow listing non-final messages
     def list(

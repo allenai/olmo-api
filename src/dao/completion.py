@@ -132,7 +132,8 @@ class Store:
                     output_tokens
                 )
                 row = cursor.execute(q, values).fetchone()
-                assert row is not None
+                if row is None:
+                    raise RuntimeError("failed to create completion")
                 return Completion.from_row(row)
 
     def list(self) -> list[Completion]:

@@ -6,7 +6,7 @@ from inferd.msg.inferd_pb2_grpc import InferDStub
 from inferd.msg.inferd_pb2 import InferRequest
 from google.protobuf.struct_pb2 import Struct
 from . import db, util, auth, dsearch, config, parse
-from .dao import message, label, completion, token
+from .dao import message, label, completion, token, datachip
 from typing import Optional
 from urllib.parse import urlparse, urlunparse
 
@@ -60,6 +60,10 @@ class Server(Blueprint):
 
         self.get("/invite/login")(self.login_by_invite_token)
         self.post("/invite/token")(self.create_invite_token)
+
+        self.post("/datachip")(self.create_datachip)
+        self.patch("/datachip/<string:id>")(self.patch_datachip)
+        self.get("/datachips")(self.datachips)
 
     def request_agent(self) -> Optional[token.Token]:
         provided = request.cookies.get(
@@ -216,6 +220,8 @@ class Server(Blueprint):
             request.json.get("content"),
             request.json.get("deleted"),
         )
+        if prompt is None:
+            raise exceptions.NotFound()
         return jsonify(prompt)
 
     def delete_prompt(self, id: str):
@@ -368,8 +374,13 @@ class Server(Blueprint):
             )
 
             # Finalize the messages and yield
+            # TODO: determine how exception handling mid-stream works
             fmsg = self.dbc.message.finalize(msg.id)
+            if fmsg is None:
+                raise exceptions.NotFound()
             freply = self.dbc.message.finalize(reply.id, output, c.id)
+            if freply is None:
+                raise exceptions.NotFound()
             fmsg = dataclasses.replace(fmsg, children=[freply])
             yield json.dumps(fmsg, cls=util.CustomEncoder) + "\n"
 
@@ -389,7 +400,10 @@ class Server(Blueprint):
             raise exceptions.NotFound()
         if message.creator != agent.client:
             raise exceptions.Forbidden()
-        return jsonify(self.dbc.message.delete(id, labels_for=agent.client))
+        deleted = self.dbc.message.delete(id, labels_for=agent.client)
+        if deleted is None:
+            raise exceptions.NotFound()
+        return jsonify(deleted)
 
     def messages(self):
         agent = self.authn()
@@ -474,7 +488,10 @@ class Server(Blueprint):
             raise exceptions.NotFound()
         if label.creator != agent.client:
             raise exceptions.Forbidden()
-        return jsonify(self.dbc.label.delete(id))
+        deleted = self.dbc.label.delete(id)
+        if deleted is None:
+            raise exceptions.NotFound()
+        return jsonify(deleted)
 
     def completions(self):
         self.authn()
@@ -522,4 +539,47 @@ class Server(Blueprint):
     def data_meta(self):
         self.authn()
         return jsonify({ "count": self.didx.doc_count() })
+
+    def create_datachip(self):
+        agent = self.authn()
+        if request.json is None:
+            raise exceptions.BadRequest("missing JSON body")
+
+        name = request.json.get("name", "").strip()
+        if name == "":
+            raise exceptions.BadRequest("must specify a non-empty name")
+
+        content = request.json.get("content", "").strip()
+        if content == "":
+            raise exceptions.BadRequest("must specify non-empty content")
+
+        if len(content.encode("utf-8")) > 500 * 1024 * 1024:
+            raise exceptions.RequestEntityTooLarge("content must be < 500MB")
+
+        return jsonify(self.dbc.datachip.create(name, content, agent.client))
+
+    def patch_datachip(self, id: str):
+        agent = self.authn()
+        if request.json is None:
+            raise exceptions.BadRequest("missing JSON body")
+
+        chip =  self.dbc.datachip.get(id)
+        if chip is None:
+            raise exceptions.NotFound()
+
+        if chip.creator != agent.client:
+            raise exceptions.Forbidden()
+
+        deleted = request.json.get("deleted")
+        updated = self.dbc.datachip.update(id, datachip.Update(deleted))
+        if updated is None:
+            raise exceptions.NotFound()
+        return jsonify(updated)
+
+    def datachips(self):
+        self.authn()
+        return jsonify(self.dbc.datachip.list(
+            creator=request.args.get("creator"),
+            deleted="deleted" in request.args
+        ))
 

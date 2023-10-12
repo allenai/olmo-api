@@ -8,6 +8,7 @@ from google.protobuf.struct_pb2 import Struct
 from . import db, util, auth, dsearch, config, parse
 from .dao import message, label, completion, token
 from typing import Optional
+from urllib.parse import urlparse, urlunparse
 
 import dataclasses
 import os
@@ -115,8 +116,16 @@ class Server(Blueprint):
         # create a new API token.
         agent = self.dbc.token.create(email, token.TokenType.Auth, timedelta(days=7))
 
+        # Figure out where the server should send them after logging in.
+        to = urlparse(request.args.get("redirect", self.cfg.server.ui_origin))
+
+        # Prevent redirects to non-authorized origins.
+        trusted = urlparse(self.cfg.server.ui_origin)
+        if to.netloc != trusted.netloc or to.scheme != trusted.scheme:
+            raise exceptions.BadRequest("invalid redirect")
+
         # And send them to the Olmo UI so they continue on with their day using Olmo.
-        return self.set_auth_cookie(redirect(self.cfg.server.ui_origin), agent)
+        return self.set_auth_cookie(redirect(urlunparse(to)), agent)
 
     def login_by_invite_token(self):
         # If the user is already logged in, redirect to the UI

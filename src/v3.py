@@ -374,13 +374,16 @@ class Server(Blueprint):
             )
 
             # Finalize the messages and yield
-            # TODO: determine how exception handling mid-stream works
             fmsg = self.dbc.message.finalize(msg.id)
             if fmsg is None:
-                raise exceptions.NotFound()
+                err = RuntimeError(f"failed to finalize message {msg.id}")
+                yield json.dumps(message.MessageStreamError(reply.id, str(err)), cls=util.CustomEncoder) + "\n"
+                raise err
             freply = self.dbc.message.finalize(reply.id, output, c.id)
             if freply is None:
-                raise exceptions.NotFound()
+                err = RuntimeError(f"failed to finalize message {reply.id}")
+                yield json.dumps(message.MessageStreamError(reply.id, str(err)), cls=util.CustomEncoder) + "\n"
+                raise err
             fmsg = dataclasses.replace(fmsg, children=[freply])
             yield json.dumps(fmsg, cls=util.CustomEncoder) + "\n"
 

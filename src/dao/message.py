@@ -135,6 +135,11 @@ class MessageChunk:
     content: str
 
 @dataclass
+class MessageStreamError:
+    message: obj.ID
+    error: str
+
+@dataclass
 class Message:
     id: obj.ID
     content: str

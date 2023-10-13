@@ -9,9 +9,10 @@ class TestDatachipEndpoints(base.IntegrationTest):
     def runTest(self):
         # Make sure all endpoints require auth
         for r in [
-            requests.post(f"{self.origin}/v3/datachip", json={}),
+            requests.post(f"{self.origin}/v3/datachip"),
             requests.get(f"{self.origin}/v3/datachips"),
             requests.patch(f"{self.origin}/v3/datachip/XXX"),
+            requests.get(f"{self.origin}/v3/datachip/XXX"),
         ]:
             assert r.status_code == 401
 
@@ -56,6 +57,12 @@ class TestDatachipEndpoints(base.IntegrationTest):
         assert dc1["updated"] is not None
         assert dc1["deleted"] is None
         self.chips.append((dc1["id"], u1))
+
+        # Get the chip
+        r = requests.get(f"{self.origin}/v3/datachip/{dc1['id']}", headers=self.auth(u1))
+        assert r.status_code == 200
+        for k, v in dc1.items():
+            assert v == r.json()[k]
 
         # Create another, belonging to u2
         r = requests.post(f"{self.origin}/v3/datachip", headers=self.auth(u2), json={

@@ -62,6 +62,7 @@ class Server(Blueprint):
         self.post("/invite/token")(self.create_invite_token)
 
         self.post("/datachip")(self.create_datachip)
+        self.get("/datachip/<string:id>")(self.datachip)
         self.patch("/datachip/<string:id>")(self.patch_datachip)
         self.get("/datachips")(self.datachips)
 
@@ -561,12 +562,19 @@ class Server(Blueprint):
 
         return jsonify(self.dbc.datachip.create(name, content, agent.client))
 
+    def datachip(self, id: str):
+        self.authn()
+        chip = self.dbc.datachip.get(id)
+        if chip is None:
+            raise exceptions.NotFound()
+        return jsonify(chip)
+
     def patch_datachip(self, id: str):
         agent = self.authn()
         if request.json is None:
             raise exceptions.BadRequest("missing JSON body")
 
-        chip =  self.dbc.datachip.get(id)
+        chip = self.dbc.datachip.get(id)
         if chip is None:
             raise exceptions.NotFound()
 

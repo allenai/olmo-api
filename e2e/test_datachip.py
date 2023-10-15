@@ -78,6 +78,7 @@ class TestDatachipEndpoints(base.IntegrationTest):
         assert dc2["created"] is not None
         assert dc2["updated"] is not None
         assert dc2["deleted"] is None
+        self.chips.append((dc2["id"], u2))
 
         # List them
         r = requests.get(f"{self.origin}/v3/datachips", headers=self.auth(u1))
@@ -85,21 +86,47 @@ class TestDatachipEndpoints(base.IntegrationTest):
 
         # We can't verify individual entities b/c we don't guarantee that we start w/
         # an empty database.
-        ids = [dc["id"] for dc in r.json()]
+        dclist1 = r.json()
+        ids = [dc["id"] for dc in dclist1["datachips"]]
         assert len(ids) >= 2
         for id, _ in self.chips:
             assert id in ids
         assert ids.index(dc1["id"]) > ids.index(dc2["id"])
+        assert dclist1["meta"]["limit"] == 10
+        assert dclist1["meta"]["offset"] == 0
+
+        # Verify pagination
+        r = requests.get(f"{self.origin}/v3/datachips", params={"limit": 1}, headers=self.auth(u1))
+        assert r.status_code == 200
+        dclist2 = r.json()
+        assert len(dclist2["datachips"]) == 1
+        assert dclist1["datachips"][0] == dclist2["datachips"][0]
+        assert dclist2["meta"]["limit"] == 1
+        assert dclist2["meta"]["offset"] ==0
+
+        r = requests.get(f"{self.origin}/v3/datachips", params={"limit": 1, "offset": 1}, headers=self.auth(u1))
+        assert r.status_code == 200
+        dclist3 = r.json()
+        assert len(dclist3["datachips"]) == 1
+        assert dclist1["datachips"][1] == dclist3["datachips"][0]
+        assert dclist3["meta"]["limit"] == 1
+        assert dclist3["meta"]["offset"] == 1
+
+        # Verify handling of invalid pagination
+        for o, l in [("-1", "0"), ("0", "-1"), ("1.5", "0"), ("0", "1.5"), ("0", "101")]:
+            r = requests.get(f"{self.origin}/v3/datachips", params={"offset": o, "limit": l}, headers=self.auth(u1))
+            assert r.status_code == 400
 
         # Only return things belonging to u2
         r = requests.get(f"{self.origin}/v3/datachips", params={"creator": u1.client}, headers=self.auth(u1))
         assert r.status_code == 200
-        assert len(r.json()) >=  1
+        dclist = r.json()
+        assert len(dclist["datachips"]) >=  1
         for id, u in self.chips:
             if u == u1:
-                assert id in [dc["id"] for dc in r.json()]
+                assert id in [dc["id"] for dc in dclist["datachips"]]
             else:
-                assert id not in [dc["id"] for dc in r.json()]
+                assert id not in [dc["id"] for dc in dclist["datachips"]]
 
         # Make sure u2 can't delete something owned by u1
         r = requests.patch(f"{self.origin}/v3/datachip/{dc1['id']}", headers=self.auth(u2), json={
@@ -122,12 +149,12 @@ class TestDatachipEndpoints(base.IntegrationTest):
         # Make sure deleted things aren't listed by default
         r = requests.get(f"{self.origin}/v3/datachips", headers=self.auth(u1))
         assert r.status_code == 200
-        assert dc1["id"] not in [dc["id"] for dc in r.json()]
+        assert dc1["id"] not in [dc["id"] for dc in r.json()["datachips"]]
 
         # ...unless the client asks for them
         r = requests.get(f"{self.origin}/v3/datachips", params={"deleted": True}, headers=self.auth(u1))
         assert r.status_code == 200
-        assert dc1["id"] in [dc["id"] for dc in r.json()]
+        assert dc1["id"] in [dc["id"] for dc in r.json()["datachips"]]
 
         # Make sure u1 can undelete something they own
         r = requests.patch(f"{self.origin}/v3/datachip/{dc1['id']}", headers=self.auth(u1), json={

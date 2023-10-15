@@ -6,7 +6,7 @@ from inferd.msg.inferd_pb2_grpc import InferDStub
 from inferd.msg.inferd_pb2 import InferRequest
 from google.protobuf.struct_pb2 import Struct
 from . import db, util, auth, dsearch, config, parse
-from .dao import message, label, completion, token, datachip
+from .dao import message, label, completion, token, datachip, paged
 from typing import Optional
 from urllib.parse import urlparse, urlunparse
 
@@ -411,32 +411,12 @@ class Server(Blueprint):
 
     def messages(self):
         agent = self.authn()
-
-        try:
-            offset = int(request.args.get("offset", 0))
-        except ValueError as e:
-            raise exceptions.BadRequest(f"invalid offset: {e}")
-        if offset < 0:
-            raise exceptions.BadRequest("invalid offset: must be >= 0")
-
-        try:
-            limit = int(request.args.get("limit", 10))
-        except ValueError as e:
-            raise exceptions.BadRequest(f"invalid limit: {e}")
-        if limit < 0:
-            raise exceptions.BadRequest("invalid limit: must be >= 0")
-        if limit > 100:
-            raise exceptions.BadRequest("invalid limit: must be <= 100")
-
-        try:
-            return jsonify(self.dbc.message.list(
-                labels_for=agent.client,
-                creator=request.args.get("creator"),
-                deleted="deleted" in request.args,
-                opts=message.MessageListOpts(offset, limit),
-            ))
-        except message.OffsetOverflowError as e:
-            raise exceptions.BadRequest(str(e))
+        return jsonify(self.dbc.message.list(
+            labels_for=agent.client,
+            creator=request.args.get("creator"),
+            deleted="deleted" in request.args,
+            opts=paged.parse_opts_from_querystring(request)
+        ))
 
     def schema(self):
         self.authn()
@@ -591,6 +571,7 @@ class Server(Blueprint):
         self.authn()
         return jsonify(self.dbc.datachip.list(
             creator=request.args.get("creator"),
-            deleted="deleted" in request.args
+            deleted="deleted" in request.args,
+            opts=paged.parse_opts_from_querystring(request)
         ))
 

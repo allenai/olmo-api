@@ -7,13 +7,7 @@ from typing import Optional, Any, cast
 from enum import StrEnum
 from werkzeug import exceptions
 from .. import obj
-from . import label
-
-class OffsetOverflowError(RuntimeError):
-    def __init__(self, offset: int, total: int):
-        self.offset = offset
-        self.total = total
-        super().__init__(f"offset {offset} is >= than total {total}")
+from . import label, paged
 
 class Role(StrEnum):
     User = "user"
@@ -239,20 +233,8 @@ class Message:
         return roots, msgs
 
 @dataclass
-class MessageListOpts:
-    offset: Optional[int] = None
-    limit: Optional[int] = None
-
-@dataclass
-class MessageListMeta:
-    total: int
-    offset: Optional[int] = None
-    limit: Optional[int] = None
-
-@dataclass
-class MessageList:
+class MessageList(paged.List):
     messages: list[Message]
-    meta: MessageListMeta
 
 class Store:
     def __init__(self, pool: ConnectionPool):
@@ -490,7 +472,7 @@ class Store:
         labels_for: Optional[str] = None,
         creator: Optional[str] = None,
         deleted: bool = False,
-        opts: MessageListOpts = MessageListOpts()
+        opts: paged.Opts = paged.Opts()
     ) -> MessageList:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
@@ -583,11 +565,9 @@ class Store:
                     args["offset"] = 0
                     row = cur.execute(q, args).fetchone()
                     total = row[0] if row is not None else 0
-                    if total > 0 and opts.offset is not None and opts.offset > 0 and opts.offset >= total:
-                        raise OffsetOverflowError(opts.offset, total)
-                    return MessageList([], MessageListMeta(total, opts.offset, opts.limit))
+                    return MessageList(messages=[], meta=paged.ListMeta(total, opts.offset, opts.limit))
 
                 total = rows[0][0]
                 roots, _ = Message.tree(Message.group_by_id([Message.from_row(r[1:]) for r in rows]))
 
-                return MessageList(roots, MessageListMeta(total, opts.offset, opts.limit))
+                return MessageList(messages=roots, meta=paged.ListMeta(total, opts.offset, opts.limit))

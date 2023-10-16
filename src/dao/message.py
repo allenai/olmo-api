@@ -7,13 +7,7 @@ from typing import Optional, Any, cast
 from enum import StrEnum
 from werkzeug import exceptions
 from .. import obj
-from . import label
-
-class OffsetOverflowError(RuntimeError):
-    def __init__(self, offset: int, total: int):
-        self.offset = offset
-        self.total = total
-        super().__init__(f"offset {offset} is >= than total {total}")
+from . import label, paged
 
 class Role(StrEnum):
     User = "user"
@@ -135,6 +129,11 @@ class MessageChunk:
     content: str
 
 @dataclass
+class MessageStreamError:
+    message: obj.ID
+    error: str
+
+@dataclass
 class Message:
     id: obj.ID
     content: str
@@ -194,7 +193,8 @@ class Message:
         )
 
     def merge(self, m: 'Message') -> 'Message':
-        assert self.id == m.id
+        if self.id != m.id:
+            raise RuntimeError(f"cannot merge messages with different ids: {self.id} != {m.id}")
         return replace(self, labels=self.labels + m.labels)
 
     @staticmethod
@@ -233,20 +233,8 @@ class Message:
         return roots, msgs
 
 @dataclass
-class MessageListOpts:
-    offset: Optional[int] = None
-    limit: Optional[int] = None
-
-@dataclass
-class MessageListMeta:
-    total: int
-    offset: Optional[int] = None
-    limit: Optional[int] = None
-
-@dataclass
-class MessageList:
+class MessageList(paged.List):
     messages: list[Message]
-    meta: MessageListMeta
 
 class Store:
     def __init__(self, pool: ConnectionPool):
@@ -314,7 +302,8 @@ class Store:
                         final,
                         original
                     )).fetchone()
-                    assert row is not None
+                    if row is None:
+                        raise RuntimeError("failed to create message")
                     return(Message.from_row(row))
                 except errors.ForeignKeyViolation as e:
                     # TODO: the dao probably shouldn't throw HTTP exceptions, instead it should
@@ -377,7 +366,7 @@ class Store:
                 _, msgs = Message.tree(Message.group_by_id([Message.from_row(r) for r in rows]))
                 return msgs.get(id)
 
-    def finalize(self, id: obj.ID, content: Optional[str] = None, completion: Optional[obj.ID] = None) -> Message:
+    def finalize(self, id: obj.ID, content: Optional[str] = None, completion: Optional[obj.ID] = None) -> Optional[Message]:
         """
         Used to finalize a Message produced via a streaming response.
         """
@@ -419,8 +408,7 @@ class Store:
                             NULL
                     """
                     row = cur.execute(q, (content, completion, id)).fetchone()
-                    assert row is not None
-                    return Message.from_row(row)
+                    return Message.from_row(row) if row is not None else None
                 except errors.ForeignKeyViolation as e:
                     match e.diag.constraint_name:
                         case "message_completion_fkey":
@@ -428,7 +416,7 @@ class Store:
                     raise exceptions.BadRequest(f"unknown foreign key violation: {e.diag.constraint_name}")
 
 
-    def delete(self, id: str, labels_for: Optional[str] = None) -> Message:
+    def delete(self, id: str, labels_for: Optional[str] = None) -> Optional[Message]:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 q = """
@@ -476,8 +464,7 @@ class Store:
 
                 """
                 row = cur.execute(q, (id, labels_for)).fetchone()
-                assert row is not None
-                return Message.from_row(row)
+                return Message.from_row(row) if row is not None else None
 
     # TODO: allow listing non-final messages
     def list(
@@ -485,7 +472,7 @@ class Store:
         labels_for: Optional[str] = None,
         creator: Optional[str] = None,
         deleted: bool = False,
-        opts: MessageListOpts = MessageListOpts()
+        opts: paged.Opts = paged.Opts()
     ) -> MessageList:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
@@ -578,11 +565,9 @@ class Store:
                     args["offset"] = 0
                     row = cur.execute(q, args).fetchone()
                     total = row[0] if row is not None else 0
-                    if total > 0 and opts.offset is not None and opts.offset > 0 and opts.offset >= total:
-                        raise OffsetOverflowError(opts.offset, total)
-                    return MessageList([], MessageListMeta(total, opts.offset, opts.limit))
+                    return MessageList(messages=[], meta=paged.ListMeta(total, opts.offset, opts.limit))
 
                 total = rows[0][0]
                 roots, _ = Message.tree(Message.group_by_id([Message.from_row(r[1:]) for r in rows]))
 
-                return MessageList(roots, MessageListMeta(total, opts.offset, opts.limit))
+                return MessageList(messages=roots, meta=paged.ListMeta(total, opts.offset, opts.limit))

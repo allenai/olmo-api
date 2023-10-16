@@ -6,7 +6,7 @@ from inferd.msg.inferd_pb2_grpc import InferDStub
 from inferd.msg.inferd_pb2 import InferRequest
 from google.protobuf.struct_pb2 import Struct
 from . import db, util, auth, dsearch, config, parse
-from .dao import message, label, completion, token
+from .dao import message, label, completion, token, datachip, paged
 from typing import Optional
 from urllib.parse import urlparse, urlunparse
 
@@ -60,6 +60,11 @@ class Server(Blueprint):
 
         self.get("/invite/login")(self.login_by_invite_token)
         self.post("/invite/token")(self.create_invite_token)
+
+        self.post("/datachip")(self.create_datachip)
+        self.get("/datachip/<string:id>")(self.datachip)
+        self.patch("/datachip/<string:id>")(self.patch_datachip)
+        self.get("/datachips")(self.datachips)
 
     def request_agent(self) -> Optional[token.Token]:
         provided = request.cookies.get(
@@ -216,6 +221,8 @@ class Server(Blueprint):
             request.json.get("content"),
             request.json.get("deleted"),
         )
+        if prompt is None:
+            raise exceptions.NotFound()
         return jsonify(prompt)
 
     def delete_prompt(self, id: str):
@@ -369,7 +376,15 @@ class Server(Blueprint):
 
             # Finalize the messages and yield
             fmsg = self.dbc.message.finalize(msg.id)
+            if fmsg is None:
+                err = RuntimeError(f"failed to finalize message {msg.id}")
+                yield json.dumps(message.MessageStreamError(reply.id, str(err)), cls=util.CustomEncoder) + "\n"
+                raise err
             freply = self.dbc.message.finalize(reply.id, output, c.id)
+            if freply is None:
+                err = RuntimeError(f"failed to finalize message {reply.id}")
+                yield json.dumps(message.MessageStreamError(reply.id, str(err)), cls=util.CustomEncoder) + "\n"
+                raise err
             fmsg = dataclasses.replace(fmsg, children=[freply])
             yield json.dumps(fmsg, cls=util.CustomEncoder) + "\n"
 
@@ -389,36 +404,19 @@ class Server(Blueprint):
             raise exceptions.NotFound()
         if message.creator != agent.client:
             raise exceptions.Forbidden()
-        return jsonify(self.dbc.message.delete(id, labels_for=agent.client))
+        deleted = self.dbc.message.delete(id, labels_for=agent.client)
+        if deleted is None:
+            raise exceptions.NotFound()
+        return jsonify(deleted)
 
     def messages(self):
         agent = self.authn()
-
-        try:
-            offset = int(request.args.get("offset", 0))
-        except ValueError as e:
-            raise exceptions.BadRequest(f"invalid offset: {e}")
-        if offset < 0:
-            raise exceptions.BadRequest("invalid offset: must be >= 0")
-
-        try:
-            limit = int(request.args.get("limit", 10))
-        except ValueError as e:
-            raise exceptions.BadRequest(f"invalid limit: {e}")
-        if limit < 0:
-            raise exceptions.BadRequest("invalid limit: must be >= 0")
-        if limit > 100:
-            raise exceptions.BadRequest("invalid limit: must be <= 100")
-
-        try:
-            return jsonify(self.dbc.message.list(
-                labels_for=agent.client,
-                creator=request.args.get("creator"),
-                deleted="deleted" in request.args,
-                opts=message.MessageListOpts(offset, limit),
-            ))
-        except message.OffsetOverflowError as e:
-            raise exceptions.BadRequest(str(e))
+        return jsonify(self.dbc.message.list(
+            labels_for=agent.client,
+            creator=request.args.get("creator"),
+            deleted="deleted" in request.args,
+            opts=paged.parse_opts_from_querystring(request)
+        ))
 
     def schema(self):
         self.authn()
@@ -474,7 +472,10 @@ class Server(Blueprint):
             raise exceptions.NotFound()
         if label.creator != agent.client:
             raise exceptions.Forbidden()
-        return jsonify(self.dbc.label.delete(id))
+        deleted = self.dbc.label.delete(id)
+        if deleted is None:
+            raise exceptions.NotFound()
+        return jsonify(deleted)
 
     def completions(self):
         self.authn()
@@ -522,4 +523,55 @@ class Server(Blueprint):
     def data_meta(self):
         self.authn()
         return jsonify({ "count": self.didx.doc_count() })
+
+    def create_datachip(self):
+        agent = self.authn()
+        if request.json is None:
+            raise exceptions.BadRequest("missing JSON body")
+
+        name = request.json.get("name", "").strip()
+        if name == "":
+            raise exceptions.BadRequest("must specify a non-empty name")
+
+        content = request.json.get("content", "").strip()
+        if content == "":
+            raise exceptions.BadRequest("must specify non-empty content")
+
+        if len(content.encode("utf-8")) > 500 * 1024 * 1024:
+            raise exceptions.RequestEntityTooLarge("content must be < 500MB")
+
+        return jsonify(self.dbc.datachip.create(name, content, agent.client))
+
+    def datachip(self, id: str):
+        self.authn()
+        chip = self.dbc.datachip.get(id)
+        if chip is None:
+            raise exceptions.NotFound()
+        return jsonify(chip)
+
+    def patch_datachip(self, id: str):
+        agent = self.authn()
+        if request.json is None:
+            raise exceptions.BadRequest("missing JSON body")
+
+        chip = self.dbc.datachip.get(id)
+        if chip is None:
+            raise exceptions.NotFound()
+
+        if chip.creator != agent.client:
+            raise exceptions.Forbidden()
+
+        deleted = request.json.get("deleted")
+        updated = self.dbc.datachip.update(id, datachip.Update(deleted))
+        if updated is None:
+            raise exceptions.NotFound()
+        return jsonify(updated)
+
+    def datachips(self):
+        self.authn()
+        return jsonify(self.dbc.datachip.list(
+            creator=request.args.get("creator"),
+            deleted="deleted" in request.args,
+            opts=paged.parse_opts_from_querystring(request)
+        ))
 

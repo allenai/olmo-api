@@ -1,5 +1,5 @@
 from psycopg_pool import ConnectionPool
-from .dao import token, template, message, label, completion
+from .dao import token, template, message, label, completion, datachip
 from . import config
 from typing import Self
 
@@ -11,6 +11,7 @@ class Client:
         self.message = message.Store(pool)
         self.label = label.Store(pool)
         self.completion = completion.Store(pool)
+        self.datachip = datachip.Store(pool)
 
     def close(self):
         self.pool.close()

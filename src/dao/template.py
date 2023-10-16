@@ -74,7 +74,8 @@ class Store:
                         id, name, content, author, created, updated, deleted
                 """
                 row = cur.execute(q, (obj.NewID("pt"), name, content, author)).fetchone()
-                assert row is not None
+                if row is None:
+                    raise RuntimeError("failed to create prompt template")
                 return PromptTemplate.from_row(row)
 
     def prompt(self, id: str) -> Optional[PromptTemplate]:
@@ -97,7 +98,7 @@ class Store:
         name: Optional[str] = None,
         content: Optional[str] = None,
         deleted: Optional[bool] = None
-    ) -> PromptTemplate:
+    ) -> Optional[PromptTemplate]:
         if name is not None and name.strip() == "":
             raise exceptions.BadRequest("name must not be empty")
         if content is not None and content.strip() == "":
@@ -119,6 +120,5 @@ class Store:
                         id, name, content, author, created, updated, deleted
                 """
                 row = cur.execute(q, (name, content, id)).fetchone()
-                assert row is not None
-                return PromptTemplate.from_row(row)
+                return PromptTemplate.from_row(row) if row is not None else None
 

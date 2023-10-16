@@ -65,11 +65,11 @@ class Store:
                         """,
                         (token, client, expires, token_type, creator, invite)
                     ).fetchone()
-                    assert row is not None
+                    if row is None:
+                        raise RuntimeError("failed to create token")
                     return Token.from_row(row)
                 except errors.UniqueViolation as e:
-                    if e.diag.constraint_name == "client_token_invite_key":
-                        assert invite is not None
+                    if invite is not None and e.diag.constraint_name == "client_token_invite_key":
                         raise DuplicateInviteError(invite)
                     raise e
 

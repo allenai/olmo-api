@@ -61,7 +61,8 @@ class Store:
                     comment.strip() if comment is not None else None
                 )
                 row = cur.execute(q, values).fetchone()
-                assert row is not None
+                if row is None:
+                    raise RuntimeError("failed to create label")
                 return Label.from_row(row)
 
     def get(self, id: str) -> Optional[Label]:
@@ -111,7 +112,7 @@ class Store:
                 rows = cur.execute(q, values).fetchall()
                 return [Label.from_row(row) for row in rows]
 
-    def delete(self, id: str) -> Label:
+    def delete(self, id: str) -> Optional[Label]:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 q = """
@@ -125,6 +126,5 @@ class Store:
                         id, message, rating, creator, comment, created, deleted
                 """
                 row = cur.execute(q, (id,)).fetchone()
-                assert row is not None
-                return Label.from_row(row)
+                return Label.from_row(row) if row is not None else None
 

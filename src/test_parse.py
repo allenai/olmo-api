@@ -65,28 +65,55 @@ Logan
         DatachipTestCase(
             "nested_marquee",
             """Hi <span data-datachip-id="name"><marquee>Name</marquee></span>!""",
-            """Hi Murphy!""",
+            "Hi Murphy!",
             { "name": "Murphy" }
         ),
         # Recursive, nested datachips
         DatachipTestCase(
             "nested_chip",
             """Hi <span data-datachip-id="name1"><span data-datachip-id="name2">Name</span></span>!""",
-            """Hi Murphy!""",
+            "Hi Murphy!",
             { "name1": "Murphy", "name2": "Logan" }
         ),
         # Emojis
         DatachipTestCase(
             "emoji",
             """👋 <span data-datachip-id="name">Name</span>""",
-            """👋 Murphy""",
+            "👋 Murphy",
             { "name": "Murphy" }
         ),
         # HTML Entities
         DatachipTestCase(
             "emoji",
             """Hi &ldquo;<span data-datachip-id="name">Name</span>&rdquo;""",
-            """Hi &ldquo;Murphy&rdquo;""",
+            "Hi &ldquo;Murphy&rdquo;",
+            { "name": "Murphy" }
+        ),
+        # Preserve HTML
+        DatachipTestCase(
+            "malformed",
+            """Hi <strong>Murphy!</strong>""",
+            "Hi <strong>Murphy!</strong>",
+            {}
+        ),
+        # Missing closing tag
+        DatachipTestCase(
+            "no-close",
+            """Hi <span data-datachip-id="name">Name, how are you?""",
+            "Hi Murphy",
+            { "name": "Murphy" }
+        ),
+        # Missing opening tag
+        DatachipTestCase(
+            "chip-with-no-open",
+            """Hi <span data-datachip-id="name">Name</span>, how are you</strong>?""",
+            "Hi Murphy, how are you?",
+            { "name": "Murphy" }
+        ),
+        DatachipTestCase(
+            "no-open",
+            """Hi Name</span>, how are you</strong>?""",
+            "Hi Name, how are you?",
             { "name": "Murphy" }
         ),
     ]

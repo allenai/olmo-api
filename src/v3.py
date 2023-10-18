@@ -125,10 +125,14 @@ class Server(Blueprint):
         to = urlparse(request.args.get("redirect", self.cfg.server.ui_origin))
 
         # Prevent redirects to non-authorized origins.
+        should_redirect = False
         for o in [self.cfg.server.ui_origin] + self.cfg.server.allowed_redirects:
             trusted = urlparse(o)
-            if to.netloc != trusted.netloc or to.scheme != trusted.scheme:
-                raise exceptions.BadRequest("invalid redirect")
+            if to.netloc == trusted.netloc and to.scheme == trusted.scheme:
+                should_redirect = True
+                break
+        if not should_redirect:
+            raise exceptions.BadRequest("invalid redirect")
 
         # And send them to the Olmo UI so they continue on with their day using OLMo
         return self.set_auth_cookie(redirect(urlunparse(to)), agent)

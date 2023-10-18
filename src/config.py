@@ -25,6 +25,9 @@ class Server:
     admins: list[str]
     api_origin: str
     ui_origin: str
+    # Origins (http://<host>:<port>) that we're allowed to redirect clients to after authentication.
+    # The ui_origin is automatically included.
+    allowed_redirects: list[str]
 
 @dataclass
 class Config:
@@ -47,6 +50,7 @@ class Config:
                     data["server"].get("admins", []),
                     data["server"].get("origin", "http://localhost:8000"),
                     data["server"].get("ui_origin", "http://localhost:8080"),
+                    data["server"].get("allowed_redirects", []),
                 ),
             )
 

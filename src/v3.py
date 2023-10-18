@@ -113,7 +113,7 @@ class Server(Blueprint):
         email = request.headers.get("X-Auth-Request-Email")
         if email is None:
             # By construction, Skiff Login should guarantee the user header above for all requests, so
-            # this shouldn't happen. But if it does, it's clearly a bug in our configration of "the
+            # this shouldn't happen. But if it does, it's clearly a bug in our configuration of "the
             # server", so an HTTP 500 Internal Server Error seems appropriate.
             raise exceptions.InternalServerError()
 
@@ -125,11 +125,16 @@ class Server(Blueprint):
         to = urlparse(request.args.get("redirect", self.cfg.server.ui_origin))
 
         # Prevent redirects to non-authorized origins.
-        trusted = urlparse(self.cfg.server.ui_origin)
-        if to.netloc != trusted.netloc or to.scheme != trusted.scheme:
+        should_redirect = False
+        for o in [self.cfg.server.ui_origin] + self.cfg.server.allowed_redirects:
+            trusted = urlparse(o)
+            if to.netloc == trusted.netloc and to.scheme == trusted.scheme:
+                should_redirect = True
+                break
+        if not should_redirect:
             raise exceptions.BadRequest("invalid redirect")
 
-        # And send them to the Olmo UI so they continue on with their day using Olmo.
+        # And send them to the Olmo UI so they continue on with their day using OLMo
         return self.set_auth_cookie(redirect(urlunparse(to)), agent)
 
     def login_by_invite_token(self):

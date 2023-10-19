@@ -143,7 +143,6 @@ def first_n_words(s: str, n: int) -> str:
     words = re.split(r"\s+", s[:n*32])
     return " ".join(words[:n]) + ("…" if len(words) > n else "")
 
-
 def text_snippet(s: str) -> str:
     soup = bs4.BeautifulSoup(s, features="html.parser")
     return first_n_words(soup.get_text(), 16)

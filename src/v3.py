@@ -327,7 +327,7 @@ class Server(Blueprint):
         # Find all of the datachips
         parsed_chain = [ ParsedMessage(content=parse.MessageContent(m.content), role=m.role) for m in chain ]
         chip_ids = [ dc.id for pm in parsed_chain for dc in pm.content.datachips ]
-        db_chips = { dc.id: dc for dc in self.dbc.datachip.get(chip_ids) }
+        db_chips = { dc.id: dc for dc in self.dbc.datachip.get(list(set(chip_ids))) }
 
         # Replace the datachips in the message content
         for pm in parsed_chain:

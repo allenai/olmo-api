@@ -9,6 +9,9 @@ from werkzeug import exceptions
 from .. import obj
 from . import label, paged
 
+import bs4
+import re
+
 class Role(StrEnum):
     User = "user"
     Assistant = "assistant"
@@ -133,10 +136,22 @@ class MessageStreamError:
     message: obj.ID
     error: str
 
+def first_n_words(s: str, n: int) -> str:
+    # We take the first n * 32 characters as to avoid processing the entire text, which might be
+    # large. This is for obvious reasons imperfect but probably good enough for manifesting a short,
+    # representative snippet.
+    words = re.split(r"\s+", s[:n*32])
+    return " ".join(words[:n]) + ("…" if len(words) > n else "")
+
+def text_snippet(s: str) -> str:
+    soup = bs4.BeautifulSoup(s, features="html.parser")
+    return first_n_words(soup.get_text(), 16)
+
 @dataclass
 class Message:
     id: obj.ID
     content: str
+    snippet: str
     creator: str
     role: Role
     opts: InferenceOpts
@@ -176,6 +191,7 @@ class Message:
         return Message(
             id=r[0],
             content=r[1],
+            snippet=text_snippet(r[1]),
             creator=r[2],
             role=r[3],
             opts=InferenceOpts(**r[4]),

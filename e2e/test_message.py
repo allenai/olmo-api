@@ -34,7 +34,7 @@ class TestMessageEndpoints(base.IntegrationTest):
 
         defaults = [
             ("max_tokens", 2048),
-            ("temperature", 0.0),
+            ("temperature", 0.5),
             ("n", 1),
             ("top_p", 1.0),
             ("logprobs", 0),

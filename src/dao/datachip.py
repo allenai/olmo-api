@@ -27,7 +27,7 @@ class Store:
     def __init__(self, pool: ConnectionPool):
         self.pool = pool
 
-    def list(
+    def list_all(
         self,
         creator: Optional[str] = None,
         deleted: bool = False,
@@ -102,7 +102,7 @@ class Store:
                     raise RuntimeError("failed to create datachip")
                 return Datachip(*row)
 
-    def get(self, id: str) -> Optional[Datachip]:
+    def get(self, ids: list[str]) -> list[Datachip]:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
@@ -118,12 +118,11 @@ class Store:
                         FROM
                             datachip
                         WHERE
-                            id = %s
+                            id = ANY(%s)
                     """,
-                    (id,)
+                    (ids,)
                 )
-                row = cur.fetchone()
-                return Datachip(*row) if row is not None else None
+                return [Datachip(*row) for row in cur.fetchall()]
 
     def update(self, id: str, up: Update) -> Optional[Datachip]:
         with self.pool.connection() as conn:

@@ -119,6 +119,6 @@ Logan
     ]
     for test in tests:
         content = parse.MessageContent(test.input)
-        for dc in content.datachips():
-            dc.tag.replace_with(test.chips[dc.id()])
+        for dc in content.datachips:
+            dc.tag.replace_with(test.chips[dc.id])
         assert content.html() == test.expected_output, f"Failed to parse datachips for test {test.name}"

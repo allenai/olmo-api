@@ -2,7 +2,6 @@ import datetime
 import bs4
 
 from dataclasses import dataclass
-from typing import Generator
 
 def timedelta_from_str(s: str) -> datetime.timedelta:
     """
@@ -43,9 +42,11 @@ class DatachipTag:
     """
     tag: bs4.Tag
 
+    @property
     def id(self) -> str:
         return self.tag.attrs["data-datachip-id"]
 
+    @property
     def name(self) -> str:
         return self.tag.get_text()
 
@@ -64,7 +65,7 @@ class MessageContent:
         content = parse.MessageContent(html)
 
         # Replace datachips
-        for chip in content.datachips():
+        for chip in content.datachips:
             content.replace(chip, chips[chip.id()])
 
         # Obtain the updated HTML
@@ -72,10 +73,7 @@ class MessageContent:
     """
     def __init__(self, html: str):
         self.soup = bs4.BeautifulSoup(html, "html.parser")
-
-    def datachips(self) -> Generator[DatachipTag, None, None]:
-        for tag in self.soup.find_all(DatachipTag.selector):
-            yield DatachipTag(tag)
+        self.datachips = [ DatachipTag(t) for t in self.soup.find_all(DatachipTag.selector) ]
 
     def html(self) -> str:
         return self.soup.decode(formatter="html5")

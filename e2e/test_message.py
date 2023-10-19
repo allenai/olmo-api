@@ -234,6 +234,27 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert m2["id"] in ids
         assert ids.index(m2["id"]) < ids.index(m1["id"])
 
+        # Test snippet creation
+        cases = [
+            # Short, valid
+            ("Can <em>Murphy</em> dance?", "Can Murphy dance?"),
+            # Short, no-close
+            ("Can <em>Murphy dance?", "Can Murphy dance?"),
+            # Short, no-open
+            ("Can Murphy</em> dance?", "Can Murphy dance?"),
+            # Long, valid
+            (
+                "Can <em>Murphy</em> dance after eating <marquee>three thousand hamburgers</marquee> made by a <strong>Grasshopper</strong> on a bright, sunny October afternoon?",
+                "Can Murphy dance after eating three thousand hamburgers made by a Grasshopper on a bright, sunny…",
+            )
+        ]
+        for (content, snippet) in cases:
+            r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={ "content": content })
+            r.raise_for_status()
+            m = json.loads(util.last_response_line(r))
+            self.messages.append((m["id"], u1))
+            assert m["snippet"] == snippet
+
     def tearDown(self):
         for (id, user) in self.messages:
             r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))

@@ -52,7 +52,7 @@ class Server(Blueprint):
         self.delete("/label/<string:id>")(self.delete_label)
         self.get("/labels")(self.labels)
 
-        self.get("/completions")(self.completions)
+        self.get("/completion/<string:id>")(self.completion)
 
         self.get("/data/search")(self.data_search)
         self.get("/data/doc/<string:id>")(self.data_doc)
@@ -318,9 +318,28 @@ class Server(Blueprint):
                 chain.append(msgs[chain[-1].parent])
             chain.reverse()
 
+
+        @dataclasses.dataclass
+        class ParsedMessage:
+            content: parse.MessageContent
+            role: message.Role
+
+        # Find all of the datachips
+        parsed_chain = [ ParsedMessage(content=parse.MessageContent(m.content), role=m.role) for m in chain ]
+        chip_ids = [ dc.id for pm in parsed_chain for dc in pm.content.datachips ]
+        db_chips = { dc.id: dc for dc in self.dbc.datachip.get(chip_ids) }
+
+        # Replace the datachips in the message content
+        for pm in parsed_chain:
+            for cc in pm.content.datachips:
+                dc = db_chips.get(cc.id)
+                if dc is None:
+                    raise exceptions.BadRequest(f"datachip {cc.id} not found")
+                cc.tag.replace_with(dc.content)
+
         input = Struct()
         input.update({
-            "messages": [ { "role": m.role, "content": m.content } for m in chain ],
+            "messages": [ { "role": pm.role, "content": pm.content.html() } for pm in parsed_chain ],
             "opts": dataclasses.asdict(msg.opts),
         })
 
@@ -364,7 +383,8 @@ class Server(Blueprint):
 
             # The generation is complete. Store it.
             # TODO: InferD should store this so that we don't have to.
-            prompt = "\n".join([ f"<|{m.role}|>\n{m.content}" for m in chain ])
+            # TODO: capture InferD request input instead of our manifestion of the prompt format
+            prompt = "\n".join([ f"<|{pm.role}|>\n{pm.content.html()}" for pm in parsed_chain ])
             output = "".join([ck.content for ck in chunks ])
             c = self.dbc.completion.create(
                 prompt,
@@ -482,9 +502,12 @@ class Server(Blueprint):
             raise exceptions.NotFound()
         return jsonify(deleted)
 
-    def completions(self):
+    def completion(self, id: str):
         self.authn()
-        return jsonify(self.dbc.completion.list())
+        c = self.dbc.completion.get(id)
+        if c is None:
+            raise exceptions.NotFound()
+        return jsonify(c)
 
     def data_search(self):
         self.authn()
@@ -549,20 +572,25 @@ class Server(Blueprint):
 
     def datachip(self, id: str):
         self.authn()
-        chip = self.dbc.datachip.get(id)
-        if chip is None:
+        chips = self.dbc.datachip.get([id])
+        if len(chips) == 0:
             raise exceptions.NotFound()
-        return jsonify(chip)
+        if len(chips) > 1:
+            raise exceptions.InternalServerError("multiple chips with same ID")
+        return jsonify(chips[0])
 
     def patch_datachip(self, id: str):
         agent = self.authn()
         if request.json is None:
             raise exceptions.BadRequest("missing JSON body")
 
-        chip = self.dbc.datachip.get(id)
-        if chip is None:
+        chips = self.dbc.datachip.get([id])
+        if len(chips) == 0:
             raise exceptions.NotFound()
+        if len(chips) > 1:
+            raise exceptions.InternalServerError("multiple chips with same ID")
 
+        chip = chips[0]
         if chip.creator != agent.client:
             raise exceptions.Forbidden()
 
@@ -574,7 +602,7 @@ class Server(Blueprint):
 
     def datachips(self):
         self.authn()
-        return jsonify(self.dbc.datachip.list(
+        return jsonify(self.dbc.datachip.list_all(
             creator=request.args.get("creator"),
             deleted="deleted" in request.args,
             opts=paged.parse_opts_from_querystring(request)

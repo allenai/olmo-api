@@ -136,7 +136,7 @@ class Store:
                     raise RuntimeError("failed to create completion")
                 return Completion.from_row(row)
 
-    def list(self) -> list[Completion]:
+    def get(self, id: str) -> Optional[Completion]:
         with self.pool.connection() as conn:
             with conn.cursor() as cursor:
                 q = """
@@ -155,10 +155,9 @@ class Store:
                         output_tokens
                     FROM
                         completion
-                    ORDER BY
-                        created DESC,
-                        id
+                    WHERE
+                        id = %s
                 """
-                rows = cursor.execute(q).fetchall()
-                return [Completion.from_row(row) for row in rows]
+                row = cursor.execute(q, (id,)).fetchone()
+                return Completion.from_row(row) if row is not None else None
 

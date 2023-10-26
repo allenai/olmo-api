@@ -20,7 +20,7 @@ def create_app():
     dbc = db.Client.from_config(cfg.db)
     atexit.register(dbc.close)
 
-    channel = grpc.secure_channel(cfg.inferd.address, None)
+    channel = grpc.secure_channel(cfg.inferd.address, grpc.ssl_channel_credentials())
     atexit.register(channel.close)
     inferd = InferDStub(channel)
 

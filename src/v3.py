@@ -375,7 +375,8 @@ class Server(Blueprint):
             yield json.dumps(msg, cls=util.CustomEncoder) + "\n"
 
             # Now yield each chunk as it's returned.
-            for resp in self.inferd.Infer(req, wait_for_ready=True):
+            md = (("x-inferd-token", self.cfg.inferd.token),)
+            for resp in self.inferd.Infer(req, metadata=md, wait_for_ready=True):
                 chunks.append(message.MessageChunk(reply.id, resp.result.output["text"]))
                 gen += resp.result.inference_time.ToMilliseconds()
                 queue = resp.result.queue_time.ToMilliseconds()

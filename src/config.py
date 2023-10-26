@@ -17,6 +17,7 @@ class Elastic:
 @dataclass
 class InferD:
     address: str
+    token: str
 
 @dataclass
 class Server:

@@ -10,11 +10,6 @@ class Database:
     max_size: int = 2
 
 @dataclass
-class Elastic:
-    endpoint: str
-    api_key: str
-
-@dataclass
 class InferD:
     address: str
     token: str
@@ -33,7 +28,6 @@ class Server:
 @dataclass
 class Config:
     db: Database
-    es: Elastic
     inferd: InferD
     server: Server
 
@@ -43,7 +37,6 @@ class Config:
             data = json.load(f)
             return cls(
                 db=Database(**data["db"]),
-                es=Elastic(**data["es"]),
                 inferd=InferD(**data["inferd"]),
                 server=Server(
                     data["server"]["num_proxies"],

@@ -2,12 +2,11 @@ from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.exceptions import HTTPException
 from inferd.msg.inferd_pb2_grpc import InferDStub
-from src import util, db, error, v3, config, dsearch
+from src import util, db, error, v3, config
 
 import logging
 import atexit
 import grpc
-import elasticsearch8 as es8
 
 def create_app():
     app = Flask(__name__)
@@ -24,20 +23,12 @@ def create_app():
     atexit.register(channel.close)
     inferd = InferDStub(channel)
 
-    es = es8.Elasticsearch(
-        hosts=[cfg.es.endpoint],
-        api_key=cfg.es.api_key,
-        timeout=60 # maximum time (in seconds) to wait for any operation to complete
-    )
-    didx = dsearch.Client(es)
-
     @app.get("/health")
     def health(): # pyright: ignore
         return "", 204
 
-    app.register_blueprint(v3.Server(dbc, inferd, didx, cfg), url_prefix="/v3", name="v3")
+    app.register_blueprint(v3.Server(dbc, inferd, cfg), url_prefix="/v3", name="v3")
     app.register_error_handler(HTTPException, error.handle_http)
-    app.register_error_handler(es8.ApiError, error.handle_es)
 
     ProxyFix(app, x_for=cfg.server.num_proxies, x_proto=cfg.server.num_proxies,
              x_host=cfg.server.num_proxies, x_port=cfg.server.num_proxies)

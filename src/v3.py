@@ -5,7 +5,7 @@ from datetime import timedelta
 from inferd.msg.inferd_pb2_grpc import InferDStub
 from inferd.msg.inferd_pb2 import InferRequest
 from google.protobuf.struct_pb2 import Struct
-from . import db, util, auth, dsearch, config, parse
+from . import db, util, auth, config, parse
 from .dao import message, label, completion, token, datachip, paged
 from typing import Optional
 from urllib.parse import urlparse, urlunparse
@@ -19,12 +19,11 @@ class AuthenticatedClient:
     client: str
 
 class Server(Blueprint):
-    def __init__(self, dbc: db.Client, inferd: InferDStub, didx: dsearch.Client, cfg: config.Config):
+    def __init__(self, dbc: db.Client, inferd: InferDStub, cfg: config.Config):
         super().__init__("v3", __name__)
 
         self.dbc = dbc
         self.inferd = inferd
-        self.didx = didx
         self.cfg = cfg
 
         self.get("/whoami")(self.whoami)
@@ -53,10 +52,6 @@ class Server(Blueprint):
         self.get("/labels")(self.labels)
 
         self.get("/completion/<string:id>")(self.completion)
-
-        self.get("/data/search")(self.data_search)
-        self.get("/data/doc/<string:id>")(self.data_doc)
-        self.get("/data/meta")(self.data_meta)
 
         self.get("/invite/login")(self.login_by_invite_token)
         self.post("/invite/token")(self.create_invite_token)
@@ -509,49 +504,6 @@ class Server(Blueprint):
         if c is None:
             raise exceptions.NotFound()
         return jsonify(c)
-
-    def data_search(self):
-        self.authn()
-
-        query = request.args.get("query", default="", type=lambda s: s.strip())
-        if query == "":
-            raise exceptions.BadRequest("empty query")
-
-        try:
-            size = int(request.args.get("size", "10"))
-        except ValueError as e:
-            raise exceptions.BadRequest(f"invalid size: {e}")
-        if size < 0:
-            raise exceptions.BadRequest("size must be positive")
-        if size > 100:
-            raise exceptions.BadRequest("size > 100 not supported")
-
-        try:
-            offset = int(request.args.get("offset", "0"))
-        except ValueError as e:
-            raise exceptions.BadRequest(f"invalid from: {e}")
-        if offset < 0:
-            raise exceptions.BadRequest("offset must be positive")
-        if offset > 10_000 - size:
-            raise exceptions.BadRequest(f"max offset is {10_000-size}")
-
-        filters = None
-        sources = request.args.getlist("source", type=lambda s: s.strip())
-        if len(sources) > 0:
-            filters = dsearch.Filters(sources)
-
-        return jsonify(self.didx.search(query, size, offset, filters))
-
-    def data_doc(self, id: str):
-        self.authn()
-        doc = self.didx.doc(id)
-        if doc is None:
-            raise exceptions.NotFound()
-        return jsonify(doc)
-
-    def data_meta(self):
-        self.authn()
-        return jsonify({ "count": self.didx.doc_count() })
 
     def create_datachip(self):
         agent = self.authn()

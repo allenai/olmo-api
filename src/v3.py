@@ -480,11 +480,18 @@ class Server(Blueprint):
 
     def labels(self):
         self.authn()
+
+        try:
+            rating = label.Rating(int(request.args.get("rating"))) if request.args.get("rating") is not None else None
+        except ValueError as e:
+            raise exceptions.BadRequest(str(e))
+
         return jsonify(self.dbc.label.list(
-            request.args.get("message"),
-            request.args.get("creator"),
-            "deleted" in request.args,
-            paged.parse_opts_from_querystring(request)
+            message=request.args.get("message"),
+            creator=request.args.get("creator"),
+            deleted="deleted" in request.args,
+            rating=rating,
+            opts=paged.parse_opts_from_querystring(request)
         ))
 
     def delete_label(self, id: str):

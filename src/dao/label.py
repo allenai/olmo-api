@@ -89,6 +89,7 @@ class Store:
         message: Optional[str] = None,
         creator: Optional[str] = None,
         deleted: bool = False,
+        rating: Optional[Rating] = None,
         opts: paged.Opts = paged.Opts()
     ) -> LabelsList:
         with self.pool.connection() as conn:
@@ -105,6 +106,8 @@ class Store:
                         (creator = %s OR %s)
                     AND
                         (deleted IS NULL OR %s)
+                    AND
+                        (rating = %s OR %s)
                     ORDER BY
                         created DESC,
                         id
@@ -117,6 +120,8 @@ class Store:
                     creator,
                     creator is None,
                     deleted,
+                    rating,
+                    rating is None,
                     opts.offset,
                     opts.limit
                 )

@@ -464,10 +464,10 @@ class Server(Blueprint):
 
         existing = self.dbc.label.list(
             message=mid,
-            creator=agent.client
+            creator=agent.client,
         )
-        if len(existing) > 0:
-            raise exceptions.UnprocessableEntity(f"message {mid} already has label {existing[0].id}")
+        if existing.meta.total != 0:
+            raise exceptions.UnprocessableEntity(f"message {mid} already has label {existing.labels[0].id}")
         lbl = self.dbc.label.create(msg.id, rating, agent.client, request.json.get("comment"))
         return jsonify(lbl)
 
@@ -483,7 +483,8 @@ class Server(Blueprint):
         return jsonify(self.dbc.label.list(
             request.args.get("message"),
             request.args.get("creator"),
-            "deleted" in request.args
+            "deleted" in request.args,
+            paged.parse_opts_from_querystring(request)
         ))
 
     def delete_label(self, id: str):

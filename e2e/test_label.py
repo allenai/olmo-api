@@ -150,6 +150,17 @@ class TestLabelEndpoints(base.IntegrationTest):
         assert l2["id"] in ids
         assert l1["id"] not in ids
 
+        # Verify filtering by rating
+        r = requests.get(f"{self.origin}/v3/labels?rating=-1", headers=self.auth(u1))
+        r.raise_for_status()
+        ids = [l["id"] for l in r.json()["labels"]]
+        assert l2["id"] in ids
+        assert l1["id"] not in ids
+
+        # Bad ratings should return a 400
+        r = requests.get(f"{self.origin}/v3/labels?rating=threeve", headers=self.auth(u1))
+        assert r.status_code == 400
+
         # Make sure u2 can't delete labels belonging to u1
         r = requests.delete(f"{self.origin}/v3/label/{l1['id']}", headers=self.auth(u2))
         assert r.status_code == 403

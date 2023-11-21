@@ -5,6 +5,7 @@ from enum import IntEnum
 from typing import Optional
 from werkzeug import exceptions
 from .. import obj
+from . import paged
 
 class Rating(IntEnum):
     FLAG = -1
@@ -35,6 +36,10 @@ class Label:
             created,
             deleted
         )
+
+@dataclass
+class LabelsList(paged.List):
+    labels: list[Label]
 
 class Store:
     def __init__(self, pool: ConnectionPool):
@@ -83,13 +88,15 @@ class Store:
         self,
         message: Optional[str] = None,
         creator: Optional[str] = None,
-        deleted: bool = False
-    ) -> list[Label]:
+        deleted: bool = False,
+        opts: paged.Opts = paged.Opts()
+    ) -> LabelsList:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 q = """
                     SELECT
-                        id, message, rating, creator, comment, created, deleted
+                        id, message, rating, creator, comment, created, deleted,
+                        COUNT(*) OVER() AS total
                     FROM
                         label
                     WHERE
@@ -101,16 +108,22 @@ class Store:
                     ORDER BY
                         created DESC,
                         id
+                    OFFSET %s
+                    LIMIT %s
                 """
                 values = (
                     message,
                     message is None,
                     creator,
                     creator is None,
-                    deleted
+                    deleted,
+                    opts.offset,
+                    opts.limit
                 )
                 rows = cur.execute(q, values).fetchall()
-                return [Label.from_row(row) for row in rows]
+                total = rows[0][7] if len(rows) > 0 else 0
+                labels = [Label.from_row(row[:7]) for row in rows]
+                return LabelsList(paged.ListMeta(total, opts.offset, opts.limit), labels)
 
     def delete(self, id: str) -> Optional[Label]:
         with self.pool.connection() as conn:

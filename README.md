@@ -6,31 +6,16 @@ The HTTP API used by http://olmo.allen.ai.
 
 ### Getting Started
 
-The API depends on [InferD](https://github.com/allenai/inferd). You'll need to forward a local
-port to the current InferD service to get things working.
+The API depends on [InferD](https://github.com/allenai/inferd). To start a local
+server, follow these steps:
 
-1. Start by connecting to the Kuberenetes cluster:
-
-    ```
-    gcloud container clusters get-credentials \
-        --project ai2-inferd \
-        --region us-central1 \
-        inferd-prod
-    ```
-
-2. Then forward `10000` from your host to the InferD service:
-
-    ```
-    kubectl port-forward -n inferd service/system 10000
-    ```
-
-3. Then generate a local `config.json` file:
+1. Generate a local `config.json` file:
 
     ```
     ./bin/bootstrap
     ```
 
-4. Next open another terminal and launch the application like so:
+2. Next open another terminal and launch the application like so:
 
     ```
     docker compose up --build

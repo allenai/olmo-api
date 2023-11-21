@@ -118,20 +118,35 @@ class TestLabelEndpoints(base.IntegrationTest):
         # Verify listing labels
         r = requests.get(f"{self.origin}/v3/labels", headers=self.auth(u1))
         r.raise_for_status()
-        ids = [l["id"] for l in r.json()]
+        resp = r.json()
+        ids = [l["id"] for l in resp["labels"]]
         assert l1["id"] in ids
         assert l2["id"] in ids
         assert ids.index(l2["id"]) < ids.index(l1["id"])
+        assert resp["meta"]["total"] > 0
+        assert resp["meta"]["offset"] == 0
+        assert resp["meta"]["limit"] == 10
+
+        # Verify pagination
+        for case in [{ "offset": 0, "limit": 1, "ids": [ l2["id"] ] }, { "offset": 1, "limit": 1, "ids": [ l1["id"] ] }]:
+            r = requests.get(f"{self.origin}/v3/labels?offset={case['offset']}&limit={case['limit']}", headers=self.auth(u1))
+            r.raise_for_status()
+            resp = r.json()
+            assert len(resp["labels"]) == 1
+            assert resp["labels"][0]["id"] == case["ids"][0]
+            assert resp["meta"]["total"] > 0
+            assert resp["meta"]["offset"] == case["offset"]
+            assert resp["meta"]["limit"] == case["limit"]
 
         # Verify filtering by message
         r = requests.get(f"{self.origin}/v3/labels?message={m1['id']}", headers=self.auth(u1))
         r.raise_for_status()
-        assert r.json() == [l1]
+        assert r.json()["labels"] == [l1]
 
         # Verify filtering by creator
         r = requests.get(f"{self.origin}/v3/labels?creator={u2.client}", headers=self.auth(u1))
         r.raise_for_status()
-        ids = [l["id"] for l in r.json()]
+        ids = [l["id"] for l in r.json()["labels"]]
         assert l2["id"] in ids
         assert l1["id"] not in ids
 
@@ -165,13 +180,13 @@ class TestLabelEndpoints(base.IntegrationTest):
         # Verify that deleted labels aren't included by default...
         r = requests.get(f"{self.origin}/v3/labels", headers=self.auth(u1))
         r.raise_for_status()
-        ids = [l["id"] for l in r.json()]
+        ids = [l["id"] for l in r.json()["labels"]]
         assert l1["id"] not in ids
 
         # Unless deleted is set.
         r = requests.get(f"{self.origin}/v3/labels?deleted", headers=self.auth(u1))
         r.raise_for_status()
-        ids = [l["id"] for l in r.json()]
+        ids = [l["id"] for l in r.json()["labels"]]
         assert l1["id"] in ids
         assert l2["id"] in ids
         assert ids.index(l2["id"]) < ids.index(l1["id"])

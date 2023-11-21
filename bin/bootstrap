@@ -13,9 +13,6 @@ local=$(cat <<EOF
     "min_size": 1,
     "max_size": 2
   },
-  "inferd": {
-    "address": "host.docker.internal:10000"
-  },
   "server": {
     "proxies": 1
   }

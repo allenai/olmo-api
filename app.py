@@ -28,7 +28,7 @@ def create_app():
         return "", 204
 
     app.register_blueprint(v3.Server(dbc, inferd, cfg), url_prefix="/v3", name="v3")
-    app.register_error_handler(HTTPException, error.handle_http)
+    app.register_error_handler(Exception, error.handle)
 
     ProxyFix(app, x_for=cfg.server.num_proxies, x_proto=cfg.server.num_proxies,
              x_host=cfg.server.num_proxies, x_port=cfg.server.num_proxies)

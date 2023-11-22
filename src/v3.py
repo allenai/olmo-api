@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, Response, redirect, current_app
+from flask import Blueprint, jsonify, request, Response, redirect, current_app, send_file
 from werkzeug import exceptions
 from werkzeug.wrappers import response
 from datetime import timedelta
@@ -9,10 +9,12 @@ from . import db, util, auth, config, parse
 from .dao import message, label, completion, token, datachip, paged
 from typing import Optional
 from urllib.parse import urlparse, urlunparse
+from datetime import datetime, timezone
 
 import dataclasses
 import os
 import json
+import io
 
 @dataclasses.dataclass
 class AuthenticatedClient:
@@ -50,6 +52,7 @@ class Server(Blueprint):
         self.get("/label/<string:id>")(self.label)
         self.delete("/label/<string:id>")(self.delete_label)
         self.get("/labels")(self.labels)
+        self.get("/labels/export")(self.export_labels)
 
         self.get("/completion/<string:id>")(self.completion)
 
@@ -482,7 +485,8 @@ class Server(Blueprint):
         self.authn()
 
         try:
-            rating = label.Rating(int(request.args.get("rating"))) if request.args.get("rating") is not None else None
+            rr = request.args.get("rating")
+            rating = label.Rating(int(rr)) if rr is not None else None
         except ValueError as e:
             raise exceptions.BadRequest(str(e))
 
@@ -493,6 +497,29 @@ class Server(Blueprint):
             rating=rating,
             opts=paged.parse_opts_from_querystring(request)
         ))
+
+    def export_labels(self):
+        self.authn()
+
+        try:
+            rr = request.args.get("rating")
+            rating = label.Rating(int(rr)) if rr is not None else None
+        except ValueError as e:
+            raise exceptions.BadRequest(str(e))
+
+        ll = self.dbc.label.list(
+            message=request.args.get("message"),
+            creator=request.args.get("creator"),
+            deleted="deleted" in request.args,
+            rating=rating,
+            opts=paged.parse_opts_from_querystring(request, max_limit=1_000_000)
+        )
+
+        labels = "\n".join([json.dumps(l, cls=util.CustomEncoder) for l in ll.labels])
+        filename = f"labels-{int(datetime.now(timezone.utc).timestamp())}.jsonl"
+        body = io.BytesIO(labels.encode("utf-8"))
+
+        return send_file(body, as_attachment=True, download_name=filename)
 
     def delete_label(self, id: str):
         agent = self.authn()

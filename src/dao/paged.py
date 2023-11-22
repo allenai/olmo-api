@@ -30,7 +30,7 @@ class Opts:
     limit: Optional[int] = None
     sort: Optional[Sort] = None
 
-def parse_opts_from_querystring(request: Request) -> Opts:
+def parse_opts_from_querystring(request: Request, max_limit: int = 100) -> Opts:
     try:
         offset = int(request.args.get("offset", 0))
     except ValueError as e:
@@ -44,8 +44,8 @@ def parse_opts_from_querystring(request: Request) -> Opts:
         raise exceptions.BadRequest(f"invalid limit: {e}")
     if limit < 0:
         raise exceptions.BadRequest("invalid limit: must be >= 0")
-    if limit > 100:
-        raise exceptions.BadRequest("invalid limit: must be <= 100")
+    if limit > max_limit:
+        raise exceptions.BadRequest(f"invalid limit: must be <= {max_limit}")
 
     try:
         field = request.args.get("sort")

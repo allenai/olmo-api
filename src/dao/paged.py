@@ -2,12 +2,23 @@ from dataclasses import dataclass
 from typing import Optional
 from flask import Request
 from werkzeug import exceptions
+from enum import StrEnum
+
+class SortDirection(StrEnum):
+    ASC = "ASC"
+    DESC = "DESC"
+
+@dataclass
+class Sort:
+    field: str
+    direction: SortDirection = SortDirection.DESC
 
 @dataclass
 class ListMeta:
     total: int
     offset: Optional[int] = None
     limit: Optional[int] = None
+    sort: Optional[Sort] = None
 
 @dataclass
 class List:
@@ -17,6 +28,7 @@ class List:
 class Opts:
     offset: Optional[int] = None
     limit: Optional[int] = None
+    sort: Optional[Sort] = None
 
 def parse_opts_from_querystring(request: Request) -> Opts:
     try:
@@ -35,6 +47,17 @@ def parse_opts_from_querystring(request: Request) -> Opts:
     if limit > 100:
         raise exceptions.BadRequest("invalid limit: must be <= 100")
 
-    return Opts(offset, limit)
+    try:
+        field = request.args.get("sort")
+        dir = request.args.get("order", None, type=lambda s: s.upper())
+        if field is None and dir is not None:
+            raise ValueError("order specified without sort")
+        if dir is None:
+            dir = SortDirection.DESC.value
+        sort = Sort(field, SortDirection(dir)) if field is not None else None
+    except ValueError as e:
+        raise exceptions.BadRequest(f"invalid sort: {e}")
+
+    return Opts(offset, limit, sort)
 
 

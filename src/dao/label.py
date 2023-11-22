@@ -94,7 +94,12 @@ class Store:
     ) -> LabelsList:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
-                q = """
+                allowed = set(["created"])
+                field = opts.sort.field if opts.sort is not None else "created"
+                if field not in allowed:
+                    raise ValueError(f"invalid sort field: {field}")
+                dir = opts.sort.direction.value if opts.sort is not None else paged.SortDirection.DESC.value
+                q = f"""
                     SELECT
                         id, message, rating, creator, comment, created, deleted,
                         COUNT(*) OVER() AS total
@@ -109,7 +114,7 @@ class Store:
                     AND
                         (rating = %s OR %s)
                     ORDER BY
-                        created DESC,
+                        {field} {dir},
                         id
                     OFFSET %s
                     LIMIT %s
@@ -125,10 +130,11 @@ class Store:
                     opts.offset,
                     opts.limit
                 )
-                rows = cur.execute(q, values).fetchall()
+                rows = cur.execute(q, values).fetchall() # type: ignore
                 total = rows[0][7] if len(rows) > 0 else 0
                 labels = [Label.from_row(row[:7]) for row in rows]
-                return LabelsList(paged.ListMeta(total, opts.offset, opts.limit), labels)
+                meta = paged.ListMeta(total, opts.offset, opts.limit, paged.Sort(field, paged.SortDirection(dir)))
+                return LabelsList(meta, labels)
 
     def delete(self, id: str) -> Optional[Label]:
         with self.pool.connection() as conn:

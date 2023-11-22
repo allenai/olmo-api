@@ -490,6 +490,9 @@ class Store:
         deleted: bool = False,
         opts: paged.Opts = paged.Opts()
     ) -> MessageList:
+        # TODO: add sort support for messages
+        if opts.sort is not None:
+            raise NotImplementedError("sorting messages is not supported")
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 roots = """
@@ -581,7 +584,7 @@ class Store:
                     args["offset"] = 0
                     row = cur.execute(q, args).fetchone()
                     total = row[0] if row is not None else 0
-                    return MessageList(messages=[], meta=paged.ListMeta(total, opts.offset, opts.limit))
+                    return MessageList(messages=[], meta=paged.ListMeta(total, opts.offset, opts.limit, opts.sort))
 
                 total = rows[0][0]
                 roots, _ = Message.tree(Message.group_by_id([Message.from_row(r[1:]) for r in rows]))

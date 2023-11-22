@@ -33,6 +33,9 @@ class Store:
         deleted: bool = False,
         opts: paged.Opts = paged.Opts()
     ) -> DatachipList:
+        # TODO: add sort support for datachips
+        if opts.sort is not None:
+            raise NotImplementedError("sorting datachips is not supported")
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 q = """

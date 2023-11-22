@@ -126,6 +126,30 @@ class TestLabelEndpoints(base.IntegrationTest):
         assert resp["meta"]["total"] > 0
         assert resp["meta"]["offset"] == 0
         assert resp["meta"]["limit"] == 10
+        assert resp["meta"]["sort"]["field"] == "created"
+        assert resp["meta"]["sort"]["direction"] == "DESC"
+        assert resp["labels"].index(l2) < resp["labels"].index(l1)
+
+        # Verify sorting
+        r = requests.get(f"{self.origin}/v3/labels", headers=self.auth(u1), params={ "sort": "created", "order": "asc" })
+        r.raise_for_status()
+        resp = r.json()
+        assert resp["meta"]["sort"]["field"] == "created"
+        assert resp["meta"]["sort"]["direction"] == "ASC"
+        assert resp["labels"].index(l1) < resp["labels"].index(l2)
+
+        # Make sure order is implicitly DESC
+        r = requests.get(f"{self.origin}/v3/labels", headers=self.auth(u1), params={ "sort": "created" })
+        r.raise_for_status()
+        resp = r.json()
+        assert resp["meta"]["sort"]["field"] == "created"
+        assert resp["meta"]["sort"]["direction"] == "DESC"
+        assert resp["labels"].index(l2) < resp["labels"].index(l1)
+
+        # Make sure invalid sorts return a 400
+        for sort, order in [("; drop table", "asc"), ("created", "; drop table"), (None, "asc")]:
+            r = requests.get(f"{self.origin}/v3/labels", headers=self.auth(u1), params={ "sort": sort, "order": order })
+            assert r.status_code == 400
 
         # Verify pagination
         for case in [{ "offset": 0, "limit": 1, "ids": [ l2["id"] ] }, { "offset": 1, "limit": 1, "ids": [ l1["id"] ] }]:

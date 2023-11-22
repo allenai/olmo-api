@@ -52,7 +52,6 @@ class Server(Blueprint):
         self.get("/label/<string:id>")(self.label)
         self.delete("/label/<string:id>")(self.delete_label)
         self.get("/labels")(self.labels)
-        self.get("/labels/export")(self.export_labels)
 
         self.get("/completion/<string:id>")(self.completion)
 
@@ -490,23 +489,6 @@ class Server(Blueprint):
         except ValueError as e:
             raise exceptions.BadRequest(str(e))
 
-        return jsonify(self.dbc.label.list(
-            message=request.args.get("message"),
-            creator=request.args.get("creator"),
-            deleted="deleted" in request.args,
-            rating=rating,
-            opts=paged.parse_opts_from_querystring(request)
-        ))
-
-    def export_labels(self):
-        self.authn()
-
-        try:
-            rr = request.args.get("rating")
-            rating = label.Rating(int(rr)) if rr is not None else None
-        except ValueError as e:
-            raise exceptions.BadRequest(str(e))
-
         ll = self.dbc.label.list(
             message=request.args.get("message"),
             creator=request.args.get("creator"),
@@ -514,6 +496,9 @@ class Server(Blueprint):
             rating=rating,
             opts=paged.parse_opts_from_querystring(request, max_limit=1_000_000)
         )
+
+        if "export" not in request.args:
+            return jsonify(ll)
 
         labels = "\n".join([json.dumps(l, cls=util.CustomEncoder) for l in ll.labels])
         filename = f"labels-{int(datetime.now(timezone.utc).timestamp())}.jsonl"

@@ -95,6 +95,14 @@ class TestIncognitoMessages(base.IntegrationTest):
             ids = set(all_message_ids(r.json()["messages"]))
             assert len(ids.intersection(incognito_ids)) == expect
 
+        # Make sure only the original creator can add messages to an incognito thread
+        for mid in [ im1["children"][0]["id"], im2["children"][0]["id"] ]:
+            r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u2), json={
+                "content": "dogs are unicorns, or are unicorns dogs?",
+                "parent": mid
+            })
+        assert r.status_code == 403
+
     def tearDown(self):
         for (id, user) in self.messages:
             r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))

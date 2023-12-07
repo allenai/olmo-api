@@ -296,6 +296,11 @@ class Server(Blueprint):
             root = self.dbc.message.get(parent.root)
             if root is None:
                 raise RuntimeError(f"root message {parent.root} not found")
+            # If a thread is incognito, only the creator can add to it. Otherwise
+            # this could be used as a way to leak incognito messages to other users
+            # by asking the LLM to emit the thread.
+            if root.incognito and root.creator != agent.client:
+                raise exceptions.Forbidden()
             # Transitively inherit the incognito status
             if incognito is None:
                 incognito = root.incognito

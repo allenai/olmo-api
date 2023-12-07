@@ -113,6 +113,7 @@ MessageRow = tuple[
     Optional[str],
     bool,
     Optional[str],
+    bool,
 
     # Label fields
     Optional[str],
@@ -170,6 +171,7 @@ class Message:
     completion: Optional[str] = None
     final: bool = False
     original: Optional[str] = None
+    private: bool = False
     labels: list[label.Label] = field(default_factory=list)
 
     def flatten(self) -> list['Message']:
@@ -184,7 +186,7 @@ class Message:
     def from_row(r: MessageRow) -> 'Message':
         labels = []
         # If the label id is not None, unpack the label.
-        li = 14
+        li = 15
         if r[li] is not None:
             labels = [label.Label.from_row(cast(label.LabelRow, r[li:]))]
 
@@ -205,6 +207,7 @@ class Message:
             completion=r[11],
             final=r[12],
             original=r[13],
+            private=r[14],
             labels=labels,
         )
 
@@ -268,16 +271,17 @@ class Store:
         logprobs: Optional[list[LogProbs]] = None,
         completion: Optional[obj.ID] = None,
         final: bool = True,
-        original: Optional[str] = None
+        original: Optional[str] = None,
+        private: bool = False,
     ) -> Message:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 try:
                     q = """
                         INSERT INTO
-                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original)
+                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private)
                         VALUES
-                            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING
                             id,
                             content,
@@ -293,6 +297,7 @@ class Store:
                             completion,
                             final,
                             original,
+                            private,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -316,7 +321,8 @@ class Store:
                         [Json(asdict(lp)) for lp in logprobs] if logprobs is not None else None,
                         completion,
                         final,
-                        original
+                        original,
+                        private
                     )).fetchone()
                     if row is None:
                         raise RuntimeError("failed to create message")
@@ -337,7 +343,7 @@ class Store:
                             raise exceptions.BadRequest(f"template \"{template}\" not found")
                     raise exceptions.BadRequest(f"unknown foreign key violation: {e.diag.constraint_name}")
 
-    def get(self, id: str, labels_for: Optional[str] = None) -> Optional[Message]:
+    def get(self, id: str, agent: Optional[str] = None) -> Optional[Message]:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 q = """
@@ -356,6 +362,7 @@ class Store:
                         message.completion,
                         message.final,
                         message.original,
+                        message.private,
                         label.id,
                         label.message,
                         label.rating,
@@ -378,7 +385,7 @@ class Store:
                     ORDER BY
                         message.created ASC
                 """
-                rows = cur.execute(q, (labels_for, id,)).fetchall()
+                rows = cur.execute(q, (agent, id,)).fetchall()
                 _, msgs = Message.tree(Message.group_by_id([Message.from_row(r) for r in rows]))
                 return msgs.get(id)
 
@@ -413,6 +420,7 @@ class Store:
                             completion,
                             final,
                             original,
+                            private,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -432,7 +440,7 @@ class Store:
                     raise exceptions.BadRequest(f"unknown foreign key violation: {e.diag.constraint_name}")
 
 
-    def delete(self, id: str, labels_for: Optional[str] = None) -> Optional[Message]:
+    def delete(self, id: str, agent: Optional[str] = None) -> Optional[Message]:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 q = """
@@ -460,6 +468,7 @@ class Store:
                         updated.completion,
                         updated.final,
                         updated.original,
+                        updated.private,
                         label.id,
                         label.message,
                         label.rating,
@@ -479,17 +488,21 @@ class Store:
                         label.deleted IS NULL
 
                 """
-                row = cur.execute(q, (id, labels_for)).fetchone()
+                row = cur.execute(q, (id, agent)).fetchone()
                 return Message.from_row(row) if row is not None else None
 
     # TODO: allow listing non-final messages
     def list(
         self,
-        labels_for: Optional[str] = None,
         creator: Optional[str] = None,
         deleted: bool = False,
-        opts: paged.Opts = paged.Opts()
+        opts: paged.Opts = paged.Opts(),
+        agent: Optional[str] = None,
     ) -> MessageList:
+        """
+        Returns messages from the database. If agent is set, both private messages
+        and labels belonging to that user will be returned.
+        """
         # TODO: add sort support for messages
         if opts.sort is not None:
             raise NotImplementedError("sorting messages is not supported")
@@ -509,13 +522,16 @@ class Store:
                         final = true
                     AND
                         parent IS NULL
+                    AND
+                        (private = false OR creator = %(agent)s)
                     ORDER BY
                         created DESC,
                         id
                 """
                 args = {
                     "creator": creator,
-                    "deleted": deleted
+                    "deleted": deleted,
+                    "agent": agent,
                 }
 
                 if opts.limit is not None:
@@ -544,6 +560,7 @@ class Store:
                         message.completion,
                         message.final,
                         message.original,
+                        message.private,
                         label.id,
                         label.message,
                         label.rating,
@@ -558,7 +575,7 @@ class Store:
                     ON
                         label.message = message.id
                     AND
-                        label.creator = %(labels_for)s
+                        label.creator = %(agent)s
                     AND
                         label.deleted IS NULL
                     WHERE
@@ -573,7 +590,7 @@ class Store:
                         message.created DESC,
                         message.id
                 """
-                args["labels_for"] = labels_for
+                args["agent"] = agent
 
                 rows = cur.execute(q, args).fetchall()
 
@@ -590,3 +607,4 @@ class Store:
                 roots, _ = Message.tree(Message.group_by_id([Message.from_row(r[1:]) for r in rows]))
 
                 return MessageList(messages=roots, meta=paged.ListMeta(total, opts.offset, opts.limit))
+

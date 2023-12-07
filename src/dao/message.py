@@ -113,6 +113,7 @@ MessageRow = tuple[
     Optional[str],
     bool,
     Optional[str],
+    bool,
 
     # Label fields
     Optional[str],
@@ -121,7 +122,7 @@ MessageRow = tuple[
     Optional[str],
     Optional[str],
     Optional[datetime],
-    Optional[datetime]
+    Optional[datetime],
 ]
 
 MessagesByID = dict[str, 'Message']
@@ -170,6 +171,7 @@ class Message:
     completion: Optional[str] = None
     final: bool = False
     original: Optional[str] = None
+    incognito: bool = False
     labels: list[label.Label] = field(default_factory=list)
 
     def flatten(self) -> list['Message']:
@@ -184,7 +186,7 @@ class Message:
     def from_row(r: MessageRow) -> 'Message':
         labels = []
         # If the label id is not None, unpack the label.
-        li = 14
+        li = 15
         if r[li] is not None:
             labels = [label.Label.from_row(cast(label.LabelRow, r[li:]))]
 
@@ -205,6 +207,7 @@ class Message:
             completion=r[11],
             final=r[12],
             original=r[13],
+            incognito=r[14],
             labels=labels,
         )
 
@@ -268,16 +271,17 @@ class Store:
         logprobs: Optional[list[LogProbs]] = None,
         completion: Optional[obj.ID] = None,
         final: bool = True,
-        original: Optional[str] = None
+        original: Optional[str] = None,
+        incognito: bool = False,
     ) -> Message:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 try:
                     q = """
                         INSERT INTO
-                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original)
+                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, incognito)
                         VALUES
-                            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING
                             id,
                             content,
@@ -293,6 +297,7 @@ class Store:
                             completion,
                             final,
                             original,
+                            incognito,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -316,7 +321,8 @@ class Store:
                         [Json(asdict(lp)) for lp in logprobs] if logprobs is not None else None,
                         completion,
                         final,
-                        original
+                        original,
+                        incognito
                     )).fetchone()
                     if row is None:
                         raise RuntimeError("failed to create message")
@@ -356,6 +362,7 @@ class Store:
                         message.completion,
                         message.final,
                         message.original,
+                        message.incognito,
                         label.id,
                         label.message,
                         label.rating,
@@ -413,6 +420,7 @@ class Store:
                             completion,
                             final,
                             original,
+                            incognito,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -460,6 +468,7 @@ class Store:
                         updated.completion,
                         updated.final,
                         updated.original,
+                        updated.incognito,
                         label.id,
                         label.message,
                         label.rating,
@@ -488,7 +497,8 @@ class Store:
         labels_for: Optional[str] = None,
         creator: Optional[str] = None,
         deleted: bool = False,
-        opts: paged.Opts = paged.Opts()
+        opts: paged.Opts = paged.Opts(),
+        incognito_for: Optional[str] = None,
     ) -> MessageList:
         # TODO: add sort support for messages
         if opts.sort is not None:
@@ -509,13 +519,16 @@ class Store:
                         final = true
                     AND
                         parent IS NULL
+                    AND
+                        (incognito = false OR creator = %(incognito_for)s)
                     ORDER BY
                         created DESC,
                         id
                 """
                 args = {
                     "creator": creator,
-                    "deleted": deleted
+                    "deleted": deleted,
+                    "incognito_for": incognito_for,
                 }
 
                 if opts.limit is not None:
@@ -544,6 +557,7 @@ class Store:
                         message.completion,
                         message.final,
                         message.original,
+                        message.incognito,
                         label.id,
                         label.message,
                         label.rating,
@@ -590,3 +604,4 @@ class Store:
                 roots, _ = Message.tree(Message.group_by_id([Message.from_row(r[1:]) for r in rows]))
 
                 return MessageList(messages=roots, meta=paged.ListMeta(total, opts.offset, opts.limit))
+

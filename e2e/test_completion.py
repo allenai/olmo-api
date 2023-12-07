@@ -7,25 +7,26 @@ class TestCompletionEndpoints(base.IntegrationTest):
     messages: list[tuple[str, base.AuthenticatedClient]] = []
 
     def runTest(self):
-        # Make sure all endpoints fail w/o auth
-        for r in [
-            requests.get(f"{self.origin}/v3/completion/XXX"),
-        ]:
-            assert r.status_code == 401
-
         u1 = self.user("test1@localhost")
-        u2 = self.user("test2@localhost")
 
-        r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
+        # Make sure all endpoints fail w/o auth and for non-admins
+        for (r, status) in [
+            (requests.get(f"{self.origin}/v3/completion/XXX"), 401),
+            (requests.get(f"{self.origin}/v3/completion/XXX", headers=self.auth(u1)), 403)
+        ]:
+            assert r.status_code == status
+
+        a1 = self.user("murphy@localhost")
+        r = requests.post(f"{self.origin}/v3/message", headers=self.auth(a1), json={
             "content": "Is Grasshopper a unicorn?",
         })
         r.raise_for_status()
         m = json.loads(util.last_response_line(r))
-        self.messages.append((m["id"], u1))
+        self.messages.append((m["id"], a1))
 
         # TODO: for now we just make sure the completions exist. We anticipate moving these (soonish)
         # to InferD. We can more rigorously test things then.
-        r = requests.get(f"{self.origin}/v3/completion/{m['children'][0]['completion']}", headers=self.auth(u2))
+        r = requests.get(f"{self.origin}/v3/completion/{m['children'][0]['completion']}", headers=self.auth(a1))
         r.raise_for_status()
 
     def tearDown(self):

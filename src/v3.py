@@ -290,6 +290,24 @@ class Server(Blueprint):
         if original is not None and parent is not None and original == parent.id:
             raise exceptions.BadRequest("original message cannot be parent")
 
+        incognito = request.json.get("incognito")
+        root = None
+        if parent is not None:
+            root = self.dbc.message.get(parent.root)
+            if root is None:
+                raise RuntimeError(f"root message {parent.root} not found")
+            # Transitively inherit the incognito status
+            if incognito is None:
+                incognito = root.incognito
+            # Validate that visibility is the same for all messages in the thread
+            if root.incognito != incognito:
+                raise exceptions.BadRequest("visibility must be identical for all messages in a thread")
+        elif incognito is None:
+            incognito = False
+
+        if not isinstance(incognito, bool):
+            raise exceptions.BadRequest("incognito must be a boolean")
+
         msg = self.dbc.message.create(
             content,
             agent.client,
@@ -299,7 +317,8 @@ class Server(Blueprint):
             parent=parent.id if parent is not None else None,
             template=request.json.get("template"),
             final=role==message.Role.Assistant,
-            original=original
+            original=original,
+            incognito=incognito,
         )
 
         if msg.role == message.Role.Assistant:
@@ -307,14 +326,11 @@ class Server(Blueprint):
 
         # Resolve the message chain if we need to.
         chain = [msg]
-        if parent is not None:
-            root = self.dbc.message.get(parent.root)
-            assert root is not None
+        if root is not None:
             msgs = message.Message.group_by_id(root.flatten())
             while chain[-1].parent is not None:
                 chain.append(msgs[chain[-1].parent])
             chain.reverse()
-
 
         @dataclasses.dataclass
         class ParsedMessage:
@@ -352,7 +368,8 @@ class Server(Blueprint):
             msg.opts,
             root=msg.root,
             parent=msg.id,
-            final=False
+            final=False,
+            incognito=incognito,
         )
 
         # Update the parent message to include the reply.
@@ -418,6 +435,8 @@ class Server(Blueprint):
         message = self.dbc.message.get(id, labels_for=agent.client)
         if message is None:
             raise exceptions.NotFound()
+        if message.creator != agent.client and message.incognito:
+            raise exceptions.Forbidden()
         return jsonify(message)
 
     def delete_message(self, id: str):
@@ -438,7 +457,8 @@ class Server(Blueprint):
             labels_for=agent.client,
             creator=request.args.get("creator"),
             deleted="deleted" in request.args,
-            opts=paged.parse_opts_from_querystring(request)
+            opts=paged.parse_opts_from_querystring(request),
+            incognito_for=agent.client
         ))
 
     def schema(self):
@@ -519,7 +539,10 @@ class Server(Blueprint):
         return jsonify(deleted)
 
     def completion(self, id: str):
-        self.authn()
+        agent = self.authn()
+        # Only admins can view completions, since they might be related to incognito messages.
+        if agent.client not in self.cfg.server.admins:
+            raise exceptions.Forbidden()
         c = self.dbc.completion.get(id)
         if c is None:
             raise exceptions.NotFound()

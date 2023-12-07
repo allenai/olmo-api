@@ -18,7 +18,7 @@ class TestInviteEndpoints(base.IntegrationTest):
         assert r.status_code == 403
 
         # An admin user who can create login urls
-        admin = self.user("sams@allenai.org")
+        admin = self.user("murphy@localhost")
 
         # Invalid intervals should return a 400
         invalid = [ f"{7 * 24 + 1}h", "0h", "-1h", "1", "1.5h", "1h30m", "1 minute"]

@@ -14,7 +14,10 @@ local=$(cat <<EOF
     "max_size": 2
   },
   "server": {
-    "proxies": 1
+    "proxies": 1,
+    "admins": [ "murphy@localhost" ],
+    "origin": "http://localhost:8000",
+    "ui_origin": "http://localhost:8080"
   }
 }
 EOF

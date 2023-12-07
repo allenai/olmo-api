@@ -437,7 +437,7 @@ class Server(Blueprint):
 
     def message(self, id: str):
         agent = self.authn()
-        message = self.dbc.message.get(id, labels_for=agent.client)
+        message = self.dbc.message.get(id, agent=agent.client)
         if message is None:
             raise exceptions.NotFound()
         if message.creator != agent.client and message.private:
@@ -451,7 +451,7 @@ class Server(Blueprint):
             raise exceptions.NotFound()
         if message.creator != agent.client:
             raise exceptions.Forbidden()
-        deleted = self.dbc.message.delete(id, labels_for=agent.client)
+        deleted = self.dbc.message.delete(id, agent=agent.client)
         if deleted is None:
             raise exceptions.NotFound()
         return jsonify(deleted)
@@ -459,11 +459,10 @@ class Server(Blueprint):
     def messages(self):
         agent = self.authn()
         return jsonify(self.dbc.message.list(
-            labels_for=agent.client,
             creator=request.args.get("creator"),
             deleted="deleted" in request.args,
             opts=paged.parse_opts_from_querystring(request),
-            private_for=agent.client
+            agent=agent.client,
         ))
 
     def schema(self):

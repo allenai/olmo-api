@@ -32,6 +32,33 @@ class TestMessageEndpoints(base.IntegrationTest):
         for c in m1["children"]:
             self.messages.append((c["id"], u1))
 
+        # Create a message w/ logprobs
+        r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
+            "content": "why are labradors smarter than unicorns?",
+            "opts": {
+                "logprobs": 2
+            }
+        })
+        r.raise_for_status()
+        lines = list(r.text.splitlines())
+        for line in lines[1:-1]:
+            chunk = json.loads(line)
+            assert len(chunk.get("logprobs", [])) == 2
+        final = json.loads(lines[-1])
+        self.messages.append((final["id"], u1))
+        assert all(len(lp) == 2 for lp in final.get("logprobs", []))
+        assert isinstance(final["logprobs"][0].get("text"), str)
+        assert isinstance(final["logprobs"][0].get("token_id"), int) >= 0 and final["logprobs"][0].get("token_id") >= 0
+        assert isinstance(final["logprobs"][0].get("logprob"), float)
+        assert final["logprobs"][0].get("logprob") > final["logprobs"][1].get("logprob")
+
+        msgs = [json.loads(util.last_response_line(r))]
+        m1 = msgs[0]
+        self.messages.append((m1["id"], u1))
+        for c in m1["children"]:
+            self.messages.append((c["id"], u1))
+
+
         defaults = [
             ("max_tokens", 2048),
             ("temperature", 0.5),
@@ -54,7 +81,7 @@ class TestMessageEndpoints(base.IntegrationTest):
 
             # TODO: test these cases, once supported (they were disabled when streaming was added)
             ("n",           [-1, 1.0, "three", 51],     []),
-            ("logprobs",    [-1, 1.0, "three", 6],      []),
+            ("logprobs",    [-1, 1.0, "three", 11],     [0, 1, 10]),
         ]
         for (name, invalid, valid) in fields:
             for v in invalid:

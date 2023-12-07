@@ -17,6 +17,49 @@ import json
 import io
 
 @dataclasses.dataclass
+class OutputPart:
+    """
+    An OutputPart is a single message part delivered from the Tulu2 model:
+    https://github.com/allenai/inferd-tulu2/blob/main/src/svllm.py#L16-L20
+
+    If we end up using other models via the same UI, we'll need to generalize.
+    """
+    text: str
+    token_ids: list[int]
+    logprobs: Optional[list[list[message.TokenLogProbs]]] = None
+
+    @classmethod
+    def from_struct(cls, s: Struct) -> 'OutputPart':
+        # TODO: is this really the best way to parse a pb2.Struct?
+
+        token_ids: list[int] = []
+        for t in s.fields["token_ids"].list_value.values:
+            if not t.number_value.is_integer():
+                raise RuntimeError(f"non-integer token ID {t.number_value}")
+            token_ids.append(int(t.number_value))
+
+
+        text = s.fields["text"].string_value
+
+        logprobs = None
+        if "logprobs" in s.fields:
+            logprobs: Optional[list[list[message.TokenLogProbs]]] = []
+            for lps in s.fields["logprobs"].list_value.values:
+                logprobs.append([])
+                for lp in lps.list_value.values:
+                    tid = lp.struct_value.fields["token_id"].number_value
+                    if not tid.is_integer():
+                        raise RuntimeError(f"non-integer token ID {tid}")
+                    tlp = message.TokenLogProbs(
+                        token_id=int(tid),
+                        text = lp.struct_value.fields["text"].string_value,
+                        logprob = lp.struct_value.fields["logprob"].number_value,
+                    )
+                    logprobs[-1].append(tlp)
+
+        return cls(text, token_ids, logprobs)
+
+@dataclasses.dataclass
 class AuthenticatedClient:
     client: str
 
@@ -267,10 +310,6 @@ class Server(Blueprint):
         if opts.n > 1:
             raise exceptions.BadRequest("n > 1 not supported when streaming")
 
-        # TODO: remove when logprobs are supported by the InferD worker
-        if opts.logprobs > 0:
-            raise exceptions.BadRequest("logprobs not supported when streaming")
-
         content = request.json.get("content")
         if content.strip() == "":
             raise exceptions.BadRequest("empty content")
@@ -387,7 +426,7 @@ class Server(Blueprint):
             # We keep track of each chunk and the timing information per-chunk
             # so that we can manifest a completion at the end. This will go
             # away when InferD stores this I/O.
-            chunks = []
+            chunks: list[message.MessageChunk] = []
             gen, queue = 0, 0
 
             # First yield the new user message
@@ -396,19 +435,29 @@ class Server(Blueprint):
             # Now yield each chunk as it's returned.
             md = (("x-inferd-token", self.cfg.inferd.token),)
             for resp in self.inferd.Infer(req, metadata=md, wait_for_ready=True):
-                chunks.append(message.MessageChunk(reply.id, resp.result.output["text"]))
+                part = OutputPart.from_struct(resp.result.output)
+                chunks.append(message.MessageChunk(
+                    reply.id,
+                    part.text,
+                    part.logprobs if part.logprobs is not None else None)
+                )
                 gen += resp.result.inference_time.ToMilliseconds()
                 queue = resp.result.queue_time.ToMilliseconds()
                 yield json.dumps(chunks[-1], cls=util.CustomEncoder) + "\n"
 
             # The generation is complete. Store it.
             # TODO: InferD should store this so that we don't have to.
-            # TODO: capture InferD request input instead of our manifestion of the prompt format
+            # TODO: capture InferD request input instead of our manifestation of the prompt format
             prompt = "\n".join([ f"<|{pm.role}|>\n{pm.content.html()}" for pm in parsed_chain ])
-            output = "".join([ck.content for ck in chunks ])
+            output = ""
+            logprobs: list[list[message.TokenLogProbs]] = []
+            for ck in chunks:
+                output += ck.content
+                if ck.logprobs is not None:
+                    logprobs.append(*ck.logprobs)
             c = self.dbc.completion.create(
                 prompt,
-                [completion.CompletionOutput(output, "unknown", None)],
+                [completion.CompletionOutput(output, "unknown", logprobs)],
                 msg.opts,
                 model,
                 sha,
@@ -425,7 +474,7 @@ class Server(Blueprint):
                 err = RuntimeError(f"failed to finalize message {msg.id}")
                 yield json.dumps(message.MessageStreamError(reply.id, str(err)), cls=util.CustomEncoder) + "\n"
                 raise err
-            freply = self.dbc.message.finalize(reply.id, output, c.id)
+            freply = self.dbc.message.finalize(reply.id, output, logprobs, c.id)
             if freply is None:
                 err = RuntimeError(f"failed to finalize message {reply.id}")
                 yield json.dumps(message.MessageStreamError(reply.id, str(err)), cls=util.CustomEncoder) + "\n"

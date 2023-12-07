@@ -95,6 +95,7 @@ class TestMessageEndpoints(base.IntegrationTest):
             assert m["root"] == m["id"]
             assert m["template"] is None
             assert m["logprobs"] is None
+            assert m["private"] is False
             assert len(m["children"]) == 1
 
         # Check /v3/message/:id works as expected for children

@@ -8,7 +8,8 @@ class TestMessageDatachips(base.IntegrationTest):
     datachips: list[tuple[str, base.AuthenticatedClient]] = []
 
     def runTest(self):
-        u1 = self.user("test1@localhost")
+        # The user must be an admin for this test to work.
+        u1 = self.user("murphy@localhost")
 
         # Create a datachip
         r = requests.post(f"{self.origin}/v3/datachip", json={

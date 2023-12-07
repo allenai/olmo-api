@@ -441,7 +441,7 @@ class Server(Blueprint):
         if message is None:
             raise exceptions.NotFound()
         if message.creator != agent.client and message.private:
-            raise exceptions.Forbidden()
+            raise exceptions.Forbidden("You do not have access to that private message.")
         return jsonify(message)
 
     def delete_message(self, id: str):

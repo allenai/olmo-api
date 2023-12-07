@@ -9,7 +9,7 @@ def all_message_ids(messages: list[dict]) -> list[str]:
         ids += all_message_ids(m["children"]) if m.get("children") is not None else []
     return ids
 
-class TestIncognitoMessages(base.IntegrationTest):
+class TestPrivateMessages(base.IntegrationTest):
     messages: list[tuple[str, base.AuthenticatedClient]] = []
 
     def runTest(self):
@@ -17,13 +17,13 @@ class TestIncognitoMessages(base.IntegrationTest):
         u2 = self.user("test2@localhost")
 
         # Make sure threaded messages all have the same visibility level
-        for (parent_incognito, child_incognito) in [
+        for (is_parent_private, is_child_private) in [
             (True, False),
             (False, True),
         ]:
             r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
                 "content": "I'm a magical labrador named Murphy, who are you? ",
-                "incognito": parent_incognito,
+                "private": is_parent_private,
             })
             r.raise_for_status()
 
@@ -34,7 +34,7 @@ class TestIncognitoMessages(base.IntegrationTest):
             r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
                 "content": "I am magical though, really.",
                 "parent": response_id,
-                "incognito": child_incognito,
+                "private": is_child_private,
             })
             assert r.status_code == 400
 
@@ -42,34 +42,34 @@ class TestIncognitoMessages(base.IntegrationTest):
         for invalid in [ "true", "false", "0", "1", "yes", "no", "maybe", 1, 1.0, 0, 0.0 ]:
             r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
                 "content": "I'm a magical labrador named Murphy, who are you? ",
-                "incognito": invalid,
+                "private": invalid,
             })
             assert r.status_code == 400
 
-        # Makes sure model responses share the incognito level of their parent
+        # Makes sure model responses share the private level of their parent
         r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
             "content": "I'm a magical labrador named Murphy, who are you? ",
-            "incognito": True,
+            "private": True,
         })
         r.raise_for_status()
         im1 = json.loads(util.last_response_line(r))
         self.messages.append((im1["id"], u1))
-        assert im1["incognito"] == True
-        assert im1["children"][0]["incognito"] == True
+        assert im1["private"] == True
+        assert im1["children"][0]["private"] == True
 
-        # Make sure child messages transitively inherit the root's incognito level
+        # Make sure child messages transitively inherit the root's private level
         r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
             "content": "That's great, do you like eating socks?",
             "parent": im1["children"][0]["id"],
         })
         r.raise_for_status()
         im2 = json.loads(util.last_response_line(r))
-        assert im2["incognito"] == True
+        assert im2["private"] == True
 
         # Verify visibility enforcement of GET /message/:id endpoints
-        incognito_ids = [ im1["id"], im1["children"][0]["id"], im2["id"], im2["children"][0]["id"] ]
-        for mid in incognito_ids:
-            # Make sure incognito messages are not visible to other users
+        private_ids = [ im1["id"], im1["children"][0]["id"], im2["id"], im2["children"][0]["id"] ]
+        for mid in private_ids:
+            # Make sure private messages are not visible to other users
             r = requests.get(f"{self.origin}/v3/message/{mid}", headers=self.auth(u2))
             assert r.status_code == 403
 
@@ -77,15 +77,15 @@ class TestIncognitoMessages(base.IntegrationTest):
             r = requests.get(f"{self.origin}/v3/message/{mid}", headers=self.auth(u1))
             assert r.status_code == 200
 
-        # Verify GET /messages doesn't return incognito messages inappropriately. We sort by recency,
+        # Verify GET /messages doesn't return private messages inappropriately. We sort by recency,
         # so we shouldn't need to paginate (but still set a high limit to be safe).
-        for (user, should_see_incognito) in [ (u2, False), (u1, True) ]:
-            expect = 0 if not should_see_incognito else len(incognito_ids)
+        for (user, should_see_private) in [ (u2, False), (u1, True) ]:
+            expect = 0 if not should_see_private else len(private_ids)
 
             r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(user), params={ "limit": 100 })
             r.raise_for_status()
             ids = set(all_message_ids(r.json()["messages"]))
-            assert len(ids.intersection(incognito_ids)) == expect
+            assert len(ids.intersection(private_ids)) == expect
 
             r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(user), params={
                 "limit": 100,
@@ -93,9 +93,9 @@ class TestIncognitoMessages(base.IntegrationTest):
             })
             r.raise_for_status()
             ids = set(all_message_ids(r.json()["messages"]))
-            assert len(ids.intersection(incognito_ids)) == expect
+            assert len(ids.intersection(private_ids)) == expect
 
-        # Make sure only the original creator can add messages to an incognito thread
+        # Make sure only the original creator can add messages to an private thread
         for mid in [ im1["children"][0]["id"], im2["children"][0]["id"] ]:
             r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u2), json={
                 "content": "dogs are unicorns, or are unicorns dogs?",

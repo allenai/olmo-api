@@ -171,7 +171,7 @@ class Message:
     completion: Optional[str] = None
     final: bool = False
     original: Optional[str] = None
-    incognito: bool = False
+    private: bool = False
     labels: list[label.Label] = field(default_factory=list)
 
     def flatten(self) -> list['Message']:
@@ -207,7 +207,7 @@ class Message:
             completion=r[11],
             final=r[12],
             original=r[13],
-            incognito=r[14],
+            private=r[14],
             labels=labels,
         )
 
@@ -272,14 +272,14 @@ class Store:
         completion: Optional[obj.ID] = None,
         final: bool = True,
         original: Optional[str] = None,
-        incognito: bool = False,
+        private: bool = False,
     ) -> Message:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 try:
                     q = """
                         INSERT INTO
-                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, incognito)
+                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private)
                         VALUES
                             (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING
@@ -297,7 +297,7 @@ class Store:
                             completion,
                             final,
                             original,
-                            incognito,
+                            private,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -322,7 +322,7 @@ class Store:
                         completion,
                         final,
                         original,
-                        incognito
+                        private
                     )).fetchone()
                     if row is None:
                         raise RuntimeError("failed to create message")
@@ -362,7 +362,7 @@ class Store:
                         message.completion,
                         message.final,
                         message.original,
-                        message.incognito,
+                        message.private,
                         label.id,
                         label.message,
                         label.rating,
@@ -420,7 +420,7 @@ class Store:
                             completion,
                             final,
                             original,
-                            incognito,
+                            private,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -468,7 +468,7 @@ class Store:
                         updated.completion,
                         updated.final,
                         updated.original,
-                        updated.incognito,
+                        updated.private,
                         label.id,
                         label.message,
                         label.rating,
@@ -498,7 +498,7 @@ class Store:
         creator: Optional[str] = None,
         deleted: bool = False,
         opts: paged.Opts = paged.Opts(),
-        incognito_for: Optional[str] = None,
+        private_for: Optional[str] = None,
     ) -> MessageList:
         # TODO: add sort support for messages
         if opts.sort is not None:
@@ -520,7 +520,7 @@ class Store:
                     AND
                         parent IS NULL
                     AND
-                        (incognito = false OR creator = %(incognito_for)s)
+                        (private = false OR creator = %(private_for)s)
                     ORDER BY
                         created DESC,
                         id
@@ -528,7 +528,7 @@ class Store:
                 args = {
                     "creator": creator,
                     "deleted": deleted,
-                    "incognito_for": incognito_for,
+                    "private_for": private_for,
                 }
 
                 if opts.limit is not None:
@@ -557,7 +557,7 @@ class Store:
                         message.completion,
                         message.final,
                         message.original,
-                        message.incognito,
+                        message.private,
                         label.id,
                         label.message,
                         label.rating,

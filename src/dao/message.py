@@ -122,7 +122,7 @@ MessageRow = tuple[
     Optional[str],
     Optional[str],
     Optional[datetime],
-    Optional[datetime],
+    Optional[datetime]
 ]
 
 MessagesByID = dict[str, 'Message']

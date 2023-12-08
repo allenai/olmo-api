@@ -1,10 +1,10 @@
 from psycopg_pool import ConnectionPool
-from psycopg.types.json import Json
+from psycopg.types.json import Jsonb
 from datetime import datetime
 from typing import Optional, Any
 from dataclasses import dataclass, asdict
 from .. import obj
-from .message import InferenceOpts, LogProbs
+from .message import InferenceOpts, TokenLogProbs
 
 CompletionRow = tuple[
     str,
@@ -21,18 +21,23 @@ CompletionRow = tuple[
     int
 ]
 
+def parse_logprobs(logprobs: Optional[list[list[dict[str, Any]]]]) -> Optional[list[list[TokenLogProbs]]]:
+    if logprobs is None:
+        return None
+    return [[ TokenLogProbs(**t) for t in lp ] for lp in logprobs ]
+
 @dataclass
 class CompletionOutput:
     text: str
     finish_reason: str
-    logprobs: Optional[list[LogProbs]]
+    logprobs: Optional[list[list[TokenLogProbs]]] = None
 
     @staticmethod
     def from_dict(row: dict[str, Any]) -> 'CompletionOutput':
         return CompletionOutput(
             row['text'],
             row['finish_reason'],
-            [LogProbs(**lp) for lp in row['logprobs']] if row['logprobs'] is not None else None
+            parse_logprobs(row.get('logprobs')),
         )
 
 @dataclass
@@ -121,8 +126,8 @@ class Store:
                 values = (
                     obj.NewID("cpl"),
                     input,
-                    Json([ asdict(o) for o in outputs ]),
-                    Json(asdict(opts)),
+                    Jsonb([ asdict(o) for o in outputs ]),
+                    Jsonb(asdict(opts)),
                     model,
                     sha,
                     tokenize_ms,

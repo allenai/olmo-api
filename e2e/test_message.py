@@ -43,7 +43,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         lines = list(r.text.splitlines())
         for line in lines[1:-1]:
             chunk = json.loads(line)
-            assert len(chunk.get("logprobs", [])) == 2
+            assert all(len(lp) == 2 for lp in chunk.get("logprobs", []))
         final = json.loads(lines[-1])
         self.messages.append((final["id"], u1))
         assert all(len(lp) == 2 for lp in final.get("logprobs", []))

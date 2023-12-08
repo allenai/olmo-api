@@ -1,5 +1,5 @@
 from psycopg_pool import ConnectionPool
-from psycopg.types.json import Json
+from psycopg.types.json import Jsonb
 from psycopg import errors
 from dataclasses import dataclass, field, asdict, replace
 from datetime import datetime
@@ -28,7 +28,7 @@ max_tokens = Field("max_tokens", 2048, 1, 4096, 1)
 temperature = Field("temperature", 0.5, 0.0, 2.0, 0.01)
 num = Field("n", 1, 1, 50, 1)
 top_p = Field("top_p", 1.0, 0.0, 1.0, 0.01)
-logprobs = Field("logprobs", 0, 0, 5, 1)
+logprobs = Field("logprobs", 0, 0, 10, 1)
 stop = Field("stop", [], None, None)
 
 @dataclass
@@ -91,11 +91,17 @@ class InferenceOpts:
         return InferenceOpts(mt, temp, n, tp, lp, sw)
 
 @dataclass
-class LogProbs:
-    # Candidate tokens, sorted by priority in descending order.
-    candidates: list[tuple[str, float]]
-    # The text offset for the token in the original completion.
-    offset: int
+class TokenLogProbs:
+    token_id: int
+    text: str
+    logprob: float
+
+def prepare_logprobs(logprobs: Optional[list[list[TokenLogProbs]]]) -> Optional[list[Jsonb]]:
+    if logprobs is None:
+        return None
+    # TODO: logprobs is a JSONB[] field now, but should probably be JSONB[][]; though this only
+    # matters if we decide we want to query by index, which seems unlikely.
+    return [Jsonb(list([asdict(lp) for lp in lps])) for lps in logprobs]
 
 MessageRow = tuple[
     # Message fields
@@ -109,7 +115,7 @@ MessageRow = tuple[
     Optional[datetime],
     Optional[str],
     Optional[str],
-    Optional[list[dict[str, Any]]],
+    Optional[list[list[dict]]],
     Optional[str],
     bool,
     Optional[str],
@@ -131,6 +137,7 @@ MessagesByID = dict[str, 'Message']
 class MessageChunk:
     message: obj.ID
     content: str
+    logprobs: Optional[list[list[TokenLogProbs]]] = None
 
 @dataclass
 class MessageStreamError:
@@ -161,12 +168,7 @@ class Message:
     deleted: Optional[datetime] = None
     parent: Optional[str] = None
     template: Optional[str] = None
-    # logprobs, if requested, is a list of LogProbs. Each entry provides
-    # a list of candidate tokens and their log normalized probabilities, ordered
-    # from the most to lease probable. The index of each item corresponds to the
-    # associated output tokens' index.
-    # TODO: list[T] instead of Optional[list[T]].
-    logprobs: Optional[list[LogProbs]] = None
+    logprobs: Optional[list[list[TokenLogProbs]]] = None
     children: Optional[list['Message']] = None
     completion: Optional[str] = None
     final: bool = False
@@ -190,6 +192,12 @@ class Message:
         if r[li] is not None:
             labels = [label.Label.from_row(cast(label.LabelRow, r[li:]))]
 
+        logprobs = None
+        if r[10] is not None:
+            logprobs = []
+            for lp in r[10]:
+                logprobs.append([TokenLogProbs(**l) for l in lp])
+
         return Message(
             id=r[0],
             content=r[1],
@@ -202,7 +210,7 @@ class Message:
             deleted=r[7],
             parent=r[8],
             template=r[9],
-            logprobs=[LogProbs(**l) for l in r[10]] if r[10] is not None else None,
+            logprobs=logprobs,
             children=None,
             completion=r[11],
             final=r[12],
@@ -268,7 +276,7 @@ class Store:
         root: Optional[str] = None,
         parent: Optional[str] = None,
         template: Optional[str] = None,
-        logprobs: Optional[list[LogProbs]] = None,
+        logprobs: Optional[list[list[TokenLogProbs]]] = None,
         completion: Optional[obj.ID] = None,
         final: bool = True,
         original: Optional[str] = None,
@@ -314,11 +322,11 @@ class Store:
                         content,
                         creator,
                         role,
-                        Json(asdict(opts)),
+                        Jsonb(asdict(opts)),
                         root or mid,
                         parent,
                         template,
-                        [Json(asdict(lp)) for lp in logprobs] if logprobs is not None else None,
+                        prepare_logprobs(logprobs),
                         completion,
                         final,
                         original,
@@ -389,7 +397,7 @@ class Store:
                 _, msgs = Message.tree(Message.group_by_id([Message.from_row(r) for r in rows]))
                 return msgs.get(id)
 
-    def finalize(self, id: obj.ID, content: Optional[str] = None, completion: Optional[obj.ID] = None) -> Optional[Message]:
+    def finalize(self, id: obj.ID, content: Optional[str] = None, logprobs: Optional[list[list[TokenLogProbs]]] = None, completion: Optional[obj.ID] = None) -> Optional[Message]:
         """
         Used to finalize a Message produced via a streaming response.
         """
@@ -401,6 +409,7 @@ class Store:
                             message
                         SET
                             content = COALESCE(%s, content),
+                            logprobs = COALESCE(%s, logprobs),
                             completion = COALESCE(%s, completion),
                             final = true
                         WHERE
@@ -431,7 +440,7 @@ class Store:
                             NULL,
                             NULL
                     """
-                    row = cur.execute(q, (content, completion, id)).fetchone()
+                    row = cur.execute(q, (content, prepare_logprobs(logprobs), completion, id)).fetchone()
                     return Message.from_row(row) if row is not None else None
                 except errors.ForeignKeyViolation as e:
                     match e.diag.constraint_name:

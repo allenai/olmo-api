@@ -44,7 +44,10 @@ class TestMessageEndpoints(base.IntegrationTest):
             assert m1["opts"][name] == value
 
         # Test inference option validation. Each tuple is of the form:
-        # (field_name, invalid_values, valid_values)
+        # (field_name, invalid_values, valid_values). For these tests we create
+        # private messages belonging to u3, as to not pollute data that tests below this
+        # use.
+        u3 = self.user("test3@localhost")
         fields = [
             # We don't test values numbers close to most maximums b/c they surpass the thresholds
             # of what our tiny local models can do...
@@ -54,11 +57,11 @@ class TestMessageEndpoints(base.IntegrationTest):
 
             # TODO: test these cases, once supported (they were disabled when streaming was added)
             ("n",           [-1, 1.0, "three", 51],     []),
-            ("logprobs",    [-1, 1.0, "three", 6],      []),
+            ("logprobs",    [-1, 1.0, "three", 11],     [0, 1, 10]),
         ]
         for (name, invalid, valid) in fields:
             for v in invalid:
-                r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
+                r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u3), json={
                     "content": f"Testing invalid value \"{v}\" for {name}",
                     "opts": { name: v }
                 })
@@ -69,13 +72,14 @@ class TestMessageEndpoints(base.IntegrationTest):
                 if name == "top_p" and v != 1.0:
                     opts["temperature"] = 0.5
 
-                r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
+                r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u3), json={
                     "content": f"Testing valid value \"{v}\" for {name}",
-                    "opts": opts
+                    "opts": opts,
+                    "private": True,
                 })
                 assert r.status_code == 200, f"Expected 200 for valid value {v} for {name}"
                 msg = json.loads(util.last_response_line(r))
-                self.messages.append((msg["id"], u1))
+                self.messages.append((msg["id"], u3))
                 for default_name, default_value in defaults:
                     actual = msg["opts"][default_name]
                     expected = opts.get(default_name, default_value)
@@ -255,6 +259,32 @@ class TestMessageEndpoints(base.IntegrationTest):
             m = json.loads(util.last_response_line(r))
             self.messages.append((m["id"], u1))
             assert m["snippet"] == snippet
+
+        # Create a message w/ logprobs
+        r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
+            "content": "why are labradors smarter than unicorns?",
+            "opts": {
+                "logprobs": 2
+            }
+        })
+        r.raise_for_status()
+        lines = list(r.text.splitlines())
+        for line in lines[1:-1]:
+            chunk = json.loads(line)
+            # TODO: I can't explain why, but sometimes there appears to be > 2 in the response.
+            # I believe it has to do with this:
+            # https://github.com/vllm-project/vllm/blob/6ccc0bfffbcf1b7e927cc3dcf4159fc74ff94d40/vllm/sampling_params.py#L79-L81
+            # But I don't follow the reasoning.
+            assert all(len(lp) >= 2 for lp in chunk.get("logprobs", []))
+        final = json.loads(lines[-1])
+        self.messages.append((final["id"], u1))
+        assistant_logprobs = final["children"][0].get("logprobs", [])
+        assert all(len(lp) >= 2 for lp in assistant_logprobs)
+        lp1, lp2 = assistant_logprobs[0][0], assistant_logprobs[0][1]
+        assert isinstance(lp1.get("text"), str)
+        assert isinstance(lp1.get("token_id"), int) and lp1.get("token_id") >= 0
+        assert isinstance(lp1.get("logprob"), float)
+        assert lp1.get("logprob") > lp2.get("logprob")
 
     def tearDown(self):
         for (id, user) in self.messages:

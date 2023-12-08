@@ -47,9 +47,9 @@ class TestMessageEndpoints(base.IntegrationTest):
         final = json.loads(lines[-1])
         self.messages.append((final["id"], u1))
         assert all(len(lp) == 2 for lp in final.get("logprobs", []))
-        assert isinstance(final["logprobs"][0].get("text"), str)
-        assert isinstance(final["logprobs"][0].get("token_id"), int) >= 0 and final["logprobs"][0].get("token_id") >= 0
-        assert isinstance(final["logprobs"][0].get("logprob"), float)
+        assert isinstance(final["children"][0]["logprobs"][0].get("text"), str)
+        assert isinstance(final["children"][0]["logprobs"][0].get("token_id"), int) >= 0 and final["logprobs"][0].get("token_id") >= 0
+        assert isinstance(final["children"][0]["logprobs"][0].get("logprob"), float)
         assert final["logprobs"][0].get("logprob") > final["logprobs"][1].get("logprob")
 
         msgs = [json.loads(util.last_response_line(r))]

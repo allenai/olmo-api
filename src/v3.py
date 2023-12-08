@@ -38,7 +38,6 @@ class OutputPart:
                 raise RuntimeError(f"non-integer token ID {t.number_value}")
             token_ids.append(int(t.number_value))
 
-
         text = s.fields["text"].string_value
 
         logprobs = None

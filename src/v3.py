@@ -399,7 +399,7 @@ class Server(Blueprint):
             "opts": dataclasses.asdict(msg.opts),
         })
 
-        model = request.json.get("model", "allenai/tulu2-70b-qlora-bf16")
+        model = request.json.get("model", self.cfg.inferd.default_compute_source)
         req = InferRequest(compute_source_id=model, input=input)
 
         # Create a message that will eventually capture the streamed response.

@@ -32,12 +32,6 @@ class TestMessageEndpoints(base.IntegrationTest):
         for c in m1["children"]:
             self.messages.append((c["id"], u1))
 
-        msgs = [json.loads(util.last_response_line(r))]
-        m1 = msgs[0]
-        self.messages.append((m1["id"], u1))
-        for c in m1["children"]:
-            self.messages.append((c["id"], u1))
-
         defaults = [
             ("max_tokens", 2048),
             ("temperature", 0.5),

@@ -146,8 +146,9 @@ class TestMessageEndpoints(base.IntegrationTest):
         for c in m2["children"]:
             self.messages.append((c["id"], u2))
 
-        # Verify listing messages
-        r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1))
+        # Verify listing messages; we create enough messages we have to set a higher limit to ensure
+        # we find what we're looking for.
+        r = requests.get(f"{self.origin}/v3/messages", params={ "limit": 20 }, headers=self.auth(u1))
         r.raise_for_status()
         msglist = r.json()
         assert msglist["meta"]["total"] > 0

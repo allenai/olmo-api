@@ -153,7 +153,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         msglist = r.json()
         assert msglist["meta"]["total"] > 0
         assert msglist["meta"]["offset"] == 0
-        assert msglist["meta"]["limit"] == 10
+        assert msglist["meta"]["limit"] == 20
         ids = [m["id"] for m in msglist["messages"]]
         assert m1["id"] in ids
         assert m2["id"] in ids

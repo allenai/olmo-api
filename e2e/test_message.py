@@ -46,7 +46,7 @@ class TestMessageEndpoints(base.IntegrationTest):
             assert all(len(lp) == 2 for lp in chunk.get("logprobs", []))
         final = json.loads(lines[-1])
         self.messages.append((final["id"], u1))
-        assert all(len(lp) == 2 for lp in final.get("logprobs", []))
+        assert all(len(lp) == 2 for lp in final["children"][0].get("logprobs", []))
         assert isinstance(final["children"][0]["logprobs"][0].get("text"), str)
         assert isinstance(final["children"][0]["logprobs"][0].get("token_id"), int) >= 0 and final["logprobs"][0].get("token_id") >= 0
         assert isinstance(final["children"][0]["logprobs"][0].get("logprob"), float)

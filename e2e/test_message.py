@@ -71,7 +71,9 @@ class TestMessageEndpoints(base.IntegrationTest):
 
                 r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
                     "content": f"Testing valid value \"{v}\" for {name}",
-                    "opts": opts
+                    "opts": opts,
+                    "private": True  # We use private messages to avoid inflating the message count
+                                     # for later tests that use the list endpoint
                 })
                 assert r.status_code == 200, f"Expected 200 for valid value {v} for {name}"
                 msg = json.loads(util.last_response_line(r))
@@ -148,12 +150,12 @@ class TestMessageEndpoints(base.IntegrationTest):
 
         # Verify listing messages; we create enough messages we have to set a higher limit to ensure
         # we find what we're looking for.
-        r = requests.get(f"{self.origin}/v3/messages", params={ "limit": 20 }, headers=self.auth(u1))
+        r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1))
         r.raise_for_status()
         msglist = r.json()
         assert msglist["meta"]["total"] > 0
         assert msglist["meta"]["offset"] == 0
-        assert msglist["meta"]["limit"] == 20
+        assert msglist["meta"]["limit"] == 10
         ids = [m["id"] for m in msglist["messages"]]
         assert m1["id"] in ids
         assert m2["id"] in ids

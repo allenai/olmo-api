@@ -58,7 +58,6 @@ class TestMessageEndpoints(base.IntegrationTest):
         for c in m1["children"]:
             self.messages.append((c["id"], u1))
 
-
         defaults = [
             ("max_tokens", 2048),
             ("temperature", 0.5),

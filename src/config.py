@@ -13,6 +13,7 @@ class Database:
 class InferD:
     address: str
     token: str
+    default_compute_source: str
 
 @dataclass
 class Server:

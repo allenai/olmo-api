@@ -32,26 +32,6 @@ class TestMessageEndpoints(base.IntegrationTest):
         for c in m1["children"]:
             self.messages.append((c["id"], u1))
 
-        # Create a message w/ logprobs
-        r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
-            "content": "why are labradors smarter than unicorns?",
-            "opts": {
-                "logprobs": 2
-            }
-        })
-        r.raise_for_status()
-        lines = list(r.text.splitlines())
-        for line in lines[1:-1]:
-            chunk = json.loads(line)
-            assert all(len(lp) == 2 for lp in chunk.get("logprobs", []))
-        final = json.loads(lines[-1])
-        self.messages.append((final["id"], u1))
-        assert all(len(lp) == 2 for lp in final["children"][0].get("logprobs", []))
-        assert isinstance(final["children"][0]["logprobs"][0].get("text"), str)
-        assert isinstance(final["children"][0]["logprobs"][0].get("token_id"), int) >= 0 and final["logprobs"][0].get("token_id") >= 0
-        assert isinstance(final["children"][0]["logprobs"][0].get("logprob"), float)
-        assert final["logprobs"][0].get("logprob") > final["logprobs"][1].get("logprob")
-
         msgs = [json.loads(util.last_response_line(r))]
         m1 = msgs[0]
         self.messages.append((m1["id"], u1))
@@ -281,6 +261,32 @@ class TestMessageEndpoints(base.IntegrationTest):
             m = json.loads(util.last_response_line(r))
             self.messages.append((m["id"], u1))
             assert m["snippet"] == snippet
+
+        # Create a message w/ logprobs
+        r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
+            "content": "why are labradors smarter than unicorns?",
+            "opts": {
+                "logprobs": 2
+            }
+        })
+        r.raise_for_status()
+        lines = list(r.text.splitlines())
+        for line in lines[1:-1]:
+            chunk = json.loads(line)
+            # TODO: I can't explain why, but sometimes there appears to be > 2 in the response.
+            # I believe it has to do with this:
+            # https://github.com/vllm-project/vllm/blob/6ccc0bfffbcf1b7e927cc3dcf4159fc74ff94d40/vllm/sampling_params.py#L79-L81
+            # But I don't follow the reasoning.
+            assert all(len(lp) >= 2 for lp in chunk.get("logprobs", []))
+        final = json.loads(lines[-1])
+        self.messages.append((final["id"], u1))
+        assistant_logprobs = final["children"][0].get("logprobs", [])
+        assert all(len(lp) >= 2 for lp in assistant_logprobs)
+        lp1, lp2 = assistant_logprobs[0][0], assistant_logprobs[0][1]
+        assert isinstance(lp1.get("text"), str)
+        assert isinstance(lp1.get("token_id"), int) and lp1.get("token_id") >= 0
+        assert isinstance(lp1.get("logprob"), float)
+        assert lp1.get("logprob") > lp2.get("logprob")
 
     def tearDown(self):
         for (id, user) in self.messages:

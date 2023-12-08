@@ -44,7 +44,10 @@ class TestMessageEndpoints(base.IntegrationTest):
             assert m1["opts"][name] == value
 
         # Test inference option validation. Each tuple is of the form:
-        # (field_name, invalid_values, valid_values)
+        # (field_name, invalid_values, valid_values). For these tests we create
+        # private messages belonging to u3, as to not pollute data that tests below this
+        # use.
+        u3 = self.user("test3@localhost")
         fields = [
             # We don't test values numbers close to most maximums b/c they surpass the thresholds
             # of what our tiny local models can do...
@@ -58,7 +61,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         ]
         for (name, invalid, valid) in fields:
             for v in invalid:
-                r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
+                r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u3), json={
                     "content": f"Testing invalid value \"{v}\" for {name}",
                     "opts": { name: v }
                 })
@@ -69,15 +72,14 @@ class TestMessageEndpoints(base.IntegrationTest):
                 if name == "top_p" and v != 1.0:
                     opts["temperature"] = 0.5
 
-                r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
+                r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u3), json={
                     "content": f"Testing valid value \"{v}\" for {name}",
                     "opts": opts,
-                    "private": True  # We use private messages to avoid inflating the message count
-                                     # for later tests that use the list endpoint
+                    "private": True,
                 })
                 assert r.status_code == 200, f"Expected 200 for valid value {v} for {name}"
                 msg = json.loads(util.last_response_line(r))
-                self.messages.append((msg["id"], u1))
+                self.messages.append((msg["id"], u3))
                 for default_name, default_value in defaults:
                     actual = msg["opts"][default_name]
                     expected = opts.get(default_name, default_value)
@@ -148,8 +150,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         for c in m2["children"]:
             self.messages.append((c["id"], u2))
 
-        # Verify listing messages; we create enough messages we have to set a higher limit to ensure
-        # we find what we're looking for.
+        # Verify listing messages
         r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1))
         r.raise_for_status()
         msglist = r.json()

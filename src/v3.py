@@ -33,9 +33,9 @@ class OutputPart:
     def from_struct(cls, s: Struct) -> 'OutputPart':
         op = json_format.MessageToDict(s)
         logprobs: list[list[message.TokenLogProbs]] = [
-            [ message.TokenLogProbs(**lp) for lp in lps ] for lps in op["logprobs"]
+            [ message.TokenLogProbs(int(lp["token_id"]), lp["text"], lp["logprob"]) for lp in lps ] for lps in op["logprobs"]
         ]
-        return cls(op["text"], op["token_ids"], logprobs)
+        return cls(op["text"], [int(tid) for tid in op["token_ids"]], logprobs)
 
 @dataclasses.dataclass
 class AuthenticatedClient:

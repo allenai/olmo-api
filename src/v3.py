@@ -5,6 +5,7 @@ from datetime import timedelta
 from inferd.msg.inferd_pb2_grpc import InferDStub
 from inferd.msg.inferd_pb2 import InferRequest
 from google.protobuf.struct_pb2 import Struct
+from google.protobuf import json_format
 from . import db, util, auth, config, parse
 from .dao import message, label, completion, token, datachip, paged
 from typing import Optional
@@ -26,37 +27,15 @@ class OutputPart:
     """
     text: str
     token_ids: list[int]
-    logprobs: Optional[list[list[message.TokenLogProbs]]] = None
+    logprobs: list[list[message.TokenLogProbs]]
 
     @classmethod
     def from_struct(cls, s: Struct) -> 'OutputPart':
-        # TODO: is this really the best way to parse a pb2.Struct?
-
-        token_ids: list[int] = []
-        for t in s.fields["token_ids"].list_value.values:
-            if not t.number_value.is_integer():
-                raise RuntimeError(f"non-integer token ID {t.number_value}")
-            token_ids.append(int(t.number_value))
-
-        text = s.fields["text"].string_value
-
-        logprobs = None
-        if "logprobs" in s.fields:
-            logprobs: Optional[list[list[message.TokenLogProbs]]] = []
-            for lps in s.fields["logprobs"].list_value.values:
-                logprobs.append([])
-                for lp in lps.list_value.values:
-                    tid = lp.struct_value.fields["token_id"].number_value
-                    if not tid.is_integer():
-                        raise RuntimeError(f"non-integer token ID {tid}")
-                    tlp = message.TokenLogProbs(
-                        token_id=int(tid),
-                        text = lp.struct_value.fields["text"].string_value,
-                        logprob = lp.struct_value.fields["logprob"].number_value,
-                    )
-                    logprobs[-1].append(tlp)
-
-        return cls(text, token_ids, logprobs)
+        op = json_format.MessageToDict(s)
+        logprobs: list[list[message.TokenLogProbs]] = [
+            [ message.TokenLogProbs(**lp) for lp in lps ] for lps in op["logprobs"]
+        ]
+        return cls(op["text"], op["token_ids"], logprobs)
 
 @dataclasses.dataclass
 class AuthenticatedClient:

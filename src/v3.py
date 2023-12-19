@@ -15,6 +15,7 @@ import dataclasses
 import os
 import json
 import io
+import grpc
 
 @dataclasses.dataclass
 class OutputPart:
@@ -432,17 +433,21 @@ class Server(Blueprint):
             yield json.dumps(msg, cls=util.CustomEncoder) + "\n"
 
             # Now yield each chunk as it's returned.
-            md = (("x-inferd-token", self.cfg.inferd.token),)
-            for resp in self.inferd.Infer(req, metadata=md, wait_for_ready=True):
-                part = OutputPart.from_struct(resp.result.output)
-                chunks.append(message.MessageChunk(
-                    reply.id,
-                    part.text,
-                    part.logprobs if part.logprobs is not None else None)
-                )
-                gen += resp.result.inference_time.ToMilliseconds()
-                queue = resp.result.queue_time.ToMilliseconds()
-                yield json.dumps(chunks[-1], cls=util.CustomEncoder) + "\n"
+            try:
+                md = (("x-inferd-token", self.cfg.inferd.token),)
+                for resp in self.inferd.Infer(req, metadata=md, wait_for_ready=True):
+                    part = OutputPart.from_struct(resp.result.output)
+                    chunks.append(message.MessageChunk(
+                        reply.id,
+                        part.text,
+                        part.logprobs if part.logprobs is not None else None)
+                    )
+                    gen += resp.result.inference_time.ToMilliseconds()
+                    queue = resp.result.queue_time.ToMilliseconds()
+                    yield json.dumps(chunks[-1], cls=util.CustomEncoder) + "\n"
+            except grpc.RpcError as e:
+                err = f"inference failed: {e}"
+                yield json.dumps(message.MessageStreamError(reply.id, err), cls=util.CustomEncoder) + "\n"
 
             # The generation is complete. Store it.
             # TODO: InferD should store this so that we don't have to.

@@ -53,7 +53,7 @@ class OutputPart:
     @classmethod
     def from_struct(cls, s: Struct) -> 'OutputPart':
         op = json_format.MessageToDict(s)
-        logprobs: Optional[list[list[message.TokenLogProbs]]] = [
+        logprobs = [
             [ message.TokenLogProbs(int(lp["token_id"]), lp["text"], lp["logprob"]) for lp in lps ] for lps in op["logprobs"]
         ] if op.get("logprobs") is not None else None
         fr = FinishReason(op["finish_reason"]) if op.get("finish_reason") is not None else None
@@ -454,17 +454,17 @@ class Server(Blueprint):
             match finish_reason:
                 case FinishReason.UnclosedStream:
                     err = "inference failed for an unknown reason: sometimes this happens when the prompt is too long"
-                    yield json.dumps(message.MessageStreamError(reply.id, str(err)), cls=util.CustomEncoder) + "\n"
+                    yield json.dumps(message.MessageStreamError(reply.id, err), cls=util.CustomEncoder) + "\n"
                 case FinishReason.Length:
                     # If only one chunk was yielded and it's empty, it's probably because the prompt was too
                     # long. Unfortunately we can't differentiate this from when the prompt stops because
                     # max_tokens were generated, as vLLM doesn't distinguish the two.
                     if len(chunks) == 1 and chunks[0] == "":
                         err = "the conversation is too large for the model to process, please shorten the conversation and try again"
-                        yield json.dumps(message.MessageStreamError(reply.id, str(err)), cls=util.CustomEncoder) + "\n"
+                        yield json.dumps(message.MessageStreamError(reply.id, err), cls=util.CustomEncoder) + "\n"
                 case FinishReason.Aborted:
                     err = "inference aborted for an unknown reason"
-                    yield json.dumps(message.MessageStreamError(reply.id, str(err)), cls=util.CustomEncoder) + "\n"
+                    yield json.dumps(message.MessageStreamError(reply.id, err), cls=util.CustomEncoder) + "\n"
                 case FinishReason.Stop:
                     # This isn't an error
                     pass

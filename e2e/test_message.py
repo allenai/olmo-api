@@ -37,8 +37,8 @@ class TestMessageEndpoints(base.IntegrationTest):
             ("temperature", 1.0),
             ("n", 1),
             ("top_p", 1.0),
-            ("logprobs", 0),
-            ("stop", [])
+            ("logprobs", None),
+            ("stop", None)
         ]
         for name, value in defaults:
             assert m1["opts"][name] == value

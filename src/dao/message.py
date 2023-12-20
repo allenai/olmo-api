@@ -28,8 +28,8 @@ max_tokens = Field("max_tokens", 2048, 1, 4096, 1)
 temperature = Field("temperature", 1.0, 0.0, 2.0, 0.01)
 num = Field("n", 1, 1, 50, 1)
 top_p = Field("top_p", 1.0, 0.0, 1.0, 0.01)
-logprobs = Field("logprobs", 0, 0, 10, 1)
-stop = Field("stop", [], None, None)
+logprobs = Field("logprobs", None, 0, 10, 1)
+stop = Field("stop", None, None, None)
 
 @dataclass
 class InferenceOpts:
@@ -37,8 +37,8 @@ class InferenceOpts:
     temperature: float = temperature.default
     n: int = num.default
     top_p: float = top_p.default
-    logprobs: int = logprobs.default
-    stop: list[str] = field(default_factory=list)
+    logprobs: Optional[int] = logprobs.default
+    stop: Optional[list[str]] = field(default_factory=list)
 
     @staticmethod
     def schema() -> dict[str, Field]:
@@ -76,17 +76,19 @@ class InferenceOpts:
             raise ValueError(f"top_p {tp} is not in range ({top_p.min}, {top_p.max}]")
 
         lp = d.get(logprobs.name, logprobs.default)
-        if not isinstance(lp, int):
-            raise ValueError(f"logprobs {lp} is not an integer")
-        if lp > logprobs.max or lp < logprobs.min:
-            raise ValueError(f"logprobs {lp} is not in range [{logprobs.min}, {logprobs.max}]")
+        if lp is not None:
+            if not isinstance(lp, int):
+                raise ValueError(f"logprobs {lp} is not an integer")
+            if lp > logprobs.max or lp < logprobs.min:
+                raise ValueError(f"logprobs {lp} is not in range [{logprobs.min}, {logprobs.max}]")
 
         sw = d.get(stop.name, stop.default)
-        if not isinstance(sw, list):
-            raise ValueError(f"stop words {sw} is not a list")
-        for w in sw:
-            if not isinstance(w, str):
-                raise ValueError(f"stop word {w} is not a string")
+        if sw is not None:
+            if not isinstance(sw, list):
+                raise ValueError(f"stop words {sw} is not a list")
+            for w in sw:
+                if not isinstance(w, str):
+                    raise ValueError(f"stop word {w} is not a string")
 
         return InferenceOpts(mt, temp, n, tp, lp, sw)
 

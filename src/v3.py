@@ -11,12 +11,31 @@ from .dao import message, label, completion, token, datachip, paged
 from typing import Optional
 from urllib.parse import urlparse, urlunparse
 from datetime import datetime, timezone
+from enum import StrEnum
 
 import dataclasses
 import os
 import json
 import io
 import grpc
+
+class FinishReason(StrEnum):
+    # Something caused the generation to be left incomplete. The only scenario where this happens
+    # (that we know of) is when the prompt is too long and it's the only item being process (batch
+    # size is 1):
+    # See: https://github.com/allenai/inferd-tulu2/blob/main/src/svllm.py#L106
+    UnclosedStream = "unclosed stream"
+
+    # The model stopped because max_tokens was reached, or because the prompt was too long and
+    # there were several items in the batch.
+    Length = "length"
+
+    # The model generated a response and stopped before max_tokens was reached.
+    Stop = "stop"
+
+    # The generation was aborted for an unknown reason.
+    Aborted = "aborted"
+
 
 @dataclasses.dataclass
 class OutputPart:
@@ -28,15 +47,17 @@ class OutputPart:
     """
     text: str
     token_ids: list[int]
-    logprobs: list[list[message.TokenLogProbs]]
+    logprobs: Optional[list[list[message.TokenLogProbs]]] = None
+    finish_reason: Optional[FinishReason] = None
 
     @classmethod
     def from_struct(cls, s: Struct) -> 'OutputPart':
         op = json_format.MessageToDict(s)
-        logprobs: list[list[message.TokenLogProbs]] = [
+        logprobs = [
             [ message.TokenLogProbs(int(lp["token_id"]), lp["text"], lp["logprob"]) for lp in lps ] for lps in op["logprobs"]
-        ]
-        return cls(op["text"], [int(tid) for tid in op["token_ids"]], logprobs)
+        ] if op.get("logprobs") is not None else None
+        fr = FinishReason(op["finish_reason"]) if op.get("finish_reason") is not None else None
+        return cls(op["text"], [int(tid) for tid in op["token_ids"]], logprobs, fr)
 
 @dataclasses.dataclass
 class AuthenticatedClient:
@@ -412,10 +433,12 @@ class Server(Blueprint):
             yield json.dumps(msg, cls=util.CustomEncoder) + "\n"
 
             # Now yield each chunk as it's returned.
+            finish_reason: Optional[FinishReason] = None
             try:
                 md = (("x-inferd-token", self.cfg.inferd.token),)
                 for resp in self.inferd.Infer(req, metadata=md, wait_for_ready=True):
                     part = OutputPart.from_struct(resp.result.output)
+                    finish_reason = part.finish_reason
                     chunks.append(message.MessageChunk(
                         reply.id,
                         part.text,
@@ -427,6 +450,24 @@ class Server(Blueprint):
             except grpc.RpcError as e:
                 err = f"inference failed: {e}"
                 yield json.dumps(message.MessageStreamError(reply.id, err), cls=util.CustomEncoder) + "\n"
+
+            match finish_reason:
+                case FinishReason.UnclosedStream:
+                    err = "inference failed for an unknown reason: sometimes this happens when the prompt is too long"
+                    yield json.dumps(message.MessageStreamError(reply.id, err), cls=util.CustomEncoder) + "\n"
+                case FinishReason.Length:
+                    # If only one chunk was yielded and it's empty, it's probably because the prompt was too
+                    # long. Unfortunately we can't differentiate this from when the prompt stops because
+                    # max_tokens were generated, as vLLM doesn't distinguish the two.
+                    if len(chunks) == 1 and chunks[0] == "":
+                        err = "the conversation is too large for the model to process, please shorten the conversation and try again"
+                        yield json.dumps(message.MessageStreamError(reply.id, err), cls=util.CustomEncoder) + "\n"
+                case FinishReason.Aborted:
+                    err = "inference aborted for an unknown reason"
+                    yield json.dumps(message.MessageStreamError(reply.id, err), cls=util.CustomEncoder) + "\n"
+                case FinishReason.Stop:
+                    # This isn't an error
+                    pass
 
             # The generation is complete. Store it.
             # TODO: InferD should store this so that we don't have to.

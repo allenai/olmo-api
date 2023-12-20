@@ -38,7 +38,7 @@ class InferenceOpts:
     n: int = num.default
     top_p: float = top_p.default
     logprobs: Optional[int] = logprobs.default
-    stop: Optional[list[str]] = field(default_factory=list)
+    stop: Optional[list[str]] = stop.default
 
     @staticmethod
     def schema() -> dict[str, Field]:

@@ -1,4 +1,5 @@
 from . import base, util
+from datetime import datetime, timezone
 
 import requests
 import json
@@ -8,12 +9,16 @@ class TestMessageDatachips(base.IntegrationTest):
     datachips: list[tuple[str, base.AuthenticatedClient]] = []
 
     def runTest(self):
+        # Deleted datachip refs can't be reused, which means we need to prefix names used in this test.
+        prefix = f"{type(self).__name__}_{datetime.now(timezone.utc).strftime('%s')}_"
+
         # The user must be an admin for this test to work.
         u1 = self.user("murphy@localhost")
 
         # Create a datachip
+        name1 = f"{prefix}Dog"
         r = requests.post(f"{self.origin}/v3/datachip", json={
-            "name": "Dog",
+            "name": name1,
             "content": "Murphy"
         }, headers=self.auth(u1))
         r.raise_for_status()
@@ -22,12 +27,12 @@ class TestMessageDatachips(base.IntegrationTest):
 
         # Create a message w/ the chip
         r = requests.post(f"{self.origin}/v3/message", json={
-            "content": f"""<span data-datachip-id="{dc1["id"]}">{dc1["name"]}</span> is a dog. Can he fly?"""
+            "content": f""":murphy@localhost/{name1} is a dog. Can he fly?"""
         }, headers=self.auth(u1))
         r.raise_for_status()
         msg1 = json.loads(util.last_response_line(r))
         self.messages.append((msg1["id"], u1))
-        assert msg1["content"] == f"""<span data-datachip-id="{dc1["id"]}">{dc1["name"]}</span> is a dog. Can he fly?"""
+        assert msg1["content"] == f""":murphy@localhost/{name1} is a dog. Can he fly?"""
 
         r = requests.get(f"{self.origin}/v3/completion/{msg1['children'][0]['completion']}", headers=self.auth(u1))
         r.raise_for_status()
@@ -38,8 +43,9 @@ Murphy is a dog. Can he fly?
 """.strip()
 
         # Create another chip.
+        name2 = f"{prefix}Friend"
         r = requests.post(f"{self.origin}/v3/datachip", json={
-            "name": "Friend",
+            "name": name2,
             "content": "Grasshopper"
         }, headers=self.auth(u1))
         r.raise_for_status()
@@ -48,7 +54,7 @@ Murphy is a dog. Can he fly?
 
         # Create another message w/ the chip
         r = requests.post(f"{self.origin}/v3/message", json={
-            "content": f"""<span data-datachip-id="{dc2["id"]}">{dc2["name"]}</span> is <span data-datachip-id="{dc1["id"]}">{dc1["name"]}</span>'s friend. Can she fly?""",
+            "content": f""":murphy@localhost/{name2} is :murphy@localhost/{name1}'s friend. Can she fly?""",
             "parent": msg1["children"][0]["id"]
         }, headers=self.auth(u1))
         r.raise_for_status()

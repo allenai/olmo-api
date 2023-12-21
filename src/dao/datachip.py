@@ -1,14 +1,29 @@
 from psycopg_pool import ConnectionPool
+from psycopg import errors
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 from .. import obj
 from . import paged
 
+import re
+
+DATACHIP_REF_DELIM = "/"
+
+DatachipRef = str
+
+def make_datachip_ref(creator: str, name: str) -> DatachipRef:
+    return f"{creator}{DATACHIP_REF_DELIM}{name}"
+
+class DuplicateDatachipNameError(ValueError):
+    def __init__(self, ref: DatachipRef):
+        super().__init__(f"datachip \"{ref}\" already exists")
+
 @dataclass
 class Datachip:
     id: str
     name: str
+    ref: DatachipRef
     content: str
     creator: str
     created: datetime
@@ -22,6 +37,9 @@ class Update:
 @dataclass
 class DatachipList(paged.List):
     datachips: list[Datachip]
+
+def is_valid_datachip_name(name: str) -> bool:
+    return re.match(r"^[a-zA-Z0-9_-]+$", name) is not None
 
 class Store:
     def __init__(self, pool: ConnectionPool):
@@ -43,6 +61,7 @@ class Store:
                         COUNT(*) OVER() AS total,
                         id,
                         name,
+                        ref,
                         content,
                         creator,
                         created,
@@ -87,23 +106,31 @@ class Store:
                 return DatachipList(datachips=dc, meta=paged.ListMeta(total, opts.offset, opts.limit))
 
     def create(self, name: str, content: str, creator: str) -> Datachip:
+        if not is_valid_datachip_name(name):
+            raise ValueError(
+                f"invalid datachip name: \"{name}\", only alphanumeric characters and `_` or `-` are allowed"
+            )
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    """
-                        INSERT INTO datachip
-                            (id, name, content, creator)
-                        VALUES
-                            (%s, %s, %s, %s)
-                        RETURNING
-                            id, name, content, creator, created, updated
-                    """,
-                    (obj.NewID("dc"), name, content, creator)
-                )
-                row = cur.fetchone()
-                if row is None:
-                    raise RuntimeError("failed to create datachip")
-                return Datachip(*row)
+                ref = make_datachip_ref(creator, name)
+                try:
+                    cur.execute(
+                        """
+                            INSERT INTO datachip
+                                (id, name, ref, content, creator)
+                            VALUES
+                                (%s, %s, %s, %s, %s)
+                            RETURNING
+                                id, name, ref, content, creator, created, updated
+                        """,
+                        (obj.NewID("dc"), name, ref, content, creator)
+                    )
+                    row = cur.fetchone()
+                    if row is None:
+                        raise RuntimeError("failed to create datachip")
+                    return Datachip(*row)
+                except errors.UniqueViolation:
+                    raise DuplicateDatachipNameError(ref)
 
     def get(self, ids: list[str]) -> list[Datachip]:
         with self.pool.connection() as conn:
@@ -113,6 +140,7 @@ class Store:
                         SELECT
                             id,
                             name,
+                            ref,
                             content,
                             creator,
                             created,
@@ -124,6 +152,29 @@ class Store:
                             id = ANY(%s)
                     """,
                     (ids,)
+                )
+                return [Datachip(*row) for row in cur.fetchall()]
+
+    def resolve(self, refs: list[DatachipRef]) -> list[Datachip]:
+        with self.pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""
+                        SELECT
+                            id,
+                            name,
+                            ref,
+                            content,
+                            creator,
+                            created,
+                            updated,
+                            deleted
+                        FROM
+                            datachip
+                        WHERE
+                            ref = ANY(%s)
+                    """,
+                    (refs,)
                 )
                 return [Datachip(*row) for row in cur.fetchall()]
 
@@ -140,7 +191,7 @@ class Store:
                         WHERE
                             id = %s
                         RETURNING
-                            id, name, content, creator, created, updated, deleted
+                            id, name, ref, content, creator, created, updated, deleted
                     """,
                     (id,)
                 )

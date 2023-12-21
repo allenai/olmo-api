@@ -1,6 +1,7 @@
 from . import parse
 from datetime import timedelta
 from dataclasses import dataclass
+from .dao.datachip import DatachipRef
 
 import pytest
 
@@ -38,7 +39,8 @@ class DatachipTestCase:
     name: str
     input: str
     expected_output: str
-    chips: dict[str, str]
+    chips: dict[DatachipRef, str]
+    should_raise: bool = False
 
 def test_parse_and_replace_datachips():
     tests = [
@@ -46,79 +48,68 @@ def test_parse_and_replace_datachips():
         DatachipTestCase(
             "typical",
             """
-<h1>Hey <span data-datachip-id="to">To</span>,</h1>
-<p>My name is <span data-datachip-id="from">From</span>.</p>
-<p>Do you like to <strong><span data-datachip-id="activity">Activity</span>?</strong></p>
-Best,<br>
-<span data-datachip-id="from">From</span>
+Hi :sams@allenai.org/to,
+
+My name is :sams@allenai.org/from.
+Do you like to <strong>:murphy@allenai.org/activity</strong>?
+
+Best,
+:sams@allenai.org/from
             """.strip(),
             """
-<h1>Hey Murphy,</h1>
-<p>My name is Logan.</p>
-<p>Do you like to <strong>dig holes?</strong></p>
-Best,<br>
+Hi Murphy,
+
+My name is Logan.
+Do you like to <strong>dig elaborate, muddy holes to bury valuable bones, treasure and other amassed, random things in the ground</strong>?
+
+Best,
 Logan
             """.strip(),
-            { "to": "Murphy", "from": "Logan", "activity": "dig holes" }
-        ),
-        # A datachip with a child tag
-        DatachipTestCase(
-            "nested_marquee",
-            """Hi <span data-datachip-id="name"><marquee>Name</marquee></span>!""",
-            "Hi Murphy!",
-            { "name": "Murphy" }
-        ),
-        # Recursive, nested datachips
-        DatachipTestCase(
-            "nested_chip",
-            """Hi <span data-datachip-id="name1"><span data-datachip-id="name2">Name</span></span>!""",
-            "Hi Murphy!",
-            { "name1": "Murphy", "name2": "Logan" }
+            {
+                DatachipRef("sams@allenai.org/to"): "Murphy",
+                DatachipRef("sams@allenai.org/from"): "Logan",
+                DatachipRef("murphy@allenai.org/activity"): "dig elaborate, muddy holes to bury valuable bones, treasure and other amassed, random things in the ground",
+            },
         ),
         # Emojis
         DatachipTestCase(
             "emoji",
-            """👋 <span data-datachip-id="name">Name</span>""",
+            """👋 :sams@allenai.org/name""",
             "👋 Murphy",
-            { "name": "Murphy" }
+            { DatachipRef("sams@allenai.org/name"): "Murphy" },
         ),
-        # HTML Entities
         DatachipTestCase(
-            "emoji",
-            """Hi &ldquo;<span data-datachip-id="name">Name</span>&rdquo;""",
-            "Hi &ldquo;Murphy&rdquo;",
-            { "name": "Murphy" }
+            "leading",
+            """:sams@allenai.org/name says hello""",
+            "Murphy says hello",
+            { DatachipRef("sams@allenai.org/name"): "Murphy" },
         ),
-        # Preserve HTML
         DatachipTestCase(
-            "malformed",
-            """Hi <strong>Murphy!</strong>""",
-            "Hi <strong>Murphy!</strong>",
+            "trailing",
+            """my name is :sams@allenai.org/name""",
+            "my name is Murphy",
+            { DatachipRef("sams@allenai.org/name"): "Murphy" },
+        ),
+        DatachipTestCase(
+            "none",
+            """Hi there!""",
+            "Hi there!",
             {}
         ),
-        # Missing closing tag
         DatachipTestCase(
-            "no-close",
-            """Hi <span data-datachip-id="name">Name, how are you?""",
-            "Hi Murphy",
-            { "name": "Murphy" }
-        ),
-        # Missing opening tag
-        DatachipTestCase(
-            "chip-with-no-open",
-            """Hi <span data-datachip-id="name">Name</span>, how are you</strong>?""",
-            "Hi Murphy, how are you?",
-            { "name": "Murphy" }
-        ),
-        DatachipTestCase(
-            "no-open",
-            """Hi Name</span>, how are you</strong>?""",
-            "Hi Name, how are you?",
-            { "name": "Murphy" }
+            "missing",
+            """my name is :sams@allenai.org/name""",
+            "",
+            {},
+            True,
         ),
     ]
     for test in tests:
-        content = parse.MessageContent(test.input)
-        for dc in content.datachips:
-            dc.tag.replace_with(test.chips[dc.id])
-        assert content.html() == test.expected_output, f"Failed to parse datachips for test {test.name}"
+        msg = parse.MessageContent(test.input)
+        if test.should_raise:
+            with pytest.raises(ValueError):
+                msg.replace_datachips(test.chips)
+        else:
+            details = f"Failed to parse datachips for test {test.name}"
+            assert msg.replace_datachips(test.chips) == test.expected_output, details
+

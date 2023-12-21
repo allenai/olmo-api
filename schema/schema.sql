@@ -116,3 +116,6 @@ GRANT SELECT, UPDATE, INSERT ON TABLE datachip TO app;
 
 ALTER TABLE message ADD COLUMN IF NOT EXISTS private BOOLEAN NOT NULL DEFAULT false;
 
+-- A globally unique, human readable ID for referencing the datachip.
+ALTER TABLE datachip ADD COLUMN ref TEXT NOT NULL UNIQUE;
+

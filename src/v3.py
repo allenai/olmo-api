@@ -382,21 +382,14 @@ class Server(Blueprint):
             role: message.Role
 
         # Find all of the datachips
-        parsed_chain = [ ParsedMessage(content=parse.MessageContent(m.content), role=m.role) for m in chain ]
-        chip_ids = [ dc.id for pm in parsed_chain for dc in pm.content.datachips ]
-        db_chips = { dc.id: dc for dc in self.dbc.datachip.get(list(set(chip_ids))) }
-
-        # Replace the datachips in the message content
-        for pm in parsed_chain:
-            for cc in pm.content.datachips:
-                dc = db_chips.get(cc.id)
-                if dc is None:
-                    raise exceptions.BadRequest(f"datachip {cc.id} not found")
-                cc.tag.replace_with(dc.content)
+        parsed = [ ParsedMessage(content=parse.MessageContent(m.content), role=m.role) for m in chain ]
+        refs = [ dc.ref for pm in parsed for dc in pm.content.datachips ]
+        chips  = { dc.ref: dc.content for dc in self.dbc.datachip.resolve(list(set(refs))) }
+        formatted = [ { "role": pm.role, "content": pm.content.replace_datachips(chips) } for pm in parsed ]
 
         input = Struct()
         input.update({
-            "messages": [ { "role": pm.role, "content": pm.content.html() } for pm in parsed_chain ],
+            "messages": formatted,
             "opts": dataclasses.asdict(msg.opts),
         })
 
@@ -472,7 +465,7 @@ class Server(Blueprint):
             # The generation is complete. Store it.
             # TODO: InferD should store this so that we don't have to.
             # TODO: capture InferD request input instead of our manifestation of the prompt format
-            prompt = "\n".join([ f"<|{pm.role}|>\n{pm.content.html()}" for pm in parsed_chain ])
+            prompt = "\n".join([ f"<|{m['role']}|>\n{m['content']}" for m in formatted ])
             output = ""
             logprobs: list[list[message.TokenLogProbs]] = []
             for ck in chunks:

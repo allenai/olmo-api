@@ -4,7 +4,7 @@ set -eo pipefail
 cookies=$(mktemp /tmp/olmo-cookies.XXXXXX)
 trap "rm $cookies" EXIT
 
-email="${EMAIL:-murphy@allenai.org}"
+email="${EMAIL:-murphy@localhost}"
 
 curl \
   -s \

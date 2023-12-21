@@ -1,5 +1,5 @@
 from . import base
-from datetime import datetime
+from datetime import datetime, timezone
 
 import requests
 
@@ -7,6 +7,9 @@ class TestDatachipEndpoints(base.IntegrationTest):
     chips: list[tuple[str, base.AuthenticatedClient]] = []
 
     def runTest(self):
+        # Deleted datachip refs can't be reused, which means we need to prefix names used in this test.
+        prefix = f"{type(self).__name__}_{datetime.now(timezone.utc).strftime('%s')}_"
+
         # Make sure all endpoints require auth
         for r in [
             requests.post(f"{self.origin}/v3/datachip"),
@@ -19,11 +22,20 @@ class TestDatachipEndpoints(base.IntegrationTest):
         u1 = self.user("test1@localhost")
         u2 = self.user("test2@localhost")
 
-        # Must specify a name
+        # Must specify a non-empty name
         empty = [ "", "   "]
         for name in empty:
             r = requests.post(f"{self.origin}/v3/datachip", headers=self.auth(u1), json={
                 "name": name
+            })
+            assert r.status_code == 400
+
+        # Names must only have alphanumeric characters and _ or -. We don't test for everything.
+        invalid = [ "! dog", "/hi", "hi/there", "$hey!" ]
+        for name in invalid:
+            r = requests.post(f"{self.origin}/v3/datachip", headers=self.auth(u1), json={
+                "name": name,
+                "content": "Murphy"
             })
             assert r.status_code == 400
 
@@ -44,19 +56,28 @@ class TestDatachipEndpoints(base.IntegrationTest):
 
         # Happy path
         r = requests.post(f"{self.origin}/v3/datachip", headers=self.auth(u1), json={
-            "name": "KingOfSlobber",
+            "name": f"{prefix}KingOfSlobber",
             "content": "Murphy Skjønsberg"
         })
         assert r.status_code == 200
         dc1 = r.json()
         assert dc1["id"].startswith("dc_")
-        assert dc1["name"] == "KingOfSlobber"
+        assert dc1["name"] == f"{prefix}KingOfSlobber"
+        assert dc1["ref"] == f"test1@localhost/{prefix}KingOfSlobber"
         assert dc1["content"] == "Murphy Skjønsberg"
         assert dc1["creator"] == u1.client
         assert dc1["created"] is not None
         assert dc1["updated"] is not None
         assert dc1["deleted"] is None
         self.chips.append((dc1["id"], u1))
+
+        # No duplicates
+        r = requests.post(f"{self.origin}/v3/datachip", headers=self.auth(u1), json={
+            "name": f"{prefix}KingOfSlobber",
+            "content": "Sam Skjønsberg"
+        })
+        assert r.status_code == 400
+        assert r.json()["error"]["message"] == f"datachip \"test1@localhost/{prefix}KingOfSlobber\" already exists"
 
         # Get the chip
         r = requests.get(f"{self.origin}/v3/datachip/{dc1['id']}", headers=self.auth(u1))
@@ -66,13 +87,14 @@ class TestDatachipEndpoints(base.IntegrationTest):
 
         # Create another, belonging to u2
         r = requests.post(f"{self.origin}/v3/datachip", headers=self.auth(u2), json={
-            "name": "KingOfMacaroni",
+            "name": f"{prefix}KingOfMacaroni",
             "content": "Logan Skjønsberg"
         })
         assert r.status_code == 200
         dc2 = r.json()
         assert dc2["id"].startswith("dc_")
-        assert dc2["name"] == "KingOfMacaroni"
+        assert dc2["name"] == f"{prefix}KingOfMacaroni"
+        assert dc2["ref"] == f"test2@localhost/{prefix}KingOfMacaroni"
         assert dc2["content"] == "Logan Skjønsberg"
         assert dc2["creator"] == u2.client
         assert dc2["created"] is not None
@@ -145,6 +167,14 @@ class TestDatachipEndpoints(base.IntegrationTest):
                 assert v == deleted[k]
             assert deleted["deleted"] is not None
             assert datetime.fromisoformat(deleted["updated"]) > datetime.fromisoformat(dc1["updated"])
+
+        # Deleted refs still can't be reused
+        r = requests.post(f"{self.origin}/v3/datachip", headers=self.auth(u1), json={
+            "name": dc1["name"],
+            "content": "Sam Skjønsberg"
+        })
+        assert r.status_code == 400
+        assert r.json()["error"]["message"] == f"datachip \"{dc1['ref']}\" already exists"
 
         # Make sure deleted things aren't listed by default
         r = requests.get(f"{self.origin}/v3/datachips", headers=self.auth(u1))

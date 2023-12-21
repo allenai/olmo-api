@@ -159,7 +159,7 @@ class Store:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    f"""
+                    """
                         SELECT
                             id,
                             name,

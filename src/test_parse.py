@@ -60,7 +60,7 @@ Best,
 Hi Murphy,
 
 My name is Logan.
-Do you like to <strong>dig elaborate, muddy holes to bury valuable bones, treasure and other amassed, random things in</strong>?
+Do you like to <strong>dig elaborate, muddy holes to bury valuable bones, treasure and other amassed, random things in the ground</strong>?
 
 Best,
 Logan
@@ -68,7 +68,7 @@ Logan
             {
                 DatachipRef("sams@allenai.org/to"): "Murphy",
                 DatachipRef("sams@allenai.org/from"): "Logan",
-                DatachipRef("murphy@allenai.org/activity"): "dig elaborate, muddy holes to bury valuable bones, treasure and other amassed, random things in",
+                DatachipRef("murphy@allenai.org/activity"): "dig elaborate, muddy holes to bury valuable bones, treasure and other amassed, random things in the ground",
             },
         ),
         # Emojis

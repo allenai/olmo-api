@@ -15,7 +15,7 @@ DatachipRef = str
 def make_datachip_ref(creator: str, name: str) -> DatachipRef:
     return f"{creator}{DATACHIP_REF_DELIM}{name}"
 
-class DuplicateDatachipNameError(ValueError):
+class DuplicateDatachipRefError(ValueError):
     def __init__(self, ref: DatachipRef):
         super().__init__(f"datachip \"{ref}\" already exists")
 
@@ -130,7 +130,7 @@ class Store:
                         raise RuntimeError("failed to create datachip")
                     return Datachip(*row)
                 except errors.UniqueViolation:
-                    raise DuplicateDatachipNameError(ref)
+                    raise DuplicateDatachipRefError(ref)
 
     def get(self, ids: list[str]) -> list[Datachip]:
         with self.pool.connection() as conn:

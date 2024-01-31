@@ -22,7 +22,7 @@ class InferD:
     # The default key in the `models` dict below.
     default_model: str
     # Maps model IDs to model details.
-    model_options: dict[str, Model]
+    available_models: dict[str, Model]
 
 @dataclass
 class Server:
@@ -51,7 +51,7 @@ class Config:
                     address=data["inferd"]["address"],
                     token=data["inferd"]["token"],
                     default_model=data["inferd"]["default_model"],
-                    model_options={k: Model(**v) for k, v in data["inferd"]["model_options"].items()},
+                    available_models={k: Model(**v) for k, v in data["inferd"]["available_models"].items()},
                 ),
                 server=Server(
                     data["server"]["num_proxies"],

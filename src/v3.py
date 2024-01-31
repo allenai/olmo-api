@@ -396,9 +396,9 @@ class Server(Blueprint):
         })
 
         model = request.json.get("model", self.cfg.inferd.default_model)
-        if model not in self.cfg.inferd.model_options:
+        if model not in self.cfg.inferd.available_models:
             raise exceptions.BadRequest(f"model {model} not found")
-        compute_source_id = self.cfg.inferd.model_options[model].compute_source_id
+        compute_source_id = self.cfg.inferd.available_models[model].compute_source_id
 
         req = InferRequest(compute_source_id=compute_source_id, input=input)
 
@@ -539,12 +539,12 @@ class Server(Blueprint):
 
     def models(self):
         self.authn()
-        # Exclude the inferd_compute_source_id from the response and add the model ID.
+        # Exclude inferd_compute_source_id from each model in the response and add the model ID (map key).
         return jsonify([{
             "id": k,
             "name": v.name,
             "description": v.description,
-        } for k, v in self.cfg.inferd.model_options])
+        } for k, v in self.cfg.inferd.available_models])
 
     def schema(self):
         self.authn()

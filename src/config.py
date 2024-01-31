@@ -10,10 +10,19 @@ class Database:
     max_size: int = 2
 
 @dataclass
+class Model:
+    name: str
+    description: str
+    compute_source_id: str
+
+@dataclass
 class InferD:
     address: str
     token: str
-    default_compute_source: str
+    # The default key in the `models` dict below.
+    default_model: str
+    # Maps model IDs to model details.
+    model_options: dict[str, Model]
 
 @dataclass
 class Server:
@@ -38,7 +47,12 @@ class Config:
             data = json.load(f)
             return cls(
                 db=Database(**data["db"]),
-                inferd=InferD(**data["inferd"]),
+                inferd=InferD(
+                    address=data["inferd"]["address"],
+                    token=data["inferd"]["token"],
+                    default_model=data["inferd"]["default_model"],
+                    model_options={k: Model(**v) for k, v in data["inferd"]["model_options"].items()},
+                ),
                 server=Server(
                     data["server"]["num_proxies"],
                     data["server"].get("log_level", "INFO"),

@@ -89,6 +89,8 @@ class Server(Blueprint):
         self.delete("/message/<string:id>")(self.delete_message)
         self.get("/messages")(self.messages)
 
+        self.get("/models")(self.models)
+
         self.get("/schema")(self.schema)
 
         self.post("/label")(self.create_label)
@@ -393,8 +395,12 @@ class Server(Blueprint):
             "opts": dataclasses.asdict(msg.opts),
         })
 
-        model = request.json.get("model", self.cfg.inferd.default_compute_source)
-        req = InferRequest(compute_source_id=model, input=input)
+        model = request.json.get("model", self.cfg.inferd.default_model)
+        if model not in self.cfg.inferd.model_options:
+            raise exceptions.BadRequest(f"model {model} not found")
+        compute_source_id = self.cfg.inferd.model_options[model].compute_source_id
+
+        req = InferRequest(compute_source_id=compute_source_id, input=input)
 
         # Create a message that will eventually capture the streamed response.
         # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message
@@ -530,6 +536,15 @@ class Server(Blueprint):
             opts=paged.parse_opts_from_querystring(request),
             agent=agent.client,
         ))
+
+    def models(self):
+        self.authn()
+        # Exclude the inferd_compute_source_id from the response and add the model ID.
+        return jsonify([{
+            "id": k,
+            "name": v.name,
+            "description": v.description,
+        } for k, v in self.cfg.inferd.model_options])
 
     def schema(self):
         self.authn()

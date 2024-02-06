@@ -11,6 +11,7 @@ class Database:
 
 @dataclass
 class Model:
+    id: str
     name: str
     description: str
     compute_source_id: str
@@ -19,10 +20,9 @@ class Model:
 class InferD:
     address: str
     token: str
-    # The default key in the `models` dict below.
+    # The default id in the `available_models` list below.
     default_model: str
-    # Maps model IDs to model details.
-    available_models: dict[str, Model]
+    available_models: list[Model]
 
 @dataclass
 class Server:
@@ -51,7 +51,7 @@ class Config:
                     address=data["inferd"]["address"],
                     token=data["inferd"]["token"],
                     default_model=data["inferd"]["default_model"],
-                    available_models={k: Model(**v) for k, v in data["inferd"]["available_models"].items()},
+                    available_models=[Model(**m) for m in data["inferd"]["available_models"]],
                 ),
                 server=Server(
                     data["server"]["num_proxies"],

@@ -262,6 +262,8 @@ class TestMessageEndpoints(base.IntegrationTest):
 
         # Create a message w/ logprobs
         r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
+            # Only "tulu2" supports logprobs currently https://github.com/allenai/inferd-olmo/issues/1
+            "model": "tulu2",
             "content": "why are labradors smarter than unicorns?",
             "opts": {
                 "logprobs": 2

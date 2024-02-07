@@ -398,12 +398,12 @@ class Server(Blueprint):
             "opts": dataclasses.asdict(msg.opts),
         })
 
-        model = request.json.get("model", self.cfg.inferd.default_model)
-        if model not in self.cfg.inferd.available_models:
-            raise exceptions.BadRequest(f"model {model} not found")
-        compute_source_id = self.cfg.inferd.available_models[model].compute_source_id
+        model_id = request.json.get("model", self.cfg.inferd.default_model)
+        model = next((m for m in self.cfg.inferd.available_models if m.id == model_id), None)
+        if not model:
+            raise exceptions.BadRequest(f"model {model_id} not found")
 
-        req = InferRequest(compute_source_id=compute_source_id, input=input)
+        req = InferRequest(compute_source_id=model.compute_source_id, input=input)
 
         # Create a message that will eventually capture the streamed response.
         # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message
@@ -485,7 +485,7 @@ class Server(Blueprint):
                 prompt,
                 [completion.CompletionOutput(output, "unknown", logprobs)],
                 msg.opts,
-                compute_source_id,
+                model.compute_source_id,
                 sha,
                 tokenize_ms=-1,
                 generation_ms=gen,
@@ -544,10 +544,10 @@ class Server(Blueprint):
         self.authn()
         # Exclude inferd_compute_source_id from each model in the response and add the model ID (map key).
         return jsonify([{
-            "id": k,
-            "name": v.name,
-            "description": v.description,
-        } for k, v in self.cfg.inferd.available_models.items()])
+            "id": m.id,
+            "name": m.name,
+            "description": m.description,
+        } for m in self.cfg.inferd.available_models])
 
     def schema(self):
         self.authn()

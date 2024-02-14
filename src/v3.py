@@ -547,6 +547,7 @@ class Server(Blueprint):
             "id": m.id,
             "name": m.name,
             "description": m.description,
+            "model_type": m.model_type,
         } for m in self.cfg.inferd.available_models])
 
     def schema(self):

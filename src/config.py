@@ -1,5 +1,6 @@
 from typing import Self
 from dataclasses import dataclass
+from enum import StrEnum
 
 import json
 
@@ -9,12 +10,17 @@ class Database:
     min_size: int = 1
     max_size: int = 2
 
+class ModelType(StrEnum):
+    Base = "base"  # base models, that behave like autocomplete
+    Chat = "chat"  # chat models, that have been fine-tuned for conversation
+
 @dataclass
 class Model:
     id: str
     name: str
     description: str
     compute_source_id: str
+    model_type: ModelType
 
 @dataclass
 class InferD:

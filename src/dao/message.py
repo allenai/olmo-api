@@ -7,6 +7,7 @@ from typing import Optional, Any, cast
 from enum import StrEnum
 from werkzeug import exceptions
 from .. import obj
+from ..config import ModelType
 from . import label, paged
 
 import bs4
@@ -122,6 +123,7 @@ MessageRow = tuple[
     bool,
     Optional[str],
     bool,
+    Optional[ModelType],
 
     # Label fields
     Optional[str],
@@ -176,6 +178,7 @@ class Message:
     final: bool = False
     original: Optional[str] = None
     private: bool = False
+    model_type: Optional[ModelType] = None
     labels: list[label.Label] = field(default_factory=list)
 
     def flatten(self) -> list['Message']:
@@ -190,7 +193,7 @@ class Message:
     def from_row(r: MessageRow) -> 'Message':
         labels = []
         # If the label id is not None, unpack the label.
-        li = 15
+        li = 16
         if r[li] is not None:
             labels = [label.Label.from_row(cast(label.LabelRow, r[li:]))]
 
@@ -218,6 +221,7 @@ class Message:
             final=r[12],
             original=r[13],
             private=r[14],
+            model_type=r[15],
             labels=labels,
         )
 
@@ -308,6 +312,7 @@ class Store:
                             final,
                             original,
                             private,
+                            model_type,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -373,6 +378,7 @@ class Store:
                         message.final,
                         message.original,
                         message.private,
+                        message.model_type,
                         label.id,
                         label.message,
                         label.rating,
@@ -399,7 +405,14 @@ class Store:
                 _, msgs = Message.tree(Message.group_by_id([Message.from_row(r) for r in rows]))
                 return msgs.get(id)
 
-    def finalize(self, id: obj.ID, content: Optional[str] = None, logprobs: Optional[list[list[TokenLogProbs]]] = None, completion: Optional[obj.ID] = None) -> Optional[Message]:
+    def finalize(
+        self,
+        id: obj.ID,
+        content: Optional[str] = None,
+        logprobs: Optional[list[list[TokenLogProbs]]] = None,
+        completion: Optional[obj.ID] = None,
+        model_type: Optional[ModelType] = None
+    ) -> Optional[Message]:
         """
         Used to finalize a Message produced via a streaming response.
         """
@@ -413,6 +426,7 @@ class Store:
                             content = COALESCE(%s, content),
                             logprobs = COALESCE(%s, logprobs),
                             completion = COALESCE(%s, completion),
+                            model_type = COALESCE(%s, model_type),
                             final = true
                         WHERE
                             id = %s
@@ -432,6 +446,7 @@ class Store:
                             final,
                             original,
                             private,
+                            model_type,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -442,7 +457,7 @@ class Store:
                             NULL,
                             NULL
                     """
-                    row = cur.execute(q, (content, prepare_logprobs(logprobs), completion, id)).fetchone()
+                    row = cur.execute(q, (content, prepare_logprobs(logprobs), completion, model_type, id)).fetchone()
                     return Message.from_row(row) if row is not None else None
                 except errors.ForeignKeyViolation as e:
                     match e.diag.constraint_name:
@@ -480,6 +495,7 @@ class Store:
                         updated.final,
                         updated.original,
                         updated.private,
+                        updated.model_type,
                         label.id,
                         label.message,
                         label.rating,
@@ -572,6 +588,7 @@ class Store:
                         message.final,
                         message.original,
                         message.private,
+                        message.model_type,
                         label.id,
                         label.message,
                         label.rating,

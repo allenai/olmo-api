@@ -500,7 +500,7 @@ class Server(Blueprint):
                 err = RuntimeError(f"failed to finalize message {msg.id}")
                 yield json.dumps(message.MessageStreamError(reply.id, str(err)), cls=util.CustomEncoder) + "\n"
                 raise err
-            freply = self.dbc.message.finalize(reply.id, output, logprobs, c.id)
+            freply = self.dbc.message.finalize(reply.id, output, logprobs, c.id, model_type=model.model_type)
             if freply is None:
                 err = RuntimeError(f"failed to finalize message {reply.id}")
                 yield json.dumps(message.MessageStreamError(reply.id, str(err)), cls=util.CustomEncoder) + "\n"

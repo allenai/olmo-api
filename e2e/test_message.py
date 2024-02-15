@@ -94,6 +94,7 @@ class TestMessageEndpoints(base.IntegrationTest):
             assert m["content"] == "I'm a magical labrador named Murphy, who are you? "
             assert m["creator"] == u1.client
             assert m["role"] == "user"
+            assert m["model_type"] is None  # We only set model_type for assistant messages
             assert datetime.fromisoformat(m["created"]) <= datetime.now(timezone.utc)
             assert m["deleted"] is None
             assert m["root"] == m["id"]
@@ -128,15 +129,15 @@ class TestMessageEndpoints(base.IntegrationTest):
         r = requests.get(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
         r.raise_for_status()
         expect = [
-            (m1["id"], "user", 1),
-            (c1["id"], "assistant", 1),
-            (c2["id"], "user", 1),
-            (c2["children"][0]["id"], "assistant", 0),
+            (m1["id"], "user", None, 1),
+            (c1["id"], "assistant", "chat", 1),
+            (c2["id"], "user", None, 1),
+            (c2["children"][0]["id"], "assistant", "chat", 0),
         ]
         actual = []
         node = r.json()
         while node is not None:
-            actual.append((node["id"], node["role"], len(node["children"]) if node["children"] else 0))
+            actual.append((node["id"], node["role"], node["model_type"], len(node["children"]) if node["children"] else 0))
             node = node["children"][0] if node["children"] else None
         assert actual == expect
 

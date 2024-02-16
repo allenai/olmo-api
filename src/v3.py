@@ -416,6 +416,7 @@ class Server(Blueprint):
             parent=msg.id,
             final=False,
             private=private,
+            model_type=model.model_type,
         )
 
         # Update the parent message to include the reply.

@@ -287,15 +287,16 @@ class Store:
         final: bool = True,
         original: Optional[str] = None,
         private: bool = False,
+        model_type: Optional[ModelType] = None
     ) -> Message:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 try:
                     q = """
                         INSERT INTO
-                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private)
+                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private, model_type)
                         VALUES
-                            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING
                             id,
                             content,
@@ -337,7 +338,8 @@ class Store:
                         completion,
                         final,
                         original,
-                        private
+                        private,
+                        model_type,
                     )).fetchone()
                     if row is None:
                         raise RuntimeError("failed to create message")
@@ -411,7 +413,6 @@ class Store:
         content: Optional[str] = None,
         logprobs: Optional[list[list[TokenLogProbs]]] = None,
         completion: Optional[obj.ID] = None,
-        model_type: Optional[ModelType] = None
     ) -> Optional[Message]:
         """
         Used to finalize a Message produced via a streaming response.
@@ -426,7 +427,6 @@ class Store:
                             content = COALESCE(%s, content),
                             logprobs = COALESCE(%s, logprobs),
                             completion = COALESCE(%s, completion),
-                            model_type = COALESCE(%s, model_type),
                             final = true
                         WHERE
                             id = %s
@@ -457,7 +457,7 @@ class Store:
                             NULL,
                             NULL
                     """
-                    row = cur.execute(q, (content, prepare_logprobs(logprobs), completion, model_type, id)).fetchone()
+                    row = cur.execute(q, (content, prepare_logprobs(logprobs), completion, id)).fetchone()
                     return Message.from_row(row) if row is not None else None
                 except errors.ForeignKeyViolation as e:
                     match e.diag.constraint_name:

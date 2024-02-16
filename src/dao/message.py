@@ -7,6 +7,7 @@ from typing import Optional, Any, cast
 from enum import StrEnum
 from werkzeug import exceptions
 from .. import obj
+from ..config import ModelType
 from . import label, paged
 
 import bs4
@@ -122,6 +123,7 @@ MessageRow = tuple[
     bool,
     Optional[str],
     bool,
+    Optional[ModelType],
 
     # Label fields
     Optional[str],
@@ -176,6 +178,7 @@ class Message:
     final: bool = False
     original: Optional[str] = None
     private: bool = False
+    model_type: Optional[ModelType] = None
     labels: list[label.Label] = field(default_factory=list)
 
     def flatten(self) -> list['Message']:
@@ -190,7 +193,7 @@ class Message:
     def from_row(r: MessageRow) -> 'Message':
         labels = []
         # If the label id is not None, unpack the label.
-        li = 15
+        li = 16
         if r[li] is not None:
             labels = [label.Label.from_row(cast(label.LabelRow, r[li:]))]
 
@@ -218,6 +221,7 @@ class Message:
             final=r[12],
             original=r[13],
             private=r[14],
+            model_type=r[15],
             labels=labels,
         )
 
@@ -283,15 +287,16 @@ class Store:
         final: bool = True,
         original: Optional[str] = None,
         private: bool = False,
+        model_type: Optional[ModelType] = None
     ) -> Message:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 try:
                     q = """
                         INSERT INTO
-                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private)
+                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private, model_type)
                         VALUES
-                            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING
                             id,
                             content,
@@ -308,6 +313,7 @@ class Store:
                             final,
                             original,
                             private,
+                            model_type,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -332,7 +338,8 @@ class Store:
                         completion,
                         final,
                         original,
-                        private
+                        private,
+                        model_type,
                     )).fetchone()
                     if row is None:
                         raise RuntimeError("failed to create message")
@@ -373,6 +380,7 @@ class Store:
                         message.final,
                         message.original,
                         message.private,
+                        message.model_type,
                         label.id,
                         label.message,
                         label.rating,
@@ -399,7 +407,13 @@ class Store:
                 _, msgs = Message.tree(Message.group_by_id([Message.from_row(r) for r in rows]))
                 return msgs.get(id)
 
-    def finalize(self, id: obj.ID, content: Optional[str] = None, logprobs: Optional[list[list[TokenLogProbs]]] = None, completion: Optional[obj.ID] = None) -> Optional[Message]:
+    def finalize(
+        self,
+        id: obj.ID,
+        content: Optional[str] = None,
+        logprobs: Optional[list[list[TokenLogProbs]]] = None,
+        completion: Optional[obj.ID] = None,
+    ) -> Optional[Message]:
         """
         Used to finalize a Message produced via a streaming response.
         """
@@ -432,6 +446,7 @@ class Store:
                             final,
                             original,
                             private,
+                            model_type,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -480,6 +495,7 @@ class Store:
                         updated.final,
                         updated.original,
                         updated.private,
+                        updated.model_type,
                         label.id,
                         label.message,
                         label.rating,
@@ -572,6 +588,7 @@ class Store:
                         message.final,
                         message.original,
                         message.private,
+                        message.model_type,
                         label.id,
                         label.message,
                         label.rating,

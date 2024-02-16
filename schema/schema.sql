@@ -119,3 +119,6 @@ ALTER TABLE message ADD COLUMN IF NOT EXISTS private BOOLEAN NOT NULL DEFAULT fa
 -- A globally unique, human readable ID for referencing the datachip.
 ALTER TABLE datachip ADD COLUMN ref TEXT NOT NULL UNIQUE;
 
+-- Add a column to track the type of model used.
+CREATE TYPE MODEL_TYPE AS ENUM('base', 'chat');
+ALTER TABLE message ADD COLUMN IF NOT EXISTS model_type MODEL_TYPE NULL;

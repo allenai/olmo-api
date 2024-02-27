@@ -1,6 +1,6 @@
 {
     "appName": "olmo-api",
     "contact": "sams",
-    "team": "olmo",
+    "team": "oe-adoption",
     "replicas": { "prod": 2 }
 }

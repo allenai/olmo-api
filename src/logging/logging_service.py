@@ -30,10 +30,15 @@ class LogEntry:
     severity: LogSeverity
     body: str
     resource: str
-    timestamp: datetime.time
+    timestamp: datetime.time = datetime.time()
     attributes: Optional[Mapping[str, str]] = None
     type: str = "LogEntry"
-
+    
+    def validate(self) -> bool:
+        if self.severity is None or self.body is None or self.resource is None:
+            return False
+        return True 
+        
 
 def log(log_entry: LogEntry) -> None:
     logger = getLogger()

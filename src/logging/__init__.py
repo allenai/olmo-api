@@ -22,6 +22,9 @@ def log() -> Response:
         timestamp=request.json.get("timestamp"),
         attributes=request.json.get("attributes"),
     )
+    
+    if log_entry.validate() is False:
+        raise exceptions.BadRequest("one or more required fields were not provided")
 
     log_service(log_entry)
 

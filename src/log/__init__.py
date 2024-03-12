@@ -1,8 +1,8 @@
 from flask import Blueprint, Response, request
 from werkzeug import exceptions
 
-from src.logging.logging_service import LogEntry
-from src.logging.logging_service import log as log_service
+from src.log.log_service import LogEntry
+from src.log.log_service import log as log_service
 
 logging_blueprint = Blueprint(name="logging", import_name=__name__)
 

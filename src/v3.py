@@ -12,7 +12,7 @@ from typing import Optional
 from urllib.parse import urlparse, urlunparse
 from datetime import datetime, timezone
 from enum import StrEnum
-from src.logging import logging_blueprint
+from src.log import logging_blueprint
 
 import dataclasses
 import os
@@ -112,7 +112,7 @@ class Server(Blueprint):
         self.patch("/datachip/<string:id>")(self.patch_datachip)
         self.get("/datachips")(self.datachips)
 
-        self.register_blueprint(logging_blueprint, url_prefix="/logging")
+        self.register_blueprint(logging_blueprint, url_prefix="/log")
 
     def request_agent(self) -> Optional[token.Token]:
         provided = request.cookies.get(

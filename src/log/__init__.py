@@ -23,7 +23,7 @@ def log() -> Response:
         attributes=request.json.get("attributes"),
     )
     
-    if log_entry.validate() is False:
+    if log_entry.is_valid is False:
         raise exceptions.BadRequest("one or more required fields were not provided")
 
     log_service(log_entry)

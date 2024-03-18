@@ -34,11 +34,9 @@ class LogEntry:
     attributes: Optional[Mapping[str, str]] = None
     type: str = "LogEntry"
     
-    def validate(self) -> bool:
-        if self.severity is None or self.body is None or self.resource is None:
-            return False
-        return True 
-        
+    @property
+    def is_valid(self) -> bool:
+        return self.severity is not None or self.body is not None or self.resource is not None
 
 def log(log_entry: LogEntry) -> None:
     logger = getLogger()

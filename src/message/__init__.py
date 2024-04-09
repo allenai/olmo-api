@@ -10,7 +10,7 @@ from src.message.message_service import delete_message, get_message
 
 class MessageBlueprint(Blueprint):
     def __init__(self, dbc: db.Client, inferd: InferDStub, cfg: config.Config):
-        super().__init__("v3", __name__)
+        super().__init__("message", __name__)
 
         self.dbc = dbc
         self.inferd = inferd
@@ -18,11 +18,11 @@ class MessageBlueprint(Blueprint):
 
         # There used to be a non-streaming endpoint for creating messages. It's gone now.
         # Both URLs are supported for backwards compatibility.
-        self.post("/message")(self.create_message)
-        self.post("/message/stream")(self.create_message)
+        self.post("/")(self.create_message)
+        self.post("/stream")(self.create_message)
 
-        self.get("/message/<string:id>")(self.message)
-        self.delete("/message/<string:id>")(self.delete_message)
+        self.get("/<string:id>")(self.message)
+        self.delete("/<string:id>")(self.delete_message)
 
     def create_message(self) -> Response:
         response = create_message(self.dbc, cfg=self.cfg, inferd=self.inferd)

@@ -1,31 +1,34 @@
-from flask import Blueprint, jsonify, request, Response, redirect, current_app, send_file
+import dataclasses
+import io
+import json
+from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse, urlunparse
+
+from flask import (
+    Blueprint,
+    Response,
+    current_app,
+    jsonify,
+    redirect,
+    request,
+    send_file,
+)
+from inferd.msg.inferd_pb2_grpc import InferDStub
 from werkzeug import exceptions
 from werkzeug.wrappers import response
-from datetime import timedelta
-from inferd.msg.inferd_pb2_grpc import InferDStub
-from inferd.msg.inferd_pb2 import InferRequest
-from google.protobuf.struct_pb2 import Struct
-from google.protobuf import json_format
 
 from src.auth.auth_service import authn, request_agent
-from src.message import MessageBlueprint
-from . import db, util, auth, config, parse
-from .dao import message, label, completion, token, datachip, paged
-from typing import Optional
-from urllib.parse import urlparse, urlunparse
-from datetime import datetime, timezone
-from enum import StrEnum
 from src.log import logging_blueprint
+from src.message import MessageBlueprint
 
-import dataclasses
-import os
-import json
-import io
-import grpc
+from . import config, db, parse, util
+from .dao import datachip, label, message, paged, token
+
 
 @dataclasses.dataclass
 class AuthenticatedClient:
     client: str
+
 
 class Server(Blueprint):
     def __init__(self, dbc: db.Client, inferd: InferDStub, cfg: config.Config):
@@ -66,9 +69,13 @@ class Server(Blueprint):
         self.get("/datachips")(self.datachips)
 
         self.register_blueprint(logging_blueprint, url_prefix="/log")
-        self.register_blueprint(blueprint=MessageBlueprint(dbc, inferd, cfg), url_prefix="/message")
+        self.register_blueprint(
+            blueprint=MessageBlueprint(dbc, inferd, cfg), url_prefix="/message"
+        )
 
-    def set_auth_cookie(self, resp: Response | response.Response, token: token.Token) -> Response | response.Response:
+    def set_auth_cookie(
+        self, resp: Response | response.Response, token: token.Token
+    ) -> Response | response.Response:
         resp.set_cookie(
             key="token",
             value=token.token,
@@ -138,8 +145,12 @@ class Server(Blueprint):
 
         # Generate a new one
         try:
-            nt = self.dbc.token.create(resolved_invite.client, token.TokenType.Auth, timedelta(days=7),
-                                       invite=resolved_invite.token)
+            nt = self.dbc.token.create(
+                resolved_invite.client,
+                token.TokenType.Auth,
+                timedelta(days=7),
+                invite=resolved_invite.token,
+            )
         except token.DuplicateInviteError as err:
             raise exceptions.Conflict(str(err))
 
@@ -148,8 +159,8 @@ class Server(Blueprint):
 
         # If invalidation fails, invalidate the newly generated client token and return a 409
         if expired is None:
-             self.dbc.token.expire(nt, token.TokenType.Auth)
-             raise exceptions.Conflict()
+            self.dbc.token.expire(nt, token.TokenType.Auth)
+            raise exceptions.Conflict()
 
         return self.set_auth_cookie(redirect(self.cfg.server.ui_origin), nt)
 
@@ -172,10 +183,12 @@ class Server(Blueprint):
         if grantee is None:
             raise exceptions.BadRequest("missing client")
 
-        invite = self.dbc.token.create(grantee, token.TokenType.Invite, expires_in, creator=grantor.client)
+        invite = self.dbc.token.create(
+            grantee, token.TokenType.Invite, expires_in, creator=grantor.client
+        )
 
         path = current_app.url_for("v3.login_by_invite_token", token=invite.token)
-        return jsonify({ "url": f"{self.cfg.server.api_origin}{path}" })
+        return jsonify({"url": f"{self.cfg.server.api_origin}{path}"})
 
     def prompts(self):
         authn(self.dbc)
@@ -223,38 +236,39 @@ class Server(Blueprint):
             raise exceptions.BadRequest("missing JSON body")
 
         prompt = self.dbc.template.create_prompt(
-            request.json.get("name"),
-            request.json.get("content"),
-            agent.client
+            request.json.get("name"), request.json.get("content"), agent.client
         )
         return jsonify(prompt)
 
     def messages(self):
         agent = authn(self.dbc)
-        return jsonify(self.dbc.message.list(
-            creator=request.args.get("creator"),
-            deleted="deleted" in request.args,
-            opts=paged.parse_opts_from_querystring(request),
-            agent=agent.client,
-        ))
+        return jsonify(
+            self.dbc.message.list(
+                creator=request.args.get("creator"),
+                deleted="deleted" in request.args,
+                opts=paged.parse_opts_from_querystring(request),
+                agent=agent.client,
+            )
+        )
 
     def models(self):
         authn(self.dbc)
         # Exclude inferd_compute_source_id from each model in the response and add the model ID (map key).
-        return jsonify([{
-            "id": m.id,
-            "name": m.name,
-            "description": m.description,
-            "model_type": m.model_type,
-        } for m in self.cfg.inferd.available_models])
+        return jsonify(
+            [
+                {
+                    "id": m.id,
+                    "name": m.name,
+                    "description": m.description,
+                    "model_type": m.model_type,
+                }
+                for m in self.cfg.inferd.available_models
+            ]
+        )
 
     def schema(self):
         authn(self.dbc)
-        return jsonify({
-            "Message": {
-                "InferenceOpts": message.InferenceOpts.schema()
-            }
-        })
+        return jsonify({"Message": {"InferenceOpts": message.InferenceOpts.schema()}})
 
     def create_label(self):
         agent = authn(self.dbc)
@@ -276,8 +290,12 @@ class Server(Blueprint):
             creator=agent.client,
         )
         if existing.meta.total != 0:
-            raise exceptions.UnprocessableEntity(f"message {mid} already has label {existing.labels[0].id}")
-        lbl = self.dbc.label.create(msg.id, rating, agent.client, request.json.get("comment"))
+            raise exceptions.UnprocessableEntity(
+                f"message {mid} already has label {existing.labels[0].id}"
+            )
+        lbl = self.dbc.label.create(
+            msg.id, rating, agent.client, request.json.get("comment")
+        )
         return jsonify(lbl)
 
     def label(self, id: str):
@@ -301,7 +319,7 @@ class Server(Blueprint):
             creator=request.args.get("creator"),
             deleted="deleted" in request.args,
             rating=rating,
-            opts=paged.parse_opts_from_querystring(request, max_limit=1_000_000)
+            opts=paged.parse_opts_from_querystring(request, max_limit=1_000_000),
         )
 
         if "export" not in request.args:
@@ -385,9 +403,10 @@ class Server(Blueprint):
 
     def datachips(self):
         authn(self.dbc)
-        return jsonify(self.dbc.datachip.list_all(
-            creator=request.args.get("creator"),
-            deleted="deleted" in request.args,
-            opts=paged.parse_opts_from_querystring(request)
-        ))
-
+        return jsonify(
+            self.dbc.datachip.list_all(
+                creator=request.args.get("creator"),
+                deleted="deleted" in request.args,
+                opts=paged.parse_opts_from_querystring(request),
+            )
+        )

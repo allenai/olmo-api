@@ -27,7 +27,7 @@ class MessageBlueprint(Blueprint):
     def create_message(self) -> Response:
         response = create_message(self.dbc, cfg=self.cfg, inferd=self.inferd)
 
-        if response is Generator:
+        if isinstance(response, Generator):
             return Response(response, mimetype="application/jsonl")
         else:
             return jsonify(response)

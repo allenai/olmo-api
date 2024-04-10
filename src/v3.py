@@ -124,7 +124,7 @@ class Server(Blueprint):
 
     def login_by_invite_token(self):
         # If the user is already logged in, redirect to the UI
-        if request_agent(dbc) is not None:
+        if request_agent(self.dbc) is not None:
             return redirect(self.cfg.server.ui_origin)
 
         invite = request.args.get("token")

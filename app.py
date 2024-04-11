@@ -24,7 +24,7 @@ def create_app():
     channel = grpc.secure_channel(cfg.inferd.address, grpc.ssl_channel_credentials())
     atexit.register(channel.close)
     inferd = InferDStub(channel)
-    inference_engine = InferDEngine(cfg)
+    inference_engine = InferDEngine(cfg=cfg, channel=channel)
 
     @app.get("/health")
     def health():  # pyright: ignore

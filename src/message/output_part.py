@@ -5,6 +5,7 @@ from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
 from src.dao import message
+from src.inference.InferenceEngine import FinishReason
 
 
 @dataclasses.dataclass

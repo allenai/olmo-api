@@ -45,3 +45,8 @@ docker compose exec api pytest
 
 - [Database Access](./docs/db.md)
 
+## Running locally:
+Change `db.conninfo` in `config.json` to "postgres://app:llmz@localhost:5555/llmx?sslmode=disable"
+start the postgres container with `docker compose start db`
+make sure you're in the venv by running `.venv/bin/activate`
+Start the server by running `FLASK_APP=app.py python -m flask run -p 8000`

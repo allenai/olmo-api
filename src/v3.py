@@ -13,16 +13,15 @@ from flask import (
     request,
     send_file,
 )
-from inferd.msg.inferd_pb2_grpc import InferDStub
 from werkzeug import exceptions
 from werkzeug.wrappers import response
 
+from src import config, db, parse, util
 from src.auth.auth_service import authn, request_agent
+from src.dao import datachip, label, message, paged, token
+from src.inference.InferenceEngine import InferenceEngine
 from src.log import logging_blueprint
 from src.message import MessageBlueprint
-
-from . import config, db, parse, util
-from .dao import datachip, label, message, paged, token
 
 
 @dataclasses.dataclass
@@ -31,11 +30,13 @@ class AuthenticatedClient:
 
 
 class Server(Blueprint):
-    def __init__(self, dbc: db.Client, inferd: InferDStub, cfg: config.Config):
+    def __init__(
+        self, dbc: db.Client, inference_engine: InferenceEngine, cfg: config.Config
+    ):
         super().__init__("v3", __name__)
 
         self.dbc = dbc
-        self.inferd = inferd
+        self.inferd = inference_engine
         self.cfg = cfg
 
         self.get("/whoami")(self.whoami)
@@ -70,7 +71,8 @@ class Server(Blueprint):
 
         self.register_blueprint(logging_blueprint, url_prefix="/log")
         self.register_blueprint(
-            blueprint=MessageBlueprint(dbc, inferd, cfg), url_prefix="/message"
+            blueprint=MessageBlueprint(dbc, inference_engine, cfg),
+            url_prefix="/message",
         )
 
     def set_auth_cookie(

@@ -1,29 +1,10 @@
 import dataclasses
-from enum import StrEnum
 from typing import Optional
 
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
 from src.dao import message
-
-
-class FinishReason(StrEnum):
-    # Something caused the generation to be left incomplete. The only scenario where this happens
-    # (that we know of) is when the prompt is too long and it's the only item being process (batch
-    # size is 1):
-    # See: https://github.com/allenai/inferd-tulu2/blob/main/src/svllm.py#L106
-    UnclosedStream = "unclosed stream"
-
-    # The model stopped because max_tokens was reached, or because the prompt was too long and
-    # there were several items in the batch.
-    Length = "length"
-
-    # The model generated a response and stopped before max_tokens was reached.
-    Stop = "stop"
-
-    # The generation was aborted for an unknown reason.
-    Aborted = "aborted"
 
 
 @dataclasses.dataclass

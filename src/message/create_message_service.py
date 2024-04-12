@@ -112,10 +112,21 @@ def create_message(
             ):
                 finish_reason = chunk.finish_reason
 
+                logprobs = chunk.logprobs if chunk.logprobs is not None else []
+                mapped_logprobs = [
+                    [
+                        message.TokenLogProbs(
+                            token_id=lp.token_id, text=lp.text, logprob=lp.logprob
+                        )
+                        for lp in lp_list
+                    ]
+                    for lp_list in logprobs
+                ]
+
                 new_chunk = message.MessageChunk(
                     message=reply.id,
                     content=chunk.content,
-                    # logprobs=chunk.logprobs if chunk.logprobs is not None else None,
+                    logprobs=mapped_logprobs,
                 )
 
                 chunks.append(new_chunk)

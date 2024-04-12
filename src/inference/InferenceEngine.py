@@ -32,7 +32,7 @@ class InferenceEngineMessage:
 
 @dataclass
 class Logprob(Protocol):
-    token_id: Optional[str]
+    token_id: int
     text: str
     logprob: float
 

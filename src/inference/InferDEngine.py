@@ -57,7 +57,7 @@ class InferDEngine(InferenceEngine):
             yield InferenceEngineChunk(
                 content=part.text,
                 model=model,
-                # logprobs=part.logprobs,
+                logprobs=part.logprobs if part.logprobs is not None else [],
                 finish_reason=part.finish_reason,
             )
 

@@ -331,7 +331,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         )
         r.raise_for_status()
         lines = list(r.text.splitlines())
-        print(lines)
+        # print(lines)
 
         for line in lines[1:-1]:
             chunk = json.loads(line)

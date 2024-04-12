@@ -1,6 +1,6 @@
 import json
 from dataclasses import asdict
-from typing import Generator, List, Optional
+from typing import Generator, Sequence
 
 from google.protobuf.struct_pb2 import Struct
 from grpc import Channel
@@ -10,7 +10,11 @@ from inferd.msg.inferd_pb2 import InferRequest
 from inferd.msg.inferd_pb2_grpc import InferDStub
 
 from src import config, util
-from src.inference.InferenceEngine import InferenceEngine, InferenceEngineChunk
+from src.inference.InferenceEngine import (
+    InferenceEngine,
+    InferenceEngineChunk,
+    InferenceOptions,
+)
 from src.message.create_message_service import InferenceEngineMessage
 from src.message.output_part import OutputPart
 
@@ -31,22 +35,12 @@ class InferDEngine(InferenceEngine):
     def create_streamed_message(
         self,
         model: str,
-        messages: List[InferenceEngineMessage],
-        max_tokens: Optional[int] = None,
-        stop_words: Optional[List[str]] = None,
-        temperature: Optional[float] = None,
-        top_p: Optional[float] = None,
-        logprobs: Optional[int] = None,
+        messages: Sequence[InferenceEngineMessage],
+        inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
         request = {
             "messages": [asdict(message) for message in messages],
-            "opts": {
-                "max_tokens": max_tokens,
-                "stop_words": stop_words,
-                "temperature": temperature,
-                "top_p": top_p,
-                "logprobs": logprobs,
-            },
+            "opts": asdict(inference_options),
         }
 
         input = Struct()

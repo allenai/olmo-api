@@ -108,11 +108,7 @@ def create_message(
             for chunk in inference_engine.create_streamed_message(
                 model=model.compute_source_id,
                 messages=datachip_info,
-                max_tokens=reply.opts.max_tokens,
-                stop_words=reply.opts.stop,
-                temperature=reply.opts.temperature,
-                top_p=reply.opts.top_p,
-                logprobs=reply.opts.logprobs,
+                inference_options=reply.opts,
             ):
                 finish_reason = chunk.finish_reason
 

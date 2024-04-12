@@ -1,7 +1,7 @@
 from abc import abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Generator, List, Optional, Protocol
+from typing import Generator, Optional, Protocol, Sequence
 
 from src.dao import message
 
@@ -31,13 +31,30 @@ class InferenceEngineMessage:
 
 
 @dataclass
+class Logprob(Protocol):
+    token_id: Optional[str]
+    text: str
+    logprob: float
+
+
+@dataclass
 class InferenceEngineChunk:
     content: str
     finish_reason: Optional[FinishReason] = None
     id: Optional[str] = None
     created: Optional[str] = None
     model: Optional[str] = None
-    logprobs: Optional[float] = None
+    logprobs: Sequence[Sequence[Logprob]] = field(default_factory=list)
+
+
+@dataclass
+class InferenceOptions(Protocol):
+    max_tokens: int = 2048
+    temperature: float = 1.0
+    n: int = 1
+    top_p: float = 1.0
+    logprobs: Optional[int] = None
+    stop: Optional[Sequence[str]] = None
 
 
 class InferenceEngine(Protocol):
@@ -45,11 +62,7 @@ class InferenceEngine(Protocol):
     def create_streamed_message(
         self,
         model: str,
-        messages: List[InferenceEngineMessage],
-        max_tokens: Optional[int] = None,
-        stop_words: Optional[List[str]] = None,
-        temperature: Optional[float] = None,
-        top_p: Optional[float] = None,
-        logprobs: Optional[int] = None,
+        messages: Sequence[InferenceEngineMessage],
+        inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
         raise NotImplementedError

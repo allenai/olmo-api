@@ -54,7 +54,7 @@ class InferenceOptions(Protocol):
     n: int = 1
     top_p: float = 1.0
     logprobs: Optional[int] = None
-    stop: Optional[Sequence[str]] = None
+    stop: Optional[list[str]] = None
 
 
 class InferenceEngine(Protocol):

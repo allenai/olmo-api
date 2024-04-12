@@ -40,24 +40,6 @@ class InferDEngine(InferenceEngine):
             "opts": asdict(inference_options),
         }
 
-        # input = Struct()
-        # input.update(request)
-        # inferDRequest = InferRequest(compute_source_id=model, input=input)
-        # metadata = (("x-inferd-token", self.cfg.inferd.token),)
-
-        # for chunk in self.inferd.Infer(
-        #     inferDRequest, metadata=metadata, wait_for_ready=True
-        # ):
-        #     print(chunk)
-        #     part = OutputPart.from_struct(chunk.result.output)
-
-        #     yield InferenceEngineChunk(
-        #         content=part.text,
-        #         model=model,
-        #         logprobs=part.logprobs if part.logprobs is not None else [],
-        #         finish_reason=part.finish_reason,
-        #     )
-
         for message in self.inferDClient.infer(model, payload=request):
             print(message)
 

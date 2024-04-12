@@ -344,7 +344,7 @@ def create_output_from_chunks(chunks: List[message.MessageChunk]):
 
     for chunk in chunks:
         output += chunk.content
-        if chunk.logprobs is not None:
+        if chunk.logprobs is not None and len(chunk.logprobs) > 0:
             logprobs.append(*chunk.logprobs)
 
     return output, logprobs

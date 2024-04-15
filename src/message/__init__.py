@@ -15,7 +15,7 @@ class MessageBlueprint(Blueprint):
         super().__init__("message", __name__)
 
         self.dbc = dbc
-        self.inferd = inference_engine
+        self.inference_engine = inference_engine
         self.cfg = cfg
 
         # There used to be a non-streaming endpoint for creating messages. It's gone now.
@@ -27,7 +27,9 @@ class MessageBlueprint(Blueprint):
         self.delete("/<string:id>")(self.delete_message)
 
     def create_message(self) -> Response:
-        response = create_message(self.dbc, cfg=self.cfg, inference_engine=self.inferd)
+        response = create_message(
+            self.dbc, cfg=self.cfg, inference_engine=self.inference_engine
+        )
 
         if isinstance(response, Generator):
             return Response(response, mimetype="application/jsonl")

@@ -2,9 +2,7 @@ import json
 from dataclasses import asdict
 from typing import Generator, Sequence
 
-from grpc import Channel
 from inferd import Client as InferdClient
-from inferd.msg.inferd_pb2_grpc import InferDStub
 
 from src import config, util
 from src.inference.InferenceEngine import (
@@ -18,12 +16,10 @@ from src.message.create_message_service import InferenceEngineMessage
 
 class InferDEngine(InferenceEngine):
     inferDClient: InferdClient
-    inferd: InferDStub
     cfg: config.Config
 
-    def __init__(self, cfg: config.Config, channel: Channel) -> None:
+    def __init__(self, cfg: config.Config) -> None:
         self.inferDClient = InferdClient(cfg.inferd.address, cfg.inferd.token)
-        self.inferd = InferDStub(channel)
         self.cfg = cfg
 
     def format_message(self, obj) -> str:

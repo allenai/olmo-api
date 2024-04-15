@@ -1,10 +1,8 @@
-import json
+from . import base, util
 from datetime import datetime, timezone
 
 import requests
-
-from . import base, util
-
+import json
 
 class TestMessageEndpoints(base.IntegrationTest):
     messages: list[tuple[str, base.AuthenticatedClient]] = []
@@ -23,13 +21,9 @@ class TestMessageEndpoints(base.IntegrationTest):
         u2 = self.user("test2@localhost")
 
         # Create a message belonging to u1
-        r = requests.post(
-            f"{self.origin}/v3/message",
-            headers=self.auth(u1),
-            json={
-                "content": "I'm a magical labrador named Murphy, who are you? ",
-            },
-        )
+        r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
+            "content": "I'm a magical labrador named Murphy, who are you? ",
+        })
         r.raise_for_status()
 
         msgs = [json.loads(util.last_response_line(r))]
@@ -44,7 +38,7 @@ class TestMessageEndpoints(base.IntegrationTest):
             ("n", 1),
             ("top_p", 1.0),
             ("logprobs", None),
-            ("stop", None),
+            ("stop", None)
         ]
         for name, value in defaults:
             assert m1["opts"][name] == value
@@ -57,53 +51,40 @@ class TestMessageEndpoints(base.IntegrationTest):
         fields = [
             # We don't test values numbers close to most maximums b/c they surpass the thresholds
             # of what our tiny local models can do...
-            ("max_tokens", [0, 1.0, "three", 4097], [1, 32]),
-            ("temperature", [-1.0, "three", 2.1], [0, 0.5, 1]),
-            ("top_p", [-1, "three", 1.1], [0.1, 0.5, 1]),
+            ("max_tokens",  [0, 1.0, "three", 4097],    [1, 32]),
+            ("temperature", [-1.0, "three", 2.1],       [0, 0.5, 1]),
+            ("top_p",       [-1, "three", 1.1],         [0.1, 0.5, 1]),
+
             # TODO: test these cases, once supported (they were disabled when streaming was added)
-            ("n", [-1, 1.0, "three", 51], []),
-            ("logprobs", [-1, 1.0, "three", 11], [0, 1, 10]),
+            ("n",           [-1, 1.0, "three", 51],     []),
+            ("logprobs",    [-1, 1.0, "three", 11],     [0, 1, 10]),
         ]
-        for name, invalid, valid in fields:
+        for (name, invalid, valid) in fields:
             for v in invalid:
-                r = requests.post(
-                    f"{self.origin}/v3/message",
-                    headers=self.auth(u3),
-                    json={
-                        "content": f'Testing invalid value "{v}" for {name}',
-                        "opts": {name: v},
-                    },
-                )
-                assert (
-                    r.status_code == 400
-                ), f"Expected 400 for invalid value {v} for {name}"
+                r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u3), json={
+                    "content": f"Testing invalid value \"{v}\" for {name}",
+                    "opts": { name: v }
+                })
+                assert r.status_code == 400, f"Expected 400 for invalid value {v} for {name}"
             for v in valid:
                 # top_p can only be set to a value that isn't 1.0 if temperature is > 0
-                opts = {name: v}
+                opts = { name: v }
                 if name == "top_p" and v != 1.0:
                     opts["temperature"] = 0.5
 
-                r = requests.post(
-                    f"{self.origin}/v3/message",
-                    headers=self.auth(u3),
-                    json={
-                        "content": f'Testing valid value "{v}" for {name}',
-                        "opts": opts,
-                        "private": True,
-                    },
-                )
-                assert (
-                    r.status_code == 200
-                ), f"Expected 200 for valid value {v} for {name}"
+                r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u3), json={
+                    "content": f"Testing valid value \"{v}\" for {name}",
+                    "opts": opts,
+                    "private": True,
+                })
+                assert r.status_code == 200, f"Expected 200 for valid value {v} for {name}"
                 msg = json.loads(util.last_response_line(r))
                 self.messages.append((msg["id"], u3))
                 for default_name, default_value in defaults:
                     actual = msg["opts"][default_name]
                     expected = opts.get(default_name, default_value)
                     if actual != expected:
-                        raise AssertionError(
-                            f"Value for {default_name} was {actual}, expected {expected}"
-                        )
+                        raise AssertionError(f"Value for {default_name} was {actual}, expected {expected}")
 
         # Verify GET /v3/message/:id
         r = requests.get(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
@@ -113,9 +94,7 @@ class TestMessageEndpoints(base.IntegrationTest):
             assert m["content"] == "I'm a magical labrador named Murphy, who are you? "
             assert m["creator"] == u1.client
             assert m["role"] == "user"
-            assert (
-                m["model_type"] is None
-            )  # We only set model_type for assistant messages
+            assert m["model_type"] is None  # We only set model_type for assistant messages
             assert datetime.fromisoformat(m["created"]) <= datetime.now(timezone.utc)
             assert m["deleted"] is None
             assert m["root"] == m["id"]
@@ -133,14 +112,10 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert c1["children"] is None
 
         # Make sure that creating messages with parents works as expected
-        r = requests.post(
-            f"{self.origin}/v3/message",
-            headers=self.auth(u1),
-            json={
-                "content": "Complete this thought: I like ",
-                "parent": c1["id"],
-            },
-        )
+        r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
+            "content": "Complete this thought: I like ",
+            "parent": c1["id"],
+        })
         r.raise_for_status()
         c2 = json.loads(util.last_response_line(r))
         self.messages.append((c2["id"], u1))
@@ -162,25 +137,14 @@ class TestMessageEndpoints(base.IntegrationTest):
         actual = []
         node = r.json()
         while node is not None:
-            actual.append(
-                (
-                    node["id"],
-                    node["role"],
-                    node["model_type"],
-                    len(node["children"]) if node["children"] else 0,
-                )
-            )
+            actual.append((node["id"], node["role"], node["model_type"], len(node["children"]) if node["children"] else 0))
             node = node["children"][0] if node["children"] else None
         assert actual == expect
 
         # Create a message belonging to u2
-        r = requests.post(
-            f"{self.origin}/v3/message",
-            headers=self.auth(u2),
-            json={
-                "content": "I'm a wizardly horse named Grasshopper, who are you? ",
-            },
-        )
+        r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u2), json={
+            "content": "I'm a wizardly horse named Grasshopper, who are you? ",
+        })
         r.raise_for_status()
         m2 = json.loads(util.last_response_line(r))
         self.messages.append((m2["id"], u2))
@@ -199,9 +163,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert m2["id"] in ids
         assert ids.index(m2["id"]) < ids.index(m1["id"])
         for m in msglist["messages"]:
-            r = requests.get(
-                f"{self.origin}/v3/message/{m['id']}", headers=self.auth(u1)
-            )
+            r = requests.get(f"{self.origin}/v3/message/{m['id']}", headers=self.auth(u1))
             r.raise_for_status()
             assert r.json() == m
 
@@ -219,9 +181,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert m2["id"] in ids
         assert ids.index(m2["id"]) < ids.index(m1["id"])
 
-        r = requests.get(
-            f"{self.origin}/v3/messages?offset=1&limit=1", headers=self.auth(u1)
-        )
+        r = requests.get(f"{self.origin}/v3/messages?offset=1&limit=1", headers=self.auth(u1))
         r.raise_for_status()
         limit_msglist = r.json()
         assert limit_msglist["meta"]["total"] > 0
@@ -231,11 +191,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert limit_msglist["messages"][0]["id"] == offset_msglist["messages"][0]["id"]
 
         # List by author
-        r = requests.get(
-            f"{self.origin}/v3/messages",
-            headers=self.auth(u1),
-            params={"creator": u1.client},
-        )
+        r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1), params={ "creator": u1.client })
         r.raise_for_status()
         u1_msglist = r.json()
         assert u1_msglist["meta"]["total"] > 0
@@ -244,11 +200,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert m1["id"] in ids
         assert m2["id"] not in ids
 
-        r = requests.get(
-            f"{self.origin}/v3/messages",
-            headers=self.auth(u1),
-            params={"creator": u2.client},
-        )
+        r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1), params={ "creator": u2.client })
         r.raise_for_status()
         u2_msglist = r.json()
         assert u2_msglist["meta"]["total"] > 0
@@ -258,23 +210,17 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert m2["id"] in ids
 
         # Make sure u2 can't delete u1
-        r = requests.delete(
-            f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u2)
-        )
+        r = requests.delete(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u2))
         assert r.status_code == 403
 
         # Delete the message
-        r = requests.delete(
-            f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1)
-        )
+        r = requests.delete(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
         r.raise_for_status()
         deleted = r.json()["deleted"]
         assert deleted is not None
 
         # Verify that deletes are idempotent
-        r = requests.delete(
-            f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1)
-        )
+        r = requests.delete(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
         r.raise_for_status()
         assert r.json()["deleted"] == deleted
 
@@ -306,34 +252,26 @@ class TestMessageEndpoints(base.IntegrationTest):
             (
                 "Can <em>Murphy</em> dance after eating <marquee>three thousand hamburgers</marquee> made by a <strong>Grasshopper</strong> on a bright, sunny October afternoon?",
                 "Can Murphy dance after eating three thousand hamburgers made by a Grasshopper on a bright, sunny…",
-            ),
-        ]
-        for content, snippet in cases:
-            r = requests.post(
-                f"{self.origin}/v3/message",
-                headers=self.auth(u1),
-                json={"content": content},
             )
+        ]
+        for (content, snippet) in cases:
+            r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={ "content": content })
             r.raise_for_status()
             m = json.loads(util.last_response_line(r))
             self.messages.append((m["id"], u1))
             assert m["snippet"] == snippet
 
         # Create a message w/ logprobs
-        r = requests.post(
-            f"{self.origin}/v3/message",
-            headers=self.auth(u1),
-            json={
-                # Only "tulu2" supports logprobs currently https://github.com/allenai/inferd-olmo/issues/1
-                "model": "tulu2",
-                "content": "why are labradors smarter than unicorns?",
-                "opts": {"logprobs": 2},
-            },
-        )
+        r = requests.post(f"{self.origin}/v3/message", headers=self.auth(u1), json={
+            # Only "tulu2" supports logprobs currently https://github.com/allenai/inferd-olmo/issues/1
+            "model": "tulu2",
+            "content": "why are labradors smarter than unicorns?",
+            "opts": {
+                "logprobs": 2
+            }
+        })
         r.raise_for_status()
         lines = list(r.text.splitlines())
-        # print(lines)
-
         for line in lines[1:-1]:
             chunk = json.loads(line)
             # TODO: I can't explain why, but sometimes there appears to be > 2 in the response.
@@ -352,8 +290,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert lp1.get("logprob") > lp2.get("logprob")
 
     def tearDown(self):
-        for id, user in self.messages:
-            r = requests.delete(
-                f"{self.origin}/v3/message/{id}", headers=self.auth(user)
-            )
+        for (id, user) in self.messages:
+            r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
             r.raise_for_status()
+

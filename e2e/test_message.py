@@ -3,9 +3,7 @@ from datetime import datetime, timezone
 
 import requests
 
-from e2e import util
-
-from . import base
+from . import base, util
 
 
 class TestMessageEndpoints(base.IntegrationTest):

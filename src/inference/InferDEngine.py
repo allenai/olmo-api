@@ -41,8 +41,6 @@ class InferDEngine(InferenceEngine):
         }
 
         for message in self.inferDClient.infer(model, payload=request):
-            print(message)
-
             logprobs = message.get("logprobs")
             mapped_logprobs = (
                 [

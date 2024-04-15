@@ -130,8 +130,6 @@ def create_message(
                 )
 
                 chunks.append(new_chunk)
-                # gen += chunk.result.inference_time.ToMilliseconds()
-                # queue = chunk.result.queue_time.ToMilliseconds()
 
                 yield format_message(new_chunk)
 

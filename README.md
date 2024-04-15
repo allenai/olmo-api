@@ -45,8 +45,16 @@ docker compose exec api pytest
 
 - [Database Access](./docs/db.md)
 
-## Running locally:
+## Running the API outside of Docker:
 Change `db.conninfo` in `config.json` to "postgres://app:llmz@localhost:5555/llmx?sslmode=disable"
+
 start the postgres container with `docker compose start db`
+
 make sure you're in the venv by running `.venv/bin/activate`
+
 Start the server by running `FLASK_APP=app.py python -m flask run -p 8000`
+
+### Debugging the API in VSCode:
+Ensure you have the [Python Extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python) installed.
+
+Instead of starting the server with the `python` command above, launch the `Python Debugger: Flask` debug task in VSCode's debug menu.

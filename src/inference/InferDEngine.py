@@ -47,7 +47,7 @@ class InferDEngine(InferenceEngine):
                     [
                         Logprob(
                             # For some reason InferDClient returns token_id as a float instead of an int.
-                            # it should always be a float so we're converting it here
+                            # it should always be an int so we're converting it here
                             token_id=int(lp["token_id"]),
                             text=lp["text"],
                             logprob=lp["logprob"],

@@ -3,7 +3,6 @@ import logging
 
 import grpc
 from flask import Flask
-from inferd.msg.inferd_pb2_grpc import InferDStub
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src import config, db, error, util, v3
@@ -23,7 +22,6 @@ def create_app():
 
     channel = grpc.secure_channel(cfg.inferd.address, grpc.ssl_channel_credentials())
     atexit.register(channel.close)
-    inferd = InferDStub(channel)
     inference_engine = InferDEngine(cfg=cfg, channel=channel)
 
     @app.get("/health")

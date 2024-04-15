@@ -36,7 +36,7 @@ class Server(Blueprint):
         super().__init__("v3", __name__)
 
         self.dbc = dbc
-        self.inferd = inference_engine
+        self.inference_engine = inference_engine
         self.cfg = cfg
 
         self.get("/whoami")(self.whoami)

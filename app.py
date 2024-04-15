@@ -1,7 +1,6 @@
 import atexit
 import logging
 
-import grpc
 from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -20,9 +19,7 @@ def create_app():
     dbc = db.Client.from_config(cfg.db)
     atexit.register(dbc.close)
 
-    channel = grpc.secure_channel(cfg.inferd.address, grpc.ssl_channel_credentials())
-    atexit.register(channel.close)
-    inference_engine = InferDEngine(cfg=cfg, channel=channel)
+    inference_engine = InferDEngine(cfg=cfg)
 
     @app.get("/health")
     def health():  # pyright: ignore

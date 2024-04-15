@@ -54,6 +54,8 @@ make sure you're in the venv by running `.venv/bin/activate`
 
 Start the server by running `FLASK_APP=app.py python -m flask run -p 8000`
 
+Note: If you run e2e tests with a local server it's possible for the containers and local server to be out of sync. Make sure you run e2e tests in the docker-compose
+
 ### Debugging the API in VSCode:
 Ensure you have the [Python Extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python) installed.
 

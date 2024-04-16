@@ -80,5 +80,9 @@ class Config:
                     data["server"].get("ui_origin", "http://localhost:8080"),
                     data["server"].get("allowed_redirects", []),
                 ),
-                togetherai=TogetherAIConfig(api_key=data["togetherai"].get("api_key")),
+                togetherai=TogetherAIConfig(api_key=data["togetherai"].get("api_key"),
+                    available_models=[
+                        Model(**m) for m in data["togetherai"]["available_models"]
+                    ],
+                ),
             )

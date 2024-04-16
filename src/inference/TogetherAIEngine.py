@@ -22,6 +22,7 @@ class TogetherAIEngine(InferenceEngine):
 
     def __init__(self, cfg: config.Config) -> None:
         self.togetherAIClient = Together(api_key=cfg.togetherai.api_key)
+        print("Are u get initialized")
 
     def create_streamed_message(
         self,
@@ -29,6 +30,8 @@ class TogetherAIEngine(InferenceEngine):
         messages: Sequence[InferenceEngineMessage],
         inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
+        print("Model")
+        print(model)
         mapped_messages = [asdict(message) for message in messages]
         response = self.togetherAIClient.chat.completions.create(
             model=model,
@@ -37,13 +40,15 @@ class TogetherAIEngine(InferenceEngine):
             **asdict(inference_options),
         )
 
+        print("Inside TogetherAIEngine")
+        print(response)
+
         if not isinstance(response, Iterator):
             raise NotImplementedError
 
         for chunk in response:
             if chunk.choices is None:
                 raise NotImplementedError
-
             message = chunk.choices[0]
             content = (
                 message.delta.content
@@ -53,7 +58,7 @@ class TogetherAIEngine(InferenceEngine):
             yield InferenceEngineChunk(
                 content=content,
                 model=model,
-                logprobs=[],
+                logprobs= self.map_logprobs(message),
                 finish_reason=self.map_finish_reason(message.finish_reason),
                 created=datetime.fromtimestamp(chunk.created).isoformat()
                 if chunk.created is not None

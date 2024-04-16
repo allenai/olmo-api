@@ -84,7 +84,7 @@ class Store:
                 row = cur.execute(q, (id,)).fetchone()
                 return Label.from_row(row) if row is not None else None
 
-    def list(
+    def get_list(
         self,
         message: Optional[str] = None,
         creator: Optional[str] = None,
@@ -151,15 +151,3 @@ class Store:
                 """
                 row = cur.execute(q, (id,)).fetchone()
                 return Label.from_row(row) if row is not None else None
-
-    def remove_by_message_ids(self, msg_ids: list[str]) -> Optional[list[str]]:
-        with self.pool.connection() as conn:
-            with conn.cursor() as cursor:
-                q = """
-                    DELETE
-                    FROM
-                        label
-                    WHERE
-                        message = ANY(%s)
-                """
-                cursor.execute(q, (msg_ids,))

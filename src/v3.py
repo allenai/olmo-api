@@ -287,7 +287,7 @@ class Server(Blueprint):
         except ValueError as e:
             raise exceptions.BadRequest(str(e))
 
-        existing = self.dbc.label.list(
+        existing = self.dbc.label.get_list(
             message=mid,
             creator=agent.client,
         )
@@ -316,7 +316,7 @@ class Server(Blueprint):
         except ValueError as e:
             raise exceptions.BadRequest(str(e))
 
-        ll = self.dbc.label.list(
+        ll = self.dbc.label.get_list(
             message=request.args.get("message"),
             creator=request.args.get("creator"),
             deleted="deleted" in request.args,

@@ -1,6 +1,6 @@
 from dataclasses import asdict
 from datetime import datetime
-from math import floor
+from math import ceil
 from typing import Generator, Iterator, Optional, Sequence
 
 from together import Together
@@ -35,8 +35,8 @@ class TogetherAIEngine(InferenceEngine):
         if inference_options.max_tokens is not None:
             contents_length = sum([len(message.content) for message in messages])
 
-            # HACK: There's ways to do this more precisely but dividing by 2 then adding 5 seems to get us close
-            rough_token_count = floor(contents_length / 2) + 5
+            # HACK: There's ways to do this more precisely but dividing by 2 then adding 10 seems to get us close
+            rough_token_count = ceil(contents_length / 2) + 10
 
             inference_options.max_tokens = (
                 inference_options.max_tokens - rough_token_count
@@ -44,9 +44,7 @@ class TogetherAIEngine(InferenceEngine):
 
         # Together doesn't accept anything more than 1 (a bool value) for logprobs
         # To get an equivalent response we ask for n potential completions (n == inference_options.logprobs) and map from there
-        n = 1
         if inference_options.logprobs is not None and inference_options.logprobs > 0:
-            inference_options.n = inference_options.logprobs
             inference_options.logprobs = 1
 
         mapped_messages = [asdict(message) for message in messages]

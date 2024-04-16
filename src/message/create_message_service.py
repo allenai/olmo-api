@@ -67,7 +67,7 @@ def create_message(
     )
 
     model = next(
-        (m for m in cfg.inferd.available_models if m.id == request.model_id), None
+        (m for m in cfg.togetherai.available_models if m.id == request.model_id), None
     )
     if not model:
         raise exceptions.BadRequest(f"model {request.model_id} not found")

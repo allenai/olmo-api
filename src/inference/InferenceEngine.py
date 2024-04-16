@@ -49,7 +49,7 @@ class InferenceEngineChunk:
 
 @dataclass
 class InferenceOptions(Protocol):
-    max_tokens: int = 2048
+    max_tokens: int = 1024
     temperature: float = 1.0
     n: int = 1
     top_p: float = 1.0

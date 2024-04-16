@@ -2,11 +2,10 @@ import atexit
 import logging
 
 from flask import Flask
-from src.inference.TogetherAIEngine import TogetherAIEngine
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src import config, db, error, util, v3
-from src.inference.InferDEngine import InferDEngine
+from src.inference.TogetherAIEngine import TogetherAIEngine
 
 
 def create_app():
@@ -15,7 +14,7 @@ def create_app():
     # Use ISO formatted datetimes
     app.json = util.CustomJSONProvider(app)
 
-    cfg = config.Config.load()
+    cfg = config.Config.load("config.json")
 
     dbc = db.Client.from_config(cfg.db)
     atexit.register(dbc.close)

@@ -33,8 +33,8 @@ class TogetherAIEngine(InferenceEngine):
         if inference_options.max_tokens is not None:
             contents_length = sum([len(message.content) for message in messages])
 
-            # I read somewhere that dividing by 4 is a decent approximation
-            rough_token_count = floor(contents_length / 4)
+            # HACK: There's ways to do this more precisely but dividing by 2 then adding 5 seems to get us close
+            rough_token_count = floor(contents_length / 2) + 5
 
             inference_options.max_tokens = (
                 inference_options.max_tokens - rough_token_count

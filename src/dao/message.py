@@ -1,21 +1,24 @@
-from psycopg_pool import ConnectionPool
-from psycopg.types.json import Jsonb
-from psycopg import errors
-from dataclasses import dataclass, field, asdict, replace
+import re
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
-from typing import Optional, Any, cast
 from enum import StrEnum
+from typing import Any, Optional, cast
+
+import bs4
+from psycopg import errors
+from psycopg.types.json import Jsonb
+from psycopg_pool import ConnectionPool
 from werkzeug import exceptions
+
 from .. import obj
 from ..config import ModelType
 from . import label, paged
 
-import bs4
-import re
 
 class Role(StrEnum):
     User = "user"
     Assistant = "assistant"
+
 
 @dataclass
 class Field:
@@ -25,12 +28,14 @@ class Field:
     max: Any
     step: Optional[int | float] = None
 
-max_tokens = Field("max_tokens", 2048, 1, 4096, 1)
+
+max_tokens = Field("max_tokens", 2048, 1, 2048, 1)
 temperature = Field("temperature", 1.0, 0.0, 2.0, 0.01)
 num = Field("n", 1, 1, 50, 1)
 top_p = Field("top_p", 1.0, 0.0, 1.0, 0.01)
 logprobs = Field("logprobs", None, 0, 10, 1)
 stop = Field("stop", None, None, None)
+
 
 @dataclass
 class InferenceOpts:
@@ -44,27 +49,24 @@ class InferenceOpts:
     @staticmethod
     def schema() -> dict[str, Field]:
         return {
-            f.name: f for f in [
-                max_tokens,
-                temperature,
-                num,
-                top_p,
-                logprobs,
-                stop
-            ]
+            f.name: f for f in [max_tokens, temperature, num, top_p, logprobs, stop]
         }
 
     @staticmethod
-    def from_request(d: dict[str, Any]) -> 'InferenceOpts':
+    def from_request(d: dict[str, Any]) -> "InferenceOpts":
         mt = d.get(max_tokens.name, max_tokens.default)
         if not isinstance(mt, int):
             raise ValueError(f"max_tokens {mt} is not an integer")
         if mt > max_tokens.max or mt < max_tokens.min:
-            raise ValueError(f"max_tokens {mt} is not in range [{max_tokens.min}, {max_tokens.max}]")
+            raise ValueError(
+                f"max_tokens {mt} is not in range [{max_tokens.min}, {max_tokens.max}]"
+            )
 
         temp = float(d.get(temperature.name, temperature.default))
         if temp > temperature.max or temp < temperature.min:
-            raise ValueError(f"temperature {temp} is not in range [{temperature.min}, {temperature.max}]")
+            raise ValueError(
+                f"temperature {temp} is not in range [{temperature.min}, {temperature.max}]"
+            )
 
         n = d.get(num.name, num.default)
         if not isinstance(n, int):
@@ -81,7 +83,9 @@ class InferenceOpts:
             if not isinstance(lp, int):
                 raise ValueError(f"logprobs {lp} is not an integer")
             if lp > logprobs.max or lp < logprobs.min:
-                raise ValueError(f"logprobs {lp} is not in range [{logprobs.min}, {logprobs.max}]")
+                raise ValueError(
+                    f"logprobs {lp} is not in range [{logprobs.min}, {logprobs.max}]"
+                )
 
         sw = d.get(stop.name, stop.default)
         if sw is not None:
@@ -93,18 +97,23 @@ class InferenceOpts:
 
         return InferenceOpts(mt, temp, n, tp, lp, sw)
 
+
 @dataclass
 class TokenLogProbs:
     token_id: int
     text: str
     logprob: float
 
-def prepare_logprobs(logprobs: Optional[list[list[TokenLogProbs]]]) -> Optional[list[Jsonb]]:
+
+def prepare_logprobs(
+    logprobs: Optional[list[list[TokenLogProbs]]],
+) -> Optional[list[Jsonb]]:
     if logprobs is None:
         return None
     # TODO: logprobs is a JSONB[] field now, but should probably be JSONB[][]; though this only
     # matters if we decide we want to query by index, which seems unlikely.
     return [Jsonb(list([asdict(lp) for lp in lps])) for lps in logprobs]
+
 
 MessageRow = tuple[
     # Message fields
@@ -124,7 +133,6 @@ MessageRow = tuple[
     Optional[str],
     bool,
     Optional[ModelType],
-
     # Label fields
     Optional[str],
     Optional[str],
@@ -132,10 +140,11 @@ MessageRow = tuple[
     Optional[str],
     Optional[str],
     Optional[datetime],
-    Optional[datetime]
+    Optional[datetime],
 ]
 
-MessagesByID = dict[str, 'Message']
+MessagesByID = dict[str, "Message"]
+
 
 @dataclass
 class MessageChunk:
@@ -143,21 +152,25 @@ class MessageChunk:
     content: str
     logprobs: Optional[list[list[TokenLogProbs]]] = None
 
+
 @dataclass
 class MessageStreamError:
     message: obj.ID
     error: str
 
+
 def first_n_words(s: str, n: int) -> str:
     # We take the first n * 32 characters as to avoid processing the entire text, which might be
     # large. This is for obvious reasons imperfect but probably good enough for manifesting a short,
     # representative snippet.
-    words = re.split(r"\s+", s[:n*32])
+    words = re.split(r"\s+", s[: n * 32])
     return " ".join(words[:n]) + ("…" if len(words) > n else "")
+
 
 def text_snippet(s: str) -> str:
     soup = bs4.BeautifulSoup(s, features="html.parser")
     return first_n_words(soup.get_text(), 16)
+
 
 @dataclass
 class Message:
@@ -173,7 +186,7 @@ class Message:
     parent: Optional[str] = None
     template: Optional[str] = None
     logprobs: Optional[list[list[TokenLogProbs]]] = None
-    children: Optional[list['Message']] = None
+    children: Optional[list["Message"]] = None
     completion: Optional[str] = None
     final: bool = False
     original: Optional[str] = None
@@ -181,7 +194,7 @@ class Message:
     model_type: Optional[ModelType] = None
     labels: list[label.Label] = field(default_factory=list)
 
-    def flatten(self) -> list['Message']:
+    def flatten(self) -> list["Message"]:
         if self.children is None:
             return [self]
         flat: list[Message] = [self]
@@ -190,7 +203,7 @@ class Message:
         return flat
 
     @staticmethod
-    def from_row(r: MessageRow) -> 'Message':
+    def from_row(r: MessageRow) -> "Message":
         labels = []
         # If the label id is not None, unpack the label.
         li = 16
@@ -225,13 +238,15 @@ class Message:
             labels=labels,
         )
 
-    def merge(self, m: 'Message') -> 'Message':
+    def merge(self, m: "Message") -> "Message":
         if self.id != m.id:
-            raise RuntimeError(f"cannot merge messages with different ids: {self.id} != {m.id}")
+            raise RuntimeError(
+                f"cannot merge messages with different ids: {self.id} != {m.id}"
+            )
         return replace(self, labels=self.labels + m.labels)
 
     @staticmethod
-    def group_by_id(msgs: list['Message']) -> dict[str, 'Message']:
+    def group_by_id(msgs: list["Message"]) -> dict[str, "Message"]:
         mids = {}
         for m in msgs:
             if m.id in mids:
@@ -241,7 +256,7 @@ class Message:
         return mids
 
     @staticmethod
-    def tree(msgs: MessagesByID) -> tuple[list['Message'], MessagesByID]:
+    def tree(msgs: MessagesByID) -> tuple[list["Message"], MessagesByID]:
         roots = []
         for m in msgs.values():
             if m.parent is None:
@@ -265,9 +280,11 @@ class Message:
 
         return roots, msgs
 
+
 @dataclass
 class MessageList(paged.List):
     messages: list[Message]
+
 
 class Store:
     def __init__(self, pool: ConnectionPool):
@@ -287,7 +304,7 @@ class Store:
         final: bool = True,
         original: Optional[str] = None,
         private: bool = False,
-        model_type: Optional[ModelType] = None
+        model_type: Optional[ModelType] = None,
     ) -> Message:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
@@ -325,40 +342,51 @@ class Store:
                             NULL
                     """
                     mid = obj.NewID("msg")
-                    row = cur.execute(q, (
-                        mid,
-                        content,
-                        creator,
-                        role,
-                        Jsonb(asdict(opts)),
-                        root or mid,
-                        parent,
-                        template,
-                        prepare_logprobs(logprobs),
-                        completion,
-                        final,
-                        original,
-                        private,
-                        model_type,
-                    )).fetchone()
+                    row = cur.execute(
+                        q,
+                        (
+                            mid,
+                            content,
+                            creator,
+                            role,
+                            Jsonb(asdict(opts)),
+                            root or mid,
+                            parent,
+                            template,
+                            prepare_logprobs(logprobs),
+                            completion,
+                            final,
+                            original,
+                            private,
+                            model_type,
+                        ),
+                    ).fetchone()
                     if row is None:
                         raise RuntimeError("failed to create message")
-                    return(Message.from_row(row))
+                    return Message.from_row(row)
                 except errors.ForeignKeyViolation as e:
                     # TODO: the dao probably shouldn't throw HTTP exceptions, instead it should
                     # throw something more generic that the server translates
                     match e.diag.constraint_name:
                         case "message_completion_fkey":
-                            raise exceptions.BadRequest(f"completion \"{completion}\" not found")
+                            raise exceptions.BadRequest(
+                                f'completion "{completion}" not found'
+                            )
                         case "message_original_fkey":
-                            raise exceptions.BadRequest(f"original \"{original}\" not found")
+                            raise exceptions.BadRequest(
+                                f'original "{original}" not found'
+                            )
                         case "message_parent_fkey":
-                            raise exceptions.BadRequest(f"parent \"{parent}\" not found")
+                            raise exceptions.BadRequest(f'parent "{parent}" not found')
                         case "message_root_fkey":
-                            raise exceptions.BadRequest(f"root \"{root}\" not found")
+                            raise exceptions.BadRequest(f'root "{root}" not found')
                         case "message_template_fkey":
-                            raise exceptions.BadRequest(f"template \"{template}\" not found")
-                    raise exceptions.BadRequest(f"unknown foreign key violation: {e.diag.constraint_name}")
+                            raise exceptions.BadRequest(
+                                f'template "{template}" not found'
+                            )
+                    raise exceptions.BadRequest(
+                        f"unknown foreign key violation: {e.diag.constraint_name}"
+                    )
 
     def get(self, id: str, agent: Optional[str] = None) -> Optional[Message]:
         with self.pool.connection() as conn:
@@ -403,8 +431,16 @@ class Store:
                     ORDER BY
                         message.created ASC
                 """
-                rows = cur.execute(q, (agent, id,)).fetchall()
-                _, msgs = Message.tree(Message.group_by_id([Message.from_row(r) for r in rows]))
+                rows = cur.execute(
+                    q,
+                    (
+                        agent,
+                        id,
+                    ),
+                ).fetchall()
+                _, msgs = Message.tree(
+                    Message.group_by_id([Message.from_row(r) for r in rows])
+                )
                 return msgs.get(id)
 
     def finalize(
@@ -457,14 +493,19 @@ class Store:
                             NULL,
                             NULL
                     """
-                    row = cur.execute(q, (content, prepare_logprobs(logprobs), completion, id)).fetchone()
+                    row = cur.execute(
+                        q, (content, prepare_logprobs(logprobs), completion, id)
+                    ).fetchone()
                     return Message.from_row(row) if row is not None else None
                 except errors.ForeignKeyViolation as e:
                     match e.diag.constraint_name:
                         case "message_completion_fkey":
-                            raise exceptions.BadRequest(f"completion \"{completion}\" not found")
-                    raise exceptions.BadRequest(f"unknown foreign key violation: {e.diag.constraint_name}")
-
+                            raise exceptions.BadRequest(
+                                f'completion "{completion}" not found'
+                            )
+                    raise exceptions.BadRequest(
+                        f"unknown foreign key violation: {e.diag.constraint_name}"
+                    )
 
     def delete(self, id: str, agent: Optional[str] = None) -> Optional[Message]:
         with self.pool.connection() as conn:
@@ -629,10 +670,16 @@ class Store:
                     args["offset"] = 0
                     row = cur.execute(q, args).fetchone()
                     total = row[0] if row is not None else 0
-                    return MessageList(messages=[], meta=paged.ListMeta(total, opts.offset, opts.limit, opts.sort))
+                    return MessageList(
+                        messages=[],
+                        meta=paged.ListMeta(total, opts.offset, opts.limit, opts.sort),
+                    )
 
                 total = rows[0][0]
-                roots, _ = Message.tree(Message.group_by_id([Message.from_row(r[1:]) for r in rows]))
+                roots, _ = Message.tree(
+                    Message.group_by_id([Message.from_row(r[1:]) for r in rows])
+                )
 
-                return MessageList(messages=roots, meta=paged.ListMeta(total, opts.offset, opts.limit))
-
+                return MessageList(
+                    messages=roots, meta=paged.ListMeta(total, opts.offset, opts.limit)
+                )

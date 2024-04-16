@@ -1,5 +1,6 @@
 from dataclasses import asdict
 from datetime import datetime
+from math import floor
 from typing import Generator, Iterator, Optional, Sequence
 
 from together import Together
@@ -22,7 +23,6 @@ class TogetherAIEngine(InferenceEngine):
 
     def __init__(self, cfg: config.Config) -> None:
         self.togetherAIClient = Together(api_key=cfg.togetherai.api_key)
-        print("Are u get initialized")
 
     def create_streamed_message(
         self,
@@ -30,9 +30,25 @@ class TogetherAIEngine(InferenceEngine):
         messages: Sequence[InferenceEngineMessage],
         inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
+        if inference_options.max_tokens is not None:
+            contents_length = sum([len(message.content) for message in messages])
+
+            # I read somewhere that dividing by 4 is a decent approximation
+            rough_token_count = floor(contents_length / 4)
+
+            inference_options.max_tokens = (
+                inference_options.max_tokens - rough_token_count
+            )
+
+        # We accept logprobs of any int but Together only allows 0 or 1
+        inference_options.logprobs = (
+            1
+            if inference_options.logprobs is not None and inference_options.logprobs > 0
+            else 0
+        )
+
         mapped_messages = [asdict(message) for message in messages]
-        inference_options.max_tokens = 1024
-        inference_options.logprobs = 1
+
         response = self.togetherAIClient.chat.completions.create(
             model=model,
             messages=mapped_messages,
@@ -41,17 +57,19 @@ class TogetherAIEngine(InferenceEngine):
         )
 
         if not isinstance(response, Iterator):
-            raise NotImplementedError
+            raise TypeError("Together returned a non-streamed response")
 
         for chunk in response:
             if chunk.choices is None:
                 raise NotImplementedError
+
             message = chunk.choices[0]
             content = (
                 message.delta.content
                 if message.delta is not None and message.delta.content is not None
                 else ""
             )
+
             yield InferenceEngineChunk(
                 content=content,
                 model=model,
@@ -85,15 +103,18 @@ class TogetherAIEngine(InferenceEngine):
         ):
             return []
 
+        text = (
+            togetherAIChunk.delta.content
+            if togetherAIChunk.delta.content is not None
+            else ""
+        )
+
         return [
             [
                 Logprob(
                     logprob=togetherAIChunk.logprobs,
-                    text=togetherAIChunk.delta.content
-                    if togetherAIChunk.delta is not None
-                    and togetherAIChunk.delta.content is not None
-                    else "",
-                    token_id=togetherAIChunk.index,
+                    text=text,
+                    token_id=togetherAIChunk.delta.token_id,  # type: ignore - this token_id exists in the response but not in the Python typing
                 )
             ]
         ]

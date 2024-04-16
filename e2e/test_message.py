@@ -49,7 +49,7 @@ class TestMessageEndpoints(base.IntegrationTest):
             ("stop", None),
         ]
         for name, value in defaults:
-            assert m1["opts"][name] == value  # noqa: E999
+            assert m1["opts"][name] == value
 
         # Test inference option validation. Each tuple is of the form:
         # (field_name, invalid_values, valid_values). For these tests we create

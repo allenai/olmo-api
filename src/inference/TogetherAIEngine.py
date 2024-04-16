@@ -17,6 +17,8 @@ from src.inference.InferenceEngine import (
 )
 from src.message.create_message_service import InferenceEngineMessage
 
+UNLIKELY_LOGPROB = -9999.0
+
 
 class TogetherAIEngine(InferenceEngine):
     togetherAIClient: Together
@@ -40,12 +42,12 @@ class TogetherAIEngine(InferenceEngine):
                 inference_options.max_tokens - rough_token_count
             )
 
-        # We accept logprobs of any int but Together only allows 0 or 1
-        inference_options.logprobs = (
-            1
-            if inference_options.logprobs is not None and inference_options.logprobs > 0
-            else 0
-        )
+        # Together doesn't accept anything more than 1 (a bool value) for logprobs
+        # To get an equivalent response we ask for n potential completions (n == inference_options.logprobs) and map from there
+        n = 1
+        if inference_options.logprobs is not None and inference_options.logprobs > 0:
+            inference_options.n = inference_options.logprobs
+            inference_options.logprobs = 1
 
         mapped_messages = [asdict(message) for message in messages]
 
@@ -73,7 +75,7 @@ class TogetherAIEngine(InferenceEngine):
             yield InferenceEngineChunk(
                 content=content,
                 model=model,
-                logprobs=self.map_logprobs(message),
+                logprobs=self.map_logprobs(chunk.choices),
                 finish_reason=self.map_finish_reason(message.finish_reason),
                 created=datetime.fromtimestamp(chunk.created).isoformat()
                 if chunk.created is not None
@@ -94,27 +96,19 @@ class TogetherAIEngine(InferenceEngine):
                 return None
 
     def map_logprobs(
-        self, togetherAIChunk: ChatCompletionChoicesChunk
+        self, togetherAIChunk: list[ChatCompletionChoicesChunk]
     ) -> Sequence[Sequence[Logprob]]:
-        if (
-            togetherAIChunk.logprobs is None
-            or togetherAIChunk.index is None
-            or togetherAIChunk.delta is None
-        ):
-            return []
-
-        text = (
-            togetherAIChunk.delta.content
-            if togetherAIChunk.delta.content is not None
-            else ""
-        )
-
         return [
             [
                 Logprob(
-                    logprob=togetherAIChunk.logprobs,
-                    text=text,
-                    token_id=togetherAIChunk.delta.token_id,  # type: ignore - this token_id exists in the response but not in the Python typing
+                    logprob=chunk.logprobs
+                    if chunk.logprobs is not None
+                    else UNLIKELY_LOGPROB,
+                    token_id=chunk.delta.token_id,  # type: ignore - this token_id exists in the response but not in the Python typing
+                    text=chunk.delta.content
+                    if chunk.delta is not None and chunk.delta.content is not None
+                    else "",
                 )
+                for chunk in togetherAIChunk
             ]
         ]

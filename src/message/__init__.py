@@ -1,19 +1,21 @@
 from typing import Generator
 
 from flask import Blueprint, Response, jsonify
-from inferd.msg.inferd_pb2_grpc import InferDStub
 
 from src import config, db
+from src.inference.InferenceEngine import InferenceEngine
 from src.message.create_message_service import create_message
 from src.message.message_service import delete_message, get_message
 
 
 class MessageBlueprint(Blueprint):
-    def __init__(self, dbc: db.Client, inferd: InferDStub, cfg: config.Config):
+    def __init__(
+        self, dbc: db.Client, inference_engine: InferenceEngine, cfg: config.Config
+    ):
         super().__init__("message", __name__)
 
         self.dbc = dbc
-        self.inferd = inferd
+        self.inference_engine = inference_engine
         self.cfg = cfg
 
         # There used to be a non-streaming endpoint for creating messages. It's gone now.
@@ -25,7 +27,9 @@ class MessageBlueprint(Blueprint):
         self.delete("/<string:id>")(self.delete_message)
 
     def create_message(self) -> Response:
-        response = create_message(self.dbc, cfg=self.cfg, inferd=self.inferd)
+        response = create_message(
+            self.dbc, cfg=self.cfg, inference_engine=self.inference_engine
+        )
 
         if isinstance(response, Generator):
             return Response(response, mimetype="application/jsonl")

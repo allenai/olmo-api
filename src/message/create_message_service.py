@@ -6,14 +6,16 @@ from typing import Generator, List, Optional
 import grpc
 from flask import current_app, request
 from google.protobuf.struct_pb2 import Struct
-from inferd.msg.inferd_pb2 import InferRequest
-from inferd.msg.inferd_pb2_grpc import InferDStub
 from werkzeug import exceptions
 
 from src import config, db, parse, util
 from src.auth.auth_service import authn
 from src.dao import completion, message, token
-from src.message.output_part import FinishReason, OutputPart
+from src.inference.InferenceEngine import (
+    FinishReason,
+    InferenceEngine,
+    InferenceEngineMessage,
+)
 
 
 @dataclasses.dataclass
@@ -23,7 +25,7 @@ class ParsedMessage:
 
 
 def create_message(
-    dbc: db.Client, cfg: config.Config, inferd: InferDStub
+    dbc: db.Client, cfg: config.Config, inference_engine: InferenceEngine
 ) -> message.Message | Generator[str, None, None]:
     agent = authn(dbc)
 
@@ -70,8 +72,6 @@ def create_message(
     if not model:
         raise exceptions.BadRequest(f"model {request.model_id} not found")
 
-    req = InferRequest(compute_source_id=model.compute_source_id, input=input)
-
     # Create a message that will eventually capture the streamed response.
     # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message
     reply = dbc.message.create(
@@ -105,20 +105,31 @@ def create_message(
         # Now yield each chunk as it's returned.
         finish_reason: Optional[FinishReason] = None
         try:
-            metadata = (("x-inferd-token", cfg.inferd.token),)
-            for resp in inferd.Infer(req, metadata=metadata, wait_for_ready=True):
-                part = OutputPart.from_struct(resp.result.output)
-                finish_reason = part.finish_reason
+            for chunk in inference_engine.create_streamed_message(
+                model=model.compute_source_id,
+                messages=datachip_info,
+                inference_options=reply.opts,
+            ):
+                finish_reason = chunk.finish_reason
+
+                logprobs = chunk.logprobs if chunk.logprobs is not None else []
+                mapped_logprobs = [
+                    [
+                        message.TokenLogProbs(
+                            token_id=lp.token_id, text=lp.text, logprob=lp.logprob
+                        )
+                        for lp in lp_list
+                    ]
+                    for lp_list in logprobs
+                ]
 
                 new_chunk = message.MessageChunk(
-                    reply.id,
-                    part.text,
-                    part.logprobs if part.logprobs is not None else None,
+                    message=reply.id,
+                    content=chunk.content,
+                    logprobs=mapped_logprobs,
                 )
 
                 chunks.append(new_chunk)
-                gen += resp.result.inference_time.ToMilliseconds()
-                queue = resp.result.queue_time.ToMilliseconds()
 
                 yield format_message(new_chunk)
 
@@ -286,13 +297,7 @@ def validate_and_map_create_message_request(
     )
 
 
-@dataclasses.dataclass
-class DatachipInfo:
-    role: message.Role
-    content: str
-
-
-def map_datachip_info(dbc, chain) -> list[DatachipInfo]:
+def map_datachip_info(dbc, chain) -> list[InferenceEngineMessage]:
     parsedMessages = [
         ParsedMessage(content=parse.MessageContent(message.content), role=message.role)
         for message in chain
@@ -308,7 +313,9 @@ def map_datachip_info(dbc, chain) -> list[DatachipInfo]:
     }
 
     datachips = [
-        DatachipInfo(role=pm.role, content=pm.content.replace_datachips(chips))
+        InferenceEngineMessage(
+            role=pm.role, content=pm.content.replace_datachips(chips)
+        )
         for pm in parsedMessages
     ]
 
@@ -323,7 +330,7 @@ def format_prompt(role: message.Role, content: str) -> str:
     return f"<|{role}|>\n{content}"
 
 
-def create_prompt_from_datachips(datachips: List[DatachipInfo]) -> str:
+def create_prompt_from_datachips(datachips: List[InferenceEngineMessage]) -> str:
     return "\n".join(
         [format_prompt(datachip.role, datachip.content) for datachip in datachips]
     )
@@ -335,7 +342,7 @@ def create_output_from_chunks(chunks: List[message.MessageChunk]):
 
     for chunk in chunks:
         output += chunk.content
-        if chunk.logprobs is not None:
+        if chunk.logprobs is not None and len(chunk.logprobs) > 0:
             logprobs.append(*chunk.logprobs)
 
     return output, logprobs

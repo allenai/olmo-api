@@ -18,33 +18,14 @@ def get_message(id: str, dbc: db.Client):
 
 
 def delete_message(id: str, dbc: db.Client):
-    agent = authn(dbc)
-    # message = dbc.message.get(id)
-    print("deleting message!")
     message_list = dbc.message.get_by_root(id)
     if message_list is None:
         raise exceptions.NotFound()
 
-    print("all message list")
-    print(message_list)
-
-    related_cpl_ids = [id for id in list(map(lambda m: m.completion, message_list)) if id is not None]
-    # dbc.completion.remove(related_cpl_ids)
-    print("related_cpl_ids_3")
-    print(related_cpl_ids)
-
-    # Remove labels related to the messages
-    msg_ids = list(map(lambda m: m.id, message_list))
-    # self.dbc.label.remove_by_message_ids(msg_ids)
-
     # Remove messages
-    # self.dbc.message.remove(msg_ids)
-    print("delete complete!")
-    # if message.creator != agent.client:
-    #     raise exceptions.Forbidden()
+    msg_ids = list(map(lambda m: m.id, message_list))
+    dbc.message.remove(msg_ids)
 
-    # deleted_message = dbc.message.delete(id, agent=agent.client)
-    # if deleted_message is None:
-    #     raise exceptions.NotFound()
-
-    # return deleted_message
+    # Remove related rows in Completion table
+    related_cpl_ids = [id for id in list(map(lambda m: m.completion, message_list)) if id is not None]
+    dbc.completion.remove(related_cpl_ids)

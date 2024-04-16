@@ -56,10 +56,10 @@ CREATE TABLE IF NOT EXISTS message (
   logprobs JSONB[] NULL,
   completion TEXT NULL,
 
-  FOREIGN KEY (root) REFERENCES message(id),
-  FOREIGN KEY (parent) REFERENCES message(id),
+  FOREIGN KEY (root) REFERENCES message(id) ON DELETE CASCADE,
+  FOREIGN KEY (parent) REFERENCES message(id) ON DELETE CASCADE,
   FOREIGN KEY (template) REFERENCES prompt_template(id),
-  FOREIGN KEY (completion) REFERENCES completion(id)
+  FOREIGN KEY (completion) REFERENCES completion(id) ON DELETE CASCADE
 );
 
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE message TO app;
@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS label (
   created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted TIMESTAMPTZ NULL,
 
-  FOREIGN KEY (message) REFERENCES message(id)
+  FOREIGN KEY (message) REFERENCES message(id) ON DELETE CASCADE
 );
 
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE label TO app;

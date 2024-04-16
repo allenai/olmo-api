@@ -166,3 +166,14 @@ class Store:
                 row = cursor.execute(q, (id,)).fetchone()
                 return Completion.from_row(row) if row is not None else None
 
+    def remove(self, ids: list[str]) -> Optional[list[str]]:
+        with self.pool.connection() as conn:
+            with conn.cursor() as cursor:
+                q = """
+                    DELETE
+                    FROM
+                        completion
+                    WHERE
+                        id = ANY(%s)
+                """
+                cursor.execute(q, (ids,))

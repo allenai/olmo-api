@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS completion (
   output_tokens INTEGER NOT NULL
 );
 
-GRANT SELECT, UPDATE, INSERT ON TABLE completion TO app;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE completion TO app;
 
 CREATE TABLE IF NOT EXISTS message (
   id TEXT NOT NULL PRIMARY KEY,
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS message (
   FOREIGN KEY (completion) REFERENCES completion(id)
 );
 
-GRANT SELECT, UPDATE, INSERT ON TABLE message TO app;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE message TO app;
 
 CREATE TABLE IF NOT EXISTS label (
   id TEXT NOT NULL PRIMARY KEY,
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS label (
   FOREIGN KEY (message) REFERENCES message(id)
 );
 
-GRANT SELECT, UPDATE, INSERT ON TABLE label TO app;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE label TO app;
 
 -- Add the final column and immediately set it to true for all messages, since this
 -- will be released prior to streaming support.

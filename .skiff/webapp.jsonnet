@@ -127,7 +127,7 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
 
     local corsIngressAnno = {
         'nginx.ingress.kubernetes.io/enable-cors': 'true',
-        'nginx.ingress.kubernetes.io/cors-allow-origin': 'https://olmo.allen.ai,https://*.olmo.allen.ai',
+        'nginx.ingress.kubernetes.io/cors-allow-origin': 'https://olmo.allen.ai,https://*.olmo.allen.ai,https://*.olmo-ui.allen.ai',
         'nginx.ingress.kubernetes.io/cors-allow-credentials': 'true',
     };
 

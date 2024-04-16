@@ -558,6 +558,18 @@ class Store:
                 row = cur.execute(q, (id, agent)).fetchone()
                 return Message.from_row(row) if row is not None else None
 
+
+    def remove(self, ids: list[str]) -> Optional[list[str]]:
+        with self.pool.connection() as conn:
+            with conn.cursor() as cursor:
+                q = """
+                    DELETE
+                    FROM
+                        message
+                    WHERE id = ANY(%s)
+                """
+                cursor.execute(q, (ids,))
+
     # TODO: allow listing non-final messages
     def list(
         self,

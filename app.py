@@ -1,5 +1,6 @@
 import atexit
 import logging
+import os
 
 from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -14,7 +15,9 @@ def create_app():
     # Use ISO formatted datetimes
     app.json = util.CustomJSONProvider(app)
 
-    cfg = config.Config.load("config.json")
+    cfg = config.Config.load(
+        os.environ.get("FLASK_CONFIG_PATH", config.DEFAULT_CONFIG_PATH)
+    )
 
     dbc = db.Client.from_config(cfg.db)
     atexit.register(dbc.close)
@@ -26,7 +29,7 @@ def create_app():
         return "", 204
 
     app.register_blueprint(
-        v3.Server(dbc, inference_engine, cfg), url_prefix="/v3", name="v3"
+        v3.Server(dbc, inference_engine), url_prefix="/v3", name="v3"
     )
     app.register_error_handler(Exception, error.handle)
 

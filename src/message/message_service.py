@@ -18,9 +18,14 @@ def get_message(id: str, dbc: db.Client):
 
 
 def delete_message(id: str, dbc: db.Client):
+    agent = authn(dbc)
     message_list = dbc.message.get_by_root(id)
     if message_list is None:
         raise exceptions.NotFound()
+    
+    root_message = next(m for m in message_list if m.id == id)
+    if root_message.creator != agent.client:
+        raise exceptions.Forbidden("The current thread was not created by the current user. You do not have permission to delete the current thread.")
 
     # Remove messages
     msg_ids = list(map(lambda m: m.id, message_list))

@@ -91,3 +91,39 @@ class Store:
                     raise RuntimeError("failed to create user")
 
                 return User.from_row(row)
+
+    def update(
+        self,
+        id: str,
+        client: str,
+        terms_accepted_date: Optional[datetime] = None,
+        acceptance_revoked_date: Optional[datetime] = None,
+        terms_version_accepted: Optional[str] = None,
+    ) -> Optional[User]:
+        with self.pool.connection() as conn:
+            with conn.cursor() as cur:
+                q = """
+                    UPDATE
+                        user
+                    SET
+                        client = COALESCE(%s, client),
+                        terms_accepted_date = COALESCE(%s, terms_accepted_date),
+                        acceptance_revoked_date = COALESCE(%s, acceptance_revoked_date),
+                        terms_version_accepted  = COALESCE(%s, terms_version_accepted)
+                    WHERE
+                        id = %s
+                    RETURNING
+                        id, client, terms_accepted_date, acceptance_revoked_date, terms_version_accepted
+                """
+
+                row = cur.execute(
+                    query=q,
+                    params=(
+                        client,
+                        terms_accepted_date,
+                        acceptance_revoked_date,
+                        terms_version_accepted,
+                        id,
+                    ),
+                ).fetchone()
+                return User.from_row(row) if row is not None else None

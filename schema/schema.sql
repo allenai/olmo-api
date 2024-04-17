@@ -141,7 +141,7 @@ ALTER TABLE label ADD CONSTRAINT label_message_fkey FOREIGN KEY (message) REFERE
 
 CREATE TABLE IF NOT EXISTS user (
   id TEXT NOT NULL PRIMARY KEY,
-  client TEXT NOT NULL, -- this might be an email, i.e "sams@allenai.org" or an identifier i.e. "system-x"
+  client TEXT NOT NULL, -- this might be an email, i.e "sams@allenai.org" or an identifier i.e. "system-x". it may be an oauth ID in the future
   terms_accepted_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   acceptance_revoked_date TIMESTAMPTZ, -- GDPR requires that consent can be revoked. We may not implement this RN but it may be useful to track here? Maybe we can just delete the record instead?
   terms_version_accepted TEXT NOT NULL -- this may make it easier to show an updated TOS acceptance modal. maybe we can drive this by the date instead?

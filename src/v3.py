@@ -245,7 +245,7 @@ class Server(Blueprint):
     def messages(self):
         agent = authn(self.dbc)
         return jsonify(
-            self.dbc.message.list(
+            self.dbc.message.get_list(
                 creator=request.args.get("creator"),
                 deleted="deleted" in request.args,
                 opts=paged.parse_opts_from_querystring(request),

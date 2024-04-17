@@ -571,7 +571,7 @@ class Store:
                 cursor.execute(q, (ids,))
 
     # TODO: allow listing non-final messages
-    def list(
+    def get_list(
         self,
         creator: Optional[str] = None,
         deleted: bool = False,

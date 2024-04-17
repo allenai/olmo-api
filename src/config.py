@@ -26,12 +26,16 @@ class Model:
 
 
 @dataclass
-class InferD:
-    address: str
+class BaseInferenceEngineConfig:
     token: str
     # The default id in the `available_models` list below.
     default_model: str
     available_models: list[Model]
+
+
+@dataclass
+class InferD(BaseInferenceEngineConfig):
+    address: str
 
 
 @dataclass
@@ -47,17 +51,11 @@ class Server:
 
 
 @dataclass
-class TogetherAIConfig:
-    api_key: str
-    available_models: list[Model]
-
-
-@dataclass
 class Config:
     db: Database
     inferd: InferD
     server: Server
-    togetherai: TogetherAIConfig
+    togetherai: BaseInferenceEngineConfig
 
     @classmethod
     def load(cls, path: str = "/secret/cfg/config.json") -> Self:
@@ -81,8 +79,9 @@ class Config:
                     data["server"].get("ui_origin", "http://localhost:8080"),
                     data["server"].get("allowed_redirects", []),
                 ),
-                togetherai=TogetherAIConfig(
-                    api_key=data["togetherai"].get("api_key"),
+                togetherai=BaseInferenceEngineConfig(
+                    token=data["togetherai"].get("token"),
+                    default_model=data["togetherai"].get("default_model"),
                     available_models=[
                         Model(**m) for m in data["togetherai"]["available_models"]
                     ],

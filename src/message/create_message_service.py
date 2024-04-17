@@ -282,7 +282,7 @@ def validate_and_map_create_message_request(
     if not isinstance(private, bool):
         raise exceptions.BadRequest("private must be a boolean")
 
-    model_id = request.json.get("model", cfg.inferd.default_model)
+    model_id = request.json.get("model", cfg.togetherai.default_model)
 
     return CreateMessageRequest(
         parent=parent,

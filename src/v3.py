@@ -264,7 +264,7 @@ class Server(Blueprint):
                     "description": m.description,
                     "model_type": m.model_type,
                 }
-                for m in self.cfg.inferd.available_models
+                for m in self.cfg.togetherai.available_models
             ]
         )
 

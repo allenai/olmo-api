@@ -24,7 +24,7 @@ class TogetherAIEngine(InferenceEngine):
     togetherAIClient: Together
 
     def __init__(self, cfg: config.Config) -> None:
-        self.togetherAIClient = Together(api_key=cfg.togetherai.api_key)
+        self.togetherAIClient = Together(api_key=cfg.togetherai.token)
 
     def create_streamed_message(
         self,

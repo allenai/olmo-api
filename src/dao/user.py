@@ -1,16 +1,15 @@
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
 from psycopg_pool import ConnectionPool
 
 from src import obj
+from src.api_interface import APIInterface
 
 UserRow = tuple[str, str, datetime, Optional[datetime]]
 
 
-@dataclass
-class User:
+class User(APIInterface):
     id: obj.ID
     client: str
     terms_accepted_date: datetime

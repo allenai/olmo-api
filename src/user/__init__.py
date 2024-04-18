@@ -43,4 +43,6 @@ class UserBlueprint(Blueprint):
         agent = authn(self.dbc)
 
         user = upsert_user(self.dbc, client=agent.client)
-        return jsonify(user)
+
+        dump = user.model_dump(by_alias=True) if user is not None else None
+        return jsonify(dump)

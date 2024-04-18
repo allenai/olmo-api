@@ -20,15 +20,15 @@ class TestUserEndpoints(base.IntegrationTest):
         r = requests.put(
             f"{self.origin}/v3/user",
             cookies={"token": user.token},
-            json={"termsAcceptedDate": terms_accepted_date},
+            json={"termsAcceptedDate": terms_accepted_date.isoformat()},
         )
         r.raise_for_status()
 
         payload = r.json()
         assert payload["client"] == "murphy@allenai.org"
         assert (
-            payload["terms_accepted_date"]
-            == terms_accepted_date.replace(tzinfo=timezone.utc).isoformat()
+            payload["termsAcceptedDate"]
+            == terms_accepted_date.astimezone(timezone.utc).isoformat()
         )
 
         acceptance_revoked_date = datetime.now(ZoneInfo("America/Los_Angeles"))
@@ -37,7 +37,7 @@ class TestUserEndpoints(base.IntegrationTest):
             f"{self.origin}/v3/user",
             cookies={"token": user.token},
             json={
-                "acceptance_revoked_date": acceptance_revoked_date,
+                "acceptanceRevokedDate": acceptance_revoked_date.isoformat(),
             },
         )
         r.raise_for_status()
@@ -45,10 +45,10 @@ class TestUserEndpoints(base.IntegrationTest):
         payload = r.json()
         assert payload["client"] == "murphy@allenai.org"
         assert (
-            payload["terms_accepted_date"]
-            == terms_accepted_date.replace(tzinfo=timezone.utc).isoformat()
+            payload["termsAcceptedDate"]
+            == terms_accepted_date.astimezone(timezone.utc).isoformat()
         )
         assert (
-            payload["acceptance_revoked_date"]
-            == acceptance_revoked_date.replace(tzinfo=timezone.utc).isoformat()
+            payload["acceptanceRevokedDate"]
+            == acceptance_revoked_date.astimezone(timezone.utc).isoformat()
         )

@@ -2,8 +2,9 @@ from flask import Blueprint, jsonify
 from werkzeug import exceptions
 
 from src import db
-from src.auth.auth_service import request_agent, set_auth_cookie
+from src.auth.auth_service import authn, request_agent, set_auth_cookie
 from src.auth.authenticated_client import AuthenticatedClient
+from src.user.user_service import upsert_user
 
 
 class UserBlueprint(Blueprint):
@@ -14,6 +15,7 @@ class UserBlueprint(Blueprint):
         self.dbc = dbc
 
         self.get("/whoami")(self.whoami)
+        self.put("/user")(self.upsert_user)
 
     def whoami(self):
         agent = request_agent(self.dbc)
@@ -36,3 +38,9 @@ class UserBlueprint(Blueprint):
             ),
             agent,
         )
+
+    def upsert_user(self):
+        agent = authn(self.dbc)
+
+        user = upsert_user(self.dbc, client=agent.client)
+        return jsonify(user)

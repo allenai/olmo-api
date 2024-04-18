@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS completion (
   output_tokens INTEGER NOT NULL
 );
 
-GRANT SELECT, UPDATE, INSERT ON TABLE completion TO app;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE completion TO app;
 
 CREATE TABLE IF NOT EXISTS message (
   id TEXT NOT NULL PRIMARY KEY,
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS message (
   FOREIGN KEY (completion) REFERENCES completion(id)
 );
 
-GRANT SELECT, UPDATE, INSERT ON TABLE message TO app;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE message TO app;
 
 CREATE TABLE IF NOT EXISTS label (
   id TEXT NOT NULL PRIMARY KEY,
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS label (
   FOREIGN KEY (message) REFERENCES message(id)
 );
 
-GRANT SELECT, UPDATE, INSERT ON TABLE label TO app;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE label TO app;
 
 -- Add the final column and immediately set it to true for all messages, since this
 -- will be released prior to streaming support.
@@ -122,11 +122,6 @@ ALTER TABLE datachip ADD COLUMN ref TEXT NOT NULL UNIQUE;
 -- Add a column to track the type of model used.
 CREATE TYPE MODEL_TYPE AS ENUM('base', 'chat');
 ALTER TABLE message ADD COLUMN IF NOT EXISTS model_type MODEL_TYPE NULL;
-
--- Grant DELETE permissions --
-GRANT DELETE on TABLE completion TO app;
-GRANT DELETE on TABLE message TO app;
-GRANT DELETE on TABLE label TO app;
 
 -- Add delete cascade to below foreign keys so that deleting any rows in parent tables will automatically remove related rows in child tables --
 ALTER TABLE message DROP CONSTRAINT IF EXISTS message_completion_fkey;

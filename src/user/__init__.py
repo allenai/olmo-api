@@ -34,7 +34,7 @@ class UserBlueprint(Blueprint):
                 AuthenticatedClient(
                     client=agent.client,
                     has_accepted_terms_and_conditions=has_accepted_terms_and_conditions,
-                )
+                ).model_dump(by_alias=True)
             ),
             agent,
         )

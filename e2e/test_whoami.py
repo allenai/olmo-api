@@ -16,8 +16,8 @@ class TestWhoAmIEndpoints(base.IntegrationTest):
 
         payload = r.json()
         assert payload["client"] == "murphy@allenai.org"
-        assert payload["has_accepted_terms_and_conditions"] is False
-        assert list(payload.keys()) == ["client"]
+        assert payload["hasAcceptedTermsAndConditions"] is False
+        assert list(payload.keys()) == ["client", "hasAcceptedTermsAndConditions"]
 
         # Happy path: bearer token
         r = requests.get(
@@ -28,4 +28,4 @@ class TestWhoAmIEndpoints(base.IntegrationTest):
 
         payload = r.json()
         assert payload["client"] == "murphy@allenai.org"
-        assert list(payload.keys()) == ["client"]
+        assert list(payload.keys()) == ["client", "hasAcceptedTermsAndConditions"]

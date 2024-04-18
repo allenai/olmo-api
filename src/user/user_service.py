@@ -18,7 +18,7 @@ class UpsertUserRequest:
 
 
 def upsert_user(dbc: db.Client, client: str) -> Optional[User]:
-    request = map_and_validate_upsert_user_request(client)
+    request = _map_and_validate_upsert_user_request(client)
 
     user = dbc.user.get_by_client(request.client)
 
@@ -37,7 +37,7 @@ def upsert_user(dbc: db.Client, client: str) -> Optional[User]:
         )
 
 
-def map_and_validate_upsert_user_request(client: str):
+def _map_and_validate_upsert_user_request(client: str):
     if request.json is None:
         raise exceptions.BadRequest("no request body")
 

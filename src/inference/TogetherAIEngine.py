@@ -42,9 +42,12 @@ class TogetherAIEngine(InferenceEngine):
                 inference_options.max_tokens - rough_token_count
             )
 
+        enable_logprobs = (
+            inference_options.logprobs is not None and inference_options.logprobs > 0
+        )
         # Together doesn't accept anything more than 1 (a bool value) for logprobs
         # To get an equivalent response we ask for n potential completions (n == inference_options.logprobs) and map from there
-        if inference_options.logprobs is not None and inference_options.logprobs > 0:
+        if enable_logprobs:
             inference_options.logprobs = 1
 
         mapped_messages = [asdict(message) for message in messages]
@@ -70,14 +73,21 @@ class TogetherAIEngine(InferenceEngine):
                 else ""
             )
 
+            mapped_logprobs = (
+                self.map_logprobs(chunk.choices) if enable_logprobs is True else []
+            )
+            created = (
+                datetime.fromtimestamp(chunk.created).isoformat()
+                if chunk.created is not None
+                else None
+            )
+
             yield InferenceEngineChunk(
                 content=content,
                 model=model,
-                logprobs=self.map_logprobs(chunk.choices),
+                logprobs=mapped_logprobs,
                 finish_reason=self.map_finish_reason(message.finish_reason),
-                created=datetime.fromtimestamp(chunk.created).isoformat()
-                if chunk.created is not None
-                else None,
+                created=created,
             )
 
     def map_finish_reason(

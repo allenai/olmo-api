@@ -7,6 +7,7 @@ import json
 class TestMessageDatachips(base.IntegrationTest):
     messages: list[tuple[str, base.AuthenticatedClient]] = []
     datachips: list[tuple[str, base.AuthenticatedClient]] = []
+    child_msgs: list[tuple[str, base.AuthenticatedClient]] = []
 
     def runTest(self):
         # Deleted datachip refs can't be reused, which means we need to prefix names used in this test.
@@ -59,7 +60,9 @@ Murphy is a dog. Can he fly?
         }, headers=self.auth(u1))
         r.raise_for_status()
         msg2 = json.loads(util.last_response_line(r))
-        self.messages.append((msg2["id"], u1))
+        c_tup = (msg2["id"], u1)
+        self.messages.append(c_tup)
+        self.child_msgs.append(c_tup)
 
         r = requests.get(f"{self.origin}/v3/completion/{msg2['children'][0]['completion']}", headers=self.auth(u1))
         r.raise_for_status()
@@ -74,6 +77,11 @@ Grasshopper is Murphy's friend. Can she fly?
 """.strip()
 
     def tearDown(self):
+        # Since the delete operation cascades, we have to find all child messages
+        # and remove them from self.messages. Otherwise, we'll run into 404 errors
+        # when executing r.raise_for_status()
+        self.messages = [msg for msg in self.messages if msg not in self.child_msgs]
+
         for (id, user) in self.messages:
             r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
             r.raise_for_status()

@@ -298,7 +298,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert lp1.get("logprob") > lp2.get("logprob")
 
     def tearDown(self):
-        # Since the delete operation cascades, we'd like to find all child messages
+        # Since the delete operation cascades, we have to find all child messages
         # and remove them from self.messages. Otherwise, we'll run into 404 errors
         # when executing r.raise_for_status()
         self.messages = [msg for msg in self.messages if msg not in self.child_msgs]

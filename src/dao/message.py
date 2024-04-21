@@ -407,7 +407,7 @@ class Store:
                 _, msgs = Message.tree(Message.group_by_id([Message.from_row(r) for r in rows]))
                 return msgs.get(id)
 
-    def get_by_root(self, id: str) -> Optional[list[Message]]:
+    def get_by_root(self, id: str) -> list[Message]:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 q = """
@@ -560,6 +560,9 @@ class Store:
 
 
     def remove(self, ids: list[str]) -> Optional[list[str]]:
+        if len(ids) == 0:
+            return
+
         with self.pool.connection() as conn:
             with conn.cursor() as cursor:
                 q = """

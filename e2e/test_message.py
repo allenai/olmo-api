@@ -6,6 +6,7 @@ import json
 
 class TestMessageEndpoints(base.IntegrationTest):
     messages: list[tuple[str, base.AuthenticatedClient]] = []
+    child_msgs: list[tuple[str, base.AuthenticatedClient]] = []
 
     def runTest(self):
         # Make sure all endpoints fail w/o auth
@@ -30,7 +31,9 @@ class TestMessageEndpoints(base.IntegrationTest):
         m1 = msgs[0]
         self.messages.append((m1["id"], u1))
         for c in m1["children"]:
-            self.messages.append((c["id"], u1))
+            c_tup = (c["id"], u1)
+            self.messages.append(c_tup)
+            self.child_msgs.append(c_tup)
 
         defaults = [
             ("max_tokens", 2048),
@@ -118,9 +121,13 @@ class TestMessageEndpoints(base.IntegrationTest):
         })
         r.raise_for_status()
         c2 = json.loads(util.last_response_line(r))
-        self.messages.append((c2["id"], u1))
+        c_tup = (c2["id"], u1)
+        self.messages.append(c_tup)
+        self.child_msgs.append(c_tup)
         for c in c2["children"]:
-            self.messages.append((c["id"], u1))
+            c_tup = (c["id"], u1)
+            self.messages.append(c_tup)
+            self.child_msgs.append(c_tup)
         assert c2["parent"] == c1["id"]
         assert c2["content"] == "Complete this thought: I like "
         assert len(c2["children"]) == 1
@@ -149,7 +156,9 @@ class TestMessageEndpoints(base.IntegrationTest):
         m2 = json.loads(util.last_response_line(r))
         self.messages.append((m2["id"], u2))
         for c in m2["children"]:
-            self.messages.append((c["id"], u2))
+            c_tup = (c["id"], u2)
+            self.messages.append(c_tup)
+            self.child_msgs.append(c_tup)
 
         # Verify listing messages
         r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1))
@@ -213,16 +222,24 @@ class TestMessageEndpoints(base.IntegrationTest):
         r = requests.delete(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u2))
         assert r.status_code == 403
 
-        # Delete the message
+        # Delete message m1
         r = requests.delete(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
         r.raise_for_status()
-        deleted = r.json()["deleted"]
-        assert deleted is not None
+        assert r.status_code == 200
+        self.messages = list(filter(lambda m: m[0] != m1['id'], self.messages))
 
-        # Verify that deletes are idempotent
+        # The DB should not have the deleted message anymore
+        r = requests.get(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
+        assert r.status_code == 404
+
+        # Deleting message m1 again should also get a 404
         r = requests.delete(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
-        r.raise_for_status()
-        assert r.json()["deleted"] == deleted
+        assert r.status_code == 404
+        
+        # If a deleted parent message has children, those children should be deleted as well
+        for c in m1["children"]:
+            r = requests.get(f"{self.origin}/v3/message/{c['id']}", headers=self.auth(u1))
+            assert r.status_code == 404
 
         # Don't list deleted messages by default
         r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1))
@@ -230,15 +247,6 @@ class TestMessageEndpoints(base.IntegrationTest):
         msglist = r.json()
         ids = [m["id"] for m in msglist["messages"]]
         assert m1["id"] not in ids
-
-        # Unless ?deleted is set
-        r = requests.get(f"{self.origin}/v3/messages?deleted", headers=self.auth(u1))
-        r.raise_for_status()
-        msglist = r.json()
-        ids = [m["id"] for m in msglist["messages"]]
-        assert m1["id"] in ids
-        assert m2["id"] in ids
-        assert ids.index(m2["id"]) < ids.index(m1["id"])
 
         # Test snippet creation
         cases = [
@@ -290,6 +298,11 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert lp1.get("logprob") > lp2.get("logprob")
 
     def tearDown(self):
+        # Since the delete operation cascades, we'd like to find all child messages
+        # and remove them from self.messages. Otherwise, we'll run into 404 errors
+        # when executing r.raise_for_status()
+        self.messages = [msg for msg in self.messages if msg not in self.child_msgs]
+
         for (id, user) in self.messages:
             r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
             r.raise_for_status()

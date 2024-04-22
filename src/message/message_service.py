@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from werkzeug import exceptions
 
 from src import db
@@ -19,16 +20,24 @@ def get_message(id: str, dbc: db.Client):
 
 def delete_message(id: str, dbc: db.Client):
     agent = authn(dbc)
-    message = dbc.message.get(id)
 
-    if message is None:
+    message_list = dbc.message.get_by_root(id)
+    root_message = next((m for m in message_list if m.id == id), None)
+
+    if root_message is None:
         raise exceptions.NotFound()
+    
+    if root_message.creator != agent.client:
+        raise exceptions.Forbidden("The current thread was not created by the current user. You do not have permission to delete the current thread.")
+    
+    # prevent deletion if the current thread is out of the 30-day window
+    if datetime.now(timezone.utc) - root_message.created > timedelta(days=30):
+        raise exceptions.Forbidden("The current thread is over 30 days.")
 
-    if message.creator != agent.client:
-        raise exceptions.Forbidden()
+    # Remove messages
+    msg_ids = list(map(lambda m: m.id, message_list))
+    dbc.message.remove(msg_ids)
 
-    deleted_message = dbc.message.delete(id, agent=agent.client)
-    if deleted_message is None:
-        raise exceptions.NotFound()
-
-    return deleted_message
+    # Remove related rows in Completion table
+    related_cpl_ids = [id for id in list(map(lambda m: m.completion, message_list)) if id is not None]
+    dbc.completion.remove(related_cpl_ids)

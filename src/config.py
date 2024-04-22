@@ -1,7 +1,11 @@
 import json
+import os
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Self
+from typing import Iterable, Self
+
+from flask import g
+from werkzeug.local import LocalProxy
 
 
 @dataclass
@@ -50,6 +54,9 @@ class Server:
     allowed_redirects: list[str]
 
 
+DEFAULT_CONFIG_PATH = "/secret/cfg/config.json"
+
+
 @dataclass
 class Config:
     db: Database
@@ -58,7 +65,7 @@ class Config:
     togetherai: BaseInferenceEngineConfig
 
     @classmethod
-    def load(cls, path: str = "/secret/cfg/config.json") -> Self:
+    def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
         with open(path) as f:
             data = json.load(f)
             return cls(
@@ -87,3 +94,23 @@ class Config:
                     ],
                 ),
             )
+
+
+def get_config() -> Config:
+    if "cfg" not in g:
+        g.cfg = Config.load(os.environ.get("FLASK_CONFIG_PATH", DEFAULT_CONFIG_PATH))
+
+    return g.cfg
+
+
+cfg: Config = LocalProxy(get_config)  # type: ignore - this is a LocalProxy of a Config. We're forcing it to be a Config here so other modules don't have any trouble using it
+
+
+def get_available_models() -> Iterable[Model]:
+    if "available_models" not in g:
+        g.available_models = cfg.togetherai.available_models
+
+    return g.available_models
+
+
+available_models: Iterable[Model] = LocalProxy(get_available_models)  # type: ignore - this is a LocalProxy of a list. We're forcing it to be a list here so other modules don't have any trouble using it

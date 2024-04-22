@@ -30,14 +30,11 @@ class AuthenticatedClient:
 
 
 class Server(Blueprint):
-    def __init__(
-        self, dbc: db.Client, inference_engine: InferenceEngine, cfg: config.Config
-    ):
+    def __init__(self, dbc: db.Client, inference_engine: InferenceEngine):
         super().__init__("v3", __name__)
 
         self.dbc = dbc
         self.inference_engine = inference_engine
-        self.cfg = cfg
 
         self.get("/whoami")(self.whoami)
         self.get("/login/skiff")(self.login_by_skiff)
@@ -71,7 +68,7 @@ class Server(Blueprint):
 
         self.register_blueprint(logging_blueprint, url_prefix="/log")
         self.register_blueprint(
-            blueprint=MessageBlueprint(dbc, inference_engine, cfg),
+            blueprint=MessageBlueprint(dbc, inference_engine),
             url_prefix="/message",
         )
 
@@ -109,11 +106,11 @@ class Server(Blueprint):
         agent = self.dbc.token.create(email, token.TokenType.Auth, timedelta(days=7))
 
         # Figure out where the server should send them after logging in.
-        to = urlparse(request.args.get("redirect", self.cfg.server.ui_origin))
+        to = urlparse(request.args.get("redirect", config.cfg.server.ui_origin))
 
         # Prevent redirects to non-authorized origins.
         should_redirect = False
-        for o in [self.cfg.server.ui_origin] + self.cfg.server.allowed_redirects:
+        for o in [config.cfg.server.ui_origin] + config.cfg.server.allowed_redirects:
             trusted = urlparse(o)
             if to.netloc == trusted.netloc and to.scheme == trusted.scheme:
                 should_redirect = True
@@ -127,7 +124,7 @@ class Server(Blueprint):
     def login_by_invite_token(self):
         # If the user is already logged in, redirect to the UI
         if request_agent(self.dbc) is not None:
-            return redirect(self.cfg.server.ui_origin)
+            return redirect(config.cfg.server.ui_origin)
 
         invite = request.args.get("token")
         if invite is None:
@@ -164,11 +161,11 @@ class Server(Blueprint):
             self.dbc.token.expire(nt, token.TokenType.Auth)
             raise exceptions.Conflict()
 
-        return self.set_auth_cookie(redirect(self.cfg.server.ui_origin), nt)
+        return self.set_auth_cookie(redirect(config.cfg.server.ui_origin), nt)
 
     def create_invite_token(self):
         grantor = authn(self.dbc)
-        if grantor.client not in self.cfg.server.admins:
+        if grantor.client not in config.cfg.server.admins:
             raise exceptions.Forbidden()
 
         if request.json is None:
@@ -190,7 +187,7 @@ class Server(Blueprint):
         )
 
         path = current_app.url_for("v3.login_by_invite_token", token=invite.token)
-        return jsonify({"url": f"{self.cfg.server.api_origin}{path}"})
+        return jsonify({"url": f"{config.cfg.server.api_origin}{path}"})
 
     def prompts(self):
         authn(self.dbc)
@@ -264,7 +261,7 @@ class Server(Blueprint):
                     "description": m.description,
                     "model_type": m.model_type,
                 }
-                for m in self.cfg.togetherai.available_models
+                for m in config.available_models
             ]
         )
 
@@ -348,7 +345,7 @@ class Server(Blueprint):
     def completion(self, id: str):
         agent = authn(self.dbc)
         # Only admins can view completions, since they might be related to private messages.
-        if agent.client not in self.cfg.server.admins:
+        if agent.client not in config.cfg.server.admins:
             raise exceptions.Forbidden()
         c = self.dbc.completion.get(id)
         if c is None:

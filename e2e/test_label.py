@@ -234,11 +234,15 @@ class TestLabelEndpoints(base.IntegrationTest):
         assert r.status_code == 200
         self.labels.append((r.json()["id"], u1))
 
+        # Make sure message deletion cascades to labels
+        r = requests.delete(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
+        assert r.status_code == 200
+        r = requests.get(f"{self.origin}/v3/label/{l1['id']}", headers=self.auth(u1))
+        assert r.status_code == 404
+        self.messages = [m for m in self.messages if m[0] != m1['id']]
+
     def tearDown(self):
+        # Since message deletion cascades, deleting messages should delete their related labels automatically        
         for (id, user) in self.messages:
             r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
             r.raise_for_status()
-        for (id, user) in self.labels:
-            r = requests.delete(f"{self.origin}/v3/label/{id}", headers=self.auth(user))
-            r.raise_for_status()
-

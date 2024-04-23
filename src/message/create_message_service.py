@@ -25,11 +25,11 @@ class ParsedMessage:
 
 
 def create_message(
-    dbc: db.Client, cfg: config.Config, inference_engine: InferenceEngine
+    dbc: db.Client, inference_engine: InferenceEngine
 ) -> message.Message | Generator[str, None, None]:
     agent = authn(dbc)
 
-    request = validate_and_map_create_message_request(dbc, agent=agent, cfg=cfg)
+    request = validate_and_map_create_message_request(dbc, agent=agent)
 
     msg = dbc.message.create(
         request.content,
@@ -67,7 +67,8 @@ def create_message(
     )
 
     model = next(
-        (m for m in cfg.inferd.available_models if m.id == request.model_id), None
+        (m for m in config.cfg.togetherai.available_models if m.id == request.model_id),
+        None,
     )
     if not model:
         raise exceptions.BadRequest(f"model {request.model_id} not found")
@@ -212,9 +213,7 @@ class CreateMessageRequest:
     model_id: str
 
 
-def validate_and_map_create_message_request(
-    dbc: db.Client, agent: token.Token, cfg: config.Config
-):
+def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
     if request.json is None:
         raise exceptions.BadRequest("no request body")
 
@@ -282,7 +281,7 @@ def validate_and_map_create_message_request(
     if not isinstance(private, bool):
         raise exceptions.BadRequest("private must be a boolean")
 
-    model_id = request.json.get("model", cfg.inferd.default_model)
+    model_id = request.json.get("model", config.cfg.togetherai.default_model)
 
     return CreateMessageRequest(
         parent=parent,

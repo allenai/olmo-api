@@ -134,7 +134,7 @@ class Server(Blueprint):
             self.dbc.token.expire(nt, token.TokenType.Auth)
             raise exceptions.Conflict()
 
-        return set_auth_cookie(redirect(self.cfg.server.ui_origin), nt)
+        return set_auth_cookie(redirect(location=config.cfg.server.ui_origin), nt)
 
     def create_invite_token(self):
         grantor = authn(self.dbc)

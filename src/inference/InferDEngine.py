@@ -1,10 +1,9 @@
-import json
 from dataclasses import asdict
 from typing import Generator, Sequence
 
 from inferd import Client as InferdClient
 
-from src import config, util
+from src import config
 from src.inference.InferenceEngine import (
     InferenceEngine,
     InferenceEngineChunk,
@@ -21,9 +20,6 @@ class InferDEngine(InferenceEngine):
     def __init__(self, cfg: config.Config) -> None:
         self.inferDClient = InferdClient(cfg.inferd.address, cfg.inferd.token)
         self.cfg = cfg
-
-    def format_message(self, obj) -> str:
-        return json.dumps(obj=obj, cls=util.CustomEncoder) + "\n"
 
     def create_streamed_message(
         self,

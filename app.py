@@ -14,7 +14,7 @@ def create_app():
     # Use ISO formatted datetimes
     app.json = util.CustomJSONProvider(app)
 
-    cfg = config.Config.load()
+    cfg = config.Config.load("config.json")
 
     dbc = db.Client.from_config(cfg.db)
     atexit.register(dbc.close)

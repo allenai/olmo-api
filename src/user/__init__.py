@@ -26,7 +26,10 @@ class UserBlueprint(Blueprint):
         has_accepted_terms_and_conditions = (
             user is not None
             and user.terms_accepted_date is not None
-            and user.acceptance_revoked_date is None
+            and (
+                user.acceptance_revoked_date is None
+                or user.acceptance_revoked_date < user.terms_accepted_date
+            )
         )
 
         return set_auth_cookie(

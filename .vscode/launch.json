@@ -13,7 +13,6 @@
             "args": [
                 "run",
                 "--no-debugger",
-                "--no-reload",
                 "-p 8000"
             ],
             "jinja": true,

@@ -443,6 +443,46 @@ class Store:
                 )
                 return msgs.get(id)
 
+    def get_by_root(self, id: str) -> list[Message]:
+        with self.pool.connection() as conn:
+            with conn.cursor() as cur:
+                q = """
+                    SELECT
+                        message.id,
+                        message.content,
+                        message.creator,
+                        message.role,
+                        message.opts,
+                        message.root,
+                        message.created,
+                        message.deleted,
+                        message.parent,
+                        message.template,
+                        message.logprobs,
+                        message.completion,
+                        message.final,
+                        message.original,
+                        message.private,
+                        message.model_type,
+                        label.id,
+                        label.message,
+                        label.rating,
+                        label.creator,
+                        label.comment,
+                        label.created,
+                        label.deleted
+                    FROM
+                        message
+                    LEFT JOIN
+                        label
+                    ON
+                        label.message = message.id
+                    WHERE
+                        root = %s
+                """
+                rows = cur.execute(q, (id,)).fetchall()
+                return [Message.from_row(r) for r in rows]
+
     def finalize(
         self,
         id: obj.ID,
@@ -559,8 +599,23 @@ class Store:
                 row = cur.execute(q, (id, agent)).fetchone()
                 return Message.from_row(row) if row is not None else None
 
+
+    def remove(self, ids: list[str]) -> Optional[list[str]]:
+        if len(ids) == 0:
+            return
+
+        with self.pool.connection() as conn:
+            with conn.cursor() as cursor:
+                q = """
+                    DELETE
+                    FROM
+                        message
+                    WHERE id = ANY(%s)
+                """
+                cursor.execute(q, (ids,))
+
     # TODO: allow listing non-final messages
-    def list(
+    def get_list(
         self,
         creator: Optional[str] = None,
         deleted: bool = False,

@@ -1,4 +1,3 @@
-import dataclasses
 import io
 import json
 from datetime import datetime, timedelta, timezone
@@ -6,7 +5,6 @@ from urllib.parse import urlparse, urlunparse
 
 from flask import (
     Blueprint,
-    Response,
     current_app,
     jsonify,
     redirect,
@@ -14,19 +12,14 @@ from flask import (
     send_file,
 )
 from werkzeug import exceptions
-from werkzeug.wrappers import response
 
 from src import config, db, parse, util
-from src.auth.auth_service import authn, request_agent
+from src.auth.auth_service import authn, request_agent, set_auth_cookie
 from src.dao import datachip, label, message, paged, token
 from src.inference.InferenceEngine import InferenceEngine
 from src.log import logging_blueprint
 from src.message import MessageBlueprint
-
-
-@dataclasses.dataclass
-class AuthenticatedClient:
-    client: str
+from src.user import UserBlueprint
 
 
 class Server(Blueprint):
@@ -36,7 +29,6 @@ class Server(Blueprint):
         self.dbc = dbc
         self.inference_engine = inference_engine
 
-        self.get("/whoami")(self.whoami)
         self.get("/login/skiff")(self.login_by_skiff)
 
         self.post("/templates/prompt")(self.create_prompt)
@@ -71,26 +63,7 @@ class Server(Blueprint):
             blueprint=MessageBlueprint(dbc, inference_engine),
             url_prefix="/message",
         )
-
-    def set_auth_cookie(
-        self, resp: Response | response.Response, token: token.Token
-    ) -> Response | response.Response:
-        resp.set_cookie(
-            key="token",
-            value=token.token,
-            expires=token.expires,
-            httponly=True,
-            secure=True,
-            samesite="Strict",
-        )
-        return resp
-
-    def whoami(self):
-        agent = request_agent(self.dbc)
-        if agent is None or agent.expired():
-            raise exceptions.Unauthorized()
-
-        return self.set_auth_cookie(jsonify(AuthenticatedClient(agent.client)), agent)
+        self.register_blueprint(blueprint=UserBlueprint(dbc=dbc))
 
     def login_by_skiff(self):
         # Use NGINX mediated auth; see https://skiff.allenai.org/login.html
@@ -119,7 +92,7 @@ class Server(Blueprint):
             raise exceptions.BadRequest("invalid redirect")
 
         # And send them to the Olmo UI so they continue on with their day using OLMo
-        return self.set_auth_cookie(redirect(urlunparse(to)), agent)
+        return set_auth_cookie(redirect(urlunparse(to)), agent)
 
     def login_by_invite_token(self):
         # If the user is already logged in, redirect to the UI
@@ -139,7 +112,7 @@ class Server(Blueprint):
 
         if resolved_invite.expired():
             raise exceptions.Unauthorized(
-                "Your invite has expired. Please contact an adminstrator."
+                "Your invite has expired. Please contact an administrator."
             )
 
         # Generate a new one
@@ -161,7 +134,7 @@ class Server(Blueprint):
             self.dbc.token.expire(nt, token.TokenType.Auth)
             raise exceptions.Conflict()
 
-        return self.set_auth_cookie(redirect(config.cfg.server.ui_origin), nt)
+        return set_auth_cookie(redirect(self.cfg.server.ui_origin), nt)
 
     def create_invite_token(self):
         grantor = authn(self.dbc)
@@ -242,7 +215,7 @@ class Server(Blueprint):
     def messages(self):
         agent = authn(self.dbc)
         return jsonify(
-            self.dbc.message.list(
+            self.dbc.message.get_list(
                 creator=request.args.get("creator"),
                 deleted="deleted" in request.args,
                 opts=paged.parse_opts_from_querystring(request),
@@ -284,7 +257,7 @@ class Server(Blueprint):
         except ValueError as e:
             raise exceptions.BadRequest(str(e))
 
-        existing = self.dbc.label.list(
+        existing = self.dbc.label.get_list(
             message=mid,
             creator=agent.client,
         )
@@ -313,7 +286,7 @@ class Server(Blueprint):
         except ValueError as e:
             raise exceptions.BadRequest(str(e))
 
-        ll = self.dbc.label.list(
+        ll = self.dbc.label.get_list(
             message=request.args.get("message"),
             creator=request.args.get("creator"),
             deleted="deleted" in request.args,

@@ -1,7 +1,8 @@
 from typing import Optional
 
-from flask import Request, current_app, request
+from flask import Request, Response, current_app, request
 from werkzeug import exceptions
+from werkzeug.wrappers import response
 
 from src import db
 from src.dao import token
@@ -43,3 +44,17 @@ def authn(dbc: db.Client) -> token.Token:
     )
 
     return agent
+
+
+def set_auth_cookie(
+    resp: Response | response.Response, token: token.Token
+) -> Response | response.Response:
+    resp.set_cookie(
+        key="token",
+        value=token.token,
+        expires=token.expires,
+        httponly=True,
+        secure=True,
+        samesite="Strict",
+    )
+    return resp

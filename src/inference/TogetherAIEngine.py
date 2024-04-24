@@ -4,6 +4,7 @@ from math import ceil
 from typing import Generator, Iterator, Optional, Sequence
 
 from together import Together
+from together.error import InvalidRequestError as TogetherInvalidRequestError
 from together.types.chat_completions import ChatCompletionChoicesChunk
 from together.types.common import FinishReason as TogetherFinishReason
 
@@ -35,8 +36,9 @@ class TogetherAIEngine(InferenceEngine):
         if inference_options.max_tokens is not None:
             contents_length = sum([len(message.content) for message in messages])
 
-            # HACK: There's ways to do this more precisely but dividing by 2 then adding 10 seems to get us close
-            rough_token_count = ceil(contents_length / 2) + 10
+            # HACK: IDK how Together calculates tokens. This seems to get us pretty close.
+            # I calculated this by sending a one-character message and adding what together said we were missing
+            rough_token_count = ceil(contents_length / 4) + (len(messages) * 12)
 
             inference_options.max_tokens = (
                 inference_options.max_tokens - rough_token_count
@@ -52,12 +54,22 @@ class TogetherAIEngine(InferenceEngine):
 
         mapped_messages = [asdict(message) for message in messages]
 
-        response = self.togetherAIClient.chat.completions.create(
-            model=model,
-            messages=mapped_messages,
-            stream=True,
-            **asdict(inference_options),
-        )
+        response = None  # noqa: E999
+        try:
+            response = self.togetherAIClient.chat.completions.create(
+                model=model,
+                messages=mapped_messages,
+                stream=True,
+                **asdict(inference_options),
+            )
+
+        except TogetherInvalidRequestError as invalid_request_error:
+            # Together returns the error with a stringified error message. Checking for max_tokens in the string should get us the right error
+            if "max_tokens" in invalid_request_error._message:
+                yield InferenceEngineChunk(
+                    content="", model=model, finish_reason=FinishReason.Length
+                )
+                return
 
         if not isinstance(response, Iterator):
             raise TypeError("Together returned a non-streamed response")
@@ -99,7 +111,7 @@ class TogetherAIEngine(InferenceEngine):
             case TogetherFinishReason.StopSequence:
                 return FinishReason.Stop
             case TogetherFinishReason.EOS:
-                return FinishReason.Aborted
+                return FinishReason.Stop
             case _:
                 return None
 

@@ -147,7 +147,7 @@ def create_message(
                 # If only one chunk was yielded and it's empty, it's probably because the prompt was too
                 # long. Unfortunately we can't differentiate this from when the prompt stops because
                 # max_tokens were generated, as vLLM doesn't distinguish the two.
-                if len(chunks) == 1 and chunks[0] == "":
+                if len(chunks) == 1 and (chunks[0] == "" or chunks[0].content == ""):
                     err = "the conversation is too large for the model to process, please shorten the conversation and try again"
                     yield format_message(message.MessageStreamError(reply.id, err))
 

@@ -38,7 +38,7 @@ class TogetherAIEngine(InferenceEngine):
 
             # HACK: IDK how Together calculates tokens. This seems to get us pretty close.
             # I calculated this by sending a one-character message and adding what together said we were missing
-            rough_token_count = ceil(contents_length / 4) + (len(messages) * 12)
+            rough_token_count = ceil(contents_length / 4) + (len(messages) * 15)
 
             inference_options.max_tokens = (
                 inference_options.max_tokens - rough_token_count
@@ -54,7 +54,7 @@ class TogetherAIEngine(InferenceEngine):
 
         mapped_messages = [asdict(message) for message in messages]
 
-        response = None  # noqa: E999
+        response = None
         try:
             response = self.togetherAIClient.chat.completions.create(
                 model=model,

@@ -36,6 +36,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         r.raise_for_status()
 
         msgs = [json.loads(util.last_response_line(r))]
+        assert "error" not in json.loads(util.second_to_last_response_line(r))
         m1 = msgs[0]
         self.messages.append((m1["id"], u1))
         for c in m1["children"]:
@@ -275,22 +276,28 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert r.status_code == 403
 
         # Delete message m1
-        r = requests.delete(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
+        r = requests.delete(
+            f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1)
+        )
         r.raise_for_status()
         assert r.status_code == 200
-        self.messages = list(filter(lambda m: m[0] != m1['id'], self.messages))
+        self.messages = list(filter(lambda m: m[0] != m1["id"], self.messages))
 
         # The DB should not have the deleted message anymore
         r = requests.get(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
         assert r.status_code == 404
 
         # Deleting message m1 again should also get a 404
-        r = requests.delete(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
+        r = requests.delete(
+            f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1)
+        )
         assert r.status_code == 404
-        
+
         # If a deleted parent message has children, those children should be deleted as well
         for c in m1["children"]:
-            r = requests.get(f"{self.origin}/v3/message/{c['id']}", headers=self.auth(u1))
+            r = requests.get(
+                f"{self.origin}/v3/message/{c['id']}", headers=self.auth(u1)
+            )
             assert r.status_code == 404
 
         # Don't list deleted messages by default
@@ -330,6 +337,7 @@ class TestMessageEndpoints(base.IntegrationTest):
             f"{self.origin}/v3/message",
             headers=self.auth(u1),
             json={
+                # Together doesn't support Tulu right now. If you want to test logprobs using InferD, change the model sent here to "tulu2"
                 # Only "tulu2" supports logprobs currently https://github.com/allenai/inferd-olmo/issues/1
                 # "model": "tulu2",
                 "content": "why are labradors smarter than unicorns?",
@@ -364,6 +372,8 @@ class TestMessageEndpoints(base.IntegrationTest):
         # when executing r.raise_for_status()
         self.messages = [msg for msg in self.messages if msg not in self.child_msgs]
 
-        for (id, user) in self.messages:
-            r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
+        for id, user in self.messages:
+            r = requests.delete(
+                f"{self.origin}/v3/message/{id}", headers=self.auth(user)
+            )
             r.raise_for_status()

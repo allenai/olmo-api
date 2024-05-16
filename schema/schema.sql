@@ -166,3 +166,7 @@ GRANT SELECT,
   UPDATE,
   INSERT ON TABLE olmo_user TO app;
 CREATE INDEX IF NOT EXISTS client_idx ON olmo_user(client);
+
+-- Avoid users from creating new prompts to chats that reach the max length limit
+ALTER TABLE message
+ADD COLUMN IF NOT EXISTS finish_reason TEXT NULL;

@@ -129,12 +129,9 @@ def create_message(
                     content=chunk.content,
                     logprobs=mapped_logprobs,
                 )
-                print("Chunk Finish Reason")
-                print(chunk.finish_reason)
                 chunks.append(new_chunk)
 
                 yield format_message(new_chunk)
-                print("pass yield")
         except grpc.RpcError as e:
             err = f"inference failed: {e}"
             yield format_message(message.MessageStreamError(reply.id, err, "grpc inference failed"))
@@ -145,7 +142,6 @@ def create_message(
                 yield format_message(message.MessageStreamError(reply.id, err, finish_reason))
 
             case FinishReason.Length:
-                print("IN LENGTH")
                 err = "the conversation is too large for the model to process, please shorten the conversation and try again"
                 yield format_message(message.MessageStreamError(reply.id, err, finish_reason))
 
@@ -184,7 +180,7 @@ def create_message(
             raise err
 
         finalReply = dbc.message.finalize(
-            reply.id, output, logprobs, messageCompletion.id
+            reply.id, output, logprobs, messageCompletion.id, finish_reason
         )
         if finalReply is None:
             err = RuntimeError(f"failed to finalize message {reply.id}")

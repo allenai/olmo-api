@@ -157,6 +157,7 @@ class MessageChunk:
 class MessageStreamError:
     message: obj.ID
     error: str
+    reason: str
 
 
 def first_n_words(s: str, n: int) -> str:

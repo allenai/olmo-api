@@ -318,7 +318,7 @@ class Store:
                         INSERT INTO
                             message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private, model_type, finish_reason)
                         VALUES
-                            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            (%(id)s, %(content)s, %(creator)s, %(role)s, %(opts)s, %(root)s, %(parent)s, %(template)s, %(logprobs)s, %(completion)s, %(final)s, %(original)s, %(private)s, %(model_type)s, %(finish_reason)s)
                         RETURNING
                             id,
                             content,
@@ -350,23 +350,23 @@ class Store:
                     mid = obj.NewID("msg")
                     row = cur.execute(
                         q,
-                        (
-                            mid,
-                            content,
-                            creator,
-                            role,
-                            Jsonb(asdict(opts)),
-                            root or mid,
-                            parent,
-                            template,
-                            prepare_logprobs(logprobs),
-                            completion,
-                            final,
-                            original,
-                            private,
-                            model_type,
-                            finish_reason,
-                        ),
+                        {
+                            "id": mid,
+                            "content": content,
+                            "creator": creator,
+                            "role": role,
+                            "opts": Jsonb(asdict(opts)),
+                            "root": root or mid,
+                            "parent": parent,
+                            "template": template,
+                            "logprobs": prepare_logprobs(logprobs),
+                            "completion": completion,
+                            "final": final,
+                            "original": original,
+                            "private": private,
+                            "model_type": model_type,
+                            "finish_reason": finish_reason,
+                        },
                     ).fetchone()
                     if row is None:
                         raise RuntimeError("failed to create message")

@@ -54,6 +54,12 @@ class Server:
     allowed_redirects: list[str]
 
 
+@dataclass
+class Auth:
+    domain: str = "allenai-public-dev.us.auth0.com"
+    audience: str = "https://olmo-api.allen.ai"
+
+
 DEFAULT_CONFIG_PATH = "/secret/cfg/config.json"
 
 
@@ -63,6 +69,7 @@ class Config:
     inferd: InferD
     server: Server
     togetherai: BaseInferenceEngineConfig
+    auth: Auth
 
     @classmethod
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
@@ -93,6 +100,7 @@ class Config:
                         Model(**m) for m in data["togetherai"]["available_models"]
                     ],
                 ),
+                auth=Auth(),
             )
 
 
@@ -103,7 +111,8 @@ def get_config() -> Config:
     return g.cfg
 
 
-cfg: Config = LocalProxy(get_config)  # type: ignore - this is a LocalProxy of a Config. We're forcing it to be a Config here so other modules don't have any trouble using it
+cfg = Config.load(path=os.environ.get("FLASK_CONFIG_PATH", default=DEFAULT_CONFIG_PATH))
+# cfg: Config = LocalProxy(get_config)  # type: ignore - this is a LocalProxy of a Config. We're forcing it to be a Config here so other modules don't have any trouble using it
 
 
 def get_available_models() -> Iterable[Model]:

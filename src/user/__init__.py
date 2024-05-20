@@ -1,7 +1,11 @@
-from flask import Blueprint, jsonify
+from logging import getLogger
+
+from authlib.oauth2 import OAuth2Error
+from flask import Blueprint, jsonify, request
 from werkzeug import exceptions
 
 from src import db
+from src.auth.auth0 import require_auth
 from src.auth.auth_service import authn, request_agent, set_auth_cookie
 from src.auth.authenticated_client import AuthenticatedClient
 from src.user.user_service import upsert_user
@@ -18,6 +22,13 @@ class UserBlueprint(Blueprint):
         self.put("/user")(self.upsert_user)
 
     def whoami(self):
+        logger = getLogger()
+        try:
+            token = require_auth.validate_request(request=request, scopes=None)
+            logger.log(10, "have token")
+        except OAuth2Error as error:
+            logger.log(10, error)
+
         agent = request_agent(self.dbc)
         if agent is None or agent.expired():
             raise exceptions.Unauthorized()

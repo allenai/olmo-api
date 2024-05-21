@@ -129,31 +129,25 @@ def create_message(
                     content=chunk.content,
                     logprobs=mapped_logprobs,
                 )
-
                 chunks.append(new_chunk)
 
                 yield format_message(new_chunk)
-
         except grpc.RpcError as e:
             err = f"inference failed: {e}"
-            yield format_message(message.MessageStreamError(reply.id, err))
+            yield format_message(message.MessageStreamError(reply.id, err, "grpc inference failed"))
 
         match finish_reason:
             case FinishReason.UnclosedStream:
                 err = "inference failed for an unknown reason: sometimes this happens when the prompt is too long"
-                yield format_message(message.MessageStreamError(reply.id, err))
+                yield format_message(message.MessageStreamError(reply.id, err, finish_reason))
 
             case FinishReason.Length:
-                # If only one chunk was yielded and it's empty, it's probably because the prompt was too
-                # long. Unfortunately we can't differentiate this from when the prompt stops because
-                # max_tokens were generated, as vLLM doesn't distinguish the two.
-                if len(chunks) == 1 and (chunks[0] == "" or chunks[0].content == ""):
-                    err = "the conversation is too large for the model to process, please shorten the conversation and try again"
-                    yield format_message(message.MessageStreamError(reply.id, err))
+                err = "the conversation is too large for the model to process, please shorten the conversation and try again"
+                yield format_message(message.MessageStreamError(reply.id, err, finish_reason))
 
             case FinishReason.Aborted:
                 err = "inference aborted for an unknown reason"
-                yield format_message(message.MessageStreamError(reply.id, err))
+                yield format_message(message.MessageStreamError(reply.id, err, finish_reason))
 
             case FinishReason.Stop:
                 # This isn't an error
@@ -167,7 +161,7 @@ def create_message(
 
         messageCompletion = dbc.completion.create(
             prompt,
-            [completion.CompletionOutput(output, "unknown", logprobs)],
+            [completion.CompletionOutput(output, finish_reason, logprobs)],
             msg.opts,
             model.compute_source_id,
             sha,
@@ -182,15 +176,15 @@ def create_message(
         finalMessage = dbc.message.finalize(msg.id)
         if finalMessage is None:
             err = RuntimeError(f"failed to finalize message {msg.id}")
-            yield format_message(message.MessageStreamError(reply.id, str(err)))
+            yield format_message(message.MessageStreamError(reply.id, str(err), "finalization failure"))
             raise err
 
         finalReply = dbc.message.finalize(
-            reply.id, output, logprobs, messageCompletion.id
+            reply.id, output, logprobs, messageCompletion.id, finish_reason
         )
         if finalReply is None:
             err = RuntimeError(f"failed to finalize message {reply.id}")
-            yield format_message(message.MessageStreamError(reply.id, str(err)))
+            yield format_message(message.MessageStreamError(reply.id, str(err), "finalization failure"))
             raise err
 
         finalMessage = dataclasses.replace(finalMessage, children=[finalReply])

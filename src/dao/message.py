@@ -133,6 +133,7 @@ MessageRow = tuple[
     Optional[str],
     bool,
     Optional[ModelType],
+    Optional[str],
     # Label fields
     Optional[str],
     Optional[str],
@@ -157,6 +158,7 @@ class MessageChunk:
 class MessageStreamError:
     message: obj.ID
     error: str
+    reason: str
 
 
 def first_n_words(s: str, n: int) -> str:
@@ -192,6 +194,7 @@ class Message:
     original: Optional[str] = None
     private: bool = False
     model_type: Optional[ModelType] = None
+    finish_reason: Optional[str] = None
     labels: list[label.Label] = field(default_factory=list)
 
     def flatten(self) -> list["Message"]:
@@ -206,7 +209,7 @@ class Message:
     def from_row(r: MessageRow) -> "Message":
         labels = []
         # If the label id is not None, unpack the label.
-        li = 16
+        li = 17
         if r[li] is not None:
             labels = [label.Label.from_row(cast(label.LabelRow, r[li:]))]
 
@@ -235,6 +238,7 @@ class Message:
             original=r[13],
             private=r[14],
             model_type=r[15],
+            finish_reason=r[16],
             labels=labels,
         )
 
@@ -305,15 +309,16 @@ class Store:
         original: Optional[str] = None,
         private: bool = False,
         model_type: Optional[ModelType] = None,
+        finish_reason: Optional[str] = None
     ) -> Message:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 try:
                     q = """
                         INSERT INTO
-                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private, model_type)
+                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private, model_type, finish_reason)
                         VALUES
-                            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            (%(id)s, %(content)s, %(creator)s, %(role)s, %(opts)s, %(root)s, %(parent)s, %(template)s, %(logprobs)s, %(completion)s, %(final)s, %(original)s, %(private)s, %(model_type)s, %(finish_reason)s)
                         RETURNING
                             id,
                             content,
@@ -331,6 +336,7 @@ class Store:
                             original,
                             private,
                             model_type,
+                            finish_reason,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -344,22 +350,23 @@ class Store:
                     mid = obj.NewID("msg")
                     row = cur.execute(
                         q,
-                        (
-                            mid,
-                            content,
-                            creator,
-                            role,
-                            Jsonb(asdict(opts)),
-                            root or mid,
-                            parent,
-                            template,
-                            prepare_logprobs(logprobs),
-                            completion,
-                            final,
-                            original,
-                            private,
-                            model_type,
-                        ),
+                        {
+                            "id": mid,
+                            "content": content,
+                            "creator": creator,
+                            "role": role,
+                            "opts": Jsonb(asdict(opts)),
+                            "root": root or mid,
+                            "parent": parent,
+                            "template": template,
+                            "logprobs": prepare_logprobs(logprobs),
+                            "completion": completion,
+                            "final": final,
+                            "original": original,
+                            "private": private,
+                            "model_type": model_type,
+                            "finish_reason": finish_reason,
+                        },
                     ).fetchone()
                     if row is None:
                         raise RuntimeError("failed to create message")
@@ -409,6 +416,7 @@ class Store:
                         message.original,
                         message.private,
                         message.model_type,
+                        message.finish_reason,
                         label.id,
                         label.message,
                         label.rating,
@@ -464,6 +472,7 @@ class Store:
                         message.original,
                         message.private,
                         message.model_type,
+                        message.finish_reason,
                         label.id,
                         label.message,
                         label.rating,
@@ -489,6 +498,7 @@ class Store:
         content: Optional[str] = None,
         logprobs: Optional[list[list[TokenLogProbs]]] = None,
         completion: Optional[obj.ID] = None,
+        finish_reason: Optional[str] = None,
     ) -> Optional[Message]:
         """
         Used to finalize a Message produced via a streaming response.
@@ -503,6 +513,7 @@ class Store:
                             content = COALESCE(%s, content),
                             logprobs = COALESCE(%s, logprobs),
                             completion = COALESCE(%s, completion),
+                            finish_reason = COALESCE(%s, finish_reason),
                             final = true
                         WHERE
                             id = %s
@@ -523,6 +534,7 @@ class Store:
                             original,
                             private,
                             model_type,
+                            finish_reason,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -534,7 +546,7 @@ class Store:
                             NULL
                     """
                     row = cur.execute(
-                        q, (content, prepare_logprobs(logprobs), completion, id)
+                        q, (content, prepare_logprobs(logprobs), completion, finish_reason, id)
                     ).fetchone()
                     return Message.from_row(row) if row is not None else None
                 except errors.ForeignKeyViolation as e:
@@ -577,6 +589,7 @@ class Store:
                         updated.original,
                         updated.private,
                         updated.model_type,
+                        updated.finish_reason,
                         label.id,
                         label.message,
                         label.rating,
@@ -685,6 +698,7 @@ class Store:
                         message.original,
                         message.private,
                         message.model_type,
+                        message.finish_reason,
                         label.id,
                         label.message,
                         label.rating,

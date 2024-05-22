@@ -9,7 +9,7 @@ logging_blueprint = Blueprint(name="logging", import_name=__name__)
 
 
 @logging_blueprint.route("/", methods=["POST"])
-@require_auth(["token"])
+@require_auth()
 def log() -> Response:
     if request.content_type != "application/json":
         raise exceptions.UnsupportedMediaType

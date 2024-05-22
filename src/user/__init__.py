@@ -26,7 +26,7 @@ class UserBlueprint(Blueprint):
             token = require_auth.validate_request(request=request, scopes=None)
             current_app.logger.debug("have token")
         except OAuth2Error as error:
-            current_app.logger.debug(error)
+            current_app.logger.exception(error)
 
         agent = request_agent(self.dbc)
         if agent is None or agent.expired():

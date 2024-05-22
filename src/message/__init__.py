@@ -3,6 +3,7 @@ from typing import Generator
 from flask import Blueprint, Response, jsonify
 
 from src import db
+from src.auth.auth0 import require_auth
 from src.inference.InferenceEngine import InferenceEngine
 from src.message.create_message_service import create_message
 from src.message.message_service import delete_message, get_message
@@ -36,5 +37,6 @@ class MessageBlueprint(Blueprint):
         return jsonify(message)
 
     def delete_message(self, id: str):
-        deleted_message = delete_message(id=id, dbc=self.dbc)
-        return jsonify(deleted_message)
+        with require_auth.acquire():
+            deleted_message = delete_message(id=id, dbc=self.dbc)
+            return jsonify(deleted_message)

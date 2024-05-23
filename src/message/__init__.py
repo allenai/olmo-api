@@ -37,6 +37,5 @@ class MessageBlueprint(Blueprint):
         return jsonify(message)
 
     def delete_message(self, id: str):
-        with require_auth.acquire():
-            deleted_message = delete_message(id=id, dbc=self.dbc)
-            return jsonify(deleted_message)
+        deleted_message = delete_message(id=id, dbc=self.dbc)
+        return jsonify(deleted_message)

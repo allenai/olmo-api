@@ -22,13 +22,6 @@ class UserBlueprint(Blueprint):
         self.put("/user")(self.upsert_user)
 
     def whoami(self):
-        try:
-            token = require_auth.validate_request(request=request, scopes=None)
-            current_app.logger.debug("have token")
-        except OAuth2Error as error:
-            # I deliberately don't handle errors here. I wanted to make sure we could determine whether or not someone is authenticated without throwing an error!
-            current_app.logger.exception(error)
-
         agent = request_agent(self.dbc)
         if agent is None or agent.expired():
             raise exceptions.Unauthorized()

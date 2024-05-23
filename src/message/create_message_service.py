@@ -134,20 +134,28 @@ def create_message(
                 yield format_message(new_chunk)
         except grpc.RpcError as e:
             err = f"inference failed: {e}"
-            yield format_message(message.MessageStreamError(reply.id, err, "grpc inference failed"))
+            yield format_message(
+                message.MessageStreamError(reply.id, err, "grpc inference failed")
+            )
 
         match finish_reason:
             case FinishReason.UnclosedStream:
                 err = "inference failed for an unknown reason: sometimes this happens when the prompt is too long"
-                yield format_message(message.MessageStreamError(reply.id, err, finish_reason))
+                yield format_message(
+                    message.MessageStreamError(reply.id, err, finish_reason)
+                )
 
             case FinishReason.Length:
                 err = "the conversation is too large for the model to process, please shorten the conversation and try again"
-                yield format_message(message.MessageStreamError(reply.id, err, finish_reason))
+                yield format_message(
+                    message.MessageStreamError(reply.id, err, finish_reason)
+                )
 
             case FinishReason.Aborted:
                 err = "inference aborted for an unknown reason"
-                yield format_message(message.MessageStreamError(reply.id, err, finish_reason))
+                yield format_message(
+                    message.MessageStreamError(reply.id, err, finish_reason)
+                )
 
             case FinishReason.Stop:
                 # This isn't an error
@@ -176,7 +184,9 @@ def create_message(
         finalMessage = dbc.message.finalize(msg.id)
         if finalMessage is None:
             err = RuntimeError(f"failed to finalize message {msg.id}")
-            yield format_message(message.MessageStreamError(reply.id, str(err), "finalization failure"))
+            yield format_message(
+                message.MessageStreamError(reply.id, str(err), "finalization failure")
+            )
             raise err
 
         finalReply = dbc.message.finalize(
@@ -184,7 +194,9 @@ def create_message(
         )
         if finalReply is None:
             err = RuntimeError(f"failed to finalize message {reply.id}")
-            yield format_message(message.MessageStreamError(reply.id, str(err), "finalization failure"))
+            yield format_message(
+                message.MessageStreamError(reply.id, str(err), "finalization failure")
+            )
             raise err
 
         finalMessage = dataclasses.replace(finalMessage, children=[finalReply])
@@ -217,10 +229,10 @@ def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
         raise exceptions.BadRequest(f"parent message {pid} not found")
 
     try:
-        ropts = request.json.get("opts")
+        requestOpts = request.json.get("opts")
         opts = (
-            message.InferenceOpts.from_request(ropts)
-            if ropts is not None
+            message.InferenceOpts.from_request(requestOpts)
+            if requestOpts is not None
             else message.InferenceOpts()
         )
     except ValueError as e:

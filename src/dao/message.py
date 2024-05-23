@@ -53,8 +53,8 @@ class InferenceOpts:
         }
 
     @staticmethod
-    def from_request(d: dict[str, Any]) -> "InferenceOpts":
-        mt = d.get(max_tokens.name, max_tokens.default)
+    def from_request(requestOpts: dict[str, Any]) -> "InferenceOpts":
+        mt = requestOpts.get(max_tokens.name, max_tokens.default)
         if not isinstance(mt, int):
             raise ValueError(f"max_tokens {mt} is not an integer")
         if mt > max_tokens.max or mt < max_tokens.min:
@@ -62,23 +62,23 @@ class InferenceOpts:
                 f"max_tokens {mt} is not in range [{max_tokens.min}, {max_tokens.max}]"
             )
 
-        temp = float(d.get(temperature.name, temperature.default))
+        temp = float(requestOpts.get(temperature.name, temperature.default))
         if temp > temperature.max or temp < temperature.min:
             raise ValueError(
                 f"temperature {temp} is not in range [{temperature.min}, {temperature.max}]"
             )
 
-        n = d.get(num.name, num.default)
+        n = requestOpts.get(num.name, num.default)
         if not isinstance(n, int):
             raise ValueError(f"num {n} is not an integer")
         if n > num.max or n < num.min:
             raise ValueError(f"num {n} is not in range [{num.min}, {num.max}]")
 
-        tp = float(d.get(top_p.name, top_p.default))
-        if tp > top_p.max or tp <= top_p.min:
+        tp = float(requestOpts.get(top_p.name, top_p.default))
+        if tp > top_p.max or tp < top_p.min:
             raise ValueError(f"top_p {tp} is not in range ({top_p.min}, {top_p.max}]")
 
-        lp = d.get(logprobs.name, logprobs.default)
+        lp = requestOpts.get(logprobs.name, logprobs.default)
         if lp is not None:
             if not isinstance(lp, int):
                 raise ValueError(f"logprobs {lp} is not an integer")
@@ -87,7 +87,7 @@ class InferenceOpts:
                     f"logprobs {lp} is not in range [{logprobs.min}, {logprobs.max}]"
                 )
 
-        sw = d.get(stop.name, stop.default)
+        sw = requestOpts.get(stop.name, stop.default)
         if sw is not None:
             if not isinstance(sw, list):
                 raise ValueError(f"stop words {sw} is not a list")
@@ -309,7 +309,7 @@ class Store:
         original: Optional[str] = None,
         private: bool = False,
         model_type: Optional[ModelType] = None,
-        finish_reason: Optional[str] = None
+        finish_reason: Optional[str] = None,
     ) -> Message:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
@@ -546,7 +546,14 @@ class Store:
                             NULL
                     """
                     row = cur.execute(
-                        q, (content, prepare_logprobs(logprobs), completion, finish_reason, id)
+                        q,
+                        (
+                            content,
+                            prepare_logprobs(logprobs),
+                            completion,
+                            finish_reason,
+                            id,
+                        ),
                     ).fetchone()
                     return Message.from_row(row) if row is not None else None
                 except errors.ForeignKeyViolation as e:
@@ -611,7 +618,6 @@ class Store:
                 """
                 row = cur.execute(q, (id, agent)).fetchone()
                 return Message.from_row(row) if row is not None else None
-
 
     def remove(self, ids: list[str]) -> Optional[list[str]]:
         if len(ids) == 0:

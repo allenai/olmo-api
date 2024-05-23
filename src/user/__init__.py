@@ -1,11 +1,7 @@
-from logging import getLogger
-
-from authlib.oauth2 import OAuth2Error
-from flask import Blueprint, app, current_app, jsonify, request
+from flask import Blueprint, jsonify
 from werkzeug import exceptions
 
 from src import db
-from src.auth.auth0 import require_auth
 from src.auth.auth_service import authn, request_agent, set_auth_cookie
 from src.auth.authenticated_client import AuthenticatedClient
 from src.user.user_service import upsert_user

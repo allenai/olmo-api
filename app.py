@@ -6,7 +6,7 @@ from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src import config, db, error, util, v3
-from src.inference.TogetherAIEngine import TogetherAIEngine
+from src.inference.InferDEngine import InferDEngine
 
 
 def create_app():
@@ -22,7 +22,7 @@ def create_app():
     dbc = db.Client.from_config(cfg.db)
     atexit.register(dbc.close)
 
-    inference_engine = TogetherAIEngine(cfg=cfg)
+    inference_engine = InferDEngine(cfg=cfg)
 
     @app.get("/health")
     def health():  # pyright: ignore

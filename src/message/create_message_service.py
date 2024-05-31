@@ -268,10 +268,8 @@ def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
         root = dbc.message.get(parent.root)
         if root is None:
             raise RuntimeError(f"root message {parent.root} not found")
-        # If a thread is private, only the creator can add to it. Otherwise
-        # this could be used as a way to leak private messages to other users
-        # by asking the LLM to emit the thread.
-        if root.private and root.creator != agent.client:
+        # Only the creator of a thread can create follow-up prompts
+        if root.creator != agent.client:
             raise exceptions.Forbidden()
         # Transitively inherit the private status
         if private is None:

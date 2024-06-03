@@ -4,9 +4,6 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Iterable, Self
 
-from flask import g
-from werkzeug.local import LocalProxy
-
 
 @dataclass
 class Database:
@@ -54,6 +51,12 @@ class Server:
     allowed_redirects: list[str]
 
 
+@dataclass
+class Auth:
+    domain: str
+    audience: str
+
+
 DEFAULT_CONFIG_PATH = "/secret/cfg/config.json"
 
 
@@ -63,6 +66,7 @@ class Config:
     inferd: InferD
     server: Server
     togetherai: BaseInferenceEngineConfig
+    auth: Auth
 
     @classmethod
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
@@ -93,24 +97,13 @@ class Config:
                         Model(**m) for m in data["togetherai"]["available_models"]
                     ],
                 ),
+                auth=Auth(
+                    domain=data["auth"].get("auth0_domain"),
+                    audience=data["auth"].get("auth0_audience"),
+                ),
             )
 
 
-def get_config() -> Config:
-    if "cfg" not in g:
-        g.cfg = Config.load(os.environ.get("FLASK_CONFIG_PATH", DEFAULT_CONFIG_PATH))
+cfg = Config.load(path=os.environ.get("FLASK_CONFIG_PATH", default=DEFAULT_CONFIG_PATH))
 
-    return g.cfg
-
-
-cfg: Config = LocalProxy(get_config)  # type: ignore - this is a LocalProxy of a Config. We're forcing it to be a Config here so other modules don't have any trouble using it
-
-
-def get_available_models() -> Iterable[Model]:
-    if "available_models" not in g:
-        g.available_models = cfg.togetherai.available_models
-
-    return g.available_models
-
-
-available_models: Iterable[Model] = LocalProxy(get_available_models)  # type: ignore - this is a LocalProxy of a list. We're forcing it to be a list here so other modules don't have any trouble using it
+available_models: Iterable[Model] = cfg.togetherai.available_models

@@ -22,7 +22,7 @@ def log() -> Response:
         timestamp=request.json.get("timestamp"),
         attributes=request.json.get("attributes"),
     )
-    
+
     if log_entry.is_valid is False:
         raise exceptions.BadRequest("one or more required fields were not provided")
 

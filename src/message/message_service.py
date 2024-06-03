@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+
 from werkzeug import exceptions
 
 from src import db
@@ -26,10 +27,12 @@ def delete_message(id: str, dbc: db.Client):
 
     if root_message is None:
         raise exceptions.NotFound()
-    
+
     if root_message.creator != agent.client:
-        raise exceptions.Forbidden("The current thread was not created by the current user. You do not have permission to delete the current thread.")
-    
+        raise exceptions.Forbidden(
+            "The current thread was not created by the current user. You do not have permission to delete the current thread."
+        )
+
     # prevent deletion if the current thread is out of the 30-day window
     if datetime.now(timezone.utc) - root_message.created > timedelta(days=30):
         raise exceptions.Forbidden("The current thread is over 30 days.")
@@ -39,5 +42,7 @@ def delete_message(id: str, dbc: db.Client):
     dbc.message.remove(msg_ids)
 
     # Remove related rows in Completion table
-    related_cpl_ids = [id for id in list(map(lambda m: m.completion, message_list)) if id is not None]
+    related_cpl_ids = [
+        id for id in list(map(lambda m: m.completion, message_list)) if id is not None
+    ]
     dbc.completion.remove(related_cpl_ids)

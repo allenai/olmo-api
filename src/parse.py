@@ -76,7 +76,7 @@ class MessageContent:
     def __init__(self, content: str):
         self.content = content
         self.datachips = []
-        for match in re.finditer(r"\B:(?P<ref>(?P<creator>.+?)/(?P<name>\w+?))\b", content):
+        for match in re.finditer(r"\B:(?P<ref>(?P<creator>[^:/]+)/(?P<name>\w+?))\b", content):
             self.datachips.append(DatachipPlaceholder(match))
 
     def replace_datachips(self, chips: dict[DatachipRef, str]) -> str:

@@ -60,3 +60,18 @@ Note: If you run e2e tests with a local server it's possible for the containers 
 Ensure you have the [Python Extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python) installed.
 
 Instead of starting the server with the `python` command above, launch the `Python Debugger: Flask` debug task in VSCode's debug menu.
+
+### Creating short-term access links to AI2 Playground
+You can create short-term links for external users to gain one-time access to the AI2 Playground. 
+
+First, you will need to be added as an admin [here](https://marina.apps.allenai.org/a/olmo-api/).
+
+Next, go to [whoami](https://olmo-api.allen.ai/v3/whoami) and grab your `token` from the cookies.
+
+Then, execute the following script from the root of the repo to generate a link for a specific user email: 
+
+`TOKEN=<your whoami token here> ./bin/mkinvite <user_email@domain.com>`
+
+You can update the details of the produced email format to swap the default contact email out with your own. 
+
+By default, the link will expire in 7 days, but you can change the expiration time with the `--expires` flag.

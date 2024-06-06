@@ -75,3 +75,5 @@ Then, execute the following script from the root of the repo to generate a link 
 You can update the details of the produced email format to swap the default contact email out with your own. 
 
 By default, the link will expire in 7 days, but you can change the expiration time with the `--expires` flag.
+
+Note: once the link gets clicked once, it won't be valid if opened again outside of the original session; so do not try to test the links before sending them to users!

@@ -8,6 +8,8 @@ from together.error import InvalidRequestError as TogetherInvalidRequestError
 from together.types.chat_completions import ChatCompletionChoicesChunk
 from together.types.common import FinishReason as TogetherFinishReason
 
+from transformers import AutoTokenizer
+
 from src import config
 from src.inference.InferenceEngine import (
     FinishReason,
@@ -36,9 +38,13 @@ class TogetherAIEngine(InferenceEngine):
         if inference_options.max_tokens is not None:
             contents_length = sum([len(message.content) for message in messages])
 
-            # HACK: IDK how Together calculates tokens. This seems to get us pretty close.
-            # I calculated this by sending a one-character message and adding what together said we were missing
-            rough_token_count = ceil(contents_length / 3.5) + (len(messages) * 15)
+            # use the tokenizer to count tokens for an estimate
+            # TODO: we should be able to pass in different models to the tokenizer (currently just a string)
+            tokenizer = AutoTokenizer.from_pretrained("allenai/OLMo-7B-Instruct", trust_remote_code=True)
+            
+            tokens = tokenizer.apply_chat_template(messages)
+            # together.ai seems to be ~5 tokens off from the tokenizer, accounting for that here
+            rough_token_count = len(tokens) + 5
 
             inference_options.max_tokens = (
                 inference_options.max_tokens - rough_token_count

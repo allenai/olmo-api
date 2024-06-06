@@ -38,28 +38,13 @@ class TogetherAIEngine(InferenceEngine):
         if inference_options.max_tokens is not None:
             contents_length = sum([len(message.content) for message in messages])
 
-            # HACK: IDK how Together calculates tokens. This seems to get us pretty close.
-            # I calculated this by sending a one-character message and adding what together said we were missing
-            # rough_token_count = ceil(contents_length / 3.5) + (len(messages) * 15)
-
-            # TOKENIZER ROUTE
+            # use the tokenizer to count tokens for an estimate
+            # TODO: we should be able to pass in different models to the tokenizer (currently just a string)
             tokenizer = AutoTokenizer.from_pretrained("allenai/OLMo-7B-Instruct", trust_remote_code=True)
             
-            # below did not work; had to have message.content because it breaks when trying to parse message itself (needs a string)
-            # rough_token_count = sum([len(tokenizer(message.content).input_ids) for message in messages])
-            
-            # Luca's suggested route, which seems to work (albeit this does not account for only input_ids, so trying to figure out if we need that part...)
             tokens = tokenizer.apply_chat_template(messages)
-            # print("TOKENS")
-            # print("+++++++++")
-            # print(tokens)
-            # print("+++++++++")
-            rough_token_count = sum(tokens)
-
-            print("ROUGH COUNT: ")
-            print(rough_token_count)
-            print("MAX TOKENS: ")
-            print(inference_options.max_tokens)
+            # together.ai seems to be ~5 tokens off from the tokenizer, accounting for that here
+            rough_token_count = len(tokens) + 5
 
             inference_options.max_tokens = (
                 inference_options.max_tokens - rough_token_count

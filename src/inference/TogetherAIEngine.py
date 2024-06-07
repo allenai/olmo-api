@@ -36,8 +36,6 @@ class TogetherAIEngine(InferenceEngine):
         inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
         if inference_options.max_tokens is not None:
-            contents_length = sum([len(message.content) for message in messages])
-
             # use the tokenizer to count tokens for an estimate
             # TODO: we should be able to pass in different models to the tokenizer (currently just a string)
             tokenizer = AutoTokenizer.from_pretrained("allenai/OLMo-7B-Instruct", trust_remote_code=True)

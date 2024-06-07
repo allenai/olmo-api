@@ -235,11 +235,16 @@ def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
             if requestOpts is not None
             else message.InferenceOpts()
         )
+
     except ValueError as e:
         raise exceptions.BadRequest(str(e))
 
     if opts.n > 1:
         raise exceptions.BadRequest("n > 1 not supported when streaming")
+
+    if opts.stop is not None:
+        newStopWords = [word.replace("\\n", "\n") for word in opts.stop]
+        opts.stop = newStopWords
 
     content: str = request.json.get("content")
     if content.strip() == "":

@@ -2,6 +2,7 @@ import dataclasses
 import json
 import os
 from typing import Generator, List, Optional
+from time import time
 
 import grpc
 from flask import current_app, request
@@ -98,7 +99,7 @@ def create_message(
         # so that we can manifest a completion at the end. This will go
         # away when InferD stores this I/O.
         chunks: list[message.MessageChunk] = []
-        gen, queue = 0, 0
+        start_gen, start_queue = time(), time()
 
         # First yield the new user message
         yield format_message(msg)
@@ -137,6 +138,9 @@ def create_message(
             yield format_message(
                 message.MessageStreamError(reply.id, err, "grpc inference failed")
             )
+
+        gen, queue = time() - start_gen, time() - start_queue
+        gen, queue = int(gen * 1000), int(queue * 1000)
 
         match finish_reason:
             case FinishReason.UnclosedStream:

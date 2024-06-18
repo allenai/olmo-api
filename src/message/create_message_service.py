@@ -179,7 +179,7 @@ def create_message(
             sha,
             tokenize_ms=-1,
             generation_ms=gen,
-            queue_ms=gen,
+            queue_ms=0,
             input_tokens=-1,
             output_tokens=-1,
         )

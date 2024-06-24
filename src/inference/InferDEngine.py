@@ -7,19 +7,23 @@ from src import config
 from src.inference.InferenceEngine import (
     InferenceEngine,
     InferenceEngineChunk,
+    InferenceEngineMessage,
     InferenceOptions,
     Logprob,
 )
-from src.message.create_message_service import InferenceEngineMessage
 
 
 class InferDEngine(InferenceEngine):
     inferDClient: InferdClient
-    cfg: config.Config
+    available_models: Sequence[config.Model]
 
-    def __init__(self, cfg: config.Config) -> None:
-        self.inferDClient = InferdClient(cfg.inferd.address, cfg.inferd.token)
-        self.cfg = cfg
+    def __init__(self) -> None:
+        self.inferDClient = InferdClient(config.cfg.inferd.address, config.cfg.inferd.token)
+        self.available_models = config.cfg.togetherai.available_models
+
+    def get_model_details(self, model_id: str) -> config.Model:
+        model = next((m for m in self.available_models if m.id == model_id), None)
+        return model
 
     def create_streamed_message(
         self,

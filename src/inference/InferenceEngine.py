@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Generator, Optional, Protocol, Sequence
 
+from src import config
 from src.dao import message
 
 
@@ -58,6 +59,10 @@ class InferenceOptions(Protocol):
 
 
 class InferenceEngine(Protocol):
+    @abstractmethod
+    def get_model_details(self, model_id: str) -> config.Model | None:
+        raise NotImplementedError
+
     @abstractmethod
     def create_streamed_message(
         self,

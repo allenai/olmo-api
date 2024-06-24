@@ -4,17 +4,15 @@ from flask import Blueprint, Response, jsonify
 
 from src import db
 from src.auth.auth0 import require_auth
-from src.inference.InferenceEngine import InferenceEngine
 from src.message.create_message_service import create_message
 from src.message.message_service import delete_message, get_message
 
 
 class MessageBlueprint(Blueprint):
-    def __init__(self, dbc: db.Client, inference_engine: InferenceEngine):
+    def __init__(self, dbc: db.Client):
         super().__init__("message", __name__)
 
         self.dbc = dbc
-        self.inference_engine = inference_engine
 
         # There used to be a non-streaming endpoint for creating messages. It's gone now.
         # Both URLs are supported for backwards compatibility.
@@ -25,7 +23,7 @@ class MessageBlueprint(Blueprint):
         self.delete("/<string:id>")(self.delete_message)
 
     def create_message(self) -> Response:
-        response = create_message(self.dbc, inference_engine=self.inference_engine)
+        response = create_message(self.dbc)
 
         if isinstance(response, Generator):
             return Response(response, mimetype="application/jsonl")

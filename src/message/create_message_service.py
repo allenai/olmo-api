@@ -12,6 +12,8 @@ from werkzeug import exceptions
 from src import config, db, parse, util
 from src.auth.auth_service import authn
 from src.dao import completion, message, token
+from src.inference.TogetherAIEngine import TogetherAIEngine
+from src.inference.InferDEngine import InferDEngine
 from src.inference.InferenceEngine import (
     FinishReason,
     InferenceEngine,
@@ -25,12 +27,21 @@ class ParsedMessage:
     role: message.Role
 
 
-def create_message(
-    dbc: db.Client, inference_engine: InferenceEngine
-) -> message.Message | Generator[str, None, None]:
+def create_message(dbc: db.Client) -> message.Message | Generator[str, None, None]:
     agent = authn(dbc)
 
     request = validate_and_map_create_message_request(dbc, agent=agent)
+
+    # here the engine is default to togetherAI
+    inference_engine: InferenceEngine = (
+        InferDEngine() if (request.host == "inferd") else TogetherAIEngine()
+    )
+
+    model = inference_engine.get_model_details(request.model_id)
+    if not model:
+        raise exceptions.BadRequest(
+            f"model {request.model_id} is not available on {request.host}"
+        )
 
     msg = dbc.message.create(
         request.content,
@@ -66,13 +77,6 @@ def create_message(
             "opts": dataclasses.asdict(msg.opts),
         }
     )
-
-    model = next(
-        (m for m in config.cfg.togetherai.available_models if m.id == request.model_id),
-        None,
-    )
-    if not model:
-        raise exceptions.BadRequest(f"model {request.model_id} not found")
 
     # Create a message that will eventually capture the streamed response.
     # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message
@@ -221,6 +225,7 @@ class CreateMessageRequest:
     root: message.Message | None
     template: str
     model_id: str
+    host: str
 
 
 def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
@@ -289,7 +294,10 @@ def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
     if not isinstance(private, bool):
         raise exceptions.BadRequest("private must be a boolean")
 
-    model_id = request.json.get("model", config.cfg.togetherai.default_model)
+    host = request.json.get("host", config.model_hosts[0])
+    model_id = request.json.get(
+        "model", getattr(config.cfg, config.model_hosts[0]).default_model
+    )
 
     return CreateMessageRequest(
         parent=parent,
@@ -301,6 +309,7 @@ def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
         root=root,
         template=template,
         model_id=model_id,
+        host=host,
     )
 
 

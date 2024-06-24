@@ -106,4 +106,4 @@ class Config:
 
 cfg = Config.load(path=os.environ.get("FLASK_CONFIG_PATH", default=DEFAULT_CONFIG_PATH))
 
-available_models: Iterable[Model] = cfg.togetherai.available_models
+model_hosts = ["togetherai", "inferd"]

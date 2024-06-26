@@ -19,7 +19,7 @@ class InferDEngine(InferenceEngine):
 
     def __init__(self) -> None:
         self.inferDClient = InferdClient(config.cfg.inferd.address, config.cfg.inferd.token)
-        self.available_models = config.cfg.togetherai.available_models
+        self.available_models = config.cfg.inferd.available_models
 
     def get_model_details(self, model_id: str) -> config.Model:
         model = next((m for m in self.available_models if m.id == model_id), None)

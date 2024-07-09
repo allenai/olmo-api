@@ -16,18 +16,17 @@ from werkzeug import exceptions
 from src import config, db, parse, util
 from src.auth.auth_service import authn, request_agent, set_auth_cookie
 from src.dao import datachip, label, message, paged, token
-from src.inference.InferenceEngine import InferenceEngine
 from src.log import logging_blueprint
 from src.message import MessageBlueprint
 from src.user import UserBlueprint
+from src.inference.inference_service import get_available_models
 
 
 class Server(Blueprint):
-    def __init__(self, dbc: db.Client, inference_engine: InferenceEngine):
+    def __init__(self, dbc: db.Client):
         super().__init__("v3", __name__)
 
         self.dbc = dbc
-        self.inference_engine = inference_engine
 
         self.get("/login/skiff")(self.login_by_skiff)
 
@@ -60,7 +59,7 @@ class Server(Blueprint):
 
         self.register_blueprint(logging_blueprint, url_prefix="/log")
         self.register_blueprint(
-            blueprint=MessageBlueprint(dbc, inference_engine),
+            blueprint=MessageBlueprint(dbc),
             url_prefix="/message",
         )
         self.register_blueprint(blueprint=UserBlueprint(dbc=dbc))
@@ -225,18 +224,7 @@ class Server(Blueprint):
 
     def models(self):
         authn(self.dbc)
-        # Exclude inferd_compute_source_id from each model in the response and add the model ID (map key).
-        return jsonify(
-            [
-                {
-                    "id": m.id,
-                    "name": m.name,
-                    "description": m.description,
-                    "model_type": m.model_type,
-                }
-                for m in config.available_models
-            ]
-        )
+        return jsonify(get_available_models())
 
     def schema(self):
         authn(self.dbc)

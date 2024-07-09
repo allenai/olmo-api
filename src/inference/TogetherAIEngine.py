@@ -1,6 +1,5 @@
 from dataclasses import asdict
 from datetime import datetime
-from math import ceil
 from typing import Generator, Iterator, Optional, Sequence
 
 from together import Together
@@ -15,19 +14,25 @@ from src.inference.InferenceEngine import (
     FinishReason,
     InferenceEngine,
     InferenceEngineChunk,
+    InferenceEngineMessage,
     InferenceOptions,
     Logprob,
 )
-from src.message.create_message_service import InferenceEngineMessage
 
 UNLIKELY_LOGPROB = -9999.0
 
 
 class TogetherAIEngine(InferenceEngine):
     togetherAIClient: Together
+    available_models: Sequence[config.Model]
 
-    def __init__(self, cfg: config.Config) -> None:
-        self.togetherAIClient = Together(api_key=cfg.togetherai.token)
+    def __init__(self) -> None:
+        self.togetherAIClient = Together(api_key=config.cfg.togetherai.token)
+        self.available_models = config.cfg.togetherai.available_models
+
+    def get_model_details(self, model_id: str) -> config.Model:
+        model = next((m for m in self.available_models if m.id == model_id), None)
+        return model
 
     def create_streamed_message(
         self,
@@ -36,12 +41,12 @@ class TogetherAIEngine(InferenceEngine):
         inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
         if inference_options.max_tokens is not None:
-            contents_length = sum([len(message.content) for message in messages])
-
             # use the tokenizer to count tokens for an estimate
             # TODO: we should be able to pass in different models to the tokenizer (currently just a string)
-            tokenizer = AutoTokenizer.from_pretrained("allenai/OLMo-7B-Instruct", trust_remote_code=True)
-            
+            tokenizer = AutoTokenizer.from_pretrained(
+                "allenai/OLMo-7B-Instruct", trust_remote_code=True
+            )
+
             tokens = tokenizer.apply_chat_template(messages)
             # together.ai seems to be ~5 tokens off from the tokenizer, accounting for that here
             rough_token_count = len(tokens) + 5

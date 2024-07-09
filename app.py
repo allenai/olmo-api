@@ -6,7 +6,6 @@ from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src import config, db, error, util, v3
-from src.inference.TogetherAIEngine import TogetherAIEngine
 
 
 def create_app():
@@ -22,14 +21,12 @@ def create_app():
     dbc = db.Client.from_config(cfg.db)
     atexit.register(dbc.close)
 
-    inference_engine = TogetherAIEngine(cfg=cfg)
-
     @app.get("/health")
     def health():  # pyright: ignore
         return "", 204
 
     app.register_blueprint(
-        v3.Server(dbc, inference_engine), url_prefix="/v3", name="v3"
+        v3.Server(dbc), url_prefix="/v3", name="v3"
     )
     app.register_error_handler(Exception, error.handle)
 

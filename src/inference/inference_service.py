@@ -10,6 +10,7 @@ class ModelEntity:
     host: str
     name: str
     description: str
+    model_type: str
 
 
 def get_available_models() -> Sequence[ModelEntity]:
@@ -22,6 +23,7 @@ def get_available_models() -> Sequence[ModelEntity]:
                     host=host,
                     name=model.name,
                     description=model.description,
+                    model_type=model.model_type,
                 )
             )
 

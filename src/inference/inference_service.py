@@ -11,6 +11,7 @@ class ModelEntity:
     name: str
     description: str
     model_type: str
+    is_deprecated: bool
 
 
 def get_available_models() -> Sequence[ModelEntity]:
@@ -24,6 +25,7 @@ def get_available_models() -> Sequence[ModelEntity]:
                     name=model.name,
                     description=model.description,
                     model_type=model.model_type,
+                    is_deprecated=model.is_deprecated or False,
                 )
             )
 

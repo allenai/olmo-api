@@ -2,7 +2,7 @@ import json
 import os
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Iterable, Self
+from typing import Optional, Self
 
 
 @dataclass
@@ -24,6 +24,7 @@ class Model:
     description: str
     compute_source_id: str
     model_type: ModelType
+    is_deprecated: Optional[bool] = None
 
 
 @dataclass

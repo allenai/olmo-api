@@ -76,6 +76,7 @@ class Config:
     togetherai: BaseInferenceEngineConfig
     auth: Auth
     wildguard: Wildguard
+    infini_gram_api_url: str
 
     @classmethod
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
@@ -115,6 +116,7 @@ class Config:
                     token=data["wildguard"].get("token"),
                     compute_source_id=data["wildguard"].get("compute_source_id"),
                 ),
+                infini_gram_api_url="https://infinigram-api.allen.ai",
             )
 
 

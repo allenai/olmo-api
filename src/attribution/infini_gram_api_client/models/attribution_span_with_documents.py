@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Dict, List, Type, TypeVar, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -18,12 +18,16 @@ class AttributionSpanWithDocuments:
         right (int):
         length (int):
         documents (List['FullAttributionDocument']):
+        text (str):
+        token_ids (List[int]):
     """
 
     left: int
     right: int
     length: int
     documents: List["FullAttributionDocument"]
+    text: str
+    token_ids: List[int]
     additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -38,6 +42,10 @@ class AttributionSpanWithDocuments:
             documents_item = documents_item_data.to_dict()
             documents.append(documents_item)
 
+        text = self.text
+
+        token_ids = self.token_ids
+
         field_dict: Dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
@@ -46,6 +54,8 @@ class AttributionSpanWithDocuments:
                 "right": right,
                 "length": length,
                 "documents": documents,
+                "text": text,
+                "tokenIds": token_ids,
             }
         )
 
@@ -69,11 +79,17 @@ class AttributionSpanWithDocuments:
 
             documents.append(documents_item)
 
+        text = d.pop("text")
+
+        token_ids = cast(List[int], d.pop("tokenIds"))
+
         attribution_span_with_documents = cls(
             left=left,
             right=right,
             length=length,
             documents=documents,
+            text=text,
+            token_ids=token_ids,
         )
 
         attribution_span_with_documents.additional_properties = d

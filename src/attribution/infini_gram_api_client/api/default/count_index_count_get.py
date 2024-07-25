@@ -8,27 +8,26 @@ from ...client import AuthenticatedClient, Client
 from ...models.available_infini_gram_index_id import AvailableInfiniGramIndexId
 from ...models.http_validation_error import HTTPValidationError
 from ...models.infini_gram_count_response import InfiniGramCountResponse
-from ...types import Response
+from ...types import UNSET, Response
 
 
 def _get_kwargs(
     index: AvailableInfiniGramIndexId,
     *,
-    body: str,
+    query: str,
 ) -> Dict[str, Any]:
-    headers: Dict[str, Any] = {}
+    params: Dict[str, Any] = {}
+
+    params["query"] = query
+
+    params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
     _kwargs: Dict[str, Any] = {
         "method": "get",
         "url": f"/{index}/count",
+        "params": params,
     }
 
-    _body = body
-
-    _kwargs["json"] = _body
-    headers["Content-Type"] = "application/json"
-
-    _kwargs["headers"] = headers
     return _kwargs
 
 
@@ -64,13 +63,13 @@ def sync_detailed(
     index: AvailableInfiniGramIndexId,
     *,
     client: Union[AuthenticatedClient, Client],
-    body: str,
+    query: str,
 ) -> Response[Union[HTTPValidationError, InfiniGramCountResponse]]:
     """Count
 
     Args:
         index (AvailableInfiniGramIndexId):
-        body (str):
+        query (str):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -82,7 +81,7 @@ def sync_detailed(
 
     kwargs = _get_kwargs(
         index=index,
-        body=body,
+        query=query,
     )
 
     response = client.get_httpx_client().request(
@@ -96,13 +95,13 @@ def sync(
     index: AvailableInfiniGramIndexId,
     *,
     client: Union[AuthenticatedClient, Client],
-    body: str,
+    query: str,
 ) -> Optional[Union[HTTPValidationError, InfiniGramCountResponse]]:
     """Count
 
     Args:
         index (AvailableInfiniGramIndexId):
-        body (str):
+        query (str):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -115,7 +114,7 @@ def sync(
     return sync_detailed(
         index=index,
         client=client,
-        body=body,
+        query=query,
     ).parsed
 
 
@@ -123,13 +122,13 @@ async def asyncio_detailed(
     index: AvailableInfiniGramIndexId,
     *,
     client: Union[AuthenticatedClient, Client],
-    body: str,
+    query: str,
 ) -> Response[Union[HTTPValidationError, InfiniGramCountResponse]]:
     """Count
 
     Args:
         index (AvailableInfiniGramIndexId):
-        body (str):
+        query (str):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -141,7 +140,7 @@ async def asyncio_detailed(
 
     kwargs = _get_kwargs(
         index=index,
-        body=body,
+        query=query,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -153,13 +152,13 @@ async def asyncio(
     index: AvailableInfiniGramIndexId,
     *,
     client: Union[AuthenticatedClient, Client],
-    body: str,
+    query: str,
 ) -> Optional[Union[HTTPValidationError, InfiniGramCountResponse]]:
     """Count
 
     Args:
         index (AvailableInfiniGramIndexId):
-        body (str):
+        query (str):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -173,6 +172,6 @@ async def asyncio(
         await asyncio_detailed(
             index=index,
             client=client,
-            body=body,
+            query=query,
         )
     ).parsed

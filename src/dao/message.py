@@ -134,6 +134,7 @@ MessageRow = tuple[
     bool,
     Optional[ModelType],
     Optional[str],
+    Optional[bool],
     # Label fields
     Optional[str],
     Optional[str],
@@ -195,6 +196,7 @@ class Message:
     private: bool = False
     model_type: Optional[ModelType] = None
     finish_reason: Optional[str] = None
+    harmful: Optional[bool] = None
     labels: list[label.Label] = field(default_factory=list)
 
     def flatten(self) -> list["Message"]:
@@ -209,7 +211,7 @@ class Message:
     def from_row(r: MessageRow) -> "Message":
         labels = []
         # If the label id is not None, unpack the label.
-        li = 17
+        li = 18
         if r[li] is not None:
             labels = [label.Label.from_row(cast(label.LabelRow, r[li:]))]
 
@@ -239,6 +241,7 @@ class Message:
             private=r[14],
             model_type=r[15],
             finish_reason=r[16],
+            harmful=r[17],
             labels=labels,
         )
 
@@ -310,15 +313,16 @@ class Store:
         private: bool = False,
         model_type: Optional[ModelType] = None,
         finish_reason: Optional[str] = None,
+        harmful: Optional[bool] = None,
     ) -> Message:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 try:
                     q = """
                         INSERT INTO
-                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private, model_type, finish_reason)
+                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private, model_type, finish_reason, harmful)
                         VALUES
-                            (%(id)s, %(content)s, %(creator)s, %(role)s, %(opts)s, %(root)s, %(parent)s, %(template)s, %(logprobs)s, %(completion)s, %(final)s, %(original)s, %(private)s, %(model_type)s, %(finish_reason)s)
+                            (%(id)s, %(content)s, %(creator)s, %(role)s, %(opts)s, %(root)s, %(parent)s, %(template)s, %(logprobs)s, %(completion)s, %(final)s, %(original)s, %(private)s, %(model_type)s, %(finish_reason)s, %(harmful)s)
                         RETURNING
                             id,
                             content,
@@ -337,6 +341,7 @@ class Store:
                             private,
                             model_type,
                             finish_reason,
+                            harmful,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -366,6 +371,7 @@ class Store:
                             "private": private,
                             "model_type": model_type,
                             "finish_reason": finish_reason,
+                            "harmful": harmful,
                         },
                     ).fetchone()
                     if row is None:
@@ -417,6 +423,7 @@ class Store:
                         message.private,
                         message.model_type,
                         message.finish_reason,
+                        message.harmful,
                         label.id,
                         label.message,
                         label.rating,
@@ -473,6 +480,7 @@ class Store:
                         message.private,
                         message.model_type,
                         message.finish_reason,
+                        message.harmful,
                         label.id,
                         label.message,
                         label.rating,
@@ -499,6 +507,7 @@ class Store:
         logprobs: Optional[list[list[TokenLogProbs]]] = None,
         completion: Optional[obj.ID] = None,
         finish_reason: Optional[str] = None,
+        harmful: Optional[bool] = None,
     ) -> Optional[Message]:
         """
         Used to finalize a Message produced via a streaming response.
@@ -514,6 +523,7 @@ class Store:
                             logprobs = COALESCE(%s, logprobs),
                             completion = COALESCE(%s, completion),
                             finish_reason = COALESCE(%s, finish_reason),
+                            harmful = COALESCE(%s, harmful),
                             final = true
                         WHERE
                             id = %s
@@ -535,6 +545,7 @@ class Store:
                             private,
                             model_type,
                             finish_reason,
+                            harmful,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -552,6 +563,7 @@ class Store:
                             prepare_logprobs(logprobs),
                             completion,
                             finish_reason,
+                            harmful,
                             id,
                         ),
                     ).fetchone()
@@ -597,6 +609,7 @@ class Store:
                         updated.private,
                         updated.model_type,
                         updated.finish_reason,
+                        updated.harmful,
                         label.id,
                         label.message,
                         label.rating,
@@ -705,6 +718,7 @@ class Store:
                         message.private,
                         message.model_type,
                         message.finish_reason,
+                        message.harmful,
                         label.id,
                         label.message,
                         label.rating,

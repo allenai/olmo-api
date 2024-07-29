@@ -58,6 +58,13 @@ class Auth:
     audience: str
 
 
+@dataclass
+class Wildguard:
+    address: str
+    token: str
+    compute_source_id: str
+
+
 DEFAULT_CONFIG_PATH = "/secret/cfg/config.json"
 
 
@@ -68,6 +75,7 @@ class Config:
     server: Server
     togetherai: BaseInferenceEngineConfig
     auth: Auth
+    wildguard: Wildguard
 
     @classmethod
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
@@ -101,6 +109,11 @@ class Config:
                 auth=Auth(
                     domain=data["auth"].get("auth0_domain"),
                     audience=data["auth"].get("auth0_audience"),
+                ),
+                wildguard=Wildguard(
+                    address=data["wildguard"].get("address"),
+                    token=data["wildguard"].get("token"),
+                    compute_source_id=data["wildguard"].get("compute_source_id"),
                 ),
             )
 

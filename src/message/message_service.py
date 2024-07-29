@@ -1,9 +1,12 @@
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
+from flask import current_app
 from werkzeug import exceptions
 
 from src import db
 from src.auth.auth_service import authn
+from src.message.WildGuard import WildGuard, WildguardRequest, WildguardResponse
 
 
 def get_message(id: str, dbc: db.Client):
@@ -46,3 +49,19 @@ def delete_message(id: str, dbc: db.Client):
         id for id in list(map(lambda m: m.completion, message_list)) if id is not None
     ]
     dbc.completion.remove(related_cpl_ids)
+
+
+def check_message_safety(prompt: str, response: Optional[str] = None):
+    wildguard = WildGuard()
+
+    try:
+        output = wildguard.check(WildguardRequest(prompt=prompt, response=response))
+
+        return output
+
+    except Exception as e:
+        current_app.logger.error(
+            "Skipped message safety check due to error: %s. ", repr(e)
+        )
+
+        return WildguardResponse()

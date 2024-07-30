@@ -9,9 +9,7 @@ from ...models.attribution_request import AttributionRequest
 from ...models.available_infini_gram_index_id import AvailableInfiniGramIndexId
 from ...models.http_validation_error import HTTPValidationError
 from ...models.infini_gram_attribution_response import InfiniGramAttributionResponse
-from ...models.infini_gram_attribution_response_with_docs import (
-    InfiniGramAttributionResponseWithDocs,
-)
+from ...models.infini_gram_attribution_response_with_docs import InfiniGramAttributionResponseWithDocs
 from ...types import Response
 
 
@@ -39,34 +37,28 @@ def _get_kwargs(
 def _parse_response(
     *, client: Union[AuthenticatedClient, Client], response: httpx.Response
 ) -> Optional[
-    Union[
-        HTTPValidationError,
-        Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocs"],
-    ]
+    Union[HTTPValidationError, Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocs"]]
 ]:
     if response.status_code == HTTPStatus.OK:
 
         def _parse_response_200(
             data: object,
-        ) -> Union[
-            "InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocs"
-        ]:
+        ) -> Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocs"]:
             try:
                 if not isinstance(data, dict):
                     raise TypeError()
-                response_200_type_1 = InfiniGramAttributionResponseWithDocs.from_dict(
-                    data
-                )
+                response_200_type_1 = InfiniGramAttributionResponseWithDocs.from_dict(data)
+
+                return response_200_type_1
+
             except:  # noqa: E722
                 pass
 
-                if not isinstance(data, dict):
-                    raise TypeError()
-                response_200_type_0 = InfiniGramAttributionResponse.from_dict(data)
+            if not isinstance(data, dict):
+                raise TypeError()
+            response_200_type_0 = InfiniGramAttributionResponse.from_dict(data)
 
-                return response_200_type_0
-
-            return response_200_type_1
+            return response_200_type_0
 
         response_200 = _parse_response_200(response.json())
 
@@ -84,10 +76,7 @@ def _parse_response(
 def _build_response(
     *, client: Union[AuthenticatedClient, Client], response: httpx.Response
 ) -> Response[
-    Union[
-        HTTPValidationError,
-        Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocs"],
-    ]
+    Union[HTTPValidationError, Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocs"]]
 ]:
     return Response(
         status_code=HTTPStatus(response.status_code),
@@ -103,10 +92,7 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     body: AttributionRequest,
 ) -> Response[
-    Union[
-        HTTPValidationError,
-        Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocs"],
-    ]
+    Union[HTTPValidationError, Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocs"]]
 ]:
     """Get Document Attributions
 
@@ -140,10 +126,7 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     body: AttributionRequest,
 ) -> Optional[
-    Union[
-        HTTPValidationError,
-        Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocs"],
-    ]
+    Union[HTTPValidationError, Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocs"]]
 ]:
     """Get Document Attributions
 
@@ -172,10 +155,7 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     body: AttributionRequest,
 ) -> Response[
-    Union[
-        HTTPValidationError,
-        Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocs"],
-    ]
+    Union[HTTPValidationError, Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocs"]]
 ]:
     """Get Document Attributions
 
@@ -207,10 +187,7 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     body: AttributionRequest,
 ) -> Optional[
-    Union[
-        HTTPValidationError,
-        Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocs"],
-    ]
+    Union[HTTPValidationError, Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocs"]]
 ]:
     """Get Document Attributions
 

@@ -13,8 +13,7 @@ from ...types import UNSET, Response, Unset
 
 def _get_kwargs(
     index: AvailableInfiniGramIndexId,
-    shard: int,
-    rank: int,
+    document_index: int,
     *,
     maximum_document_display_length: Union[Unset, int] = 10,
 ) -> Dict[str, Any]:
@@ -26,7 +25,7 @@ def _get_kwargs(
 
     _kwargs: Dict[str, Any] = {
         "method": "get",
-        "url": f"/{index}/documents/{shard}/{rank}",
+        "url": f"/{index}/documents/{document_index}",
         "params": params,
     }
 
@@ -63,18 +62,16 @@ def _build_response(
 
 def sync_detailed(
     index: AvailableInfiniGramIndexId,
-    shard: int,
-    rank: int,
+    document_index: int,
     *,
     client: Union[AuthenticatedClient, Client],
     maximum_document_display_length: Union[Unset, int] = 10,
 ) -> Response[Union[HTTPValidationError, InfiniGramDocumentResponse]]:
-    """Get Document By Rank
+    """Get Document By Index
 
     Args:
         index (AvailableInfiniGramIndexId):
-        shard (int):
-        rank (int):
+        document_index (int):
         maximum_document_display_length (Union[Unset, int]):  Default: 10.
 
     Raises:
@@ -87,8 +84,7 @@ def sync_detailed(
 
     kwargs = _get_kwargs(
         index=index,
-        shard=shard,
-        rank=rank,
+        document_index=document_index,
         maximum_document_display_length=maximum_document_display_length,
     )
 
@@ -101,18 +97,16 @@ def sync_detailed(
 
 def sync(
     index: AvailableInfiniGramIndexId,
-    shard: int,
-    rank: int,
+    document_index: int,
     *,
     client: Union[AuthenticatedClient, Client],
     maximum_document_display_length: Union[Unset, int] = 10,
 ) -> Optional[Union[HTTPValidationError, InfiniGramDocumentResponse]]:
-    """Get Document By Rank
+    """Get Document By Index
 
     Args:
         index (AvailableInfiniGramIndexId):
-        shard (int):
-        rank (int):
+        document_index (int):
         maximum_document_display_length (Union[Unset, int]):  Default: 10.
 
     Raises:
@@ -125,8 +119,7 @@ def sync(
 
     return sync_detailed(
         index=index,
-        shard=shard,
-        rank=rank,
+        document_index=document_index,
         client=client,
         maximum_document_display_length=maximum_document_display_length,
     ).parsed
@@ -134,18 +127,16 @@ def sync(
 
 async def asyncio_detailed(
     index: AvailableInfiniGramIndexId,
-    shard: int,
-    rank: int,
+    document_index: int,
     *,
     client: Union[AuthenticatedClient, Client],
     maximum_document_display_length: Union[Unset, int] = 10,
 ) -> Response[Union[HTTPValidationError, InfiniGramDocumentResponse]]:
-    """Get Document By Rank
+    """Get Document By Index
 
     Args:
         index (AvailableInfiniGramIndexId):
-        shard (int):
-        rank (int):
+        document_index (int):
         maximum_document_display_length (Union[Unset, int]):  Default: 10.
 
     Raises:
@@ -158,8 +149,7 @@ async def asyncio_detailed(
 
     kwargs = _get_kwargs(
         index=index,
-        shard=shard,
-        rank=rank,
+        document_index=document_index,
         maximum_document_display_length=maximum_document_display_length,
     )
 
@@ -170,18 +160,16 @@ async def asyncio_detailed(
 
 async def asyncio(
     index: AvailableInfiniGramIndexId,
-    shard: int,
-    rank: int,
+    document_index: int,
     *,
     client: Union[AuthenticatedClient, Client],
     maximum_document_display_length: Union[Unset, int] = 10,
 ) -> Optional[Union[HTTPValidationError, InfiniGramDocumentResponse]]:
-    """Get Document By Rank
+    """Get Document By Index
 
     Args:
         index (AvailableInfiniGramIndexId):
-        shard (int):
-        rank (int):
+        document_index (int):
         maximum_document_display_length (Union[Unset, int]):  Default: 10.
 
     Raises:
@@ -195,8 +183,7 @@ async def asyncio(
     return (
         await asyncio_detailed(
             index=index,
-            shard=shard,
-            rank=rank,
+            document_index=document_index,
             client=client,
             maximum_document_display_length=maximum_document_display_length,
         )

@@ -4,10 +4,6 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Optional, Self
 
-from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import (
-    AvailableInfiniGramIndexId,
-)
-
 
 @dataclass
 class Database:
@@ -71,7 +67,7 @@ class Wildguard:
 @dataclass    
 class InfiniGram:
     api_url: str
-    model_index_map: dict[str, AvailableInfiniGramIndexId]
+    model_index_map: dict[str, str]
 
 
 DEFAULT_CONFIG_PATH = "/secret/cfg/config.json"
@@ -127,8 +123,8 @@ class Config:
                 ),
                 infini_gram=InfiniGram(
                     model_index_map={
-                        "olmo-7b-base": AvailableInfiniGramIndexId.DOLMA_1_7,
-                        "olmo-7b-chat": AvailableInfiniGramIndexId.DOLMA_1_7,
+                        "olmo-7b-base": "dolma-1_7",
+                        "olmo-7b-chat": "dolma-1_7",
                     },
                     api_url="https://infinigram-api.allen.ai",
                 ),

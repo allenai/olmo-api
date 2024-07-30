@@ -4,7 +4,7 @@ from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 if TYPE_CHECKING:
-    from ..models.infini_gram_rank_response import InfiniGramRankResponse
+    from ..models.document import Document
 
 
 T = TypeVar("T", bound="InfiniGramDocumentsResponse")
@@ -15,11 +15,11 @@ class InfiniGramDocumentsResponse:
     """
     Attributes:
         index (str):
-        documents (List['InfiniGramRankResponse']):
+        documents (List['Document']):
     """
 
     index: str
-    documents: List["InfiniGramRankResponse"]
+    documents: List["Document"]
     additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -43,7 +43,7 @@ class InfiniGramDocumentsResponse:
 
     @classmethod
     def from_dict(cls: Type[T], src_dict: Dict[str, Any]) -> T:
-        from ..models.infini_gram_rank_response import InfiniGramRankResponse
+        from ..models.document import Document
 
         d = src_dict.copy()
         index = d.pop("index")
@@ -51,7 +51,7 @@ class InfiniGramDocumentsResponse:
         documents = []
         _documents = d.pop("documents")
         for documents_item_data in _documents:
-            documents_item = InfiniGramRankResponse.from_dict(documents_item_data)
+            documents_item = Document.from_dict(documents_item_data)
 
             documents.append(documents_item)
 

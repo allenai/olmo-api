@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, cast
 
 from flask import request
 from werkzeug import exceptions
@@ -10,6 +10,12 @@ from src.attribution.infini_gram_api_client.api.default import (
 )
 from src.attribution.infini_gram_api_client.models.attribution_request import (
     AttributionRequest,
+)
+from src.attribution.infini_gram_api_client.models.attribution_span_with_documents import (
+    AttributionSpanWithDocuments,
+)
+from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import (
+    AvailableInfiniGramIndexId,
 )
 from src.attribution.infini_gram_api_client.models.http_validation_error import (
     HTTPValidationError,
@@ -34,12 +40,15 @@ class GetAttributionRequest(APIInterface):
     max_documents: Optional[int] = 10
 
 
+class MappedGetAttributionRequest(GetAttributionRequest):
+    index: AvailableInfiniGramIndexId
+
+
 def get_attribution(infini_gram_client: Client) -> dict[int, AttributionDocument]:
     request = _validate_get_attribution_request()
-    index = cfg.infini_gram.model_index_map[request.model_id]
     # TODO: get the correct index for the model
     attribution_response = get_document_attributions_index_attribution_post.sync(
-        index=index,
+        index=request.index,
         client=infini_gram_client,
         body=AttributionRequest(
             query=request.model_response, include_documents=True, minimum_span_length=10
@@ -48,14 +57,17 @@ def get_attribution(infini_gram_client: Client) -> dict[int, AttributionDocument
 
     if isinstance(attribution_response, HTTPValidationError):
         # validation error handling
-        raise exceptions.InternalServerError()
+        raise exceptions.InternalServerError(
+            description=f"infini-gram API reported a validation error: {attribution_response.detail}\nThis is likely an error in olmo-api."
+        )
 
     if attribution_response is None:
-        raise exceptions.BadGateway()
+        raise exceptions.BadGateway(
+            description="Something went wrong when calling the infini-gram API"
+        )
 
-    # if isinstance(attribution_response, InfiniGramAttributionResponseWithDocs):
     documents: dict[int, AttributionDocument] = {}
-    for span in attribution_response.spans:
+    for span in cast(List[AttributionSpanWithDocuments], attribution_response.spans):
         for document in span.documents:
             if documents.get(document.document_index) is None:
                 documents[document.document_index] = AttributionDocument(
@@ -78,4 +90,12 @@ def _validate_get_attribution_request():
     if request.json is None:
         raise exceptions.BadRequest("no request body")
 
-    return GetAttributionRequest(**request.json)
+    try:
+        model_id = request.json.get("model_id")
+        index = AvailableInfiniGramIndexId(cfg.infini_gram.model_index_map[model_id])
+    except AttributeError:
+        raise exceptions.BadRequest(
+            description=f"model_id must be one of: [{', '.join(cfg.infini_gram.model_index_map.keys())}]."
+        )
+
+    return MappedGetAttributionRequest(**request.json, index=index)

@@ -4,37 +4,33 @@ from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 if TYPE_CHECKING:
-    from ..models.infini_gram_rank_response_metadata import InfiniGramRankResponseMetadata
+    from ..models.document_metadata import DocumentMetadata
 
 
-T = TypeVar("T", bound="InfiniGramRankResponse")
+T = TypeVar("T", bound="Document")
 
 
 @_attrs_define
-class InfiniGramRankResponse:
+class Document:
     """
     Attributes:
-        index (str):
         document_index (int):
         document_length (int):
         display_length (int):
-        metadata (InfiniGramRankResponseMetadata):
+        metadata (DocumentMetadata):
         token_ids (List[int]):
         text (str):
     """
 
-    index: str
     document_index: int
     document_length: int
     display_length: int
-    metadata: "InfiniGramRankResponseMetadata"
+    metadata: "DocumentMetadata"
     token_ids: List[int]
     text: str
     additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
-        index = self.index
-
         document_index = self.document_index
 
         document_length = self.document_length
@@ -51,7 +47,6 @@ class InfiniGramRankResponse:
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
-                "index": index,
                 "documentIndex": document_index,
                 "documentLength": document_length,
                 "displayLength": display_length,
@@ -65,25 +60,22 @@ class InfiniGramRankResponse:
 
     @classmethod
     def from_dict(cls: Type[T], src_dict: Dict[str, Any]) -> T:
-        from ..models.infini_gram_rank_response_metadata import InfiniGramRankResponseMetadata
+        from ..models.document_metadata import DocumentMetadata
 
         d = src_dict.copy()
-        index = d.pop("index")
-
         document_index = d.pop("documentIndex")
 
         document_length = d.pop("documentLength")
 
         display_length = d.pop("displayLength")
 
-        metadata = InfiniGramRankResponseMetadata.from_dict(d.pop("metadata"))
+        metadata = DocumentMetadata.from_dict(d.pop("metadata"))
 
         token_ids = cast(List[int], d.pop("tokenIds"))
 
         text = d.pop("text")
 
-        infini_gram_rank_response = cls(
-            index=index,
+        document = cls(
             document_index=document_index,
             document_length=document_length,
             display_length=display_length,
@@ -92,8 +84,8 @@ class InfiniGramRankResponse:
             text=text,
         )
 
-        infini_gram_rank_response.additional_properties = d
-        return infini_gram_rank_response
+        document.additional_properties = d
+        return document
 
     @property
     def additional_keys(self) -> List[str]:

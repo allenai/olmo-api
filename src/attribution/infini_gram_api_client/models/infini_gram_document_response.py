@@ -4,37 +4,37 @@ from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 if TYPE_CHECKING:
-    from ..models.full_attribution_document_metadata import FullAttributionDocumentMetadata
+    from ..models.infini_gram_document_response_metadata import InfiniGramDocumentResponseMetadata
 
 
-T = TypeVar("T", bound="FullAttributionDocument")
+T = TypeVar("T", bound="InfiniGramDocumentResponse")
 
 
 @_attrs_define
-class FullAttributionDocument:
+class InfiniGramDocumentResponse:
     """
     Attributes:
+        index (str):
         document_index (int):
         document_length (int):
         display_length (int):
-        metadata (FullAttributionDocumentMetadata):
+        metadata (InfiniGramDocumentResponseMetadata):
         token_ids (List[int]):
         text (str):
-        shard (int):
-        pointer (int):
     """
 
+    index: str
     document_index: int
     document_length: int
     display_length: int
-    metadata: "FullAttributionDocumentMetadata"
+    metadata: "InfiniGramDocumentResponseMetadata"
     token_ids: List[int]
     text: str
-    shard: int
-    pointer: int
     additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
+        index = self.index
+
         document_index = self.document_index
 
         document_length = self.document_length
@@ -47,22 +47,17 @@ class FullAttributionDocument:
 
         text = self.text
 
-        shard = self.shard
-
-        pointer = self.pointer
-
         field_dict: Dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
+                "index": index,
                 "documentIndex": document_index,
                 "documentLength": document_length,
                 "displayLength": display_length,
                 "metadata": metadata,
                 "tokenIds": token_ids,
                 "text": text,
-                "shard": shard,
-                "pointer": pointer,
             }
         )
 
@@ -70,38 +65,35 @@ class FullAttributionDocument:
 
     @classmethod
     def from_dict(cls: Type[T], src_dict: Dict[str, Any]) -> T:
-        from ..models.full_attribution_document_metadata import FullAttributionDocumentMetadata
+        from ..models.infini_gram_document_response_metadata import InfiniGramDocumentResponseMetadata
 
         d = src_dict.copy()
+        index = d.pop("index")
+
         document_index = d.pop("documentIndex")
 
         document_length = d.pop("documentLength")
 
         display_length = d.pop("displayLength")
 
-        metadata = FullAttributionDocumentMetadata.from_dict(d.pop("metadata"))
+        metadata = InfiniGramDocumentResponseMetadata.from_dict(d.pop("metadata"))
 
         token_ids = cast(List[int], d.pop("tokenIds"))
 
         text = d.pop("text")
 
-        shard = d.pop("shard")
-
-        pointer = d.pop("pointer")
-
-        full_attribution_document = cls(
+        infini_gram_document_response = cls(
+            index=index,
             document_index=document_index,
             document_length=document_length,
             display_length=display_length,
             metadata=metadata,
             token_ids=token_ids,
             text=text,
-            shard=shard,
-            pointer=pointer,
         )
 
-        full_attribution_document.additional_properties = d
-        return full_attribution_document
+        infini_gram_document_response.additional_properties = d
+        return infini_gram_document_response
 
     @property
     def additional_keys(self) -> List[str]:

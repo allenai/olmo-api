@@ -1,7 +1,5 @@
 # infini-gram-api-client
-An auto-generated client library for accessing infini-gram API
-
-generated with https://github.com/openapi-generators/openapi-python-client
+A client library for accessing infini-gram API
 
 ## Usage
 First, create a client:

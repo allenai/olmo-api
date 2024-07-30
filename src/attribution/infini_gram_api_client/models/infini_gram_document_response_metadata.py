@@ -3,11 +3,11 @@ from typing import Any, Dict, List, Type, TypeVar
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-T = TypeVar("T", bound="InfiniGramRankResponseMetadata")
+T = TypeVar("T", bound="InfiniGramDocumentResponseMetadata")
 
 
 @_attrs_define
-class InfiniGramRankResponseMetadata:
+class InfiniGramDocumentResponseMetadata:
     """ """
 
     additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -21,10 +21,10 @@ class InfiniGramRankResponseMetadata:
     @classmethod
     def from_dict(cls: Type[T], src_dict: Dict[str, Any]) -> T:
         d = src_dict.copy()
-        infini_gram_rank_response_metadata = cls()
+        infini_gram_document_response_metadata = cls()
 
-        infini_gram_rank_response_metadata.additional_properties = d
-        return infini_gram_rank_response_metadata
+        infini_gram_document_response_metadata.additional_properties = d
+        return infini_gram_document_response_metadata
 
     @property
     def additional_keys(self) -> List[str]:

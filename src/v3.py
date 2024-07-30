@@ -14,6 +14,7 @@ from flask import (
 from werkzeug import exceptions
 
 from src import config, db, parse, util
+from src.attribution import attribution_blueprint
 from src.auth.auth_service import authn, request_agent, set_auth_cookie
 from src.dao import datachip, label, message, paged, token
 from src.log import logging_blueprint
@@ -63,6 +64,9 @@ class Server(Blueprint):
             url_prefix="/message",
         )
         self.register_blueprint(blueprint=UserBlueprint(dbc=dbc))
+        self.register_blueprint(
+            blueprint=attribution_blueprint, url_prefix="/attribution"
+        )
 
     def login_by_skiff(self):
         # Use NGINX mediated auth; see https://skiff.allenai.org/login.html

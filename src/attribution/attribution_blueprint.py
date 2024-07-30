@@ -17,11 +17,9 @@ def get_attribution_for_model_response() -> Response:
     if request.json is None:
         raise exceptions.BadRequest("missing JSON body")
 
-    infini_gram_client = Client(base_url=cfg.infini_gram_api_url)
+    infini_gram_client = Client(base_url=cfg.infini_gram.api_url)
 
     attribution_response = get_attribution(
-        request.json.get("modelResponse"),
-        model_id=request.json.get("modelId"),
         infini_gram_client=infini_gram_client,
     )
 

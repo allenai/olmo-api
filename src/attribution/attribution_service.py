@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from operator import itemgetter
 from typing import List, Optional, cast
 
 from flask import request
@@ -37,7 +38,7 @@ class AttributionDocument:
 class GetAttributionRequest(APIInterface):
     model_response: str
     model_id: str
-    max_documents: Optional[int] = 10
+    max_documents: int = 10
 
 
 class MappedGetAttributionRequest(GetAttributionRequest):
@@ -83,6 +84,25 @@ def get_attribution(infini_gram_client: Client) -> dict[int, AttributionDocument
                 )
             else:
                 documents[document.document_index].corresponding_spans.append(span.text)
+
+    # If we get more documents back than the requestor wants, sort them by their longest corresponding span and return the top X
+    if len(documents) > request.max_documents:
+        sorted_documents = sorted(
+            [
+                (id, len(max(document.corresponding_spans, key=len)))
+                for (id, document) in documents.items()
+            ],
+            key=itemgetter(1),
+            reverse=True,
+        )
+
+        document_tuples_to_return = sorted_documents[slice(request.max_documents)]
+        documents_to_return = {
+            tuple[0]: documents[tuple[0]] for tuple in document_tuples_to_return
+        }
+
+        return documents_to_return
+
     return documents
 
 

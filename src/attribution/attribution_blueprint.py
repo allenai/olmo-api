@@ -9,7 +9,7 @@ from .infini_gram_api_client import Client
 attribution_blueprint = Blueprint(name="attribution", import_name=__name__)
 
 
-@attribution_blueprint.post(rule="/")
+@attribution_blueprint.post(rule="")
 def get_attribution_for_model_response() -> Response:
     if request.content_type != "application/json":
         raise exceptions.UnsupportedMediaType

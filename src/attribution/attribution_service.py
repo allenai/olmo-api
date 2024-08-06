@@ -52,7 +52,11 @@ def get_attribution(infini_gram_client: Client) -> dict[int, AttributionDocument
         index=request.index,
         client=infini_gram_client,
         body=AttributionRequest(
-            query=request.model_response, include_documents=True, minimum_span_length=10
+            query=request.model_response,
+            include_documents=True,
+            minimum_span_length=10,
+            delimiters=["\n", "."],
+            maximum_frequency=10,
         ),
     )
 

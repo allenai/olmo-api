@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from itertools import islice
 from operator import itemgetter
-from typing import Iterable, List, Optional, cast
+from typing import Iterable, List, Optional, Sequence, cast
 
 from flask import json, request
 from werkzeug import exceptions
@@ -64,7 +64,7 @@ class ResponseAttributionSpan:
 
 
 @dataclass
-class TopLevelSpan:
+class FlattenedSpan:
     text: str
     left: int
     right: int
@@ -72,24 +72,41 @@ class TopLevelSpan:
     documents: List[AttributionDocument | DocumentWithPointer]
 
 
-def collapse_spans(
-    spans: Iterable[AttributionSpan | AttributionSpanWithDocuments],
+def flatten_spans(
+    spans: Sequence[AttributionSpan | AttributionSpanWithDocuments],
     input_tokens: Iterable[str],
-):
-    spans_sorted_by_length = sorted(spans, key=lambda span: span.length)
+) -> List[FlattenedSpan]:
+    # We're sorting by left position here first because that helps clean up some edge cases that happen if we only sort by length
+    # Sorting by length lets us reduce the number of loops we do math in and removes the need to account for double-nested spans
+    spans_sorted_by_left_position_then_length = sorted(
+        spans,
+        key=lambda span: (span.left, span.length),
+    )
 
-    top_level_spans: List[TopLevelSpan] = []
+    top_level_spans: List[FlattenedSpan] = []
+    spans_already_nested: List[int] = []
 
-    for i, span in enumerate(spans_sorted_by_length):
+    # starting from the first span in the text (lowest left value), check to see if any spans overlap it or are inside it
+    for i, span in enumerate(spans_sorted_by_left_position_then_length):
+        if i in spans_already_nested:
+            continue
+
         left = span.left
         right = span.right
         overlapping_spans: List[AttributionSpan | AttributionSpanWithDocuments] = []
 
-        for span_to_check in islice(spans_sorted_by_length, i + 1, -1):
+        next_index = i + 1
+        for j, span_to_check in enumerate(
+            iterable=islice(
+                spans_sorted_by_left_position_then_length, next_index, None
+            ),
+            start=next_index,
+        ):
             if (
                 left <= span_to_check.left < right
                 or left <= span_to_check.right < right
             ):
+                spans_already_nested.append(j)
                 overlapping_spans.append(span_to_check)
                 left = min(span_to_check.left, left)
                 right = max(span_to_check.right, right)
@@ -104,7 +121,7 @@ def collapse_spans(
 
         if len(overlapping_spans) > 0:
             top_level_spans.append(
-                TopLevelSpan(
+                FlattenedSpan(
                     text,
                     left=left,
                     right=right,
@@ -112,6 +129,8 @@ def collapse_spans(
                     nested_spans=overlapping_spans,
                 )
             )
+
+    return top_level_spans
 
 
 def get_attribution(
@@ -127,6 +146,7 @@ def get_attribution(
             minimum_span_length=10,
             delimiters=["\n", "."],
             maximum_frequency=10,
+            include_input_as_tokens=True,
         ),
     )
 
@@ -141,7 +161,14 @@ def get_attribution(
             description="Something went wrong when calling the infini-gram API"
         )
 
-    # collapsed_spans = collapse_spans(attribution_response.spans)
+    if attribution_response.input_tokens is None:
+        raise exceptions.BadGateway(
+            description="The version of infinigram-api we hit doesn't support or didn't return input_tokens"
+        )
+
+    collapsed_spans = flatten_spans(
+        input_tokens=attribution_response.input_tokens, spans=attribution_response.spans
+    )
 
     documents: dict[int, ResponseAttributionDocument] = {}
     spans: dict[str, ResponseAttributionSpan] = {}

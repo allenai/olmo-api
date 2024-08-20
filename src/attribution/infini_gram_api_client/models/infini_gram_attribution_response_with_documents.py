@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Dict, List, Type, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -7,19 +7,21 @@ if TYPE_CHECKING:
     from ..models.attribution_span_with_documents import AttributionSpanWithDocuments
 
 
-T = TypeVar("T", bound="InfiniGramAttributionResponseWithDocs")
+T = TypeVar("T", bound="InfiniGramAttributionResponseWithDocuments")
 
 
 @_attrs_define
-class InfiniGramAttributionResponseWithDocs:
+class InfiniGramAttributionResponseWithDocuments:
     """
     Attributes:
         index (str):
         spans (List['AttributionSpanWithDocuments']):
+        input_tokens (Union[List[str], None]):
     """
 
     index: str
     spans: List["AttributionSpanWithDocuments"]
+    input_tokens: Union[List[str], None]
     additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -30,12 +32,20 @@ class InfiniGramAttributionResponseWithDocs:
             spans_item = spans_item_data.to_dict()
             spans.append(spans_item)
 
+        input_tokens: Union[List[str], None]
+        if isinstance(self.input_tokens, list):
+            input_tokens = self.input_tokens
+
+        else:
+            input_tokens = self.input_tokens
+
         field_dict: Dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
                 "index": index,
                 "spans": spans,
+                "inputTokens": input_tokens,
             }
         )
 
@@ -55,13 +65,29 @@ class InfiniGramAttributionResponseWithDocs:
 
             spans.append(spans_item)
 
-        infini_gram_attribution_response_with_docs = cls(
+        def _parse_input_tokens(data: object) -> Union[List[str], None]:
+            if data is None:
+                return data
+            try:
+                if not isinstance(data, list):
+                    raise TypeError()
+                input_tokens_type_0 = cast(List[str], data)
+
+                return input_tokens_type_0
+            except:  # noqa: E722
+                pass
+            return cast(Union[List[str], None], data)
+
+        input_tokens = _parse_input_tokens(d.pop("inputTokens"))
+
+        infini_gram_attribution_response_with_documents = cls(
             index=index,
             spans=spans,
+            input_tokens=input_tokens,
         )
 
-        infini_gram_attribution_response_with_docs.additional_properties = d
-        return infini_gram_attribution_response_with_docs
+        infini_gram_attribution_response_with_documents.additional_properties = d
+        return infini_gram_attribution_response_with_documents
 
     @property
     def additional_keys(self) -> List[str]:

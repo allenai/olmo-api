@@ -17,17 +17,17 @@ class AttributionSpan:
         left (int):
         right (int):
         length (int):
-        documents (List['AttributionDocument']):
         text (str):
         token_ids (List[int]):
+        documents (List['AttributionDocument']):
     """
 
     left: int
     right: int
     length: int
-    documents: List["AttributionDocument"]
     text: str
     token_ids: List[int]
+    documents: List["AttributionDocument"]
     additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -37,14 +37,14 @@ class AttributionSpan:
 
         length = self.length
 
+        text = self.text
+
+        token_ids = self.token_ids
+
         documents = []
         for documents_item_data in self.documents:
             documents_item = documents_item_data.to_dict()
             documents.append(documents_item)
-
-        text = self.text
-
-        token_ids = self.token_ids
 
         field_dict: Dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -53,9 +53,9 @@ class AttributionSpan:
                 "left": left,
                 "right": right,
                 "length": length,
-                "documents": documents,
                 "text": text,
                 "tokenIds": token_ids,
+                "documents": documents,
             }
         )
 
@@ -72,6 +72,10 @@ class AttributionSpan:
 
         length = d.pop("length")
 
+        text = d.pop("text")
+
+        token_ids = cast(List[int], d.pop("tokenIds"))
+
         documents = []
         _documents = d.pop("documents")
         for documents_item_data in _documents:
@@ -79,17 +83,13 @@ class AttributionSpan:
 
             documents.append(documents_item)
 
-        text = d.pop("text")
-
-        token_ids = cast(List[int], d.pop("tokenIds"))
-
         attribution_span = cls(
             left=left,
             right=right,
             length=length,
-            documents=documents,
             text=text,
             token_ids=token_ids,
+            documents=documents,
         )
 
         attribution_span.additional_properties = d

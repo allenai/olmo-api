@@ -7,11 +7,11 @@ from .attribution_span_with_documents import AttributionSpanWithDocuments
 from .available_infini_gram_index_id import AvailableInfiniGramIndexId
 from .document import Document
 from .document_metadata import DocumentMetadata
-from .full_attribution_document import FullAttributionDocument
-from .full_attribution_document_metadata import FullAttributionDocumentMetadata
+from .document_with_pointer import DocumentWithPointer
+from .document_with_pointer_metadata import DocumentWithPointerMetadata
 from .http_validation_error import HTTPValidationError
 from .infini_gram_attribution_response import InfiniGramAttributionResponse
-from .infini_gram_attribution_response_with_docs import InfiniGramAttributionResponseWithDocs
+from .infini_gram_attribution_response_with_documents import InfiniGramAttributionResponseWithDocuments
 from .infini_gram_count_response import InfiniGramCountResponse
 from .infini_gram_document_response import InfiniGramDocumentResponse
 from .infini_gram_document_response_metadata import InfiniGramDocumentResponseMetadata
@@ -26,11 +26,11 @@ __all__ = (
     "AvailableInfiniGramIndexId",
     "Document",
     "DocumentMetadata",
-    "FullAttributionDocument",
-    "FullAttributionDocumentMetadata",
+    "DocumentWithPointer",
+    "DocumentWithPointerMetadata",
     "HTTPValidationError",
     "InfiniGramAttributionResponse",
-    "InfiniGramAttributionResponseWithDocs",
+    "InfiniGramAttributionResponseWithDocuments",
     "InfiniGramCountResponse",
     "InfiniGramDocumentResponse",
     "InfiniGramDocumentResponseMetadata",

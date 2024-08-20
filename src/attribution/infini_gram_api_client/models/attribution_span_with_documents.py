@@ -4,7 +4,7 @@ from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 if TYPE_CHECKING:
-    from ..models.full_attribution_document import FullAttributionDocument
+    from ..models.document_with_pointer import DocumentWithPointer
 
 
 T = TypeVar("T", bound="AttributionSpanWithDocuments")
@@ -17,17 +17,17 @@ class AttributionSpanWithDocuments:
         left (int):
         right (int):
         length (int):
-        documents (List['FullAttributionDocument']):
         text (str):
         token_ids (List[int]):
+        documents (List['DocumentWithPointer']):
     """
 
     left: int
     right: int
     length: int
-    documents: List["FullAttributionDocument"]
     text: str
     token_ids: List[int]
+    documents: List["DocumentWithPointer"]
     additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -37,14 +37,14 @@ class AttributionSpanWithDocuments:
 
         length = self.length
 
+        text = self.text
+
+        token_ids = self.token_ids
+
         documents = []
         for documents_item_data in self.documents:
             documents_item = documents_item_data.to_dict()
             documents.append(documents_item)
-
-        text = self.text
-
-        token_ids = self.token_ids
 
         field_dict: Dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -53,9 +53,9 @@ class AttributionSpanWithDocuments:
                 "left": left,
                 "right": right,
                 "length": length,
-                "documents": documents,
                 "text": text,
                 "tokenIds": token_ids,
+                "documents": documents,
             }
         )
 
@@ -63,7 +63,7 @@ class AttributionSpanWithDocuments:
 
     @classmethod
     def from_dict(cls: Type[T], src_dict: Dict[str, Any]) -> T:
-        from ..models.full_attribution_document import FullAttributionDocument
+        from ..models.document_with_pointer import DocumentWithPointer
 
         d = src_dict.copy()
         left = d.pop("left")
@@ -72,24 +72,24 @@ class AttributionSpanWithDocuments:
 
         length = d.pop("length")
 
-        documents = []
-        _documents = d.pop("documents")
-        for documents_item_data in _documents:
-            documents_item = FullAttributionDocument.from_dict(documents_item_data)
-
-            documents.append(documents_item)
-
         text = d.pop("text")
 
         token_ids = cast(List[int], d.pop("tokenIds"))
+
+        documents = []
+        _documents = d.pop("documents")
+        for documents_item_data in _documents:
+            documents_item = DocumentWithPointer.from_dict(documents_item_data)
+
+            documents.append(documents_item)
 
         attribution_span_with_documents = cls(
             left=left,
             right=right,
             length=length,
-            documents=documents,
             text=text,
             token_ids=token_ids,
+            documents=documents,
         )
 
         attribution_span_with_documents.additional_properties = d

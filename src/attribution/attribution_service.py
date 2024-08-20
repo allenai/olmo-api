@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
+from itertools import islice
 from operator import itemgetter
-from typing import List, Optional, cast
+from typing import Iterable, List, Optional, cast
 
 from flask import json, request
 from werkzeug import exceptions
@@ -9,14 +10,23 @@ from src.api_interface import APIInterface
 from src.attribution.infini_gram_api_client.api.default import (
     get_document_attributions_index_attribution_post,
 )
+from src.attribution.infini_gram_api_client.models.attribution_document import (
+    AttributionDocument,
+)
 from src.attribution.infini_gram_api_client.models.attribution_request import (
     AttributionRequest,
+)
+from src.attribution.infini_gram_api_client.models.attribution_span import (
+    AttributionSpan,
 )
 from src.attribution.infini_gram_api_client.models.attribution_span_with_documents import (
     AttributionSpanWithDocuments,
 )
 from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import (
     AvailableInfiniGramIndexId,
+)
+from src.attribution.infini_gram_api_client.models.document_with_pointer import (
+    DocumentWithPointer,
 )
 from src.attribution.infini_gram_api_client.models.http_validation_error import (
     HTTPValidationError,
@@ -27,7 +37,7 @@ from .infini_gram_api_client import Client
 
 
 @dataclass
-class AttributionDocument:
+class ResponseAttributionDocument:
     text: str
     corresponding_spans: List[str]
     index: str
@@ -48,9 +58,60 @@ class MappedGetAttributionRequest(GetAttributionRequest):
 
 
 @dataclass
-class AttributionSpan:
+class ResponseAttributionSpan:
     text: str
     documents: List[int] = field(default_factory=lambda: [])
+
+
+@dataclass
+class TopLevelSpan:
+    text: str
+    left: int
+    right: int
+    nested_spans: Iterable[AttributionSpan | AttributionSpanWithDocuments]
+    documents: List[AttributionDocument | DocumentWithPointer]
+
+
+def collapse_spans(
+    spans: Iterable[AttributionSpan | AttributionSpanWithDocuments],
+    input_tokens: Iterable[str],
+):
+    spans_sorted_by_length = sorted(spans, key=lambda span: span.length)
+
+    top_level_spans: List[TopLevelSpan] = []
+
+    for i, span in enumerate(spans_sorted_by_length):
+        left = span.left
+        right = span.right
+        overlapping_spans: List[AttributionSpan | AttributionSpanWithDocuments] = []
+
+        for span_to_check in islice(spans_sorted_by_length, i + 1, -1):
+            if (
+                left <= span_to_check.left < right
+                or left <= span_to_check.right < right
+            ):
+                overlapping_spans.append(span_to_check)
+                left = min(span_to_check.left, left)
+                right = max(span_to_check.right, right)
+
+        new_documents = [
+            document
+            for overlapping_span in overlapping_spans
+            for document in overlapping_span.documents
+        ]
+
+        text = "".join(islice(input_tokens, left, right))
+
+        if len(overlapping_spans) > 0:
+            top_level_spans.append(
+                TopLevelSpan(
+                    text,
+                    left=left,
+                    right=right,
+                    documents=new_documents,
+                    nested_spans=overlapping_spans,
+                )
+            )
 
 
 def get_attribution(
@@ -80,18 +141,20 @@ def get_attribution(
             description="Something went wrong when calling the infini-gram API"
         )
 
-    documents: dict[int, AttributionDocument] = {}
-    spans: dict[str, AttributionSpan] = {}
+    # collapsed_spans = collapse_spans(attribution_response.spans)
+
+    documents: dict[int, ResponseAttributionDocument] = {}
+    spans: dict[str, ResponseAttributionSpan] = {}
     for span in cast(List[AttributionSpanWithDocuments], attribution_response.spans):
         if spans.get(span.text) is None:
-            spans[span.text] = AttributionSpan(text=span.text)
+            spans[span.text] = ResponseAttributionSpan(text=span.text)
 
         for document in span.documents:
             if document.document_index not in spans[span.text].documents:
                 spans[span.text].documents.append(document.document_index)
 
             if documents.get(document.document_index) is None:
-                documents[document.document_index] = AttributionDocument(
+                documents[document.document_index] = ResponseAttributionDocument(
                     text=document.text,
                     corresponding_spans=[span.text],
                     index=str(document.document_index),

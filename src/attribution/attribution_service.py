@@ -1,9 +1,8 @@
 from dataclasses import dataclass, field
 from itertools import islice
-from operator import itemgetter
 from typing import Iterable, List, Optional, Sequence, cast
 
-from flask import json, request
+from flask import request
 from werkzeug import exceptions
 
 from src.api_interface import APIInterface
@@ -48,8 +47,6 @@ class GetAttributionRequest(APIInterface):
 
 class MappedGetAttributionRequest(GetAttributionRequest):
     index: AvailableInfiniGramIndexId
-    # include_spans_in_root is passed in as the query param includeSpansInRoot=true|false
-    include_spans_in_root: bool
 
 
 @dataclass
@@ -217,27 +214,7 @@ def get_attribution(
                         span_index
                     )
 
-    if request.include_spans_in_root is True:
-        return {"documents": documents, "spans": spans}
-    else:
-        # If we get more documents back than the requestor wants, sort them by their corresponding span count and return the top X
-        if len(documents) > request.max_documents:
-            sorted_documents = sorted(
-                [
-                    (id, len(document.corresponding_spans))
-                    for (id, document) in documents.items()
-                ],
-                key=itemgetter(1),
-                reverse=True,
-            )
-
-            document_tuples_to_return = sorted_documents[slice(request.max_documents)]
-            documents_to_return = {
-                tuple[0]: documents[tuple[0]] for tuple in document_tuples_to_return
-            }
-
-            return documents_to_return
-        return documents
+    return {"documents": documents, "spans": spans}
 
 
 def _validate_get_attribution_request():
@@ -252,9 +229,4 @@ def _validate_get_attribution_request():
             description=f"model_id must be one of: [{', '.join(cfg.infini_gram.model_index_map.keys())}]."
         )
 
-    include_spans_in_root = request.args.get(
-        "includeSpansInRoot", type=json.loads, default=False
-    )
-    return MappedGetAttributionRequest(
-        **request.json, index=index, include_spans_in_root=include_spans_in_root
-    )
+    return MappedGetAttributionRequest(**request.json, index=index)

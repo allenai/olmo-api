@@ -10,14 +10,8 @@ from src.api_interface import APIInterface
 from src.attribution.infini_gram_api_client.api.default import (
     get_document_attributions_index_attribution_post,
 )
-from src.attribution.infini_gram_api_client.models.attribution_document import (
-    AttributionDocument,
-)
 from src.attribution.infini_gram_api_client.models.attribution_request import (
     AttributionRequest,
-)
-from src.attribution.infini_gram_api_client.models.attribution_span import (
-    AttributionSpan,
 )
 from src.attribution.infini_gram_api_client.models.attribution_span_with_documents import (
     AttributionSpanWithDocuments,
@@ -25,8 +19,8 @@ from src.attribution.infini_gram_api_client.models.attribution_span_with_documen
 from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import (
     AvailableInfiniGramIndexId,
 )
-from src.attribution.infini_gram_api_client.models.document_with_pointer import (
-    DocumentWithPointer,
+from src.attribution.infini_gram_api_client.models.document_with_pointer_metadata import (
+    DocumentWithPointerMetadata,
 )
 from src.attribution.infini_gram_api_client.models.http_validation_error import (
     HTTPValidationError,
@@ -39,7 +33,8 @@ from .infini_gram_api_client import Client
 @dataclass
 class ResponseAttributionDocument:
     text: str
-    corresponding_spans: List[str]
+    corresponding_spans: List[int]
+    corresponding_span_texts: List[str]
     index: str
     source: str
     title: Optional[str]
@@ -64,16 +59,27 @@ class ResponseAttributionSpan:
 
 
 @dataclass
+class FlattenedSpanDocument:
+    document_index: int
+    document_length: int
+    display_length: int
+    metadata: DocumentWithPointerMetadata
+    token_ids: List[int]
+    text: str
+    span_text: str
+
+
+@dataclass
 class FlattenedSpan:
     text: str
     left: int
     right: int
-    nested_spans: Iterable[AttributionSpan | AttributionSpanWithDocuments]
-    documents: List[AttributionDocument | DocumentWithPointer]
+    nested_spans: Iterable[AttributionSpanWithDocuments]
+    documents: List[FlattenedSpanDocument]
 
 
 def flatten_spans(
-    spans: Sequence[AttributionSpan | AttributionSpanWithDocuments],
+    spans: Sequence[AttributionSpanWithDocuments],
     input_tokens: Iterable[str],
 ) -> List[FlattenedSpan]:
     # We're sorting by left position here first because that helps clean up some edge cases that happen if we only sort by length
@@ -93,7 +99,7 @@ def flatten_spans(
 
         left = span.left
         right = span.right
-        overlapping_spans: List[AttributionSpan | AttributionSpanWithDocuments] = []
+        overlapping_spans: List[AttributionSpanWithDocuments] = []
 
         next_index = i + 1
         for j, span_to_check in enumerate(
@@ -112,7 +118,15 @@ def flatten_spans(
                 right = max(span_to_check.right, right)
 
         new_documents = [
-            document
+            FlattenedSpanDocument(
+                document_index=document.document_index,
+                document_length=document.document_length,
+                display_length=document.display_length,
+                metadata=document.metadata,
+                token_ids=document.token_ids,
+                text=document.text,
+                span_text=overlapping_span.text,
+            )
             for overlapping_span in overlapping_spans
             for document in overlapping_span.documents
         ]
@@ -167,23 +181,25 @@ def get_attribution(
         )
 
     collapsed_spans = flatten_spans(
-        input_tokens=attribution_response.input_tokens, spans=attribution_response.spans
+        input_tokens=attribution_response.input_tokens,
+        spans=cast(List[AttributionSpanWithDocuments], attribution_response.spans),
     )
 
     documents: dict[int, ResponseAttributionDocument] = {}
-    spans: dict[str, ResponseAttributionSpan] = {}
-    for span in cast(List[AttributionSpanWithDocuments], attribution_response.spans):
-        if spans.get(span.text) is None:
-            spans[span.text] = ResponseAttributionSpan(text=span.text)
+    spans: dict[int, ResponseAttributionSpan] = {}
+    for span_index, span in enumerate(collapsed_spans):
+        if spans.get(span_index) is None:
+            spans[span_index] = ResponseAttributionSpan(text=span.text)
 
         for document in span.documents:
-            if document.document_index not in spans[span.text].documents:
-                spans[span.text].documents.append(document.document_index)
+            if document.document_index not in spans[span_index].documents:
+                spans[span_index].documents.append(document.document_index)
 
             if documents.get(document.document_index) is None:
                 documents[document.document_index] = ResponseAttributionDocument(
                     text=document.text,
-                    corresponding_spans=[span.text],
+                    corresponding_spans=[span_index],
+                    corresponding_span_texts=[document.span_text],
                     index=str(document.document_index),
                     source=document.metadata.additional_properties.get(
                         "metadata", {}
@@ -194,21 +210,21 @@ def get_attribution(
                 )
             else:
                 if (
-                    span.text
+                    span_index
                     not in documents[document.document_index].corresponding_spans
                 ):
                     documents[document.document_index].corresponding_spans.append(
-                        span.text
+                        span_index
                     )
 
     if request.include_spans_in_root is True:
         return {"documents": documents, "spans": spans}
     else:
-        # If we get more documents back than the requestor wants, sort them by their longest corresponding span and return the top X
+        # If we get more documents back than the requestor wants, sort them by their corresponding span count and return the top X
         if len(documents) > request.max_documents:
             sorted_documents = sorted(
                 [
-                    (id, len(max(document.corresponding_spans, key=len)))
+                    (id, len(document.corresponding_spans))
                     for (id, document) in documents.items()
                 ],
                 key=itemgetter(1),

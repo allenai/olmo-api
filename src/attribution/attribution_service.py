@@ -52,6 +52,11 @@ class ResponseAttributionSpan:
     documents: List[int] = field(default_factory=lambda: [])
 
 
+@dataclass
+class TopLevelAttributionSpan(ResponseAttributionSpan):
+    nested_spans: List[ResponseAttributionSpan] = field(default_factory=lambda: [])
+
+
 def get_attribution(
     infini_gram_client: Client,
 ):
@@ -94,7 +99,19 @@ def get_attribution(
     spans: dict[int, ResponseAttributionSpan] = {}
     for span_index, span in enumerate(collapsed_spans):
         if spans.get(span_index) is None:
-            spans[span_index] = ResponseAttributionSpan(text=span.text)
+            spans[span_index] = TopLevelAttributionSpan(
+                text=span.text,
+                nested_spans=[
+                    ResponseAttributionSpan(
+                        text=nested_span.text,
+                        documents=[
+                            document.document_index
+                            for document in nested_span.documents
+                        ],
+                    )
+                    for nested_span in span.nested_spans
+                ],
+            )
 
         for document in span.documents:
             if document.document_index not in spans[span_index].documents:

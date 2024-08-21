@@ -5,6 +5,9 @@ from .infini_gram_api_client.models.infini_gram_attribution_response_with_docume
     InfiniGramAttributionResponseWithDocuments,
 )
 
+# There's two tests in here. I had trouble with the second (penguin) response not mapping correctly so I figured it'd be good to test that specific one too.
+# If we want, we can craft responses to test specific parts of the fn
+
 
 def test_collapse_spans_collapses_spans():
     parsed_response = InfiniGramAttributionResponseWithDocuments.from_dict(
@@ -31,7 +34,9 @@ def test_collapse_spans_collapses_spans():
         collapsed_spans[3].text
         == " Tipping isn't common in Italy, but round up the taxi fare or leave a small tip in the event of exceptional service"
     )
-    assert len(collapsed_spans[3].documents) == 27
+    assert sum(
+        [len(span.documents) for span in collapsed_spans[3].nested_spans]
+    ) == len(collapsed_spans[3].documents)
 
 
 def test_collapse_spans_collapses_penguin_spans():
@@ -46,6 +51,7 @@ def test_collapse_spans_collapses_penguin_spans():
 
     assert collapsed_spans is not None
     assert len(collapsed_spans) == 2
+    assert len(collapsed_spans[1].nested_spans) == 2
     # Make sure the second collapsed span has the documents from the first span and the other nested span
     assert len(collapsed_spans[1].documents) == (
         len(parsed_response.spans[1].documents)

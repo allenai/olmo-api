@@ -4,7 +4,7 @@ WORKDIR /api
 
 COPY vendor vendor
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache pip install -r requirements.txt
 
 COPY . .
 

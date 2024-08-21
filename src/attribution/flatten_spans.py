@@ -26,7 +26,7 @@ class FlattenedSpan:
     text: str
     left: int
     right: int
-    nested_spans: Iterable[AttributionSpanWithDocuments]
+    nested_spans: List[AttributionSpanWithDocuments]
     documents: List[FlattenedSpanDocument]
 
 
@@ -35,7 +35,7 @@ def flatten_spans(
     input_tokens: Iterable[str],
 ) -> List[FlattenedSpan]:
     # We're sorting by left position here first because that helps clean up some edge cases that happen if we only sort by length
-    # Sorting by length lets us reduce the number of loops we do math in and removes the need to account for double-nested spans
+    # Sorting by length lets us reduce the number of loops we do math in and (i think) removes the need to account for double-nested spans
     spans_sorted_by_left_position_then_length = sorted(
         spans,
         key=lambda span: (span.left, span.length),
@@ -46,30 +46,38 @@ def flatten_spans(
 
     # starting from the first span in the text (lowest left value), check to see if any spans overlap it or are inside it
     for i, span in enumerate(spans_sorted_by_left_position_then_length):
+        # If a span has been accounted for as a nested span we don't want to do any more nesting
         if i in spans_already_nested:
             continue
 
         left = span.left
         right = span.right
-        overlapping_spans: List[AttributionSpanWithDocuments] = [span]
+        # This span is a nested span for the top level span, even if there's nothing else under it.
+        nested_spans: List[AttributionSpanWithDocuments] = [span]
 
         next_index = i + 1
         for j, span_to_check in enumerate(
+            # check for nested spans that come after this one in the list
             iterable=islice(
                 spans_sorted_by_left_position_then_length, next_index, None
             ),
             start=next_index,
         ):
+            if j in spans_already_nested:
+                continue
+
             if (
                 left <= span_to_check.left < right
                 or left <= span_to_check.right < right
             ):
                 spans_already_nested.append(j)
-                overlapping_spans.append(span_to_check)
+                nested_spans.append(span_to_check)
+
+                # Migrating the left/right to account for the new span lets us catch any spans that can be nested under any of the spans inside the new top-level span
                 left = min(span_to_check.left, left)
                 right = max(span_to_check.right, right)
 
-        new_documents = [
+        flattened_span_documents = [
             FlattenedSpanDocument(
                 document_index=document.document_index,
                 document_length=document.document_length,
@@ -79,7 +87,7 @@ def flatten_spans(
                 text=document.text,
                 span_text=overlapping_span.text,
             )
-            for overlapping_span in overlapping_spans
+            for overlapping_span in nested_spans
             for document in overlapping_span.documents
         ]
 
@@ -90,8 +98,8 @@ def flatten_spans(
                 text,
                 left=left,
                 right=right,
-                documents=new_documents,
-                nested_spans=overlapping_spans,
+                documents=flattened_span_documents,
+                nested_spans=nested_spans,
             )
         )
 

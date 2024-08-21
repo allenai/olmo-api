@@ -122,6 +122,14 @@ def get_attribution(
                         span_index
                     )
 
+                if (
+                    document.span_text
+                    not in documents[document.document_index].corresponding_span_texts
+                ):
+                    documents[document.document_index].corresponding_span_texts.append(
+                        document.span_text
+                    )
+
     return {"documents": documents, "spans": spans}
 
 

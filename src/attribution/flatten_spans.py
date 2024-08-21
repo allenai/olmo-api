@@ -51,7 +51,7 @@ def flatten_spans(
 
         left = span.left
         right = span.right
-        overlapping_spans: List[AttributionSpanWithDocuments] = []
+        overlapping_spans: List[AttributionSpanWithDocuments] = [span]
 
         next_index = i + 1
         for j, span_to_check in enumerate(
@@ -85,15 +85,14 @@ def flatten_spans(
 
         text = "".join(islice(input_tokens, left, right))
 
-        if len(overlapping_spans) > 0:
-            top_level_spans.append(
-                FlattenedSpan(
-                    text,
-                    left=left,
-                    right=right,
-                    documents=new_documents,
-                    nested_spans=overlapping_spans,
-                )
+        top_level_spans.append(
+            FlattenedSpan(
+                text,
+                left=left,
+                right=right,
+                documents=new_documents,
+                nested_spans=overlapping_spans,
             )
+        )
 
     return top_level_spans

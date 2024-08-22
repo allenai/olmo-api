@@ -22,6 +22,8 @@ class AttributionRequest:
             documents along with the spans Default: False.
         maximum_document_display_length (Union[Unset, int]): The maximum length in tokens of the returned document text
             Default: 100.
+        include_input_as_tokens (Union[Unset, bool]): Set this to True if you want the response to include the input
+            string as a list of string tokens Default: False.
     """
 
     query: str
@@ -30,6 +32,7 @@ class AttributionRequest:
     maximum_frequency: Union[Unset, int] = 10
     include_documents: Union[Unset, bool] = False
     maximum_document_display_length: Union[Unset, int] = 100
+    include_input_as_tokens: Union[Unset, bool] = False
     additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -46,6 +49,8 @@ class AttributionRequest:
         include_documents = self.include_documents
 
         maximum_document_display_length = self.maximum_document_display_length
+
+        include_input_as_tokens = self.include_input_as_tokens
 
         field_dict: Dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -64,6 +69,8 @@ class AttributionRequest:
             field_dict["includeDocuments"] = include_documents
         if maximum_document_display_length is not UNSET:
             field_dict["maximumDocumentDisplayLength"] = maximum_document_display_length
+        if include_input_as_tokens is not UNSET:
+            field_dict["includeInputAsTokens"] = include_input_as_tokens
 
         return field_dict
 
@@ -82,6 +89,8 @@ class AttributionRequest:
 
         maximum_document_display_length = d.pop("maximumDocumentDisplayLength", UNSET)
 
+        include_input_as_tokens = d.pop("includeInputAsTokens", UNSET)
+
         attribution_request = cls(
             query=query,
             delimiters=delimiters,
@@ -89,6 +98,7 @@ class AttributionRequest:
             maximum_frequency=maximum_frequency,
             include_documents=include_documents,
             maximum_document_display_length=maximum_document_display_length,
+            include_input_as_tokens=include_input_as_tokens,
         )
 
         attribution_request.additional_properties = d

@@ -3,11 +3,11 @@ from typing import Any, Dict, List, Type, TypeVar
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-T = TypeVar("T", bound="FullAttributionDocumentMetadata")
+T = TypeVar("T", bound="DocumentWithPointerMetadata")
 
 
 @_attrs_define
-class FullAttributionDocumentMetadata:
+class DocumentWithPointerMetadata:
     """ """
 
     additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -21,10 +21,10 @@ class FullAttributionDocumentMetadata:
     @classmethod
     def from_dict(cls: Type[T], src_dict: Dict[str, Any]) -> T:
         d = src_dict.copy()
-        full_attribution_document_metadata = cls()
+        document_with_pointer_metadata = cls()
 
-        full_attribution_document_metadata.additional_properties = d
-        return full_attribution_document_metadata
+        document_with_pointer_metadata.additional_properties = d
+        return document_with_pointer_metadata
 
     @property
     def additional_keys(self) -> List[str]:

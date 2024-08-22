@@ -4,20 +4,20 @@ from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 if TYPE_CHECKING:
-    from ..models.full_attribution_document_metadata import FullAttributionDocumentMetadata
+    from ..models.document_with_pointer_metadata import DocumentWithPointerMetadata
 
 
-T = TypeVar("T", bound="FullAttributionDocument")
+T = TypeVar("T", bound="DocumentWithPointer")
 
 
 @_attrs_define
-class FullAttributionDocument:
+class DocumentWithPointer:
     """
     Attributes:
         document_index (int):
         document_length (int):
         display_length (int):
-        metadata (FullAttributionDocumentMetadata):
+        metadata (DocumentWithPointerMetadata):
         token_ids (List[int]):
         text (str):
         shard (int):
@@ -27,7 +27,7 @@ class FullAttributionDocument:
     document_index: int
     document_length: int
     display_length: int
-    metadata: "FullAttributionDocumentMetadata"
+    metadata: "DocumentWithPointerMetadata"
     token_ids: List[int]
     text: str
     shard: int
@@ -70,7 +70,7 @@ class FullAttributionDocument:
 
     @classmethod
     def from_dict(cls: Type[T], src_dict: Dict[str, Any]) -> T:
-        from ..models.full_attribution_document_metadata import FullAttributionDocumentMetadata
+        from ..models.document_with_pointer_metadata import DocumentWithPointerMetadata
 
         d = src_dict.copy()
         document_index = d.pop("documentIndex")
@@ -79,7 +79,7 @@ class FullAttributionDocument:
 
         display_length = d.pop("displayLength")
 
-        metadata = FullAttributionDocumentMetadata.from_dict(d.pop("metadata"))
+        metadata = DocumentWithPointerMetadata.from_dict(d.pop("metadata"))
 
         token_ids = cast(List[int], d.pop("tokenIds"))
 
@@ -89,7 +89,7 @@ class FullAttributionDocument:
 
         pointer = d.pop("pointer")
 
-        full_attribution_document = cls(
+        document_with_pointer = cls(
             document_index=document_index,
             document_length=document_length,
             display_length=display_length,
@@ -100,8 +100,8 @@ class FullAttributionDocument:
             pointer=pointer,
         )
 
-        full_attribution_document.additional_properties = d
-        return full_attribution_document
+        document_with_pointer.additional_properties = d
+        return document_with_pointer
 
     @property
     def additional_keys(self) -> List[str]:

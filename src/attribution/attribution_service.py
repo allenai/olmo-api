@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, cast
 
-from flask import request
+from flask import json, request
 from werkzeug import exceptions
 
 from src.api_interface import APIInterface
@@ -44,6 +44,7 @@ class GetAttributionRequest(APIInterface):
 
 class MappedGetAttributionRequest(GetAttributionRequest):
     index: AvailableInfiniGramIndexId
+    spans_and_documents_as_list: bool
 
 
 @dataclass
@@ -146,8 +147,11 @@ def get_attribution(
                     documents[document.document_index].corresponding_span_texts.append(
                         document.span_text
                     )
-
-    return {"documents": documents, "spans": spans}
+    if request.spans_and_documents_as_list is True:
+        return {"documents": list(documents.values()), "spans": list(spans.values())}
+    else: 
+        return {"documents": documents, "spans": spans}
+        
 
 
 def _validate_get_attribution_request():
@@ -161,5 +165,9 @@ def _validate_get_attribution_request():
         raise exceptions.BadRequest(
             description=f"model_id must be one of: [{', '.join(cfg.infini_gram.model_index_map.keys())}]."
         )
+    
+    spans_and_documents_as_list = request.args.get(
+        "spansAndDocumentsAsList", type=json.loads, default=False
+    )
 
-    return MappedGetAttributionRequest(**request.json, index=index)
+    return MappedGetAttributionRequest(**request.json, index=index, spans_and_documents_as_list = spans_and_documents_as_list)

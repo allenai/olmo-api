@@ -1,9 +1,8 @@
-import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from flask import Request, current_app, request
 from werkzeug import exceptions
-from zoneinfo import ZoneInfo
 
 from src.auth.auth0 import require_auth
 
@@ -30,8 +29,8 @@ def request_agent() -> Optional[Token]:
 
         return Token(
             client=token.sub,
-            created=datetime.datetime.fromtimestamp(token.iat, tz=ZoneInfo("UTC")),
-            expires=datetime.datetime.fromtimestamp(token.exp, tz=ZoneInfo("UTC")),
+            created=datetime.fromtimestamp(token.iat, tz=timezone.utc),
+            expires=datetime.fromtimestamp(token.exp, tz=timezone.utc),
             creator=token.iss,
         )
 

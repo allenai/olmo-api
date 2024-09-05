@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify
 from werkzeug import exceptions
 
 from src import db
-from src.auth.auth_service import authn, request_agent, set_auth_cookie
+from src.auth.auth_service import authn, request_agent
 from src.auth.authenticated_client import AuthenticatedClient
 from src.user.user_service import upsert_user
 
@@ -32,14 +32,11 @@ class UserBlueprint(Blueprint):
             )
         )
 
-        return set_auth_cookie(
-            jsonify(
-                AuthenticatedClient(
-                    client=agent.client,
-                    has_accepted_terms_and_conditions=has_accepted_terms_and_conditions,
-                ).model_dump(by_alias=True)
-            ),
-            agent,
+        return jsonify(
+            AuthenticatedClient(
+                client=agent.client,
+                has_accepted_terms_and_conditions=has_accepted_terms_and_conditions,
+            ).model_dump(by_alias=True)
         )
 
     def upsert_user(self):

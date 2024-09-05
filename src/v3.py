@@ -15,12 +15,12 @@ from werkzeug import exceptions
 
 from src import config, db, parse, util
 from src.attribution import attribution_blueprint
-from src.auth.auth_service import authn, request_agent, set_auth_cookie
+from src.auth.auth_service import authn, request_agent
 from src.dao import datachip, label, message, paged, token
+from src.inference.inference_service import get_available_models
 from src.log import logging_blueprint
 from src.message import MessageBlueprint
 from src.user import UserBlueprint
-from src.inference.inference_service import get_available_models
 
 
 class Server(Blueprint):
@@ -95,7 +95,7 @@ class Server(Blueprint):
             raise exceptions.BadRequest("invalid redirect")
 
         # And send them to the Olmo UI so they continue on with their day using OLMo
-        return set_auth_cookie(redirect(urlunparse(to)), agent)
+        return redirect(urlunparse(to)), agent
 
     def login_by_invite_token(self):
         # If the user is already logged in, redirect to the UI
@@ -137,7 +137,7 @@ class Server(Blueprint):
             self.dbc.token.expire(nt, token.TokenType.Auth)
             raise exceptions.Conflict()
 
-        return set_auth_cookie(redirect(location=config.cfg.server.ui_origin), nt)
+        return redirect(location=config.cfg.server.ui_origin)
 
     def create_invite_token(self):
         grantor = authn(self.dbc)

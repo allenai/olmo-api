@@ -5,9 +5,9 @@ from flask import Request, current_app, request
 from werkzeug import exceptions
 from zoneinfo import ZoneInfo
 
-from src import db
 from src.auth.auth0 import require_auth
-from src.dao.token import Token, TokenType
+
+from .token import Token
 
 
 def token_from_request(r: Request) -> Optional[str]:
@@ -23,29 +23,21 @@ def token_from_request(r: Request) -> Optional[str]:
         return None
 
 
-def request_agent(dbc: db.Client) -> Optional[Token]:
+def request_agent() -> Optional[Token]:
     with require_auth.acquire("profile") as token:
         if token is None:
             return None
 
         return Token(
-            token=token.jti,
             client=token.sub,
             created=datetime.datetime.fromtimestamp(token.iat, tz=ZoneInfo("UTC")),
             expires=datetime.datetime.fromtimestamp(token.exp, tz=ZoneInfo("UTC")),
-            token_type=TokenType.Auth,
             creator=token.iss,
         )
-        provided = token.sub
-
-    if provided is None:
-        return None
-
-    return dbc.token.get(provided, token_type=TokenType.Auth)
 
 
-def authn(dbc: db.Client) -> Token:
-    agent = request_agent(dbc)
+def authn() -> Token:
+    agent = request_agent()
     if agent is None or agent.expired():
         raise exceptions.Unauthorized()
 

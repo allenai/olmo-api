@@ -18,7 +18,7 @@ class UserBlueprint(Blueprint):
         self.put("/user")(self.upsert_user)
 
     def whoami(self):
-        agent = request_agent(self.dbc)
+        agent = request_agent()
         if agent is None or agent.expired():
             raise exceptions.Unauthorized()
 
@@ -40,7 +40,7 @@ class UserBlueprint(Blueprint):
         )
 
     def upsert_user(self):
-        agent = authn(self.dbc)
+        agent = authn()
 
         user = upsert_user(self.dbc, client=agent.client)
 

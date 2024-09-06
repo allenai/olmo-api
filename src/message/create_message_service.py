@@ -14,6 +14,7 @@ from src.auth.auth_service import authn
 from src.dao import completion, message, token
 from src.inference.TogetherAIEngine import TogetherAIEngine
 from src.inference.InferDEngine import InferDEngine
+from src.inference.ModalEngine import ModalEngine
 from src.inference.InferenceEngine import (
     FinishReason,
     InferenceEngine,
@@ -27,15 +28,24 @@ class ParsedMessage:
     role: message.Role
 
 
+def get_engine(host: str) -> InferenceEngine:
+    match host:
+        case "inferd":
+            return InferDEngine()
+        case "modal":
+            return ModalEngine()
+
+        # here the engine is default to togetherAI
+        case _:
+            return TogetherAIEngine()
+        
+
 def create_message(dbc: db.Client) -> message.Message | Generator[str, None, None]:
     agent = authn(dbc)
 
     request = validate_and_map_create_message_request(dbc, agent=agent)
 
-    # here the engine is default to togetherAI
-    inference_engine: InferenceEngine = (
-        InferDEngine() if (request.host == "inferd") else TogetherAIEngine()
-    )
+    inference_engine = get_engine(request.host)
 
     model = inference_engine.get_model_details(request.model_id)
     if not model:

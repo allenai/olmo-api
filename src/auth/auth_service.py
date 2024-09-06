@@ -23,7 +23,7 @@ def token_from_request(r: Request) -> Optional[str]:
 
 
 def request_agent() -> Optional[Token]:
-    with require_auth.acquire("profile") as token:
+    with require_auth.acquire() as token:
         if token is None:
             return None
 

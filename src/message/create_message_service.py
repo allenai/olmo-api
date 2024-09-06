@@ -1,8 +1,8 @@
 import dataclasses
 import json
 import os
-from typing import Generator, List, Optional
 from time import time_ns
+from typing import Generator, List, Optional
 
 import grpc
 from flask import current_app, request
@@ -12,14 +12,33 @@ from werkzeug import exceptions
 from src import config, db, parse, util
 from src.auth.auth_service import authn
 from src.dao import completion, message, token
-from src.inference.TogetherAIEngine import TogetherAIEngine
 from src.inference.InferDEngine import InferDEngine
-from src.inference.ModalEngine import ModalEngine
 from src.inference.InferenceEngine import (
     FinishReason,
     InferenceEngine,
     InferenceEngineMessage,
 )
+from src.inference.ModalEngine import ModalEngine
+from src.inference.TogetherAIEngine import TogetherAIEngine
+from src.message.WildGuard import WildGuard, WildguardRequest, WildguardResponse
+
+
+def check_message_safety(
+    safety_checker: WildGuard, prompt: str, response: Optional[str] = None
+):
+    try:
+        output = safety_checker.check_request(
+            WildguardRequest(prompt=prompt, response=response)
+        )
+
+        return output
+
+    except Exception as e:
+        current_app.logger.error(
+            "Skipped message safety check due to error: %s. ", repr(e)
+        )
+
+        return WildguardResponse()
 
 
 @dataclasses.dataclass
@@ -38,9 +57,11 @@ def get_engine(host: str) -> InferenceEngine:
         # here the engine is default to togetherAI
         case _:
             return TogetherAIEngine()
-        
 
-def create_message(dbc: db.Client) -> message.Message | Generator[str, None, None]:
+
+def create_message(
+    dbc: db.Client, safety_checker: WildGuard
+) -> message.Message | Generator[str, None, None]:
     agent = authn(dbc)
 
     request = validate_and_map_create_message_request(dbc, agent=agent)
@@ -53,6 +74,11 @@ def create_message(dbc: db.Client) -> message.Message | Generator[str, None, Non
             f"model {request.model_id} is not available on {request.host}"
         )
 
+    safety_check_result = check_message_safety(safety_checker, request.content)
+
+    if safety_check_result.request_harmful is True:
+        raise exceptions.BadRequest(description="inappropriate_prompt")
+
     msg = dbc.message.create(
         request.content,
         agent.client,
@@ -64,6 +90,7 @@ def create_message(dbc: db.Client) -> message.Message | Generator[str, None, Non
         final=request.role == message.Role.Assistant,
         original=request.original,
         private=request.private,
+        harmful=safety_check_result.request_harmful,
     )
 
     if msg.role == message.Role.Assistant:

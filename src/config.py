@@ -39,6 +39,10 @@ class BaseInferenceEngineConfig:
 class InferD(BaseInferenceEngineConfig):
     address: str
 
+@dataclass
+class Modal(BaseInferenceEngineConfig):
+    token_secret: str
+
 
 @dataclass
 class Server:
@@ -79,6 +83,7 @@ class Config:
     inferd: InferD
     server: Server
     togetherai: BaseInferenceEngineConfig
+    modal: BaseInferenceEngineConfig
     auth: Auth
     wildguard: Wildguard
     infini_gram: InfiniGram
@@ -104,6 +109,14 @@ class Config:
                     data["server"].get("origin", "http://localhost:8000"),
                     data["server"].get("ui_origin", "http://localhost:8080"),
                     data["server"].get("allowed_redirects", []),
+                ),
+                modal=Modal(
+                    token=data["modal"].get("token"),
+                    token_secret=data["modal"].get("token_secret"),
+                    default_model=data["modal"].get("default_model"),
+                    available_models=[
+                        Model(**m) for m in data["modal"]["available_models"]
+                    ],
                 ),
                 togetherai=BaseInferenceEngineConfig(
                     token=data["togetherai"].get("token"),
@@ -133,4 +146,4 @@ class Config:
 
 cfg = Config.load(path=os.environ.get("FLASK_CONFIG_PATH", default=DEFAULT_CONFIG_PATH))
 
-model_hosts = ["togetherai", "inferd"]
+model_hosts = ["togetherai", "inferd", "modal"]

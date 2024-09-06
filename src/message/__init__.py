@@ -6,6 +6,7 @@ from src import db
 from src.inference.InferenceEngine import InferenceEngine
 from src.message.create_message_service import create_message
 from src.message.message_service import delete_message, get_message
+from src.message.WildGuard import WildGuard
 
 
 class MessageBlueprint(Blueprint):
@@ -23,7 +24,7 @@ class MessageBlueprint(Blueprint):
         self.delete("/<string:id>")(self.delete_message)
 
     def create_message(self) -> Response:
-        response = create_message(self.dbc)
+        response = create_message(self.dbc, safety_checker=WildGuard())
 
         if isinstance(response, Generator):
             return Response(response, mimetype="application/jsonl")

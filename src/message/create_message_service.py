@@ -74,10 +74,12 @@ def create_message(
             f"model {request.model_id} is not available on {request.host}"
         )
 
-    safety_check_result = check_message_safety(safety_checker, request.content)
+    safety_check_result = None
+    if request.role == message.Role.User:
+        safety_check_result = check_message_safety(safety_checker, request.content)
 
-    if safety_check_result.request_harmful is True:
-        raise exceptions.BadRequest(description="inappropriate_prompt")
+        if safety_check_result.request_harmful is True:
+            raise exceptions.BadRequest(description="inappropriate_prompt")
 
     msg = dbc.message.create(
         request.content,
@@ -90,7 +92,9 @@ def create_message(
         final=request.role == message.Role.Assistant,
         original=request.original,
         private=request.private,
-        harmful=safety_check_result.request_harmful,
+        harmful=safety_check_result.request_harmful
+        if safety_check_result is not None
+        else None,
     )
 
     if msg.role == message.Role.Assistant:

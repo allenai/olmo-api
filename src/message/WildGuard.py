@@ -9,7 +9,7 @@ from src import config
 @dataclasses.dataclass
 class WildguardRequest:
     prompt: str
-    response: Optional[str]
+    response: Optional[str] = None
 
 
 @dataclasses.dataclass
@@ -29,7 +29,7 @@ class WildGuard:
         )
         self.computeSourceId = config.cfg.wildguard.compute_source_id
 
-    def check(self, request: WildguardRequest) -> WildguardResponse:
+    def check_request(self, request: WildguardRequest) -> WildguardResponse:
         payload = dataclasses.asdict(request)
 
         # the wildguard returns a generator that yields a single response

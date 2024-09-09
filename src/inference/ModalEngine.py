@@ -16,14 +16,14 @@ from src.inference.InferenceEngine import (
 
 class ModalEngine(InferenceEngine):
     available_models: Sequence[config.Model]
+    client: modal.Client
 
     def __init__(self) -> None:
         self.available_models = config.cfg.modal.available_models
-        os.environ['MODAL_TOKEN_ID'] = config.cfg.modal.token
-        os.environ['MODAL_TOKEN_SECRET'] = config.cfg.modal.token_secret
+        self.client = modal.Client.from_credentials(config.cfg.modal.token, config.cfg.modal.token_secret)
 
     def get_model_details(self, model_id: str) -> config.Model:
-        model = next((m for m in self. available_models if m.id == model_id), None)
+        model = next((m for m in self.available_models if m.id == model_id), None)
         return model
 
     def create_streamed_message(
@@ -32,7 +32,7 @@ class ModalEngine(InferenceEngine):
         messages: Sequence[InferenceEngineMessage],
         inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
-        f = modal.Function.lookup(model, "vllm_api")
+        f = modal.Function.lookup(model, "vllm_api", client=self.client)
         msgs = [asdict(msg) for msg in messages]
         opts = asdict(inference_options)
         

@@ -63,7 +63,7 @@ def get_engine(host: str) -> InferenceEngine:
 def create_message(
     dbc: db.Client, safety_checker: WildGuard
 ) -> message.Message | Generator[str, None, None]:
-    agent = authn(dbc)
+    agent = authn()
 
     request = validate_and_map_create_message_request(dbc, agent=agent)
 

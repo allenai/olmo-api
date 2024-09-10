@@ -12,7 +12,7 @@ from werkzeug import exceptions
 from src import config, db, parse, util
 from src.auth import token
 from src.auth.auth_service import authn
-from src.dao import completion, message, token
+from src.dao import completion, message
 from src.inference.InferDEngine import InferDEngine
 from src.inference.InferenceEngine import (
     FinishReason,

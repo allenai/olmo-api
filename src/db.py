@@ -3,13 +3,12 @@ from typing import Self
 from psycopg_pool import ConnectionPool
 
 from . import config
-from .dao import completion, datachip, label, message, template, token, user
+from .dao import completion, datachip, label, message, template, user
 
 
 class Client:
     def __init__(self, pool: ConnectionPool):
         self.pool = pool
-        self.token = token.Store(pool)
         self.template = template.Store(pool)
         self.message = message.Store(pool)
         self.label = label.Store(pool)

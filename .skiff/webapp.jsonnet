@@ -170,48 +170,6 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
         }
     };
 
-    # This ingress is configured to require users to log in via AI2's Skiff Login
-    # when requesting /v3/login/skiff. If they succeed they will receive a bearer
-    # token as a cookie, and subsequent API requests from the Olmo UI will use
-    # it for identification.
-    local allenAIAuthIngress = {
-        apiVersion: 'networking.k8s.io/v1',
-        kind: 'Ingress',
-        metadata: {
-            name: fullyQualifiedName + '-allen-dot-ai-auth',
-            namespace: namespaceName,
-            labels: labels,
-            annotations: annotations +
-                allenAITLS.ingressAnnotations +
-                util.getAuthAnnotations({ login: "ai2" }, '.allen.ai') +
-                defaultIngressAnno
-        },
-        spec: {
-            tls: [ allenAITLS.spec + { hosts: allenAIHosts } ],
-            rules: [
-                {
-                    host: host,
-                    http: {
-                        paths: [
-                            {
-                                path: '/v3/login/skiff',
-                                pathType: 'Exact',
-                                backend: {
-                                    service: {
-                                        name: fullyQualifiedName,
-                                        port: {
-                                            number: apiPort
-                                        }
-                                    }
-                                }
-                            }
-                        ]
-                    }
-                } for host in allenAIHosts
-            ]
-        }
-    };
-
     local deployment = {
         apiVersion: 'apps/v1',
         kind: 'Deployment',
@@ -391,7 +349,6 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
     [
         namespace,
         allenAIIngress,
-        allenAIAuthIngress,
         deployment,
         service,
         pdb

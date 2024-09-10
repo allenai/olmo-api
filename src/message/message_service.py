@@ -7,7 +7,7 @@ from src.auth.auth_service import authn
 
 
 def get_message(id: str, dbc: db.Client):
-    agent = authn(dbc)
+    agent = authn()
     message = dbc.message.get(id, agent=agent.client)
 
     if message is None:
@@ -20,7 +20,7 @@ def get_message(id: str, dbc: db.Client):
 
 
 def delete_message(id: str, dbc: db.Client):
-    agent = authn(dbc)
+    agent = authn()
 
     message_list = dbc.message.get_by_root(id)
     root_message = next((m for m in message_list if m.id == id), None)

@@ -10,6 +10,7 @@ from google.protobuf.struct_pb2 import Struct
 from werkzeug import exceptions
 
 from src import config, db, parse, util
+from src.auth import token
 from src.auth.auth_service import authn
 from src.dao import completion, message, token
 from src.inference.InferDEngine import InferDEngine

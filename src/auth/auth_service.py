@@ -1,11 +1,12 @@
+from datetime import datetime, timezone
 from typing import Optional
 
-from flask import Request, Response, current_app, request
+from flask import Request, current_app, request
 from werkzeug import exceptions
-from werkzeug.wrappers import response
 
-from src import db
-from src.dao import token
+from src.auth.auth0 import require_auth
+
+from .token import Token
 
 
 def token_from_request(r: Request) -> Optional[str]:
@@ -21,15 +22,21 @@ def token_from_request(r: Request) -> Optional[str]:
         return None
 
 
-def request_agent(dbc: db.Client) -> Optional[token.Token]:
-    provided = request.cookies.get("token", default=token_from_request(request))
-    if provided is None:
-        return None
-    return dbc.token.get(provided, token.TokenType.Auth)
+def request_agent() -> Optional[Token]:
+    with require_auth.acquire() as token:
+        if token is None:
+            return None
+
+        return Token(
+            client=token.sub,
+            created=datetime.fromtimestamp(token.iat, tz=timezone.utc),
+            expires=datetime.fromtimestamp(token.exp, tz=timezone.utc),
+            creator=token.iss,
+        )
 
 
-def authn(dbc: db.Client) -> token.Token:
-    agent = request_agent(dbc)
+def authn() -> Token:
+    agent = request_agent()
     if agent is None or agent.expired():
         raise exceptions.Unauthorized()
 
@@ -44,17 +51,3 @@ def authn(dbc: db.Client) -> token.Token:
     )
 
     return agent
-
-
-def set_auth_cookie(
-    resp: Response | response.Response, token: token.Token
-) -> Response | response.Response:
-    resp.set_cookie(
-        key="token",
-        value=token.token,
-        expires=token.expires,
-        httponly=True,
-        secure=True,
-        samesite="Strict",
-    )
-    return resp

@@ -14,7 +14,7 @@ from src.config import cfg
 
 
 class Auth0JWTBearerTokenValidator(JWTBearerTokenValidator):
-    def __init__(self, domain, audience):
+    def __init__(self, domain: str, audience: str):
         issuer = f"https://{domain}/"
         jsonurl = urlopen(f"{issuer}.well-known/jwks.json")
         public_key = JsonWebKey.import_key_set(json.loads(jsonurl.read()))

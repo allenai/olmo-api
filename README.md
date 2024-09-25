@@ -60,3 +60,8 @@ Note: If you run e2e tests with a local server it's possible for the containers 
 Ensure you have the [Python Extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python) installed.
 
 Instead of starting the server with the `python` command above, launch the `Python Debugger: Flask` debug task in VSCode's debug menu.
+
+## Add new model
+Make sure the host information that the new model is deployed on. Currently, we have InferD, Modal, and TogetherAI. Once the information is confirmed, open `config.json` and add settings for the new model under the "available_models" field of the corresponding host.
+After adding, relaunch olmo-api on your localhost. The new model should appear in the dropdown on Olmo UI. Try to send a prompt to verify it works.
+Once localhost is working goes to marina and search for olmo_api and update config.json under secret. Then trigger a manual deployment to verify prod working.

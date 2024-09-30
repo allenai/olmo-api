@@ -25,7 +25,6 @@ class Model:
     compute_source_id: str
     model_type: ModelType
     is_deprecated: Optional[bool] = None
-    infini_gram_index_id: Optional[str] = None
 
 
 @dataclass

@@ -1,6 +1,6 @@
 # olmo-api
 
-The HTTP API used by http://olmo.allen.ai.
+The HTTP API used by http://playground.allenai.org
 
 ## Contributing
 

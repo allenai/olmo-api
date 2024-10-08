@@ -29,6 +29,7 @@ from .infini_gram_api_client import Client
 @dataclass
 class ResponseAttributionDocument:
     text: str
+    snippets: list[str]
     corresponding_spans: List[int]
     corresponding_span_texts: List[str]
     index: str
@@ -121,6 +122,7 @@ def get_attribution(
             if documents.get(document.document_index) is None:
                 documents[document.document_index] = ResponseAttributionDocument(
                     text=document.text,
+                    snippets=[document.text],
                     corresponding_spans=[span_index],
                     corresponding_span_texts=[document.span_text],
                     index=str(document.document_index),
@@ -147,11 +149,14 @@ def get_attribution(
                     documents[document.document_index].corresponding_span_texts.append(
                         document.span_text
                     )
+
+                if document.text not in documents[document.document_index].snippets:
+                    documents[document.document_index].snippets.append(document.text)
+
     if request.spans_and_documents_as_list is True:
         return {"documents": list(documents.values()), "spans": list(spans.values())}
-    else: 
+    else:
         return {"documents": documents, "spans": spans}
-        
 
 
 def _validate_get_attribution_request():
@@ -165,9 +170,13 @@ def _validate_get_attribution_request():
         raise exceptions.BadRequest(
             description=f"model_id must be one of: [{', '.join(cfg.infini_gram.model_index_map.keys())}]."
         )
-    
+
     spans_and_documents_as_list = request.args.get(
         "spansAndDocumentsAsList", type=json.loads, default=False
     )
 
-    return MappedGetAttributionRequest(**request.json, index=index, spans_and_documents_as_list = spans_and_documents_as_list)
+    return MappedGetAttributionRequest(
+        **request.json,
+        index=index,
+        spans_and_documents_as_list=spans_and_documents_as_list,
+    )

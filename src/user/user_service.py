@@ -61,4 +61,3 @@ def _map_and_validate_upsert_user_request(client: str):
     return UpsertUserRequest(client=client, **request.json)
 
 
-

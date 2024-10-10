@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Optional, cast
+from typing import List, Optional, Self, cast
 
 from flask import json, request
 from werkzeug import exceptions
@@ -22,7 +22,7 @@ from src.attribution.infini_gram_api_client.models.http_validation_error import 
 )
 from src.config import cfg
 
-from .flatten_spans import flatten_spans
+from .flatten_spans import FlattenedSpan, FlattenedSpanDocument, flatten_spans
 from .infini_gram_api_client import Client
 
 
@@ -35,6 +35,24 @@ class ResponseAttributionDocument:
     index: str
     source: str
     title: Optional[str]
+
+    @classmethod
+    def from_flattened_span_document(
+        cls, document: FlattenedSpanDocument, span_index: int
+    ) -> Self:
+        return cls(
+            text=document.text,
+            snippets=[document.text],
+            corresponding_spans=[span_index],
+            corresponding_span_texts=[document.span_text],
+            index=str(document.document_index),
+            source=document.metadata.additional_properties.get("metadata", {}).get(
+                "source"
+            ),
+            title=document.metadata.additional_properties.get("metadata", {})
+            .get("metadata", {})
+            .get("title", None),
+        )
 
 
 class GetAttributionRequest(APIInterface):
@@ -57,6 +75,37 @@ class ResponseAttributionSpan:
 @dataclass
 class TopLevelAttributionSpan(ResponseAttributionSpan):
     nested_spans: List[ResponseAttributionSpan] = field(default_factory=lambda: [])
+
+    @classmethod
+    def from_flattened_span(cls, span: FlattenedSpan) -> Self:
+        return cls(
+            text=span.text,
+            nested_spans=[
+                ResponseAttributionSpan(
+                    text=nested_span.text,
+                    documents=[
+                        document.document_index for document in nested_span.documents
+                    ],
+                )
+                for nested_span in span.nested_spans
+            ],
+        )
+
+
+def update_mapped_document(
+    mapped_document: ResponseAttributionDocument,
+    span_index: int,
+    span_text: str,
+    new_document_text: str,
+):
+    if span_index not in mapped_document.corresponding_spans:
+        mapped_document.corresponding_spans.append(span_index)
+
+    if span_text not in mapped_document.corresponding_span_texts:
+        mapped_document.corresponding_span_texts.append(span_text)
+
+    if new_document_text not in mapped_document.snippets:
+        mapped_document.snippets.append(new_document_text)
 
 
 def get_attribution(
@@ -92,71 +141,49 @@ def get_attribution(
             description="The version of infinigram-api we hit doesn't support or didn't return input_tokens"
         )
 
-    collapsed_spans = flatten_spans(
+    flattened_spans = flatten_spans(
         input_tokens=attribution_response.input_tokens,
         spans=cast(List[AttributionSpanWithDocuments], attribution_response.spans),
     )
 
-    documents: dict[int, ResponseAttributionDocument] = {}
-    spans: dict[int, ResponseAttributionSpan] = {}
-    for span_index, span in enumerate(collapsed_spans):
-        if spans.get(span_index) is None:
-            spans[span_index] = TopLevelAttributionSpan(
-                text=span.text,
-                nested_spans=[
-                    ResponseAttributionSpan(
-                        text=nested_span.text,
-                        documents=[
-                            document.document_index
-                            for document in nested_span.documents
-                        ],
+    mapped_documents: dict[int, ResponseAttributionDocument] = {}
+    mapped_spans: dict[int, ResponseAttributionSpan] = {}
+
+    for span_index, span in enumerate(flattened_spans):
+        if span_index not in mapped_spans is None:
+            mapped_spans[span_index] = TopLevelAttributionSpan.from_flattened_span(span)
+
+        for current_span_document in span.documents:
+            if (
+                current_span_document.document_index
+                not in mapped_spans[span_index].documents
+            ):
+                mapped_spans[span_index].documents.append(
+                    current_span_document.document_index
+                )
+
+            if current_span_document.document_index in mapped_documents:
+                mapped_documents[current_span_document.document_index] = (
+                    ResponseAttributionDocument.from_flattened_span_document(
+                        current_span_document, span_index
                     )
-                    for nested_span in span.nested_spans
-                ],
-            )
-
-        for document in span.documents:
-            if document.document_index not in spans[span_index].documents:
-                spans[span_index].documents.append(document.document_index)
-
-            if documents.get(document.document_index) is None:
-                documents[document.document_index] = ResponseAttributionDocument(
-                    text=document.text,
-                    snippets=[document.text],
-                    corresponding_spans=[span_index],
-                    corresponding_span_texts=[document.span_text],
-                    index=str(document.document_index),
-                    source=document.metadata.additional_properties.get(
-                        "metadata", {}
-                    ).get("source"),
-                    title=document.metadata.additional_properties.get("metadata", {})
-                    .get("metadata", {})
-                    .get("title", None),
                 )
             else:
-                if (
-                    span_index
-                    not in documents[document.document_index].corresponding_spans
-                ):
-                    documents[document.document_index].corresponding_spans.append(
-                        span_index
-                    )
-
-                if (
-                    document.span_text
-                    not in documents[document.document_index].corresponding_span_texts
-                ):
-                    documents[document.document_index].corresponding_span_texts.append(
-                        document.span_text
-                    )
-
-                if document.text not in documents[document.document_index].snippets:
-                    documents[document.document_index].snippets.append(document.text)
+                update_mapped_document(
+                    # We make sure the mapped_document is present in the if corresponding to this else
+                    mapped_documents.get(current_span_document.document_index),  # type: ignore [arg-type]
+                    span_text=span.text,
+                    new_document_text=current_span_document.text,
+                    span_index=span_index,
+                )
 
     if request.spans_and_documents_as_list is True:
-        return {"documents": list(documents.values()), "spans": list(spans.values())}
+        return {
+            "documents": list(mapped_documents.values()),
+            "spans": list(mapped_spans.values()),
+        }
     else:
-        return {"documents": documents, "spans": spans}
+        return {"documents": mapped_documents, "spans": mapped_spans}
 
 
 def _validate_get_attribution_request():

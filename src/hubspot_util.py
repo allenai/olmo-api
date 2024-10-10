@@ -23,12 +23,11 @@ def get_user_info() -> Optional[UserInfo]:
     response = requests.get(f'https://{cfg.auth.domain}/userinfo', headers=headers)
 
     if response.status_code == 200:
-        user_info = response.json()  # Parse the JSON response
+        user_info = response.json()
         email = user_info.get('email')
         first_name = user_info.get('given_name')
         last_name = user_info.get('family_name')
 
-        # Return a UserInfo instance with the extracted values
         return UserInfo(email=email, first_name=first_name, last_name=last_name)
     else:
         print('Error fetching user info:', response.status_code, response.text)

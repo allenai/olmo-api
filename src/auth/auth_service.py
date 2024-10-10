@@ -1,5 +1,11 @@
+
+from src.config import cfg
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
+
+import requests
+
 
 from flask import Request, current_app, request
 from werkzeug import exceptions
@@ -7,7 +13,11 @@ from werkzeug import exceptions
 from src.auth.auth0 import require_auth
 
 from .token import Token
-
+@dataclass
+class UserInfo:
+    email: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
 def token_from_request(r: Request) -> Optional[str]:
     auth = r.headers.get("Authorization")
@@ -51,3 +61,22 @@ def authn() -> Token:
     )
 
     return agent
+
+def get_user_info() -> Optional[UserInfo]:
+    auth = request.headers.get("Authorization")
+    headers = {
+            "Authorization": f"{auth}",
+            "Content-Type": "application/json"
+        }
+    response = requests.get(f'https://{cfg.auth.domain}/userinfo', headers=headers)
+
+    if response.status_code == 200:
+        user_info = response.json()
+        email = user_info.get('email')
+        first_name = user_info.get('given_name')
+        last_name = user_info.get('family_name')
+
+        return UserInfo(email=email, first_name=first_name, last_name=last_name)
+    else:
+        current_app.logger.error('Error fetching user info:', response.status_code, response.text)
+        return None  

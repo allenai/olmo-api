@@ -3,12 +3,11 @@ from datetime import datetime
 from typing import Optional
 
 from flask import request
-from src.hubspot_util import create_contact
+from src.hubspot_service import create_contact
 from werkzeug import exceptions
 
 from src import db
 from src.api_interface import APIInterface
-from src.config import cfg
 from src.dao.user import User
      
 class UpsertUserRequest(APIInterface):

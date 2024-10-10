@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 from typing import Optional
+from src.auth.auth_service import UserInfo, get_user_info
 from src.config import cfg
 
 from flask import request, current_app
@@ -8,32 +8,8 @@ import requests
 
 HUBSPOT_URL = 'https://api.hubapi.com'
 
-@dataclass
-class UserInfo:
-    email: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-
-def get_user_info() -> Optional[UserInfo]:
-    auth = request.headers.get("Authorization")
-    headers = {
-            "Authorization": f"{auth}",
-            "Content-Type": "application/json"
-        }
-    response = requests.get(f'https://{cfg.auth.domain}/userinfo', headers=headers)
-
-    if response.status_code == 200:
-        user_info = response.json()
-        email = user_info.get('email')
-        first_name = user_info.get('given_name')
-        last_name = user_info.get('family_name')
-
-        return UserInfo(email=email, first_name=first_name, last_name=last_name)
-    else:
-        current_app.logger.error('Error fetching user info:', response.status_code, response.text)
-        return None  
     
-def contact_exists(user_info: Optional[UserInfo]):
+def get_contact(user_info: Optional[UserInfo]):
     url = f"{HUBSPOT_URL}/crm/v3/objects/contacts/search"
 
     if user_info is None: 
@@ -63,7 +39,7 @@ def contact_exists(user_info: Optional[UserInfo]):
 def create_contact():
     user_info = get_user_info()
 
-    if contact_exists(user_info):
+    if get_contact(user_info):
         return
            
     url = f"{HUBSPOT_URL}/crm/v3/objects/contacts"

@@ -33,4 +33,16 @@ class WildGuard:
         # the wildguard returns a generator that yields a single response
         result = list(f.remote_gen(request.prompt)).pop()
 
-        return WildguardResponse(**result)
+        return WildguardResponse(
+            request_harmful=self.transform_value(result["request_harmful"]),
+            response_refusal=self.transform_value(result["response_refusal"]),
+            response_harmful=self.transform_value(result["response_harmful"]),
+        )
+
+
+    def transform_value(self, val: str):
+        if val == "yes":
+            return True
+        if val == "no":
+            return False
+        return None

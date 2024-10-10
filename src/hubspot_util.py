@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Optional
 from src.config import cfg
 
-from flask import request
+from flask import request, current_app
 
 import requests
 
@@ -30,7 +30,7 @@ def get_user_info() -> Optional[UserInfo]:
 
         return UserInfo(email=email, first_name=first_name, last_name=last_name)
     else:
-        print('Error fetching user info:', response.status_code, response.text)
+        current_app.logger.error('Error fetching user info:', response.status_code, response.text)
         return None  
     
 def contact_exists(user_info: Optional[UserInfo]):
@@ -85,6 +85,6 @@ def create_contact():
     response = requests.post(url, headers=headers, json=contact_data)
 
     if response.status_code == 201:
-        print("Contact created successfully:", response.json())
+        current_app.logger.info("Contact created successfully:", response.json())
     else:
-        print("Error creating contact:", response.status_code, response.text)
+        current_app.logger.error("Error creating contact:", response.status_code, response.text)

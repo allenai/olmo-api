@@ -59,5 +59,3 @@ def _map_and_validate_upsert_user_request(client: str):
         raise exceptions.BadRequest("no request body")
 
     return UpsertUserRequest(client=client, **request.json)
-
-

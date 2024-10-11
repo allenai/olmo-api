@@ -75,6 +75,10 @@ class InfiniGram:
     api_url: str
     model_index_map: dict[str, str]
 
+@dataclass
+class Hubspot:
+    token: str
+
 
 DEFAULT_CONFIG_PATH = "/secret/cfg/config.json"
 
@@ -89,6 +93,7 @@ class Config:
     auth: Auth
     wildguard: Wildguard
     infini_gram: InfiniGram
+    hubspot: Hubspot
 
     @classmethod
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
@@ -145,6 +150,9 @@ class Config:
                     },
                     api_url="https://infinigram-api.allen.ai",
                 ),
+                hubspot=Hubspot(
+                    token=data['hubspot']['token']
+                )
             )
 
 

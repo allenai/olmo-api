@@ -1,14 +1,15 @@
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
 from flask import request
+from src.hubspot_service import create_contact
 from werkzeug import exceptions
 
 from src import db
 from src.api_interface import APIInterface
 from src.dao.user import User
-
-
+     
 class UpsertUserRequest(APIInterface):
     client: str
     id: Optional[str] = None
@@ -36,6 +37,9 @@ def upsert_user(dbc: db.Client, client: str) -> Optional[User]:
             terms_accepted_date=request.terms_accepted_date,
             acceptance_revoked_date=request.acceptance_revoked_date,
         )
+
+        if new_user: 
+            create_contact()
 
         return new_user
 

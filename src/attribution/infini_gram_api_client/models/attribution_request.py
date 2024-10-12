@@ -28,6 +28,7 @@ class AttributionRequest:
 
     query: str
     delimiters: Union[Unset, List[str]] = UNSET
+    maximum_span_density: Union[Unset, float] = 0.05
     minimum_span_length: Union[Unset, int] = 5
     maximum_frequency: Union[Unset, int] = 10
     include_documents: Union[Unset, bool] = False

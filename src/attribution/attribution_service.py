@@ -34,6 +34,7 @@ class ResponseAttributionDocument:
     index: str
     source: str
     title: Optional[str]
+    url: Optional[str]
 
 
 class GetAttributionRequest(APIInterface):
@@ -68,7 +69,8 @@ def get_attribution(
         body=AttributionRequest(
             query=request.model_response,
             include_documents=True,
-            minimum_span_length=10,
+            maximum_span_density=0.05,
+            minimum_span_length=1,
             delimiters=["\n", "."],
             maximum_frequency=10,
             include_input_as_tokens=True,
@@ -119,17 +121,27 @@ def get_attribution(
                 spans[span_index].documents.append(document.document_index)
 
             if documents.get(document.document_index) is None:
+                metadata = document.metadata.additional_properties.get("metadata", {})
+                if "metadata" in metadata:
+                    url = metadata["metadata"].get("url", None)
+                elif "doc" in metadata:
+                    url = metadata["doc"].get("url", None)
+                else:
+                    url = None
+                source = document.metadata.additional_properties.get("path", "").split("/")[0]
+                if source not in ["arxiv", "algebraic-stack", "open-web-math", "pes2o", "starcoder", "wiki"]:
+                    source = metadata.get("source", None)
+                    if source == "dclm-hero-run-fasttext_for_HF":
+                        source = "dclm"
+
                 documents[document.document_index] = ResponseAttributionDocument(
                     text=document.text,
                     corresponding_spans=[span_index],
                     corresponding_span_texts=[document.span_text],
                     index=str(document.document_index),
-                    source=document.metadata.additional_properties.get(
-                        "metadata", {}
-                    ).get("source"),
-                    title=document.metadata.additional_properties.get("metadata", {})
-                    .get("metadata", {})
-                    .get("title", None),
+                    source=source,
+                    title=metadata.get("metadata", {}).get("title", None),
+                    url=url,
                 )
             else:
                 if (
@@ -149,9 +161,9 @@ def get_attribution(
                     )
     if request.spans_and_documents_as_list is True:
         return {"documents": list(documents.values()), "spans": list(spans.values())}
-    else: 
+    else:
         return {"documents": documents, "spans": spans}
-        
+
 
 
 def _validate_get_attribution_request():
@@ -165,7 +177,7 @@ def _validate_get_attribution_request():
         raise exceptions.BadRequest(
             description=f"model_id must be one of: [{', '.join(cfg.infini_gram.model_index_map.keys())}]."
         )
-    
+
     spans_and_documents_as_list = request.args.get(
         "spansAndDocumentsAsList", type=json.loads, default=False
     )

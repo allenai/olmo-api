@@ -33,8 +33,9 @@ class ResponseAttributionDocument:
     corresponding_span_texts: List[str]
     index: str
     source: str
-    title: Optional[str]
-    url: Optional[str]
+    relevance_score: float
+    title: Optional[str] = None
+    url: Optional[str] = None
 
 
 class GetAttributionRequest(APIInterface):
@@ -128,8 +129,17 @@ def get_attribution(
                     url = metadata["doc"].get("url", None)
                 else:
                     url = None
-                source = document.metadata.additional_properties.get("path", "").split("/")[0]
-                if source not in ["arxiv", "algebraic-stack", "open-web-math", "pes2o", "starcoder", "wiki"]:
+                source = document.metadata.additional_properties.get("path", "").split(
+                    "/"
+                )[0]
+                if source not in [
+                    "arxiv",
+                    "algebraic-stack",
+                    "open-web-math",
+                    "pes2o",
+                    "starcoder",
+                    "wiki",
+                ]:
                     source = metadata.get("source", None)
                     if source == "dclm-hero-run-fasttext_for_HF":
                         source = "dclm"
@@ -142,6 +152,11 @@ def get_attribution(
                     source=source,
                     title=metadata.get("metadata", {}).get("title", None),
                     url=url,
+                    relevance_score=(
+                        document.relevance_score
+                        if document.relevance_score is not None
+                        else 0
+                    ),
                 )
             else:
                 if (
@@ -160,10 +175,14 @@ def get_attribution(
                         document.span_text
                     )
     if request.spans_and_documents_as_list is True:
-        return {"documents": list(documents.values()), "spans": list(spans.values())}
+        return {
+            "documents": list(documents.values()).sort(
+                key=lambda document: document.relevance_score
+            ),
+            "spans": list(spans.values()),
+        }
     else:
         return {"documents": documents, "spans": spans}
-
 
 
 def _validate_get_attribution_request():
@@ -182,4 +201,8 @@ def _validate_get_attribution_request():
         "spansAndDocumentsAsList", type=json.loads, default=False
     )
 
-    return MappedGetAttributionRequest(**request.json, index=index, spans_and_documents_as_list = spans_and_documents_as_list)
+    return MappedGetAttributionRequest(
+        **request.json,
+        index=index,
+        spans_and_documents_as_list=spans_and_documents_as_list,
+    )

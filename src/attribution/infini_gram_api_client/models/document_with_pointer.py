@@ -1,7 +1,9 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Type, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Type, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
+
+from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
     from ..models.document_with_pointer_metadata import DocumentWithPointerMetadata
@@ -22,6 +24,7 @@ class DocumentWithPointer:
         text (str):
         shard (int):
         pointer (int):
+        relevance_score (Union[None, Unset, float]):
     """
 
     document_index: int
@@ -32,6 +35,7 @@ class DocumentWithPointer:
     text: str
     shard: int
     pointer: int
+    relevance_score: Union[None, Unset, float] = UNSET
     additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -51,6 +55,12 @@ class DocumentWithPointer:
 
         pointer = self.pointer
 
+        relevance_score: Union[None, Unset, float]
+        if isinstance(self.relevance_score, Unset):
+            relevance_score = UNSET
+        else:
+            relevance_score = self.relevance_score
+
         field_dict: Dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
@@ -65,6 +75,8 @@ class DocumentWithPointer:
                 "pointer": pointer,
             }
         )
+        if relevance_score is not UNSET:
+            field_dict["relevanceScore"] = relevance_score
 
         return field_dict
 
@@ -89,6 +101,15 @@ class DocumentWithPointer:
 
         pointer = d.pop("pointer")
 
+        def _parse_relevance_score(data: object) -> Union[None, Unset, float]:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(Union[None, Unset, float], data)
+
+        relevance_score = _parse_relevance_score(d.pop("relevanceScore", UNSET))
+
         document_with_pointer = cls(
             document_index=document_index,
             document_length=document_length,
@@ -98,6 +119,7 @@ class DocumentWithPointer:
             text=text,
             shard=shard,
             pointer=pointer,
+            relevance_score=relevance_score,
         )
 
         document_with_pointer.additional_properties = d

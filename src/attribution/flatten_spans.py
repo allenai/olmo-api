@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from itertools import islice
-from typing import Iterable, List, Sequence
+from typing import Iterable, List, Optional, Sequence
 
 from src.attribution.infini_gram_api_client.models.attribution_span_with_documents import (
     AttributionSpanWithDocuments,
@@ -19,6 +19,7 @@ class FlattenedSpanDocument:
     token_ids: List[int]
     text: str
     span_text: str
+    relevance_score: Optional[float] = None
 
 
 @dataclass
@@ -86,6 +87,11 @@ def flatten_spans(
                 token_ids=document.token_ids,
                 text=document.text,
                 span_text=overlapping_span.text,
+                relevance_score=(
+                    document.relevance_score
+                    if isinstance(document.relevance_score, float)
+                    else None
+                ),
             )
             for overlapping_span in nested_spans
             for document in overlapping_span.documents

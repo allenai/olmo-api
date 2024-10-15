@@ -16,6 +16,7 @@ from .infini_gram_count_response import InfiniGramCountResponse
 from .infini_gram_document_response import InfiniGramDocumentResponse
 from .infini_gram_document_response_metadata import InfiniGramDocumentResponseMetadata
 from .infini_gram_documents_response import InfiniGramDocumentsResponse
+from .search_response import SearchResponse
 from .validation_error import ValidationError
 
 __all__ = (
@@ -35,5 +36,6 @@ __all__ = (
     "InfiniGramDocumentResponse",
     "InfiniGramDocumentResponseMetadata",
     "InfiniGramDocumentsResponse",
+    "SearchResponse",
     "ValidationError",
 )

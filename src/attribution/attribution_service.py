@@ -179,7 +179,9 @@ def get_attribution(
     if request.spans_and_documents_as_list is True:
         return {
             "documents": sorted(
-                documents.values(), key=lambda document: document.relevance_score
+                documents.values(),
+                key=lambda document: document.relevance_score,
+                reverse=True,
             ),
             "spans": list(spans.values()),
         }

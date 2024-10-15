@@ -54,7 +54,8 @@ def create_contact():
         "properties": {
             "email": user_info.email, 
             "firstname": user_info.first_name,
-            "lastname": user_info.last_name
+            "lastname": user_info.last_name,
+            "created_by_playground_app": 'true',
         }
     }
 

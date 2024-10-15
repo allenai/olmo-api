@@ -1,7 +1,9 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Type, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Type, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
+
+from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
     from ..models.infini_gram_document_response_metadata import InfiniGramDocumentResponseMetadata
@@ -21,6 +23,7 @@ class InfiniGramDocumentResponse:
         metadata (InfiniGramDocumentResponseMetadata):
         token_ids (List[int]):
         text (str):
+        relevance_score (Union[None, Unset, float]):
     """
 
     index: str
@@ -30,6 +33,7 @@ class InfiniGramDocumentResponse:
     metadata: "InfiniGramDocumentResponseMetadata"
     token_ids: List[int]
     text: str
+    relevance_score: Union[None, Unset, float] = UNSET
     additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -47,6 +51,12 @@ class InfiniGramDocumentResponse:
 
         text = self.text
 
+        relevance_score: Union[None, Unset, float]
+        if isinstance(self.relevance_score, Unset):
+            relevance_score = UNSET
+        else:
+            relevance_score = self.relevance_score
+
         field_dict: Dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
@@ -60,6 +70,8 @@ class InfiniGramDocumentResponse:
                 "text": text,
             }
         )
+        if relevance_score is not UNSET:
+            field_dict["relevanceScore"] = relevance_score
 
         return field_dict
 
@@ -82,6 +94,15 @@ class InfiniGramDocumentResponse:
 
         text = d.pop("text")
 
+        def _parse_relevance_score(data: object) -> Union[None, Unset, float]:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(Union[None, Unset, float], data)
+
+        relevance_score = _parse_relevance_score(d.pop("relevanceScore", UNSET))
+
         infini_gram_document_response = cls(
             index=index,
             document_index=document_index,
@@ -90,6 +111,7 @@ class InfiniGramDocumentResponse:
             metadata=metadata,
             token_ids=token_ids,
             text=text,
+            relevance_score=relevance_score,
         )
 
         infini_gram_document_response.additional_properties = d

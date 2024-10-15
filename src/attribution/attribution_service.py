@@ -75,6 +75,8 @@ def get_attribution(
             delimiters=["\n", "."],
             maximum_frequency=10,
             include_input_as_tokens=True,
+            filter_method="bm25",
+            filter_bm_25_ratio_to_keep=1,
         ),
     )
 
@@ -176,8 +178,8 @@ def get_attribution(
                     )
     if request.spans_and_documents_as_list is True:
         return {
-            "documents": list(documents.values()).sort(
-                key=lambda document: document.relevance_score
+            "documents": sorted(
+                list(documents.values()), key=lambda document: document.relevance_score
             ),
             "spans": list(spans.values()),
         }

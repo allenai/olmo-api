@@ -27,9 +27,15 @@ from .infini_gram_api_client import Client
 
 
 @dataclass
+class AttributionDocumentSnippet:
+    text: str
+    corresponding_span_text: str
+
+
+@dataclass
 class ResponseAttributionDocument:
     text: str
-    snippets: list[str]
+    snippets: list[AttributionDocumentSnippet]
     corresponding_spans: List[int]
     corresponding_span_texts: List[str]
     index: str
@@ -42,7 +48,11 @@ class ResponseAttributionDocument:
     ) -> Self:
         return cls(
             text=document.text,
-            snippets=[document.text],
+            snippets=[
+                AttributionDocumentSnippet(
+                    text=document.text, corresponding_span_text=document.span_text
+                )
+            ],
             corresponding_spans=[span_index],
             corresponding_span_texts=[document.span_text],
             index=str(document.document_index),
@@ -96,7 +106,7 @@ def update_mapped_document(
     mapped_document: ResponseAttributionDocument,
     span_index: int,
     span_text: str,
-    new_document_text: str,
+    new_document: FlattenedSpanDocument,
 ):
     if span_index not in mapped_document.corresponding_spans:
         mapped_document.corresponding_spans.append(span_index)
@@ -104,8 +114,14 @@ def update_mapped_document(
     if span_text not in mapped_document.corresponding_span_texts:
         mapped_document.corresponding_span_texts.append(span_text)
 
-    if new_document_text not in mapped_document.snippets:
-        mapped_document.snippets.append(new_document_text)
+    if not any(
+        snippet.text == new_document.text for snippet in mapped_document.snippets
+    ):
+        mapped_document.snippets.append(
+            AttributionDocumentSnippet(
+                text=new_document.text, corresponding_span_text=new_document.span_text
+            )
+        )
 
 
 def get_attribution(
@@ -150,7 +166,7 @@ def get_attribution(
     mapped_spans: dict[int, ResponseAttributionSpan] = {}
 
     for span_index, span in enumerate(flattened_spans):
-        if span_index not in mapped_spans is None:
+        if span_index not in mapped_spans:
             mapped_spans[span_index] = TopLevelAttributionSpan.from_flattened_span(span)
 
         for current_span_document in span.documents:
@@ -162,7 +178,7 @@ def get_attribution(
                     current_span_document.document_index
                 )
 
-            if current_span_document.document_index in mapped_documents:
+            if current_span_document.document_index not in mapped_documents:
                 mapped_documents[current_span_document.document_index] = (
                     ResponseAttributionDocument.from_flattened_span_document(
                         current_span_document, span_index
@@ -173,7 +189,7 @@ def get_attribution(
                     # We make sure the mapped_document is present in the if corresponding to this else
                     mapped_documents.get(current_span_document.document_index),  # type: ignore [arg-type]
                     span_text=span.text,
-                    new_document_text=current_span_document.text,
+                    new_document=current_span_document,
                     span_index=span_index,
                 )
 

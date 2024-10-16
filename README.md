@@ -65,3 +65,8 @@ Instead of starting the server with the `python` command above, launch the `Pyth
 Make sure the host information that the new model is deployed on. Currently, we have InferD, Modal, and TogetherAI. Once the information is confirmed, open `config.json` and add settings for the new model under the "available_models" field of the corresponding host.
 After adding, relaunch olmo-api on your localhost. The new model should appear in the dropdown on Olmo UI. Try to send a prompt to verify it works.
 Once localhost is working goes to marina and search for olmo_api and update config.json under secret. Then trigger a manual deployment to verify prod working.
+
+## Regenerating infinigram-api-client
+run `openapi-python-client generate --url https://infinigram-api.allen.ai/openapi.json --overwrite`
+
+copy the `infini_gram_api_client` folder from the generated code into `src/attribution/infini_gram_api_client`

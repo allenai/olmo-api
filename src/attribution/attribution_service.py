@@ -40,12 +40,37 @@ class ResponseAttributionDocument:
     corresponding_span_texts: List[str]
     index: str
     source: str
-    title: Optional[str]
+    relevance_score: float
+    title: Optional[str] = None
+    url: Optional[str] = None
 
     @classmethod
     def from_flattened_span_document(
         cls, document: FlattenedSpanDocument, span_index: int
     ) -> Self:
+        metadata = document.metadata.additional_properties.get("metadata", {})
+        if "metadata" in metadata:
+            url = metadata["metadata"].get("url", None)
+        elif "doc" in metadata:
+            url = metadata["doc"].get("url", None)
+        else:
+            url = None
+
+        source = document.metadata.additional_properties.get("path", "").split(
+            "/"
+        )[0]
+        if source not in [
+            "arxiv",
+            "algebraic-stack",
+            "open-web-math",
+            "pes2o",
+            "starcoder",
+            "wiki",
+        ]:
+            source = metadata.get("source", None)
+            if source == "dclm-hero-run-fasttext_for_HF":
+                source = "dclm"
+
         return cls(
             text=document.text,
             snippets=[
@@ -56,12 +81,16 @@ class ResponseAttributionDocument:
             corresponding_spans=[span_index],
             corresponding_span_texts=[document.span_text],
             index=str(document.document_index),
-            source=document.metadata.additional_properties.get("metadata", {}).get(
-                "source"
-            ),
+            source=source,
             title=document.metadata.additional_properties.get("metadata", {})
             .get("metadata", {})
             .get("title", None),
+            url=url,
+            relevance_score=(
+                document.relevance_score
+                if document.relevance_score is not None
+                else 0
+            ),
         )
 
 
@@ -134,10 +163,13 @@ def get_attribution(
         body=AttributionRequest(
             query=request.model_response,
             include_documents=True,
-            minimum_span_length=10,
+            maximum_span_density=0.05,
+            minimum_span_length=1,
             delimiters=["\n", "."],
             maximum_frequency=10,
             include_input_as_tokens=True,
+            filter_method="bm25",
+            filter_bm_25_ratio_to_keep=1,
         ),
     )
 
@@ -195,11 +227,15 @@ def get_attribution(
 
     if request.spans_and_documents_as_list is True:
         return {
-            "documents": list(mapped_documents.values()),
-            "spans": list(mapped_spans.values()),
+            "documents": sorted(
+                documents.values(),
+                key=lambda document: document.relevance_score,
+                reverse=True,
+            ),
+            "spans": list(spans.values()),
         }
     else:
-        return {"documents": mapped_documents, "spans": mapped_spans}
+        return {"documents": documents, "spans": spans}
 
 
 def _validate_get_attribution_request():

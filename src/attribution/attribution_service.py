@@ -56,9 +56,7 @@ class ResponseAttributionDocument:
         else:
             url = None
 
-        source = document.metadata.additional_properties.get("path", "").split(
-            "/"
-        )[0]
+        source = document.metadata.additional_properties.get("path", "").split("/")[0]
         if source not in [
             "arxiv",
             "algebraic-stack",
@@ -87,9 +85,7 @@ class ResponseAttributionDocument:
             .get("title", None),
             url=url,
             relevance_score=(
-                document.relevance_score
-                if document.relevance_score is not None
-                else 0
+                document.relevance_score if document.relevance_score is not None else 0
             ),
         )
 
@@ -228,14 +224,14 @@ def get_attribution(
     if request.spans_and_documents_as_list is True:
         return {
             "documents": sorted(
-                documents.values(),
+                mapped_documents.values(),
                 key=lambda document: document.relevance_score,
                 reverse=True,
             ),
-            "spans": list(spans.values()),
+            "spans": list(mapped_spans.values()),
         }
     else:
-        return {"documents": documents, "spans": spans}
+        return {"documents": mapped_documents, "spans": mapped_spans}
 
 
 def _validate_get_attribution_request():

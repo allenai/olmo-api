@@ -145,8 +145,8 @@ class Config:
                     model_index_map={
                         "olmo-7b-base": "dolma-1_7",
                         "olmo-7b-chat": "dolma-1_7",
-                        "OLMo-peteish-dpo-preview": "olmoe-mix-0924",
-                        "OLMoE-1B-7B-0924-Instruct": "olmoe-mix-0924",
+                        "OLMo-peteish-dpo-preview": "olmoe",
+                        "OLMoE-1B-7B-0924-Instruct": "olmoe",
                     },
                     api_url="https://infinigram-api.allen.ai",
                 ),

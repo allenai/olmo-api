@@ -96,8 +96,6 @@ def create_message(
         harmful=safety_check_result.request_harmful
         if safety_check_result is not None
         else None,
-        model_id=request.model_id,
-        model_host=request.host,
     )
 
     if msg.role == message.Role.Assistant:
@@ -134,8 +132,6 @@ def create_message(
         final=False,
         private=request.private,
         model_type=model.model_type,
-        model_id=request.model_id,
-        model_host=request.host,
     )
 
     # Update the parent message to include the reply.

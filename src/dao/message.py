@@ -198,6 +198,8 @@ class Message:
     finish_reason: Optional[str] = None
     harmful: Optional[bool] = None
     labels: list[label.Label] = field(default_factory=list)
+    model_id: Optional[str] = None
+    model_host: Optional[str] = None
 
     def flatten(self) -> list["Message"]:
         if self.children is None:
@@ -211,9 +213,9 @@ class Message:
     def from_row(r: MessageRow) -> "Message":
         labels = []
         # If the label id is not None, unpack the label.
-        li = 18
-        if r[li] is not None:
-            labels = [label.Label.from_row(cast(label.LabelRow, r[li:]))]
+        label_row = 20
+        if r[label_row] is not None:
+            labels = [label.Label.from_row(cast(label.LabelRow, r[label_row:]))]
 
         logprobs = None
         if r[10] is not None:
@@ -242,6 +244,8 @@ class Message:
             model_type=r[15],
             finish_reason=r[16],
             harmful=r[17],
+            model_id=r[18],
+            model_host=r[19],
             labels=labels,
         )
 
@@ -254,13 +258,13 @@ class Message:
 
     @staticmethod
     def group_by_id(msgs: list["Message"]) -> dict[str, "Message"]:
-        mids = {}
-        for m in msgs:
-            if m.id in mids:
-                mids[m.id] = mids[m.id].merge(m)
+        message_ids: dict[str, Message] = {}
+        for message in msgs:
+            if message.id in message_ids:
+                message_ids[message.id] = message_ids[message.id].merge(message)
                 continue
-            mids[m.id] = m
-        return mids
+            message_ids[message.id] = message
+        return message_ids
 
     @staticmethod
     def tree(msgs: MessagesByID) -> tuple[list["Message"], MessagesByID]:
@@ -303,6 +307,8 @@ class Store:
         creator: str,
         role: Role,
         opts: InferenceOpts,
+        model_id: str,
+        model_host: str,
         root: Optional[str] = None,
         parent: Optional[str] = None,
         template: Optional[str] = None,
@@ -320,9 +326,9 @@ class Store:
                 try:
                     q = """
                         INSERT INTO
-                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private, model_type, finish_reason, harmful)
+                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private, model_type, finish_reason, harmful, model_id, model_host)
                         VALUES
-                            (%(id)s, %(content)s, %(creator)s, %(role)s, %(opts)s, %(root)s, %(parent)s, %(template)s, %(logprobs)s, %(completion)s, %(final)s, %(original)s, %(private)s, %(model_type)s, %(finish_reason)s, %(harmful)s)
+                            (%(id)s, %(content)s, %(creator)s, %(role)s, %(opts)s, %(root)s, %(parent)s, %(template)s, %(logprobs)s, %(completion)s, %(final)s, %(original)s, %(private)s, %(model_type)s, %(finish_reason)s, %(harmful)s, %(model_id)s, %(model_host)s)
                         RETURNING
                             id,
                             content,
@@ -342,6 +348,8 @@ class Store:
                             model_type,
                             finish_reason,
                             harmful,
+                            model_id,
+                            model_host,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -372,6 +380,8 @@ class Store:
                             "model_type": model_type,
                             "finish_reason": finish_reason,
                             "harmful": harmful,
+                            "model_id": model_id,
+                            "model_host": model_host,
                         },
                     ).fetchone()
                     if row is None:
@@ -424,6 +434,8 @@ class Store:
                         message.model_type,
                         message.finish_reason,
                         message.harmful,
+                        message.model_id,
+                        message.model_host,
                         label.id,
                         label.message,
                         label.rating,
@@ -481,6 +493,8 @@ class Store:
                         message.model_type,
                         message.finish_reason,
                         message.harmful,
+                        message.model_id,
+                        message.model_host,
                         label.id,
                         label.message,
                         label.rating,
@@ -546,6 +560,8 @@ class Store:
                             model_type,
                             finish_reason,
                             harmful,
+                            model_id,
+                            model_host,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -610,6 +626,8 @@ class Store:
                         updated.model_type,
                         updated.finish_reason,
                         updated.harmful,
+                        updated.model_id,
+                        updated.model_host,
                         label.id,
                         label.message,
                         label.rating,
@@ -632,7 +650,7 @@ class Store:
                 row = cur.execute(q, (id, agent)).fetchone()
                 return Message.from_row(row) if row is not None else None
 
-    def remove(self, ids: list[str]) -> Optional[list[str]]:
+    def remove(self, ids: list[str]) -> None:
         if len(ids) == 0:
             return
 
@@ -719,6 +737,8 @@ class Store:
                         message.model_type,
                         message.finish_reason,
                         message.harmful,
+                        message.model_id,
+                        message.model_host,
                         label.id,
                         label.message,
                         label.rating,

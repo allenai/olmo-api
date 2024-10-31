@@ -25,7 +25,6 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - LOG_LEVEL=DEBUG
-      - E2E_AUTH0_CLIENT_SECRET
     ports:
       - 8000:8000
 volumes:

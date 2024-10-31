@@ -91,6 +91,7 @@ class ResponseAttributionDocument:
 
 
 class GetAttributionRequest(APIInterface):
+    prompt: str
     model_response: str
     model_id: str
     max_documents: int = 10
@@ -157,15 +158,21 @@ def get_attribution(
         index=request.index,
         client=infini_gram_client,
         body=AttributionRequest(
-            query=request.model_response,
-            include_documents=True,
-            maximum_span_density=0.05,
-            minimum_span_length=1,
+            prompt=request.prompt,
+            response=request.model_response,
             delimiters=["\n", "."],
+            allow_spans_with_partial_words=False,
+            minimum_span_length=1,
             maximum_frequency=10,
-            include_input_as_tokens=True,
+            maximum_span_density=0.05,
+            span_ranking_method="length",
+            include_documents=True,
+            maximum_document_display_length=100,
+            maximum_documents_per_span=10,
             filter_method="bm25",
-            filter_bm_25_ratio_to_keep=1,
+            filter_bm_25_fields_considered="response",
+            filter_bm_25_ratio_to_keep=1.0,
+            include_input_as_tokens=True,
         ),
     )
 

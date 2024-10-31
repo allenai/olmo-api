@@ -74,8 +74,8 @@ copy the `infini_gram_api_client` folder from the generated code into `src/attri
 ## Adding models hosted on Modal
 1. Get the model name. 
     - If you're getting this yourself, you can check the [reviz-modal repo](https://github.com/allenai/reviz-modal)'s `src` folder. Find the `.py` file with the model and version you want to serve, then find the `MODEL_NAME` variable in the file. That will be the value we use for this.
-2. Add an entry to the [olmo-api config for this in Marina](https://marina.apps.allenai.org/a/olmo-api/s/cfg/update)
-    - The `id` and `compute_source_id` should be the same as the model name.
+2. Add an entry to the local `config.json`'s `modal.available_models` section
+    - The `id` and `compute_source_id` should be the model name you got in the earlier step.
     - the `name` should be a human-readable, nicely formatted name. It will be shown on the UI.
     - the `description` should be a sentence about what the model is.
     - example (the model name is `Tulu-v3-8-dpo-preview` here):
@@ -88,3 +88,5 @@ copy the `infini_gram_api_client` folder from the generated code into `src/attri
             "model_type": "chat"
         }
         ```
+3. Test this by changing your local `config.json` to ensure the values are correct. Send a message to the model you've added. If it doesn't work, make sure the model name you got is correct.
+4. Copy the new model config to the [olmo-api config for this in Marina](https://marina.apps.allenai.org/a/olmo-api/s/cfg/update)

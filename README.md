@@ -70,3 +70,21 @@ Once localhost is working goes to marina and search for olmo_api and update conf
 run `openapi-python-client generate --url https://infinigram-api.allen.ai/openapi.json --overwrite`
 
 copy the `infini_gram_api_client` folder from the generated code into `src/attribution/infini_gram_api_client`
+
+## Adding models hosted on Modal
+1. Get the model name. 
+    - If you're getting this yourself, you can check the [reviz-modal repo](https://github.com/allenai/reviz-modal)'s `src` folder. Find the `.py` file with the model and version you want to serve, then find the `MODEL_NAME` variable in the file. That will be the value we use for this.
+2. Add an entry to the [olmo-api config for this in Marina](https://marina.apps.allenai.org/a/olmo-api/s/cfg/update)
+    - The `id` and `compute_source_id` should be the same as the model name.
+    - the `name` should be a human-readable, nicely formatted name. It will be shown on the UI.
+    - the `description` should be a sentence about what the model is.
+    - example (the model name is `Tulu-v3-8-dpo-preview` here):
+        ```
+        {
+            "id": "Tulu-v3-8-dpo-preview",
+            "name": "Tulu v3 Preview",
+            "description": "A preview version of Ai2's latest Tulu model",
+            "compute_source_id": "Tulu-v3-8-dpo-preview",
+            "model_type": "chat"
+        }
+        ```

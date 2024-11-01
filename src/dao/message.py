@@ -197,9 +197,9 @@ class Message:
     model_type: Optional[ModelType] = None
     finish_reason: Optional[str] = None
     harmful: Optional[bool] = None
-    labels: list[label.Label] = field(default_factory=list)
     model_id: Optional[str] = None
     model_host: Optional[str] = None
+    labels: list[label.Label] = field(default_factory=list)
 
     def flatten(self) -> list["Message"]:
         if self.children is None:

@@ -6,6 +6,7 @@ from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src import config, db, error, util, v3
+from src.dao import paged
 
 
 def create_app():
@@ -22,12 +23,21 @@ def create_app():
     atexit.register(dbc.close)
 
     @app.get("/health")
-    def health():  # pyright: ignore
+    def health():
+        try:
+            # These checks will keep a new pod from starting if something's wrong with the schema
+            dbc.message.get_list(opts=paged.Opts(limit=1))
+            dbc.template.prompts()
+            dbc.label.get_list(opts=paged.Opts(limit=1))
+        except Exception as e:
+            logging.getLogger().error(
+                f"Exception occurred on application startup: {repr(e)}"
+            )
+            return repr(e), 500
+
         return "", 204
 
-    app.register_blueprint(
-        v3.Server(dbc), url_prefix="/v3", name="v3"
-    )
+    app.register_blueprint(v3.Server(dbc), url_prefix="/v3", name="v3")
     app.register_error_handler(Exception, error.handle)
 
     ProxyFix(

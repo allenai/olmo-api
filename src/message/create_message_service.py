@@ -76,8 +76,12 @@ def create_message(
         )
 
     safety_check_result = None
+
+    start = time_ns()
     if request.role == message.Role.User:
         safety_check_result = check_message_safety(safety_checker, request.content)
+        elapsed = time_ns() - start // 1_000_000
+        current_app.logger.info({ "event": "timing.safety", "elapsed": elapsed })
 
         if safety_check_result.request_harmful is True:
             raise exceptions.BadRequest(description="inappropriate_prompt")

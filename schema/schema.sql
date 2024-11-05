@@ -186,11 +186,15 @@ SET model_id = 'unknown'
 WHERE model_id IS NULL;
 
 ALTER TABLE message
-ALTER COLUMN model_id TEXT NOT NULL;
+ALTER COLUMN model_id TYPE TEXT,
+  ALTER COLUMN model_id
+SET NOT NULL;
 
 UPDATE message
 SET model_host = 'unknown'
 WHERE model_host IS NULL;
 
 ALTER TABLE message
-ALTER COLUMN model_host TEXT NOT NULL;
+ALTER COLUMN model_host TYPE TEXT,
+  ALTER COLUMN model_host
+SET NOT NULL;

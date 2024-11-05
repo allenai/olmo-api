@@ -87,6 +87,8 @@ def create_message(
         agent.client,
         request.role,
         request.opts,
+        model_id=request.model_id,
+        model_host=request.host,
         root=request.parent.root if request.parent is not None else None,
         parent=request.parent.id if request.parent is not None else None,
         template=request.template,
@@ -96,8 +98,6 @@ def create_message(
         harmful=safety_check_result.request_harmful
         if safety_check_result is not None
         else None,
-        model_id=request.model_id,
-        model_host=request.host,
     )
 
     if msg.role == message.Role.Assistant:
@@ -129,13 +129,13 @@ def create_message(
         agent.client,
         message.Role.Assistant,
         msg.opts,
+        model_id=request.model_id,
+        model_host=request.host,
         root=msg.root,
         parent=msg.id,
         final=False,
         private=request.private,
         model_type=model.model_type,
-        model_id=request.model_id,
-        model_host=request.host,
     )
 
     # Update the parent message to include the reply.

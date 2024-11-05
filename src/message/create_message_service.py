@@ -76,12 +76,32 @@ def create_message(
         )
 
     safety_check_result = None
+    # Capture the SHA, as the current_app context is lost in the generator.
+    sha = os.environ["SHA"] if not current_app.debug else "DEV"
 
-    start = time_ns()
     if request.role == message.Role.User:
+        start = time_ns()
         safety_check_result = check_message_safety(safety_checker, request.content)
-        elapsed = time_ns() - start // 1_000_000
-        current_app.logger.info({ "event": "timing.safety", "elapsed_ms": elapsed })
+        elapsed = (time_ns() - start) // 1_000_000
+        current_app.logger.info({"event": "timing.safety", "elapsed_ms": elapsed})
+
+        dbc.completion.create(
+            request.content,
+            [
+                completion.CompletionOutput(
+                    str(safety_check_result),
+                    finish_reason=FinishReason.Stop,
+                )
+            ],
+            message.InferenceOpts(),
+            "wildguard-modal",
+            sha,
+            tokenize_ms=-1,
+            generation_ms=elapsed,
+            queue_ms=0,
+            input_tokens=-1,
+            output_tokens=-1,
+        )
 
         if safety_check_result.request_harmful is True:
             raise exceptions.BadRequest(description="inappropriate_prompt")
@@ -140,9 +160,6 @@ def create_message(
 
     # Update the parent message to include the reply.
     msg = dataclasses.replace(msg, children=[reply])
-
-    # Capture the SHA, as the current_app context is lost in the generator.
-    sha = os.environ["SHA"] if not current_app.debug else "DEV"
 
     def stream() -> Generator[str, None, None]:
         # We keep track of each chunk and the timing information per-chunk

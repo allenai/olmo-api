@@ -180,3 +180,17 @@ ADD COLUMN IF NOT EXISTS model_id TEXT NULL;
 
 ALTER TABLE message
 ADD COLUMN IF NOT EXISTS model_host TEXT NULL;
+
+UPDATE message
+SET model_id = 'unknown'
+WHERE model_id IS NULL;
+
+ALTER TABLE message
+ALTER COLUMN model_id TEXT NOT NULL;
+
+UPDATE message
+SET model_host = 'unknown'
+WHERE model_host IS NULL;
+
+ALTER TABLE message
+ALTER COLUMN model_host TEXT NOT NULL;

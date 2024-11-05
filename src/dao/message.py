@@ -135,6 +135,8 @@ MessageRow = tuple[
     Optional[ModelType],
     Optional[str],
     Optional[bool],
+    str,
+    str,
     # Label fields
     Optional[str],
     Optional[str],
@@ -185,6 +187,8 @@ class Message:
     opts: InferenceOpts
     root: str
     created: datetime
+    model_id: str
+    model_host: str
     deleted: Optional[datetime] = None
     parent: Optional[str] = None
     template: Optional[str] = None
@@ -197,8 +201,6 @@ class Message:
     model_type: Optional[ModelType] = None
     finish_reason: Optional[str] = None
     harmful: Optional[bool] = None
-    model_id: Optional[str] = None
-    model_host: Optional[str] = None
     labels: list[label.Label] = field(default_factory=list)
 
     def flatten(self) -> list["Message"]:

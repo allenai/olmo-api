@@ -83,7 +83,6 @@ def create_message(
         start = time_ns()
         safety_check_result = check_message_safety(safety_checker, request.content)
         elapsed = (time_ns() - start) // 1_000_000
-        current_app.logger.info({"event": "timing.safety", "elapsed_ms": elapsed})
 
         dbc.completion.create(
             request.content,

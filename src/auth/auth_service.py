@@ -6,7 +6,7 @@ import requests
 from flask import Request, current_app, request
 from werkzeug import exceptions
 
-from src.auth.auth0 import maybe_auth
+from src.auth.resource_protectors import anonymous_auth_protector
 from src.config import cfg
 
 from .token import Token
@@ -33,7 +33,7 @@ def token_from_request(r: Request) -> Optional[str]:
 
 
 def request_agent() -> Optional[Token]:
-    token = maybe_auth.get_token()
+    token = anonymous_auth_protector.get_token()
     # User is logged in through Auth0
     if token is not None:
         # This will happen if we get an anonymous user, this is supposed to be the anonymous user id we get from the req

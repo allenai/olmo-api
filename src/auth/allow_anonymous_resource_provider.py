@@ -34,6 +34,8 @@ class AllowAnonymousResourceProtector(BaseResourceProtector):
             token = self.acquire_token(**claims)
 
             return token
+        # this DOES NOT handle missing scopes properly
+        # if we add an admin page we'll need to make sure we use the provider that requires a login
         except MissingAuthorizationError:
             anonymous_user_id = flask_request.headers.get("X-Anonymous-User-ID")
 

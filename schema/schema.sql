@@ -174,3 +174,25 @@ ADD COLUMN IF NOT EXISTS finish_reason TEXT NULL;
 -- Add harmful column for storing WildGuard results
 ALTER TABLE message
 ADD COLUMN IF NOT EXISTS harmful BOOLEAN NULL;
+
+ALTER TABLE message
+ADD COLUMN IF NOT EXISTS model_id TEXT NULL;
+
+ALTER TABLE message
+ADD COLUMN IF NOT EXISTS model_host TEXT NULL;
+
+UPDATE message
+SET model_id = 'unknown'
+WHERE model_id IS NULL;
+
+ALTER TABLE message
+ALTER COLUMN model_id
+SET NOT NULL;
+
+UPDATE message
+SET model_host = 'unknown'
+WHERE model_host IS NULL;
+
+ALTER TABLE message
+ALTER COLUMN model_host
+SET NOT NULL;

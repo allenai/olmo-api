@@ -33,7 +33,7 @@ def token_from_request(r: Request) -> Optional[str]:
 
 
 def request_agent() -> Optional[Token]:
-    token = maybe_auth.get_token(optional=True)
+    token = maybe_auth.get_token()
     # User is logged in through Auth0
     if token is not None:
         # This will happen if we get an anonymous user, this is supposed to be the anonymous user id we get from the req

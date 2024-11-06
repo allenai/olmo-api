@@ -6,9 +6,9 @@ from typing import Optional
 @dataclass
 class Token:
     client: str
-    created: datetime
-    expires: datetime
+    created: Optional[datetime] = None
+    expires: Optional[datetime] = None
     creator: Optional[str] = None
 
     def expired(self) -> bool:
-        return datetime.now(timezone.utc) >= self.expires
+        return self.expires is not None and datetime.now(timezone.utc) >= self.expires

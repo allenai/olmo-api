@@ -6,6 +6,8 @@ from authlib.oauth2.rfc6749 import MissingAuthorizationError
 from flask import g
 from flask import request as flask_request
 
+from src.constants import ANONYMOUS_USER_ID_HEADER
+
 
 class AllowAnonymousResourceProtector(BaseResourceProtector):
     def acquire_token(self, scopes=None, **kwargs):
@@ -37,7 +39,7 @@ class AllowAnonymousResourceProtector(BaseResourceProtector):
         # this DOES NOT handle missing scopes properly
         # if we add an admin page we'll need to make sure we use the provider that requires a login
         except MissingAuthorizationError:
-            anonymous_user_id = flask_request.headers.get("X-Anonymous-User-ID")
+            anonymous_user_id = flask_request.headers.get(ANONYMOUS_USER_ID_HEADER)
 
             return anonymous_user_id
         except OAuth2Error:

@@ -1,0 +1,1 @@
+ANONYMOUS_USER_ID_HEADER = "X-Anonymous-User-ID"

@@ -379,7 +379,9 @@ def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
     )
 
 
-def map_datachip_info(dbc, chain) -> list[InferenceEngineMessage]:
+def map_datachip_info(
+    dbc: db.Client, chain: list[message.Message]
+) -> list[InferenceEngineMessage]:
     parsedMessages = [
         ParsedMessage(content=parse.MessageContent(message.content), role=message.role)
         for message in chain

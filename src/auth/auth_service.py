@@ -34,14 +34,15 @@ def token_from_request(r: Request) -> Optional[str]:
 
 def request_agent() -> Optional[Token]:
     token = anonymous_auth_protector.get_token()
-    # User is logged in through Auth0
     if token is not None:
         # This will happen if we get an anonymous user, this is supposed to be the anonymous user id we get from the req
         if isinstance(token, str):
-            return Token(client=token)
+            return Token(client=token, is_anonymous_user=True)
         else:
+            # User is logged in through Auth0
             return Token(
                 client=token.sub,
+                is_anonymous_user=False,
                 created=datetime.fromtimestamp(token.iat, tz=timezone.utc),
                 expires=datetime.fromtimestamp(token.exp, tz=timezone.utc),
                 creator=token.iss,

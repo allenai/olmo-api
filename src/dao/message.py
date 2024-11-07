@@ -137,6 +137,7 @@ MessageRow = tuple[
     Optional[bool],
     str,
     str,
+    Optional[datetime],
     # Label fields
     Optional[str],
     Optional[str],
@@ -201,6 +202,7 @@ class Message:
     model_type: Optional[ModelType] = None
     finish_reason: Optional[str] = None
     harmful: Optional[bool] = None
+    expiration_time: Optional[datetime] = None
     labels: list[label.Label] = field(default_factory=list)
 
     def flatten(self) -> list["Message"]:
@@ -215,7 +217,7 @@ class Message:
     def from_row(r: MessageRow) -> "Message":
         labels = []
         # If the label id is not None, unpack the label.
-        label_row = 20
+        label_row = 21
         if r[label_row] is not None:
             labels = [label.Label.from_row(cast(label.LabelRow, r[label_row:]))]
 
@@ -248,6 +250,7 @@ class Message:
             harmful=r[17],
             model_id=r[18],
             model_host=r[19],
+            expiration_time=r[20],
             labels=labels,
         )
 
@@ -322,15 +325,16 @@ class Store:
         model_type: Optional[ModelType] = None,
         finish_reason: Optional[str] = None,
         harmful: Optional[bool] = None,
+        expiration_time: Optional[datetime] = None,
     ) -> Message:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 try:
                     q = """
                         INSERT INTO
-                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private, model_type, finish_reason, harmful, model_id, model_host)
+                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private, model_type, finish_reason, harmful, model_id, model_host, expiration_time)
                         VALUES
-                            (%(id)s, %(content)s, %(creator)s, %(role)s, %(opts)s, %(root)s, %(parent)s, %(template)s, %(logprobs)s, %(completion)s, %(final)s, %(original)s, %(private)s, %(model_type)s, %(finish_reason)s, %(harmful)s, %(model_id)s, %(model_host)s)
+                            (%(id)s, %(content)s, %(creator)s, %(role)s, %(opts)s, %(root)s, %(parent)s, %(template)s, %(logprobs)s, %(completion)s, %(final)s, %(original)s, %(private)s, %(model_type)s, %(finish_reason)s, %(harmful)s, %(model_id)s, %(model_host)s, %(expiration_time)s)
                         RETURNING
                             id,
                             content,
@@ -352,6 +356,7 @@ class Store:
                             harmful,
                             model_id,
                             model_host,
+                            expiration_time,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -384,8 +389,10 @@ class Store:
                             "harmful": harmful,
                             "model_id": model_id,
                             "model_host": model_host,
+                            "expiration_time": expiration_time,
                         },
                     ).fetchone()
+
                     if row is None:
                         raise RuntimeError("failed to create message")
                     return Message.from_row(row)
@@ -438,6 +445,7 @@ class Store:
                         message.harmful,
                         message.model_id,
                         message.model_host,
+                        message.expiration_time,
                         label.id,
                         label.message,
                         label.rating,
@@ -497,6 +505,7 @@ class Store:
                         message.harmful,
                         message.model_id,
                         message.model_host,
+                        message.expiration_time,
                         label.id,
                         label.message,
                         label.rating,
@@ -564,6 +573,7 @@ class Store:
                             harmful,
                             model_id,
                             model_host,
+                            expiration_time,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -630,6 +640,7 @@ class Store:
                         updated.harmful,
                         updated.model_id,
                         updated.model_host,
+                        updated.expiration_time,
                         label.id,
                         label.message,
                         label.rating,
@@ -741,6 +752,7 @@ class Store:
                         message.harmful,
                         message.model_id,
                         message.model_host,
+                        message.expiration_time,
                         label.id,
                         label.message,
                         label.rating,

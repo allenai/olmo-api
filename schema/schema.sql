@@ -196,3 +196,6 @@ WHERE model_host IS NULL;
 ALTER TABLE message
 ALTER COLUMN model_host
 SET NOT NULL;
+
+ALTER TABLE message
+ADD COLUMN IF NOT EXISTS expiration_time TIMESTAMPTZ NULL;

@@ -61,11 +61,9 @@ class Server(Blueprint):
         )
 
     def prompts(self):
-        authn()
         return jsonify(self.dbc.template.prompts(deleted="deleted" in request.args))
 
     def prompt(self, id: str):
-        authn()
         prompt = self.dbc.template.prompt(id)
         if prompt is None:
             raise exceptions.NotFound()
@@ -122,11 +120,9 @@ class Server(Blueprint):
         )
 
     def models(self):
-        authn()
         return jsonify(get_available_models())
 
     def schema(self):
-        authn()
         return jsonify({"Message": {"InferenceOpts": message.InferenceOpts.schema()}})
 
     def create_label(self):
@@ -158,15 +154,12 @@ class Server(Blueprint):
         return jsonify(lbl)
 
     def label(self, id: str):
-        authn()
         label = self.dbc.label.get(id)
         if label is None:
             raise exceptions.NotFound()
         return jsonify(label)
 
     def labels(self):
-        authn()
-
         try:
             rr = request.args.get("rating")
             rating = label.Rating(int(rr)) if rr is not None else None
@@ -232,7 +225,6 @@ class Server(Blueprint):
         return jsonify(self.dbc.datachip.create(name, content, agent.client))
 
     def datachip(self, id: str):
-        authn()
         chips = self.dbc.datachip.get([id])
         if len(chips) == 0:
             raise exceptions.NotFound()
@@ -262,7 +254,6 @@ class Server(Blueprint):
         return jsonify(updated)
 
     def datachips(self):
-        authn()
         return jsonify(
             self.dbc.datachip.list_all(
                 creator=request.args.get("creator"),

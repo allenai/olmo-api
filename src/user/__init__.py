@@ -34,6 +34,7 @@ class UserBlueprint(Blueprint):
 
         return jsonify(
             AuthenticatedClient(
+                id=user.id if user is not None else None,
                 client=agent.client,
                 has_accepted_terms_and_conditions=has_accepted_terms_and_conditions,
             ).model_dump(by_alias=True)

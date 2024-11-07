@@ -1,11 +1,8 @@
 import json
 from urllib.request import urlopen
 
-from authlib.integrations.flask_oauth2 import ResourceProtector
 from authlib.jose.rfc7517.jwk import JsonWebKey
 from authlib.oauth2.rfc7523 import JWTBearerTokenValidator
-
-from src.config import cfg
 
 # Most code in this file is adapted from the Auth0 Python quickstart, found here: https://auth0.com/docs/quickstart/backend/python/interactive
 # If that code changes, the files can be found on their commit here:
@@ -24,11 +21,3 @@ class Auth0JWTBearerTokenValidator(JWTBearerTokenValidator):
             "aud": {"essential": True, "value": audience},
             "iss": {"essential": True, "value": issuer},
         }
-
-
-validator = Auth0JWTBearerTokenValidator(
-    domain=cfg.auth.domain, audience=cfg.auth.audience
-)
-
-require_auth = ResourceProtector()
-require_auth.register_token_validator(validator)

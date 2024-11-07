@@ -1,23 +1,23 @@
-
-from src.config import cfg
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
 import requests
-
-
 from flask import Request, current_app, request
 from werkzeug import exceptions
 
-from src.auth.auth0 import require_auth
+from src.auth.resource_protectors import anonymous_auth_protector
+from src.config import cfg
 
 from .token import Token
+
+
 @dataclass
 class UserInfo:
     email: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+
 
 def token_from_request(r: Request) -> Optional[str]:
     auth = r.headers.get("Authorization")
@@ -33,16 +33,21 @@ def token_from_request(r: Request) -> Optional[str]:
 
 
 def request_agent() -> Optional[Token]:
-    with require_auth.acquire() as token:
-        if token is None:
-            return None
-
-        return Token(
-            client=token.sub,
-            created=datetime.fromtimestamp(token.iat, tz=timezone.utc),
-            expires=datetime.fromtimestamp(token.exp, tz=timezone.utc),
-            creator=token.iss,
-        )
+    token = anonymous_auth_protector.get_token()
+    # User is logged in through Auth0
+    if token is not None:
+        # This will happen if we get an anonymous user, this is supposed to be the anonymous user id we get from the req
+        if isinstance(token, str):
+            return Token(client=token)
+        else:
+            return Token(
+                client=token.sub,
+                created=datetime.fromtimestamp(token.iat, tz=timezone.utc),
+                expires=datetime.fromtimestamp(token.exp, tz=timezone.utc),
+                creator=token.iss,
+            )
+    else:
+        return None
 
 
 def authn() -> Token:
@@ -62,21 +67,21 @@ def authn() -> Token:
 
     return agent
 
+
 def get_user_info() -> Optional[UserInfo]:
     auth = request.headers.get("Authorization")
-    headers = {
-            "Authorization": f"{auth}",
-            "Content-Type": "application/json"
-        }
-    response = requests.get(f'https://{cfg.auth.domain}/userinfo', headers=headers)
+    headers = {"Authorization": f"{auth}", "Content-Type": "application/json"}
+    response = requests.get(f"https://{cfg.auth.domain}/userinfo", headers=headers)
 
     if response.status_code == 200:
         user_info = response.json()
-        email = user_info.get('email')
-        first_name = user_info.get('given_name')
-        last_name = user_info.get('family_name')
+        email = user_info.get("email")
+        first_name = user_info.get("given_name")
+        last_name = user_info.get("family_name")
 
         return UserInfo(email=email, first_name=first_name, last_name=last_name)
     else:
-        current_app.logger.error('Error fetching user info:', response.status_code, response.text)
-        return None  
+        current_app.logger.error(
+            "Error fetching user info:", response.status_code, response.text
+        )
+        return None

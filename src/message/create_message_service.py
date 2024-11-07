@@ -159,6 +159,7 @@ def create_message(
         final=False,
         private=request.private,
         model_type=model.model_type,
+        # expiration_time=
     )
 
     # Update the parent message to include the reply.

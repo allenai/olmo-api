@@ -6,6 +6,7 @@ from typing import Optional
 @dataclass
 class Token:
     client: str
+    is_anonymous_user: bool
     created: Optional[datetime] = None
     expires: Optional[datetime] = None
     creator: Optional[str] = None

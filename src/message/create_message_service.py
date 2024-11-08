@@ -1,6 +1,7 @@
 import dataclasses
 import json
 import os
+from datetime import datetime, timedelta, timezone
 from time import time_ns
 from typing import Generator, List, Optional
 
@@ -94,26 +95,36 @@ def create_message(
         is_content_safe = check_message_safety(request.content, checker_type)
         elapsed = (time_ns() - start) // 1_000_000
 
-        dbc.completion.create(
-            request.content,
-            [
-                completion.CompletionOutput(
-                    str(is_content_safe),
-                    finish_reason=FinishReason.Stop,
-                )
-            ],
-            message.InferenceOpts(),
-            checker_type,
-            sha,
-            tokenize_ms=-1,
-            generation_ms=elapsed,
-            queue_ms=0,
-            input_tokens=-1,
-            output_tokens=-1,
-        )
+        # We don't want to save messages from anonymous users
+        # Not saving the completion is probably better than saving it with bad info
+        if not agent.is_anonymous_user:
+            dbc.completion.create(
+                request.content,
+                [
+                    completion.CompletionOutput(
+                        str(is_content_safe),
+                        finish_reason=FinishReason.Stop,
+                    )
+                ],
+                message.InferenceOpts(),
+                checker_type,
+                sha,
+                tokenize_ms=-1,
+                generation_ms=elapsed,
+                queue_ms=0,
+                input_tokens=-1,
+                output_tokens=-1,
+            )
 
         if is_content_safe is False:
             raise exceptions.BadRequest(description="inappropriate_prompt")
+
+    # We currently want anonymous users' messages to expire after 1 day
+    message_expiration_time = (
+        datetime.now(timezone.utc) + timedelta(days=1)
+        if agent.is_anonymous_user
+        else None
+    )
 
     msg = dbc.message.create(
         request.content,
@@ -129,6 +140,7 @@ def create_message(
         original=request.original,
         private=request.private,
         harmful=None if is_content_safe is None else not is_content_safe,
+        expiration_time=message_expiration_time,
     )
 
     if msg.role == message.Role.Assistant:
@@ -167,6 +179,7 @@ def create_message(
         final=False,
         private=request.private,
         model_type=model.model_type,
+        expiration_time=message_expiration_time,
     )
 
     # Update the parent message to include the reply.
@@ -249,18 +262,20 @@ def create_message(
         prompt = create_prompt_from_datachips(datachip_info)
         output, logprobs = create_output_from_chunks(chunks)
 
-        messageCompletion = dbc.completion.create(
-            prompt,
-            [completion.CompletionOutput(output, finish_reason, logprobs)],
-            msg.opts,
-            model.compute_source_id,
-            sha,
-            tokenize_ms=-1,
-            generation_ms=gen,
-            queue_ms=0,
-            input_tokens=-1,
-            output_tokens=-1,
-        )
+        messageCompletion = None
+        if not agent.is_anonymous_user:
+            messageCompletion = dbc.completion.create(
+                prompt,
+                [completion.CompletionOutput(output, finish_reason, logprobs)],
+                msg.opts,
+                model.compute_source_id,
+                sha,
+                tokenize_ms=-1,
+                generation_ms=gen,
+                queue_ms=0,
+                input_tokens=-1,
+                output_tokens=-1,
+            )
 
         # Finalize the messages and yield
         finalMessage = dbc.message.finalize(msg.id)
@@ -272,7 +287,11 @@ def create_message(
             raise err
 
         finalReply = dbc.message.finalize(
-            reply.id, output, logprobs, messageCompletion.id, finish_reason
+            reply.id,
+            output,
+            logprobs,
+            messageCompletion.id if messageCompletion is not None else None,
+            finish_reason,
         )
         if finalReply is None:
             err = RuntimeError(f"failed to finalize message {reply.id}")
@@ -343,7 +362,10 @@ def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
     if original is not None and parent is not None and original == parent.id:
         raise exceptions.BadRequest("original message cannot be parent")
 
-    private: bool = request.json.get("private")
+    # We don't currently allow anonymous users to share messages
+    private: Optional[bool] = (
+        False if agent.is_anonymous_user else request.json.get("private")
+    )
     root = None
     template = request.json.get("template")
 
@@ -387,7 +409,9 @@ def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
     )
 
 
-def map_datachip_info(dbc, chain) -> list[InferenceEngineMessage]:
+def map_datachip_info(
+    dbc: db.Client, chain: list[message.Message]
+) -> list[InferenceEngineMessage]:
     parsedMessages = [
         ParsedMessage(content=parse.MessageContent(message.content), role=message.role)
         for message in chain

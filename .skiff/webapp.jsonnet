@@ -129,6 +129,7 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
         'nginx.ingress.kubernetes.io/enable-cors': 'true',
         'nginx.ingress.kubernetes.io/cors-allow-origin': 'https://olmo.allen.ai,https://*.olmo.allen.ai,https://playground.allenai.org,https://*.playground.allenai.org,https://*.olmo-ui.allen.ai,https://olmo-ui-playground-test.allen.ai',
         'nginx.ingress.kubernetes.io/cors-allow-credentials': 'true',
+        'nginx.ingress.kubernetes.io/cors-allow-headers': 'DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,X-Anonymous-User-Id'
     };
 
     local allenAITLS = util.getTLSConfig(fullyQualifiedName + '-allen-dot-ai', allenAIHosts);
@@ -288,8 +289,8 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
                             # https://skiff.allenai.org/resources.html
                             resources: {
                                 requests: {
-                                    cpu: 10,
-                                    memory: '40Gi'
+                                    cpu: 4,
+                                    memory: '1Gi'
                                 },
                                 limits: {
                                     cpu: 10,

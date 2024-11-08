@@ -289,8 +289,8 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
                             # https://skiff.allenai.org/resources.html
                             resources: {
                                 requests: {
-                                    cpu: 10,
-                                    memory: '40Gi'
+                                    cpu: 4,
+                                    memory: '1Gi'
                                 },
                                 limits: {
                                     cpu: 10,

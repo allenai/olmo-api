@@ -1,3 +1,10 @@
 #!/bin/bash
-set -euo pipefail
-exec flask run --host 0.0.0.0 --port 8000 --reload --debug
+exec \
+    gunicorn \
+    --workers 1 \
+    --timeout 0 \
+    --bind 0.0.0.0:8000 \
+    --enable-stdio-inheritance \
+    --access-logfile - \
+    --reload \
+    'app:create_app()'

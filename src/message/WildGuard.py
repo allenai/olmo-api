@@ -67,7 +67,7 @@ class WildGuard(SafetyChecker):
 
         current_app.logger.info(
             {
-                "checker": "GoogleModerateText",
+                "checker": "WildGuard",
                 "prompt": req.text,
                 "duration_ms": (end_ns - start_ns) / 1_000_000,
                 "is_safe": response.is_safe(),

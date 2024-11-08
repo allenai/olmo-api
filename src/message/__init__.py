@@ -24,7 +24,7 @@ class MessageBlueprint(Blueprint):
         self.delete("/<string:id>")(self.delete_message)
 
     def create_message(self) -> Response:
-        response = create_message(self.dbc, safety_checker=WildGuard())
+        response = create_message(self.dbc)
 
         if isinstance(response, Generator):
             return Response(response, mimetype="application/jsonl")

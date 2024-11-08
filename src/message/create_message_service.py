@@ -22,25 +22,35 @@ from src.inference.InferenceEngine import (
 )
 from src.inference.ModalEngine import ModalEngine
 from src.inference.TogetherAIEngine import TogetherAIEngine
-from src.message.WildGuard import WildGuard, WildguardRequest, WildguardResponse
+from src.message.GoogleModerateText import GoogleModerateText
+from src.message.SafetyChecker import (
+    SafetyCheckRequest,
+    SafetyCheckerType,
+    SafetyChecker,
+)
+from src.message.WildGuard import WildGuard
 
 
 def check_message_safety(
-    safety_checker: WildGuard, prompt: str, response: Optional[str] = None
-):
-    try:
-        output = safety_checker.check_request(
-            WildguardRequest(prompt=prompt, response=response)
-        )
+    text: str, checker_type: SafetyCheckerType = SafetyCheckerType.Google
+) -> bool | None:
+    safety_checker: SafetyChecker = GoogleModerateText()
+    request = SafetyCheckRequest(text=text)
 
-        return output
+    if checker_type == SafetyCheckerType.WildGuard:
+        safety_checker = WildGuard()
+
+    try:
+        result = safety_checker.check_request(request)
+
+        return result.is_safe()
 
     except Exception as e:
         current_app.logger.error(
             "Skipped message safety check due to error: %s. ", repr(e)
         )
 
-        return WildguardResponse()
+    return None
 
 
 @dataclasses.dataclass
@@ -62,7 +72,7 @@ def get_engine(host: str) -> InferenceEngine:
 
 
 def create_message(
-    dbc: db.Client, safety_checker: WildGuard
+    dbc: db.Client, checker_type: SafetyCheckerType = SafetyCheckerType.Google
 ) -> message.Message | Generator[str, None, None]:
     agent = authn()
 
@@ -76,13 +86,13 @@ def create_message(
             f"model {request.model_id} is not available on {request.host}"
         )
 
-    safety_check_result = None
+    is_content_safe = None
     # Capture the SHA, as the current_app context is lost in the generator.
     sha = os.environ["SHA"] if not current_app.debug else "DEV"
 
     if request.role == message.Role.User:
         start = time_ns()
-        safety_check_result = check_message_safety(safety_checker, request.content)
+        is_content_safe = check_message_safety(request.content, checker_type)
         elapsed = (time_ns() - start) // 1_000_000
 
         # We don't want to save messages from anonymous users
@@ -92,12 +102,12 @@ def create_message(
                 request.content,
                 [
                     completion.CompletionOutput(
-                        str(safety_check_result),
+                        str(is_content_safe),
                         finish_reason=FinishReason.Stop,
                     )
                 ],
                 message.InferenceOpts(),
-                "wildguard-modal",
+                checker_type,
                 sha,
                 tokenize_ms=-1,
                 generation_ms=elapsed,
@@ -106,7 +116,7 @@ def create_message(
                 output_tokens=-1,
             )
 
-        if safety_check_result.request_harmful is True:
+        if is_content_safe is False:
             raise exceptions.BadRequest(description="inappropriate_prompt")
 
     # We currently want anonymous users' messages to expire after 1 day
@@ -129,9 +139,7 @@ def create_message(
         final=request.role == message.Role.Assistant,
         original=request.original,
         private=request.private,
-        harmful=safety_check_result.request_harmful
-        if safety_check_result is not None
-        else None,
+        harmful=None if is_content_safe is None else not is_content_safe,
         expiration_time=message_expiration_time,
     )
 

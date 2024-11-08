@@ -24,6 +24,53 @@ default_options = [
 ]
 
 
+class TestAnonymousMessageEndpoints(base.IntegrationTest):
+    messages: list[tuple[str, base.AuthenticatedClient]] = []
+    child_msgs: list[tuple[str, base.AuthenticatedClient]] = []
+
+    def runTest(self):
+        anonymous_user = self.user(anonymous=True)
+
+        create_message_request = requests.post(
+            f"{self.origin}/v3/message",
+            headers=self.auth(anonymous_user),
+            json={
+                "content": "I'm a magical labrador named Murphy, who are you? ",
+                "private": True,
+                **default_model_options,
+            },
+        )
+        create_message_request.raise_for_status()
+
+        response_messages = [
+            json.loads(util.last_response_line(create_message_request))
+        ]
+        first_message = response_messages[0]
+        self.messages.append((first_message["id"], anonymous_user))
+
+        for child in first_message["children"]:
+            child_and_user = (child["id"], anonymous_user)
+            self.messages.append(child_and_user)
+            self.child_msgs.append(child_and_user)
+
+        assert first_message["private"] is False
+        assert first_message["expiration_time"] is not None
+
+    def tearDown(self):
+        # Since the delete operation cascades, we have to find all child messages
+        # and remove them from self.messages. Otherwise, we'll run into 404 errors
+        # when executing r.raise_for_status()
+        messages_to_delete = [
+            msg for msg in self.messages if msg not in self.child_msgs
+        ]
+
+        for id, user in messages_to_delete:
+            r = requests.delete(
+                f"{self.origin}/v3/message/{id}", headers=self.auth(user)
+            )
+            r.raise_for_status()
+
+
 class TestMessageEndpoints(base.IntegrationTest):
     messages: list[tuple[str, base.AuthenticatedClient]] = []
     child_msgs: list[tuple[str, base.AuthenticatedClient]] = []

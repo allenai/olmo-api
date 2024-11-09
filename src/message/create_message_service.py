@@ -74,6 +74,8 @@ def get_engine(host: str) -> InferenceEngine:
 def create_message(
     dbc: db.Client, checker_type: SafetyCheckerType = SafetyCheckerType.Google
 ) -> message.Message | Generator[str, None, None]:
+
+    start_all = time_ns()
     agent = authn()
 
     request = validate_and_map_create_message_request(dbc, agent=agent)
@@ -87,13 +89,16 @@ def create_message(
         )
 
     is_content_safe = None
-    # Capture the SHA, as the current_app context is lost in the generator.
+    # Capture the SHA and logger, as the current_app context is lost in the generator.
     sha = os.environ["SHA"] if not current_app.debug else "DEV"
+    logger = current_app.logger
+
+    elapsed_safe = 0
 
     if request.role == message.Role.User:
-        start = time_ns()
+        start_safe = time_ns()
         is_content_safe = check_message_safety(request.content, checker_type)
-        elapsed = (time_ns() - start) // 1_000_000
+        elapsed_safe = (time_ns() - start_safe) // 1_000_000
 
         # We don't want to save messages from anonymous users
         # Not saving the completion is probably better than saving it with bad info
@@ -110,7 +115,7 @@ def create_message(
                 checker_type,
                 sha,
                 tokenize_ms=-1,
-                generation_ms=elapsed,
+                generation_ms=elapsed_safe,
                 queue_ms=0,
                 input_tokens=-1,
                 output_tokens=-1,
@@ -198,6 +203,8 @@ def create_message(
         # Now yield each chunk as it's returned.
         finish_reason: Optional[FinishReason] = None
         try:
+            first_ns = 0
+            chunk_count = 0
             for chunk in inference_engine.create_streamed_message(
                 model=model.compute_source_id,
                 messages=datachip_info,
@@ -223,6 +230,8 @@ def create_message(
                 )
                 chunks.append(new_chunk)
 
+                chunk_count += 1
+                first_ns = time_ns() if first_ns == 0 else first_ns
                 yield format_message(new_chunk)
         except grpc.RpcError as e:
             err = f"inference failed: {e}"
@@ -302,6 +311,16 @@ def create_message(
 
         finalMessage = dataclasses.replace(finalMessage, children=[finalReply])
 
+        end_all = time_ns()
+        logger.info({
+            "event":"inference.timing",
+            "ttft_ms":(first_ns - start_all) // 1e+6,
+            "total_ms":(end_all - start_all) // 1e+6,
+            "safety_ms":elapsed_safe,
+            "sha":sha,
+            "model":model.id,
+            "safety_check_id":checker_type,
+        })
         yield format_message(finalMessage)
 
     return stream()

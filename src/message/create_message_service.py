@@ -83,7 +83,7 @@ def create_message(
         )
 
     is_content_safe = None
-    # Capture the SHA, as the current_app context is lost in the generator.
+    # Capture the SHA and logger, as the current_app context is lost in the generator.
     sha = os.environ.get("SHA") or "DEV"
     logger = current_app.logger
 

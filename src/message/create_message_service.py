@@ -85,7 +85,9 @@ def create_message(
     is_content_safe = None
     # Capture the SHA, as the current_app context is lost in the generator.
     sha = os.environ.get("SHA") or "DEV"
+    logger = current_app.logger
 
+    safety_check_elapsed_time = 0
     if request.role == message.Role.User:
         safety_check_start_time = time_ns()
         is_content_safe = check_message_safety(request.content, checker_type)

@@ -33,8 +33,9 @@ services:
   message-deletion-job:
     build: ./message_deletion_job
     profiles: ["scheduled-job"]
-    environment:
-      POSTGRES_CONNECTION_STRING: postgres://app:llmz@db:5432/llmx?sslmode=disable
+    volumes:
+      - ./config.json:/secret/cfg/config.json
+    
     
 volumes:
   pgdata:

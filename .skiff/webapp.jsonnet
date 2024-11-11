@@ -11,7 +11,7 @@
 local config = import '../skiff.json';
 local util = import './util.libsonnet';
 
-function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
+function(apiImage, messageDeletionJobImage, cause, sha, env='prod', branch='', repo='', buildId='')
     // All Skiff applications get a *.allen.ai URL in addition to *.apps.allenai.org.
     // This domain is attached to a separate Ingress, as to support authentication
     // via either canonical domain.
@@ -347,10 +347,71 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
         },
     };
 
+    local messageDeletionJobName = config.appName + '-message-deletion-job';
+    local messageDeletionJob = {
+        apiVersion: 'batch/v1',
+        kind: 'CronJob',
+        metadata: {
+            name: messageDeletionJobName,
+            namespace: namespaceName,
+            labels: labels
+        },
+        spec: {
+            // Don't ever run more than one at a time. This prevents another
+            // job from being kicked off in one is already in progress.
+            concurrencyPolicy: 'Forbid',
+            // Keep around 3 failed jobs. Otherwise Kubernetes will keep 'em all
+            failedJobsHistoryLimit: 3,
+            // Keep 6 successful jobs. Otherwise Kubernetes will keep 'em all
+            successfulJobsHistoryLimit: 6,
+            // Daily
+            schedule: '0 0 * * *',
+            jobTemplate: {
+                spec: {
+                    // Don't retry if things fail. Deleting things is sensitive,
+                    // so if something goes wrong we should manually take a look.
+                    backoffLimit: 0,
+                    // A single completion is all we need to be successfull
+                    completions: 1,
+                    // Only run one
+                    parallelism: 1,
+                    template: {
+                        spec: {
+                            restartPolicy: 'Never',
+                            containers: [
+                                {
+                                    name: messageDeletionJobName,
+                                    image: messageDeletionJobImage,
+                                    volumeMounts: [
+                                        {
+                                            name: 'cfg',
+                                            mountPath: '/secret/cfg',
+                                            readOnly: true
+                                        }
+                                    ]
+                                },
+                            ],
+                            volumes: [
+                                {
+                                    name: 'cfg',
+                                    secret: {
+                                        secretName: 'cfg'
+                                    }
+                                },
+                            ]
+                        },
+                    },
+                },
+            },
+        },
+    };
+
+
     [
         namespace,
         allenAIIngress,
         deployment,
         service,
-        pdb
+        pdb,
+        messageDeletionJob
     ]

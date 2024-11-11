@@ -21,7 +21,6 @@ from src.inference.InferenceEngine import (
     InferenceEngineMessage,
 )
 from src.inference.ModalEngine import ModalEngine
-from src.inference.TogetherAIEngine import TogetherAIEngine
 from src.message.GoogleModerateText import GoogleModerateText
 from src.message.SafetyChecker import (
     SafetyCheckRequest,
@@ -63,13 +62,8 @@ def get_engine(host: str) -> InferenceEngine:
     match host:
         case "inferd":
             return InferDEngine()
-        case "modal":
+        case "modal" | _:
             return ModalEngine()
-
-        # here the engine is default to togetherAI
-        case _:
-            return TogetherAIEngine()
-
 
 def create_message(
     dbc: db.Client, checker_type: SafetyCheckerType = SafetyCheckerType.Google
@@ -89,11 +83,8 @@ def create_message(
         )
 
     is_content_safe = None
-    # Capture the SHA and logger, as the current_app context is lost in the generator.
-    sha = os.environ["SHA"] if not current_app.debug else "DEV"
-    logger = current_app.logger
-
-    safety_check_elapsed_time = 0
+    # Capture the SHA, as the current_app context is lost in the generator.
+    sha = os.environ.get("SHA") or "DEV"
 
     if request.role == message.Role.User:
         safety_check_start_time = time_ns()

@@ -83,11 +83,8 @@ def create_message(
         )
 
     is_content_safe = None
-    # Capture the SHA and logger, as the current_app context is lost in the generator.
-    sha = os.environ["SHA"] if not current_app.debug else "DEV"
-    logger = current_app.logger
-
-    safety_check_elapsed_time = 0
+    # Capture the SHA, as the current_app context is lost in the generator.
+    sha = os.environ.get("SHA") or "DEV"
 
     if request.role == message.Role.User:
         safety_check_start_time = time_ns()

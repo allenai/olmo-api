@@ -16,6 +16,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./schema:/docker-entrypoint-initdb.d
+      
   api:
     build: .
     entrypoint: [ "/api/dev.sh" ]
@@ -28,5 +29,12 @@ services:
       - E2E_AUTH0_CLIENT_SECRET
     ports:
       - 8000:8000
+  
+  message-deletion-job:
+    build: ./message_deletion_job
+    profiles: ["scheduled-job"]
+    environment:
+      POSTGRES_CONNECTION_STRING: postgres://app:llmz@db:5432/llmx?sslmode=disable
+    
 volumes:
   pgdata:

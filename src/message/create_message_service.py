@@ -317,15 +317,15 @@ def create_message(
 
         end_all = time_ns()
         logger.info({
-            "event":"inference.timing",
-            "ttft_ms":(first_ns - start_all) // 1e+6,
-            "total_ms":(end_all - start_all) // 1e+6,
-            "safety_ms":safety_check_elapsed_time,
-            "input_tokens":input_token_count,
-            "output_tokens":output_token_count,
-            "sha":sha,
-            "model":model.id,
-            "safety_check_id":checker_type,
+            "event": "inference.timing",
+            "ttft_ms": (first_ns - start_all) // 1e+6,
+            "total_ms": (end_all - start_all) // 1e+6,
+            "safety_ms": safety_check_elapsed_time,
+            "input_tokens": input_token_count,
+            "output_tokens": output_token_count,
+            "sha": sha,
+            "model": model.id,
+            "safety_check_id": checker_type,
         })
         yield format_message(finalMessage)
 

@@ -32,7 +32,7 @@ steps:
     '.',
   ]
 
-- id: 'api.push'
+- id: 'messageDeletionJob.push'
   name: 'gcr.io/cloud-builders/docker'
   args: [
     'push',

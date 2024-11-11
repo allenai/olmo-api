@@ -12,6 +12,7 @@ steps:
     '--build-arg', 'BUILDKIT_INLINE_CACHE=1',
     '.',
   ]
+
 - id: 'api.push'
   name: 'gcr.io/cloud-builders/docker'
   args: [
@@ -19,6 +20,26 @@ steps:
     'gcr.io/$PROJECT_ID/$REPO_NAME-api:$COMMIT_SHA',
   ]
   waitFor: [ 'api.build' ]
+
+  - id: 'messageDeletionJob.build'
+  name: 'gcr.io/cloud-builders/docker'
+  args: [
+    'build',
+    '-t', 'gcr.io/$PROJECT_ID/$REPO_NAME-message-deletion-job:latest',
+    '-t', 'gcr.io/$PROJECT_ID/$REPO_NAME-message-deletion-job:$COMMIT_SHA',
+    '--cache-from', 'gcr.io/$PROJECT_ID/$REPO_NAME-message-deletion-job:latest',
+    '--build-arg', 'BUILDKIT_INLINE_CACHE=1',
+    '.',
+  ]
+
+- id: 'messageDeletionJob.push'
+  name: 'gcr.io/cloud-builders/docker'
+  args: [
+    'push',
+    'gcr.io/$PROJECT_ID/$REPO_NAME-message-deletion-job:$COMMIT_SHA',
+  ]
+  waitFor: [ 'messageDeletionJob.build' ]
+
 # Generate our Kubernetes configuration
 - id: 'config'
   name: 'gcr.io/ai2-reviz/jsonnet'
@@ -28,6 +49,7 @@ steps:
     '--output-file', './webapp.yaml',
     '--tla-str', 'env=$_ENV',
     '--tla-str', 'apiImage=gcr.io/$PROJECT_ID/$REPO_NAME-api:$COMMIT_SHA',
+    '--tla-str', 'messageDeletionJobImage=gcr.io/$PROJECT_ID/$REPO_NAME-message-deletion-job:$COMMIT_SHA'
     '--tla-str', 'sha=$COMMIT_SHA',
     '--tla-str', 'cause=Automated Skiff Deploy SHA:$COMMIT_SHA BUILD:$BUILD_ID',
     '--tla-str', 'branch=$BRANCH_NAME',
@@ -37,6 +59,7 @@ steps:
   ]
   dir: '.skiff'
   waitFor: [ '-' ]
+
 - id: 'deploy'
   name: 'gcr.io/ai2-reviz/rudder'
   args: [
@@ -46,19 +69,27 @@ steps:
   ]
   dir: '.skiff'
   waitFor: [ 'api.push', 'config' ]
+
 substitutions:
   _ENV: prod
+  
 images: [
   'gcr.io/$PROJECT_ID/$REPO_NAME-api:$COMMIT_SHA',
   'gcr.io/$PROJECT_ID/$REPO_NAME-api:latest',
+  'gcr.io/$PROJECT_ID/$REPO_NAME-message-deletion-job:$COMMIT_SHA',
+  'gcr.io/$PROJECT_ID/$REPO_NAME-message-deletion-job:latest'
+  
 ]
+
 artifacts:
   objects:
     location: 'gs://skiff-archive/$REPO_NAME/$_ENV/$BUILD_ID/$COMMIT_SHA'
     paths: ['.skiff/webapp.yaml']
+
 options:
   env:
     - "DOCKER_BUILDKIT=1"
+    
 # Google is quite slow at scaling up A100s
 timeout: 60m
 

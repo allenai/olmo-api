@@ -16,6 +16,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./schema:/docker-entrypoint-initdb.d
+      
   api:
     build: .
     entrypoint: [ "/api/dev.sh" ]
@@ -28,5 +29,13 @@ services:
       - E2E_AUTH0_CLIENT_SECRET
     ports:
       - 8000:8000
+  
+  message-deletion-job:
+    build: ./message_deletion_job
+    profiles: ["scheduled-job"]
+    volumes:
+      - ./config.json:/secret/cfg/config.json
+    
+    
 volumes:
   pgdata:

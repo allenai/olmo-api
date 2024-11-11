@@ -45,8 +45,22 @@ class ModalEngine(InferenceEngine):
 
             logprobs = []
 
+            inputTokenCount = (
+                chunk["result"]["inputTokenCount"]
+                if "result" in chunk and "inputTokenCount" in chunk["result"]
+                else -1
+            )
+
+            outputTokenCount = (
+                chunk["result"]["outputTokenCount"]
+                if "result" in chunk and "outputTokenCount" in chunk["result"]
+                else -1
+            )
+
             yield InferenceEngineChunk(
                 content=content,
                 model=model,
                 logprobs=logprobs,
+                input_token_count=inputTokenCount,
+                output_token_count=outputTokenCount,
             )

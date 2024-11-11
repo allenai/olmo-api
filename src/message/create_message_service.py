@@ -205,6 +205,8 @@ def create_message(
         try:
             first_ns = 0
             chunk_count = 0
+            input_token_count = -1
+            output_token_count = -1
             for chunk in inference_engine.create_streamed_message(
                 model=model.compute_source_id,
                 messages=datachip_info,
@@ -230,6 +232,8 @@ def create_message(
                 )
                 chunks.append(new_chunk)
 
+                input_token_count = chunk.input_token_count
+                output_token_count = chunk.output_token_count
                 chunk_count += 1
                 first_ns = time_ns() if first_ns == 0 else first_ns
                 yield format_message(new_chunk)
@@ -282,8 +286,8 @@ def create_message(
                 tokenize_ms=-1,
                 generation_ms=gen,
                 queue_ms=0,
-                input_tokens=-1,
-                output_tokens=-1,
+                input_tokens=input_token_count,
+                output_tokens=output_token_count,
             )
 
         # Finalize the messages and yield
@@ -317,6 +321,8 @@ def create_message(
             "ttft_ms":(first_ns - start_all) // 1e+6,
             "total_ms":(end_all - start_all) // 1e+6,
             "safety_ms":elapsed_safe,
+            "input_tokens":input_token_count,
+            "output_tokens":output_token_count,
             "sha":sha,
             "model":model.id,
             "safety_check_id":checker_type,

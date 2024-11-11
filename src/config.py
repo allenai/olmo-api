@@ -94,7 +94,6 @@ class Config:
     db: Database
     inferd: InferD
     server: Server
-    togetherai: BaseInferenceEngineConfig
     modal: BaseInferenceEngineConfig
     auth: Auth
     wildguard: Wildguard
@@ -132,13 +131,6 @@ class Config:
                         Model(**m) for m in data["modal"]["available_models"]
                     ],
                 ),
-                togetherai=BaseInferenceEngineConfig(
-                    token=data["togetherai"].get("token"),
-                    default_model=data["togetherai"].get("default_model"),
-                    available_models=[
-                        Model(**m) for m in data["togetherai"]["available_models"]
-                    ],
-                ),
                 auth=Auth(
                     domain=data["auth"].get("auth0_domain"),
                     audience=data["auth"].get("auth0_audience"),
@@ -166,4 +158,4 @@ class Config:
 
 cfg = Config.load(path=os.environ.get("FLASK_CONFIG_PATH", default=DEFAULT_CONFIG_PATH))
 
-model_hosts = ["togetherai", "inferd", "modal"]
+model_hosts = ["inferd", "modal"]

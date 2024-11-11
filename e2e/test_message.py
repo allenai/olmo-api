@@ -446,7 +446,6 @@ class TestLogProbs(base.IntegrationTest):
             # https://github.com/vllm-project/vllm/blob/6ccc0bfffbcf1b7e927cc3dcf4159fc74ff94d40/vllm/sampling_params.py#L79-L81
             # But I don't follow the reasoning.
             # Requests coming from tulu2 on inferd will have 2 logprobs
-            # Requests coming from olmo on togetherai will have 1 logprob
             assert all(len(lp) >= 1 for lp in chunk.get("logprobs", []))
         final = json.loads(lines[-1])
         self.messages.append((final["id"], u1))

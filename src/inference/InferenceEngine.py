@@ -46,6 +46,8 @@ class InferenceEngineChunk:
     created: Optional[str] = None
     model: Optional[str] = None
     logprobs: Sequence[Sequence[Logprob]] = field(default_factory=list)
+    input_token_count: int = -1
+    output_token_count: int = -1
 
 
 @dataclass

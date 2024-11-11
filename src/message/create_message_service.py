@@ -93,12 +93,12 @@ def create_message(
     sha = os.environ["SHA"] if not current_app.debug else "DEV"
     logger = current_app.logger
 
-    elapsed_safe = 0
+    safety_check_elapsed_time = 0
 
     if request.role == message.Role.User:
-        start_safe = time_ns()
+        safety_check_start_time = time_ns()
         is_content_safe = check_message_safety(request.content, checker_type)
-        elapsed_safe = (time_ns() - start_safe) // 1_000_000
+        safety_check_elapsed_time = (time_ns() - safety_check_start_time) // 1_000_000
 
         # We don't want to save messages from anonymous users
         # Not saving the completion is probably better than saving it with bad info
@@ -115,7 +115,7 @@ def create_message(
                 checker_type,
                 sha,
                 tokenize_ms=-1,
-                generation_ms=elapsed_safe,
+                generation_ms=safety_check_elapsed_time,
                 queue_ms=0,
                 input_tokens=-1,
                 output_tokens=-1,
@@ -320,7 +320,7 @@ def create_message(
             "event":"inference.timing",
             "ttft_ms":(first_ns - start_all) // 1e+6,
             "total_ms":(end_all - start_all) // 1e+6,
-            "safety_ms":elapsed_safe,
+            "safety_ms":safety_check_elapsed_time,
             "input_tokens":input_token_count,
             "output_tokens":output_token_count,
             "sha":sha,

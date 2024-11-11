@@ -21,7 +21,6 @@ from src.inference.InferenceEngine import (
     InferenceEngineMessage,
 )
 from src.inference.ModalEngine import ModalEngine
-from src.inference.TogetherAIEngine import TogetherAIEngine
 from src.message.GoogleModerateText import GoogleModerateText
 from src.message.SafetyChecker import (
     SafetyCheckRequest,
@@ -63,13 +62,8 @@ def get_engine(host: str) -> InferenceEngine:
     match host:
         case "inferd":
             return InferDEngine()
-        case "modal":
+        case "modal" | _:
             return ModalEngine()
-
-        # here the engine is default to togetherAI
-        case _:
-            return TogetherAIEngine()
-
 
 def create_message(
     dbc: db.Client, checker_type: SafetyCheckerType = SafetyCheckerType.Google

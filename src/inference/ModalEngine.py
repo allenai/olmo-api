@@ -37,16 +37,17 @@ class ModalEngine(InferenceEngine):
         opts = asdict(inference_options)
         
         for chunk in f.remote_gen(msgs, opts):
-            content = (
-                chunk["result"]["output"]["text"]
-                if "result" in chunk and "output" in chunk["result"] and "text" in chunk["result"]["output"]
-                else ""
-            )
+            content = chunk.get("result", {}).get("output", {}).get("text", "")
 
             logprobs = []
+
+            inputTokenCount = chunk.get("result", {}).get("inputTokenCount", -1)
+            outputTokenCount = chunk.get("result", {}).get("outputTokenCount", -1)
 
             yield InferenceEngineChunk(
                 content=content,
                 model=model,
                 logprobs=logprobs,
+                input_token_count=inputTokenCount,
+                output_token_count=outputTokenCount,
             )

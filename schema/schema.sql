@@ -199,3 +199,7 @@ SET NOT NULL;
 
 ALTER TABLE message
 ADD COLUMN IF NOT EXISTS expiration_time TIMESTAMPTZ NULL;
+
+-- Add system_prompt column for storing system prompt for different models
+ALTER TABLE message
+ADD COLUMN IF NOT EXISTS system_prompt TEXT NULL;

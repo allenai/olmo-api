@@ -55,7 +55,7 @@ def check_message_safety(
 @dataclasses.dataclass
 class ParsedMessage:
     content: parse.MessageContent
-    role: message.Role
+    role: str
 
 
 def get_engine(host: str) -> InferenceEngine:
@@ -65,10 +65,10 @@ def get_engine(host: str) -> InferenceEngine:
         case "modal" | _:
             return ModalEngine()
 
+
 def create_message(
     dbc: db.Client, checker_type: SafetyCheckerType = SafetyCheckerType.Google
 ) -> message.Message | Generator[str, None, None]:
-
     start_all = time_ns()
     agent = authn()
 
@@ -83,6 +83,10 @@ def create_message(
         )
 
     is_content_safe = None
+
+    # system_prompt is added to the root message only
+    system_prompt = model.system_prompt if request.parent is None else None
+
     # Capture the SHA and logger, as the current_app context is lost in the generator.
     sha = os.environ.get("SHA") or "DEV"
     logger = current_app.logger
@@ -97,16 +101,16 @@ def create_message(
         # Not saving the completion is probably better than saving it with bad info
         if not agent.is_anonymous_user:
             dbc.completion.create(
-                request.content,
-                [
+                input=request.content,
+                outputs=[
                     completion.CompletionOutput(
                         str(is_content_safe),
                         finish_reason=FinishReason.Stop,
                     )
                 ],
-                message.InferenceOpts(),
-                checker_type,
-                sha,
+                opts=message.InferenceOpts(),
+                model=checker_type,
+                sha=sha,
                 tokenize_ms=-1,
                 generation_ms=safety_check_elapsed_time,
                 queue_ms=0,
@@ -125,10 +129,10 @@ def create_message(
     )
 
     msg = dbc.message.create(
-        request.content,
-        agent.client,
-        request.role,
-        request.opts,
+        content=request.content,
+        creator=agent.client,
+        role=request.role,
+        opts=request.opts,
         model_id=request.model_id,
         model_host=request.host,
         root=request.parent.root if request.parent is not None else None,
@@ -139,6 +143,7 @@ def create_message(
         private=request.private,
         harmful=None if is_content_safe is None else not is_content_safe,
         expiration_time=message_expiration_time,
+        system_prompt=system_prompt,
     )
 
     if msg.role == message.Role.Assistant:
@@ -150,7 +155,16 @@ def create_message(
         msgs = message.Message.group_by_id(request.root.flatten())
         while chain[-1].parent is not None:
             chain.append(msgs[chain[-1].parent])
-        chain.reverse()
+
+    # add system prompt if there is any in the root message
+    # otherwise, use the default system prompt for backward compatibility
+    system_message = message.Message.generate_system_message(
+        chain[-1],
+        system_prompt
+        or "You are a helpful and harmless AI Assistant built by the Allen Institute for AI.",
+    )
+    chain.append(system_message)
+    chain.reverse()
 
     # Find all of the datachips
     datachip_info = map_datachip_info(dbc, chain)
@@ -166,10 +180,10 @@ def create_message(
     # Create a message that will eventually capture the streamed response.
     # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message
     reply = dbc.message.create(
-        "",
-        agent.client,
-        message.Role.Assistant,
-        msg.opts,
+        content="",
+        creator=agent.client,
+        role=message.Role.Assistant,
+        opts=msg.opts,
         model_id=request.model_id,
         model_host=request.host,
         root=msg.root,
@@ -229,7 +243,9 @@ def create_message(
                 output_token_count = chunk.output_token_count
                 chunk_count += 1
                 first_ns = time_ns() if first_ns == 0 else first_ns
+
                 yield format_message(new_chunk)
+
         except grpc.RpcError as e:
             err = f"inference failed: {e}"
             yield format_message(
@@ -309,17 +325,19 @@ def create_message(
         finalMessage = dataclasses.replace(finalMessage, children=[finalReply])
 
         end_all = time_ns()
-        logger.info({
-            "event": "inference.timing",
-            "ttft_ms": (first_ns - start_all) // 1e+6,
-            "total_ms": (end_all - start_all) // 1e+6,
-            "safety_ms": safety_check_elapsed_time,
-            "input_tokens": input_token_count,
-            "output_tokens": output_token_count,
-            "sha": sha,
-            "model": model.id,
-            "safety_check_id": checker_type,
-        })
+        logger.info(
+            {
+                "event": "inference.timing",
+                "ttft_ms": (first_ns - start_all) // 1e6,
+                "total_ms": (end_all - start_all) // 1e6,
+                "safety_ms": safety_check_elapsed_time,
+                "input_tokens": input_token_count,
+                "output_tokens": output_token_count,
+                "sha": sha,
+                "model": model.id,
+                "safety_check_id": checker_type,
+            }
+        )
         yield format_message(finalMessage)
 
     return stream()
@@ -431,7 +449,9 @@ def map_datachip_info(
     dbc: db.Client, chain: list[message.Message]
 ) -> list[InferenceEngineMessage]:
     parsedMessages = [
-        ParsedMessage(content=parse.MessageContent(message.content), role=message.role)
+        ParsedMessage(
+            content=parse.MessageContent(message.content), role=str(message.role)
+        )
         for message in chain
     ]
     refs = [

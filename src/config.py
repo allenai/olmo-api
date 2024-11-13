@@ -25,6 +25,7 @@ class Model:
     compute_source_id: str
     model_type: ModelType
     is_deprecated: Optional[bool] = None
+    system_prompt: Optional[str] = None
 
 
 @dataclass

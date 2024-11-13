@@ -18,6 +18,7 @@ from . import label, paged
 class Role(StrEnum):
     User = "user"
     Assistant = "assistant"
+    System = "system"
 
 
 @dataclass
@@ -138,6 +139,7 @@ MessageRow = tuple[
     str,
     str,
     Optional[datetime],
+    Optional[str],
     # Label fields
     Optional[str],
     Optional[str],
@@ -203,6 +205,7 @@ class Message:
     finish_reason: Optional[str] = None
     harmful: Optional[bool] = None
     expiration_time: Optional[datetime] = None
+    system_prompt: Optional[str] = None
     labels: list[label.Label] = field(default_factory=list)
 
     def flatten(self) -> list["Message"]:
@@ -217,7 +220,7 @@ class Message:
     def from_row(r: MessageRow) -> "Message":
         labels = []
         # If the label id is not None, unpack the label.
-        label_row = 21
+        label_row = 22
         if r[label_row] is not None:
             labels = [label.Label.from_row(cast(label.LabelRow, r[label_row:]))]
 
@@ -251,7 +254,44 @@ class Message:
             model_id=r[18],
             model_host=r[19],
             expiration_time=r[20],
+            system_prompt=r[21],
             labels=labels,
+        )
+
+    @staticmethod
+    def generate_system_message(root_msg: "Message", default_content: str) -> "Message":
+        msg_content = (
+            root_msg.system_prompt
+            if root_msg.system_prompt is not None
+            else default_content
+        )
+
+        return Message(
+            id=obj.NewID("system"),
+            content=msg_content,
+            snippet=text_snippet(msg_content),
+            creator=root_msg.creator,
+            role=Role.System,
+            opts=root_msg.opts,
+            root=root_msg.root,
+            created=root_msg.created,
+            deleted=root_msg.deleted,
+            parent=None,
+            template=root_msg.template,
+            logprobs=root_msg.logprobs,
+            children=None,
+            completion=root_msg.completion,
+            final=root_msg.final,
+            original=root_msg.original,
+            private=root_msg.private,
+            model_type=root_msg.model_type,
+            finish_reason=root_msg.finish_reason,
+            harmful=root_msg.harmful,
+            model_id=root_msg.model_id,
+            model_host=root_msg.model_host,
+            expiration_time=root_msg.expiration_time,
+            system_prompt=root_msg.system_prompt,
+            labels=root_msg.labels,
         )
 
     def merge(self, m: "Message") -> "Message":
@@ -326,15 +366,16 @@ class Store:
         finish_reason: Optional[str] = None,
         harmful: Optional[bool] = None,
         expiration_time: Optional[datetime] = None,
+        system_prompt: Optional[str] = None,
     ) -> Message:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 try:
                     q = """
                         INSERT INTO
-                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private, model_type, finish_reason, harmful, model_id, model_host, expiration_time)
+                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private, model_type, finish_reason, harmful, model_id, model_host, expiration_time, system_prompt)
                         VALUES
-                            (%(id)s, %(content)s, %(creator)s, %(role)s, %(opts)s, %(root)s, %(parent)s, %(template)s, %(logprobs)s, %(completion)s, %(final)s, %(original)s, %(private)s, %(model_type)s, %(finish_reason)s, %(harmful)s, %(model_id)s, %(model_host)s, %(expiration_time)s)
+                            (%(id)s, %(content)s, %(creator)s, %(role)s, %(opts)s, %(root)s, %(parent)s, %(template)s, %(logprobs)s, %(completion)s, %(final)s, %(original)s, %(private)s, %(model_type)s, %(finish_reason)s, %(harmful)s, %(model_id)s, %(model_host)s, %(expiration_time)s, %(system_prompt)s)
                         RETURNING
                             id,
                             content,
@@ -357,6 +398,7 @@ class Store:
                             model_id,
                             model_host,
                             expiration_time,
+                            system_prompt,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -390,6 +432,7 @@ class Store:
                             "model_id": model_id,
                             "model_host": model_host,
                             "expiration_time": expiration_time,
+                            "system_prompt": system_prompt,
                         },
                     ).fetchone()
 
@@ -446,6 +489,7 @@ class Store:
                         message.model_id,
                         message.model_host,
                         message.expiration_time,
+                        message.system_prompt,
                         label.id,
                         label.message,
                         label.rating,
@@ -506,6 +550,7 @@ class Store:
                         message.model_id,
                         message.model_host,
                         message.expiration_time,
+                        message.system_prompt,
                         label.id,
                         label.message,
                         label.rating,
@@ -574,6 +619,7 @@ class Store:
                             model_id,
                             model_host,
                             expiration_time,
+                            system_prompt,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -641,6 +687,7 @@ class Store:
                         updated.model_id,
                         updated.model_host,
                         updated.expiration_time,
+                        updated.system_prompt,
                         label.id,
                         label.message,
                         label.rating,
@@ -753,6 +800,7 @@ class Store:
                         message.model_id,
                         message.model_host,
                         message.expiration_time,
+                        message.system_prompt,
                         label.id,
                         label.message,
                         label.rating,

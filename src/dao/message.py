@@ -18,6 +18,7 @@ from . import label, paged
 class Role(StrEnum):
     User = "user"
     Assistant = "assistant"
+    System = "system"
 
 
 @dataclass

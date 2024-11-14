@@ -65,10 +65,10 @@ def get_engine(host: str) -> InferenceEngine:
         case "modal" | _:
             return ModalEngine()
 
+
 def create_message(
     dbc: db.Client, checker_type: SafetyCheckerType = SafetyCheckerType.Google
 ) -> message.Message | Generator[str, None, None]:
-
     start_all = time_ns()
     agent = authn()
 
@@ -124,22 +124,82 @@ def create_message(
         else None
     )
 
-    msg = dbc.message.create(
-        request.content,
-        agent.client,
-        request.role,
-        request.opts,
-        model_id=request.model_id,
-        model_host=request.host,
-        root=request.parent.root if request.parent is not None else None,
-        parent=request.parent.id if request.parent is not None else None,
-        template=request.template,
-        final=request.role == message.Role.Assistant,
-        original=request.original,
-        private=request.private,
-        harmful=None if is_content_safe is None else not is_content_safe,
-        expiration_time=message_expiration_time,
-    )
+    is_msg_harmful = None if is_content_safe is None else not is_content_safe
+    system_msg = None
+    msg = None
+
+    # if the request message is the first message in a thread
+    if request.parent is None:
+        # create a system prompt message if the current model is specified with a system prompt
+        if model.system_prompt is not None:
+            system_msg = dbc.message.create(
+                content=model.system_prompt,
+                creator=agent.client,
+                role=message.Role.System,
+                opts=request.opts,
+                model_id=request.model_id,
+                model_host=request.host,
+                root=None,
+                parent=None,
+                template=request.template,
+                final=False,
+                original=request.original,
+                private=request.private,
+                harmful=is_msg_harmful,
+                expiration_time=message_expiration_time,
+            )
+            msg = dbc.message.create(
+                content=request.content,
+                creator=agent.client,
+                role=request.role,
+                opts=request.opts,
+                model_id=request.model_id,
+                model_host=request.host,
+                root=system_msg.id,
+                parent=system_msg.id,
+                template=request.template,
+                final=request.role == message.Role.Assistant,
+                original=request.original,
+                private=request.private,
+                harmful=is_msg_harmful,
+                expiration_time=message_expiration_time,
+            )
+            # Update system prompt to include user message as a child.
+            system_msg = dataclasses.replace(system_msg, children=[msg])
+        else:
+            msg = dbc.message.create(
+                content=request.content,
+                creator=agent.client,
+                role=request.role,
+                opts=request.opts,
+                model_id=request.model_id,
+                model_host=request.host,
+                root=None,
+                parent=None,
+                template=request.template,
+                final=request.role == message.Role.Assistant,
+                original=request.original,
+                private=request.private,
+                harmful=is_msg_harmful,
+                expiration_time=message_expiration_time,
+            )
+    else:
+        msg = dbc.message.create(
+            content=request.content,
+            creator=agent.client,
+            role=request.role,
+            opts=request.opts,
+            model_id=request.model_id,
+            model_host=request.host,
+            root=request.parent.root,
+            parent=request.parent.id,
+            template=request.template,
+            final=request.role == message.Role.Assistant,
+            original=request.original,
+            private=request.private,
+            harmful=is_msg_harmful,
+            expiration_time=message_expiration_time,
+        )
 
     if msg.role == message.Role.Assistant:
         return msg
@@ -150,7 +210,11 @@ def create_message(
         msgs = message.Message.group_by_id(request.root.flatten())
         while chain[-1].parent is not None:
             chain.append(msgs[chain[-1].parent])
-        chain.reverse()
+
+    if system_msg is not None:
+        chain.append(system_msg)
+
+    chain.reverse()
 
     # Find all of the datachips
     datachip_info = map_datachip_info(dbc, chain)
@@ -190,7 +254,11 @@ def create_message(
         chunks: list[message.MessageChunk] = []
         start_gen = time_ns()
 
-        # First yield the new user message
+        # Yield the system prompt message if there is any
+        if system_msg is not None:
+            yield format_message(system_msg)
+
+        # Yield the new user message
         yield format_message(msg)
 
         # Now yield each chunk as it's returned.
@@ -288,7 +356,7 @@ def create_message(
         if finalMessage is None:
             err = RuntimeError(f"failed to finalize message {msg.id}")
             yield format_message(
-                message.MessageStreamError(reply.id, str(err), "finalization failure")
+                message.MessageStreamError(msg.id, str(err), "finalization failure")
             )
             raise err
 
@@ -308,6 +376,23 @@ def create_message(
 
         finalMessage = dataclasses.replace(finalMessage, children=[finalReply])
 
+        if system_msg is not None:
+            finalSystemMessage = dbc.message.finalize(system_msg.id)
+
+            if finalSystemMessage is None:
+                err = RuntimeError(f"failed to finalize message {system_msg.id}")
+                yield format_message(
+                    message.MessageStreamError(
+                        system_msg.id, str(err), "finalization failure"
+                    )
+                )
+                raise err
+
+            finalSystemMessage = dataclasses.replace(
+                finalSystemMessage, children=[finalMessage]
+            )
+            finalMessage = finalSystemMessage
+
         end_all = time_ns()
         logger.info({
             "event": "inference.timing",
@@ -320,6 +405,7 @@ def create_message(
             "model": model.id,
             "safety_check_id": checker_type,
         })
+
         yield format_message(finalMessage)
 
     return stream()

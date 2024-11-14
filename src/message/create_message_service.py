@@ -164,8 +164,7 @@ def create_message(
                 harmful=is_msg_harmful,
                 expiration_time=message_expiration_time,
             )
-            # Update system prompt to include user message as a child.
-            system_msg = dataclasses.replace(system_msg, children=[msg])
+
         else:
             msg = dbc.message.create(
                 content=request.content,
@@ -247,6 +246,10 @@ def create_message(
     # Update the parent message to include the reply.
     msg = dataclasses.replace(msg, children=[reply])
 
+    # Update system prompt to include user message as a child.
+    if system_msg is not None:
+        system_msg = dataclasses.replace(system_msg, children=[msg])
+
     def stream() -> Generator[str, None, None]:
         # We keep track of each chunk and the timing information per-chunk
         # so that we can manifest a completion at the end. This will go
@@ -257,9 +260,9 @@ def create_message(
         # Yield the system prompt message if there is any
         if system_msg is not None:
             yield format_message(system_msg)
-
         # Yield the new user message
-        yield format_message(msg)
+        else:
+            yield format_message(msg)
 
         # Now yield each chunk as it's returned.
         finish_reason: Optional[FinishReason] = None
@@ -394,17 +397,19 @@ def create_message(
             finalMessage = finalSystemMessage
 
         end_all = time_ns()
-        logger.info({
-            "event": "inference.timing",
-            "ttft_ms": (first_ns - start_all) // 1e+6,
-            "total_ms": (end_all - start_all) // 1e+6,
-            "safety_ms": safety_check_elapsed_time,
-            "input_tokens": input_token_count,
-            "output_tokens": output_token_count,
-            "sha": sha,
-            "model": model.id,
-            "safety_check_id": checker_type,
-        })
+        logger.info(
+            {
+                "event": "inference.timing",
+                "ttft_ms": (first_ns - start_all) // 1e6,
+                "total_ms": (end_all - start_all) // 1e6,
+                "safety_ms": safety_check_elapsed_time,
+                "input_tokens": input_token_count,
+                "output_tokens": output_token_count,
+                "sha": sha,
+                "model": model.id,
+                "safety_check_id": checker_type,
+            }
+        )
 
         yield format_message(finalMessage)
 

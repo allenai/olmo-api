@@ -27,7 +27,7 @@ class FinishReason(StrEnum):
 
 @dataclass
 class InferenceEngineMessage:
-    role: message.Role
+    role: str
     content: str
 
 

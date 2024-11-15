@@ -215,13 +215,15 @@ def create_message(
 
     chain.reverse()
 
-    # Find all of the datachips
-    datachip_info = map_datachip_info(dbc, chain)
+    # transform to InferenceEngineMessage
+    chain = [
+        InferenceEngineMessage(role=str(msg.role), content=msg.content) for msg in chain
+    ]
 
     input = Struct()
     input.update(
         {
-            "messages": [dataclasses.asdict(datachip) for datachip in datachip_info],
+            "messages": [dataclasses.asdict(m) for m in chain],
             "opts": dataclasses.asdict(msg.opts),
         }
     )
@@ -273,7 +275,7 @@ def create_message(
             output_token_count = -1
             for chunk in inference_engine.create_streamed_message(
                 model=model.compute_source_id,
-                messages=datachip_info,
+                messages=chain,
                 inference_options=reply.opts,
             ):
                 finish_reason = chunk.finish_reason
@@ -336,7 +338,7 @@ def create_message(
         # The generation is complete. Store it.
         # TODO: InferD should store this so that we don't have to.
         # TODO: capture InferD request input instead of our manifestation of the prompt format
-        prompt = create_prompt_from_datachips(datachip_info)
+        prompt = create_prompt_from_engine_input(chain)
         output, logprobs = create_output_from_chunks(chunks)
 
         messageCompletion = None
@@ -549,14 +551,14 @@ def format_message(obj) -> str:
     return json.dumps(obj=obj, cls=util.CustomEncoder) + "\n"
 
 
-def format_prompt(role: message.Role, content: str) -> str:
-    return f"<|{role}|>\n{content}"
+def format_prompt(message: InferenceEngineMessage) -> str:
+    return f"<|{message.role}|>\n{message.content}"
 
 
-def create_prompt_from_datachips(datachips: List[InferenceEngineMessage]) -> str:
-    return "\n".join(
-        [format_prompt(datachip.role, datachip.content) for datachip in datachips]
-    )
+def create_prompt_from_engine_input(
+    input_list: List[InferenceEngineMessage],
+) -> str:
+    return "\n".join([format_prompt(m) for m in input_list])
 
 
 def create_output_from_chunks(chunks: List[message.MessageChunk]):

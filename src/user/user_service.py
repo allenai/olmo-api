@@ -71,7 +71,7 @@ def migrate_user_from_anonymous_user(
 
     updated_user = None
 
-    if new_user is not None and previous_user is not None:
+    if previous_user is not None and new_user is not None:
         most_recent_terms_accepted_date = max(
             previous_user.terms_accepted_date, new_user.terms_accepted_date
         )
@@ -88,6 +88,9 @@ def migrate_user_from_anonymous_user(
             terms_accepted_date=previous_user.terms_accepted_date,
             acceptance_revoked_date=previous_user.acceptance_revoked_date,
         )
+
+    elif previous_user is None and new_user is not None:
+        updated_user = new_user
 
     updated_messages_count = dbc.message.migrate_messages_to_new_user(
         previous_user_id=anonymous_user_id, new_user_id=new_user_id

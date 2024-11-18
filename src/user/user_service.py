@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, cast
+from typing import Optional
 
 from flask import request
 from pydantic import Field
@@ -58,7 +58,7 @@ class MigrateFromAnonymousUserRequest(APIInterface):
 
 
 class MigrateFromAnonymousUserResponse(APIInterface):
-    updated_user: User = Field()
+    updated_user: Optional[User] = Field()
     messages_updated_count: int = Field()
 
 
@@ -69,12 +69,14 @@ def migrate_user_from_anonymous_user(
     previous_user = dbc.user.get_by_client(anonymous_user_id)
     new_user = dbc.user.get_by_client(new_user_id)
 
+    updated_user = None
+
     if new_user is not None and previous_user is not None:
         most_recent_terms_accepted_date = max(
             previous_user.terms_accepted_date, new_user.terms_accepted_date
         )
 
-        # TODO: carry over terms revoked date
+        # TODO: carry over acceptance revoked date
 
         updated_user = dbc.user.update(
             client=new_user_id, terms_accepted_date=most_recent_terms_accepted_date
@@ -86,15 +88,12 @@ def migrate_user_from_anonymous_user(
             terms_accepted_date=previous_user.terms_accepted_date,
             acceptance_revoked_date=previous_user.acceptance_revoked_date,
         )
-    else:
-        updated_user = dbc.user.create(client=new_user_id)
 
     updated_messages_count = dbc.message.migrate_messages_to_new_user(
         previous_user_id=anonymous_user_id, new_user_id=new_user_id
     )
 
     return MigrateFromAnonymousUserResponse(
-        # We check to make sure new_user exists so updated_user _should_ exist
-        updated_user=cast(User, updated_user),
+        updated_user=updated_user,
         messages_updated_count=updated_messages_count,
     )

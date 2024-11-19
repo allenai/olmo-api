@@ -807,3 +807,20 @@ class Store:
                 return MessageList(
                     messages=roots, meta=paged.ListMeta(total, opts.offset, opts.limit)
                 )
+
+    def migrate_messages_to_new_user(self, previous_user_id: str, new_user_id: str):
+        with self.pool.connection() as conn:
+            q = """
+                UPDATE message
+                SET creator = %(new_user_id)s
+                WHERE creator = %(previous_user_id)s
+                """
+
+            with conn.cursor() as cur:
+                return cur.execute(
+                    query=q,
+                    params={
+                        "new_user_id": new_user_id,
+                        "previous_user_id": previous_user_id,
+                    },
+                ).rowcount

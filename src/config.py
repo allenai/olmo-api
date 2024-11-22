@@ -26,6 +26,8 @@ class Model:
     model_type: ModelType
     is_deprecated: Optional[bool] = None
     system_prompt: Optional[str] = None
+    family_id: Optional[str] = None
+    family_name: Optional[str] = None
 
 
 @dataclass

@@ -1,7 +1,7 @@
 import dataclasses
+from typing import Optional, Sequence
 
 from src import config
-from typing import Sequence
 
 
 @dataclasses.dataclass
@@ -12,6 +12,8 @@ class ModelEntity:
     description: str
     model_type: str
     is_deprecated: bool
+    family_id: Optional[str] = None
+    family_name: Optional[str] = None
 
 
 def get_available_models() -> Sequence[ModelEntity]:
@@ -20,7 +22,7 @@ def get_available_models() -> Sequence[ModelEntity]:
     for host in config.model_hosts:
         host_config = getattr(config.cfg, host)
         default_model = host_config.default_model
-        models_for_host = []
+        models_for_host: list[ModelEntity] = []
 
         for model in host_config.available_models:
             model_entity = ModelEntity(
@@ -30,6 +32,8 @@ def get_available_models() -> Sequence[ModelEntity]:
                 description=model.description,
                 model_type=model.model_type,
                 is_deprecated=model.is_deprecated or False,
+                family_id=model.family_id,
+                family_name=model.family_name,
             )
 
             # Add the default model first, and other models afterward

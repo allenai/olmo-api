@@ -29,7 +29,7 @@ steps:
     '-t', 'gcr.io/$PROJECT_ID/$REPO_NAME-message-deletion-job:$COMMIT_SHA',
     '--cache-from', 'gcr.io/$PROJECT_ID/$REPO_NAME-message-deletion-job:latest',
     '--build-arg', 'BUILDKIT_INLINE_CACHE=1',
-    '.',
+    './message_deletion_job',
   ]
 
 - id: 'messageDeletionJob.push'

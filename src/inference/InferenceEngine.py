@@ -4,7 +4,6 @@ from enum import StrEnum
 from typing import Generator, Optional, Protocol, Sequence
 
 from src import config
-from src.dao import message
 
 
 class FinishReason(StrEnum):
@@ -29,6 +28,13 @@ class FinishReason(StrEnum):
 class InferenceEngineMessage:
     role: str
     content: str
+
+
+@dataclass
+class InferenceEngineMessageWithImage:
+    role: str
+    content: str
+    image: str
 
 
 @dataclass
@@ -69,7 +75,7 @@ class InferenceEngine(Protocol):
     def create_streamed_message(
         self,
         model: str,
-        messages: Sequence[InferenceEngineMessage],
+        messages: Sequence[InferenceEngineMessage | InferenceEngineMessageWithImage],
         inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
         raise NotImplementedError

@@ -3,6 +3,7 @@ from dataclasses import asdict
 from typing import Generator, Optional, Sequence
 
 import modal
+from werkzeug.datastructures import FileStorage
 
 from src import config
 from src.inference.InferenceEngine import (

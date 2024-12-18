@@ -46,7 +46,7 @@ class ModalEngine(InferenceEngine):
             if isinstance(messages[0], InferenceEngineMessageWithImage):
                 new_message = messages[0]
                 if isinstance(new_message.image, FileStorage):
-                    image = base64.b64decode(new_message.image.stream.read()).decode()
+                    image = base64.b64encode(new_message.image.stream.read()).decode()
                 else:
                     image = new_message.image
 

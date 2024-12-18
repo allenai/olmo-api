@@ -1,4 +1,5 @@
 import dataclasses
+import io
 import json
 import os
 from datetime import datetime, timedelta, timezone
@@ -485,8 +486,14 @@ def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
     template = request.json.get("template")
 
     image = None
-    if request.files.get("prompt-image") is not None:
-        image = request.files["prompt-image"]
+    # When we add real request image handling remove this!
+    if request.json.get("send_fake_image") is True:
+        image_file = io.open("/api/image(1).png", "rb")
+        image = FileStorage(stream=image_file)
+
+    # this code can handle input from the request, we'll just need to set up the request correctly
+    # if request.files.get("prompt-image") is not None:
+    #     image = request.files["prompt-image"]
 
     if parent is not None:
         root = dbc.message.get(parent.root)

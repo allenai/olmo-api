@@ -28,7 +28,7 @@ class ModalEngine(InferenceEngine):
         model = next((m for m in self.available_models if m.id == model_id), None)
         return model
 
-    def __get_opts_for_model(
+    def __get_args_for_model(
         self,
         model: str,
         messages: Sequence[InferenceEngineMessage | InferenceEngineMessageWithImage],
@@ -43,11 +43,12 @@ class ModalEngine(InferenceEngine):
             return [
                 {
                     "prompt": modal_msgs,
-                    "image": (
-                        messages[0].image
-                        if isinstance(messages[0], InferenceEngineMessageWithImage)
-                        else None
-                    ),
+                    "image": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII=",
+                    # "image": (
+                    #     messages[0].image
+                    #     if isinstance(messages[0], InferenceEngineMessageWithImage)
+                    #     else None
+                    # ),
                     "opts": asdict(inference_options),
                 }
             ]
@@ -63,10 +64,11 @@ class ModalEngine(InferenceEngine):
         inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
         f = modal.Function.lookup(model, "vllm_api", client=self.client)
-        msgs = [asdict(msg) for msg in messages]
-        opts = asdict(inference_options)
+        args = self.__get_args_for_model(
+            model=model, messages=messages, inference_options=inference_options
+        )
 
-        for chunk in f.remote_gen(msgs, opts):
+        for chunk in f.remote_gen(*args):
             content = chunk.get("result", {}).get("output", {}).get("text", "")
 
             logprobs: Sequence[Sequence[Logprob]] = []

@@ -17,9 +17,9 @@ from src.auth.auth_service import authn
 from src.dao import completion, message
 from src.inference.InferDEngine import InferDEngine
 from src.inference.InferenceEngine import (
+    BaseInferenceEngineMessage,
     FinishReason,
     InferenceEngine,
-    InferenceEngineMessage,
     InferenceEngineMessageWithImage,
 )
 from src.inference.ModalEngine import ModalEngine
@@ -218,8 +218,8 @@ def create_message(
     parent_chain.reverse()
 
     # transform to InferenceEngineMessage
-    chain: list[InferenceEngineMessage | InferenceEngineMessageWithImage] = [
-        InferenceEngineMessage(role=str(msg.role), content=msg.content)
+    chain: list[BaseInferenceEngineMessage | InferenceEngineMessageWithImage] = [
+        BaseInferenceEngineMessage(role=str(msg.role), content=msg.content)
         for msg in parent_chain
     ]
 
@@ -228,7 +228,7 @@ def create_message(
             role=msg.role, content=msg.content, image=request.image
         )
         if request.image is not None
-        else InferenceEngineMessage(msg.role, content=msg.content)
+        else BaseInferenceEngineMessage(msg.role, content=msg.content)
     )
     chain.append(new_message)
 
@@ -538,7 +538,7 @@ def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
 
 def map_datachip_info(
     dbc: db.Client, chain: list[message.Message]
-) -> list[InferenceEngineMessage]:
+) -> list[BaseInferenceEngineMessage]:
     parsedMessages = [
         ParsedMessage(content=parse.MessageContent(message.content), role=message.role)
         for message in chain
@@ -554,7 +554,7 @@ def map_datachip_info(
     }
 
     datachips = [
-        InferenceEngineMessage(
+        BaseInferenceEngineMessage(
             role=pm.role, content=pm.content.replace_datachips(chips)
         )
         for pm in parsedMessages
@@ -567,12 +567,12 @@ def format_message(obj) -> str:
     return json.dumps(obj=obj, cls=util.CustomEncoder) + "\n"
 
 
-def format_prompt(message: InferenceEngineMessage) -> str:
+def format_prompt(message: BaseInferenceEngineMessage) -> str:
     return f"<|{message.role}|>\n{message.content}"
 
 
 def create_prompt_from_engine_input(
-    input_list: List[InferenceEngineMessage],
+    input_list: List[BaseInferenceEngineMessage],
 ) -> str:
     return "\n".join([format_prompt(m) for m in input_list])
 

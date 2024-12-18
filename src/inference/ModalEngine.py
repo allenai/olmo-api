@@ -7,9 +7,9 @@ from werkzeug.datastructures import FileStorage
 
 from src import config
 from src.inference.InferenceEngine import (
+    BaseInferenceEngineMessage,
     InferenceEngine,
     InferenceEngineChunk,
-    InferenceEngineMessage,
     InferenceEngineMessageWithImage,
     InferenceOptions,
     Logprob,
@@ -33,7 +33,7 @@ class ModalEngine(InferenceEngine):
     def __get_args_for_model(
         self,
         model: str,
-        messages: Sequence[InferenceEngineMessage | InferenceEngineMessageWithImage],
+        messages: Sequence[BaseInferenceEngineMessage],
         inference_options: InferenceOptions,
     ):
         if model == "mm-olmo-uber-model-v4-synthetic":
@@ -66,7 +66,7 @@ class ModalEngine(InferenceEngine):
     def create_streamed_message(
         self,
         model: str,
-        messages: Sequence[InferenceEngineMessage | InferenceEngineMessageWithImage],
+        messages: Sequence[BaseInferenceEngineMessage],
         inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
         f = modal.Function.lookup(model, "vllm_api", client=self.client)

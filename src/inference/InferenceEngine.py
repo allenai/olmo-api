@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Generator, Optional, Protocol, Sequence
 
+from werkzeug.datastructures import FileStorage
+
 from src import config
 
 
@@ -31,10 +33,9 @@ class InferenceEngineMessage:
 
 
 @dataclass
-class InferenceEngineMessageWithImage:
-    role: str
-    content: str
-    image: str
+class InferenceEngineMessageWithImage(InferenceEngineMessage):
+    # We may want to make this generic to "files" later? Need to figure out how to handle extensions and file type checking.
+    image: str | FileStorage
 
 
 @dataclass

@@ -1,7 +1,9 @@
+import base64
 from dataclasses import asdict
-from typing import Generator, Sequence
+from typing import Generator, Optional, Sequence
 
 import modal
+from werkzeug.datastructures import FileStorage
 
 from src import config
 from src.inference.InferenceEngine import (
@@ -40,15 +42,19 @@ class ModalEngine(InferenceEngine):
                 + "Assistant:"
             )
 
+            image: Optional[str] = None
+            if isinstance(messages[0], InferenceEngineMessageWithImage):
+                new_message = messages[0]
+                if isinstance(new_message.image, FileStorage):
+                    image = base64.b64decode(new_message.image.stream.read()).decode()
+                else:
+                    image = new_message.image
+
             return [
                 {
                     "prompt": modal_msgs,
-                    "image": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII=",
-                    # "image": (
-                    #     messages[0].image
-                    #     if isinstance(messages[0], InferenceEngineMessageWithImage)
-                    #     else None
-                    # ),
+                    # "image": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII=",
+                    "image": image,
                     "opts": asdict(inference_options),
                 }
             ]

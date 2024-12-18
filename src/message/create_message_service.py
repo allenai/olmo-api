@@ -7,8 +7,8 @@ from typing import Generator, List, Optional
 
 import grpc
 from flask import current_app, request
-from google.protobuf.struct_pb2 import Struct
 from werkzeug import exceptions
+from werkzeug.datastructures import FileStorage
 
 from src import config, db, parse, util
 from src.auth import token
@@ -19,13 +19,14 @@ from src.inference.InferenceEngine import (
     FinishReason,
     InferenceEngine,
     InferenceEngineMessage,
+    InferenceEngineMessageWithImage,
 )
 from src.inference.ModalEngine import ModalEngine
 from src.message.GoogleModerateText import GoogleModerateText
 from src.message.SafetyChecker import (
-    SafetyCheckRequest,
-    SafetyCheckerType,
     SafetyChecker,
+    SafetyCheckerType,
+    SafetyCheckRequest,
 )
 from src.message.WildGuard import WildGuard
 
@@ -203,30 +204,32 @@ def create_message(
     if msg.role == message.Role.Assistant:
         return msg
 
+    parent_chain: list[message.Message] = []
     # Resolve the message chain if we need to.
-    chain = [msg]
     if request.root is not None:
         msgs = message.Message.group_by_id(request.root.flatten())
-        while chain[-1].parent is not None:
-            chain.append(msgs[chain[-1].parent])
+        while parent_chain[-1].parent is not None:
+            parent_chain.append(msgs[parent_chain[-1].parent])
 
     if system_msg is not None:
-        chain.append(system_msg)
+        parent_chain.append(system_msg)
 
-    chain.reverse()
+    parent_chain.reverse()
 
     # transform to InferenceEngineMessage
-    chain = [
-        InferenceEngineMessage(role=str(msg.role), content=msg.content) for msg in chain
+    chain: list[InferenceEngineMessage | InferenceEngineMessageWithImage] = [
+        InferenceEngineMessage(role=str(msg.role), content=msg.content)
+        for msg in parent_chain
     ]
 
-    input = Struct()
-    input.update(
-        {
-            "messages": [dataclasses.asdict(m) for m in chain],
-            "opts": dataclasses.asdict(msg.opts),
-        }
+    new_message = (
+        InferenceEngineMessageWithImage(
+            role=msg.role, content=msg.content, image=request.image
+        )
+        if request.image is not None
+        else InferenceEngineMessage(msg.role, content=msg.content)
     )
+    chain.append(new_message)
 
     # Create a message that will eventually capture the streamed response.
     # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message
@@ -420,16 +423,17 @@ def create_message(
 
 @dataclasses.dataclass
 class CreateMessageRequest:
-    parent: message.Message | None
+    parent: Optional[message.Message]
     opts: message.InferenceOpts
     content: str
     role: message.Role
     original: str
     private: bool
-    root: message.Message | None
+    root: Optional[message.Message]
     template: str
     model_id: str
     host: str
+    image: Optional[FileStorage] = None
 
 
 def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
@@ -480,6 +484,10 @@ def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
     root = None
     template = request.json.get("template")
 
+    image = None
+    if request.files.get("prompt-image") is not None:
+        image = request.files["prompt-image"]
+
     if parent is not None:
         root = dbc.message.get(parent.root)
         if root is None:
@@ -517,6 +525,7 @@ def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
         template=template,
         model_id=model_id,
         host=host,
+        image=image,
     )
 
 

@@ -53,7 +53,6 @@ class ModalEngine(InferenceEngine):
             return [
                 {
                     "prompt": modal_msgs,
-                    # "image": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII=",
                     "image": image,
                     "opts": asdict(inference_options),
                 }

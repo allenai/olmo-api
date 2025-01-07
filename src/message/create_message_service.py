@@ -217,8 +217,8 @@ def create_message(
 
     parent_chain.reverse()
 
-    # transform to InferenceEngineMessage
     chain: list[BaseInferenceEngineMessage | InferenceEngineMessageWithImage] = [
+        # TODO: OEUI-492 when we save images make sure we make an InferenceEngineMessageWithImage if the message has an image
         BaseInferenceEngineMessage(role=str(msg.role), content=msg.content)
         for msg in parent_chain
     ]

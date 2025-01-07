@@ -1,6 +1,6 @@
 from typing import Generator, cast
 
-from flask import Blueprint, Response, jsonify, request
+from flask import Blueprint, Response, jsonify, request, stream_with_context
 from flask_pydantic_api.api_wrapper import pydantic_api
 from flask_pydantic_api.utils import UploadedFile
 from pydantic import ValidationError
@@ -12,7 +12,7 @@ from src.message.create_message_request import (
     CreateMessageRequestWithLists,
 )
 from src.message.create_message_service import (
-    CreateMessageRequest as ServiceCreateMessageRequest,
+    CreateMessageRequest as CreateMessageRequestWithFullMessages,
 )
 from src.message.create_message_service import stream_new_message
 
@@ -38,7 +38,7 @@ def create_v4_message_blueprint(dbc: db.Client) -> Blueprint:
             response.status_code = 400
             return response
 
-        mapped_request = ServiceCreateMessageRequest(
+        mapped_request = CreateMessageRequestWithFullMessages(
             parent=(
                 dbc.message.get(create_message_request_with_lists.parent)
                 if create_message_request_with_lists.parent is not None
@@ -57,11 +57,14 @@ def create_v4_message_blueprint(dbc: db.Client) -> Blueprint:
             model_id=create_message_request_with_lists.model_id,
             host=create_message_request_with_lists.host,
             opts=InferenceOpts.from_request(create_message_request.model_dump()),
+            files=create_message_request_with_lists.files,
         )
 
         stream_response = stream_new_message(mapped_request, dbc)
         if isinstance(stream_response, Generator):
-            return Response(stream_response, mimetype="application/jsonl")
+            return Response(
+                stream_with_context(stream_response), mimetype="application/jsonl"
+            )
         else:
             return jsonify(stream_response)
 

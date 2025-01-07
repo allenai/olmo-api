@@ -3,7 +3,7 @@ import json
 import os
 from datetime import datetime, timedelta, timezone
 from time import time_ns
-from typing import Generator, List, Optional
+from typing import Generator, List, Optional, Sequence
 
 import grpc
 from flask import current_app, request
@@ -78,7 +78,7 @@ class CreateMessageRequest:
     template: Optional[str]
     model_id: str
     host: str
-    image: Optional[FileStorage] = None
+    files: Optional[Sequence[FileStorage]] = None
 
 
 def get_engine(host: str) -> InferenceEngine:

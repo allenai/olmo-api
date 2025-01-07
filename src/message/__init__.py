@@ -1,6 +1,6 @@
 from typing import Generator
 
-from flask import Blueprint, Response, jsonify
+from flask import Blueprint, Response, jsonify, request
 
 from src import db
 from src.inference.InferenceEngine import InferenceEngine

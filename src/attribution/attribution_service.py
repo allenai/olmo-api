@@ -64,6 +64,7 @@ class ResponseAttributionDocument:
             "pes2o",
             "starcoder",
             "wiki",
+            "dolmino",
         ]:
             source = metadata.get("source", None)
             if source == "dclm-hero-run-fasttext_for_HF":
@@ -163,14 +164,14 @@ def get_attribution(
             delimiters=["\n", "."],
             allow_spans_with_partial_words=False,
             minimum_span_length=1,
-            maximum_frequency=10,
+            maximum_frequency=1000000,
             maximum_span_density=0.05,
-            span_ranking_method="length",
+            span_ranking_method="unigram_logprob_sum",
             include_documents=True,
             maximum_document_display_length=100,
             maximum_documents_per_span=10,
             filter_method="bm25",
-            filter_bm_25_fields_considered="response",
+            filter_bm_25_fields_considered="prompt|response",
             filter_bm_25_ratio_to_keep=1.0,
             include_input_as_tokens=True,
         ),

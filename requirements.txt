@@ -13,3 +13,4 @@ pytest==8.3.2
 modal==0.64.26
 gunicorn==23.0.0 
 google-cloud-language==2.15.0
+flask-pydantic-api==1.5.0

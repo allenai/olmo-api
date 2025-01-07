@@ -1,5 +1,4 @@
 import dataclasses
-import io
 import json
 import os
 from datetime import datetime, timedelta, timezone
@@ -20,7 +19,7 @@ from src.inference.InferenceEngine import (
     BaseInferenceEngineMessage,
     FinishReason,
     InferenceEngine,
-    InferenceEngineMessageWithImage,
+    InferenceEngineMessageWithFiles,
 )
 from src.inference.ModalEngine import ModalEngine
 from src.message.GoogleCloudStorage import GoogleCloudStorage
@@ -67,6 +66,21 @@ class ParsedMessage:
     role: message.Role
 
 
+@dataclasses.dataclass
+class CreateMessageRequest:
+    parent: Optional[message.Message]
+    opts: message.InferenceOpts
+    content: str
+    role: message.Role
+    original: Optional[str]
+    private: bool
+    root: Optional[message.Message]
+    template: Optional[str]
+    model_id: str
+    host: str
+    image: Optional[FileStorage] = None
+
+
 def get_engine(host: str) -> InferenceEngine:
     match host:
         case "inferd":
@@ -75,13 +89,13 @@ def get_engine(host: str) -> InferenceEngine:
             return ModalEngine()
 
 
-def create_message(
-    dbc: db.Client, checker_type: SafetyCheckerType = SafetyCheckerType.Google
+def stream_new_message(
+    request: CreateMessageRequest,
+    dbc: db.Client,
+    checker_type: SafetyCheckerType = SafetyCheckerType.Google,
 ) -> message.Message | Generator[str, None, None]:
     start_all = time_ns()
     agent = authn()
-
-    request = validate_and_map_create_message_request(dbc, agent=agent)
 
     inference_engine = get_engine(request.host)
 
@@ -273,11 +287,11 @@ def create_message(
 
         # Now yield each chunk as it's returned.
         finish_reason: Optional[FinishReason] = None
+        first_ns = 0
+        chunk_count = 0
+        input_token_count = -1
+        output_token_count = -1
         try:
-            first_ns = 0
-            chunk_count = 0
-            input_token_count = -1
-            output_token_count = -1
             for chunk in inference_engine.create_streamed_message(
                 model=model.compute_source_id,
                 messages=chain,
@@ -285,7 +299,7 @@ def create_message(
             ):
                 finish_reason = chunk.finish_reason
 
-                logprobs = chunk.logprobs if chunk.logprobs is not None else []
+                chunk_logprobs = chunk.logprobs if chunk.logprobs is not None else []
                 mapped_logprobs = [
                     [
                         message.TokenLogProbs(
@@ -293,7 +307,7 @@ def create_message(
                         )
                         for lp in lp_list
                     ]
-                    for lp_list in logprobs
+                    for lp_list in chunk_logprobs
                 ]
 
                 new_chunk = message.MessageChunk(
@@ -350,7 +364,7 @@ def create_message(
         if not agent.is_anonymous_user:
             messageCompletion = dbc.completion.create(
                 prompt,
-                [completion.CompletionOutput(output, finish_reason, logprobs)],
+                [completion.CompletionOutput(output, str(finish_reason), logprobs)],
                 msg.opts,
                 model.compute_source_id,
                 sha,
@@ -364,11 +378,13 @@ def create_message(
         # Finalize the messages and yield
         finalMessage = dbc.message.finalize(msg.id)
         if finalMessage is None:
-            err = RuntimeError(f"failed to finalize message {msg.id}")
+            final_message_error = RuntimeError(f"failed to finalize message {msg.id}")
             yield format_message(
-                message.MessageStreamError(msg.id, str(err), "finalization failure")
+                message.MessageStreamError(
+                    msg.id, str(final_message_error), "finalization failure"
+                )
             )
-            raise err
+            raise final_message_error
 
         finalReply = dbc.message.finalize(
             reply.id,
@@ -378,11 +394,13 @@ def create_message(
             finish_reason,
         )
         if finalReply is None:
-            err = RuntimeError(f"failed to finalize message {reply.id}")
+            final_reply_error = RuntimeError(f"failed to finalize message {reply.id}")
             yield format_message(
-                message.MessageStreamError(reply.id, str(err), "finalization failure")
+                message.MessageStreamError(
+                    reply.id, str(final_reply_error), "finalization failure"
+                )
             )
-            raise err
+            raise final_reply_error
 
         finalMessage = dataclasses.replace(finalMessage, children=[finalReply])
 
@@ -390,13 +408,17 @@ def create_message(
             finalSystemMessage = dbc.message.finalize(system_msg.id)
 
             if finalSystemMessage is None:
-                err = RuntimeError(f"failed to finalize message {system_msg.id}")
+                final_system_message_error = RuntimeError(
+                    f"failed to finalize message {system_msg.id}"
+                )
                 yield format_message(
                     message.MessageStreamError(
-                        system_msg.id, str(err), "finalization failure"
+                        system_msg.id,
+                        str(final_system_message_error),
+                        "finalization failure",
                     )
                 )
-                raise err
+                raise final_system_message_error
 
             finalSystemMessage = dataclasses.replace(
                 finalSystemMessage, children=[finalMessage]
@@ -423,19 +445,12 @@ def create_message(
     return stream()
 
 
-@dataclasses.dataclass
-class CreateMessageRequest:
-    parent: Optional[message.Message]
-    opts: message.InferenceOpts
-    content: str
-    role: message.Role
-    original: str
-    private: bool
-    root: Optional[message.Message]
-    template: str
-    model_id: str
-    host: str
-    image: Optional[FileStorage] = None
+def create_message(
+    dbc: db.Client, checker_type: SafetyCheckerType = SafetyCheckerType.Google
+) -> message.Message | Generator[str, None, None]:
+    agent = authn()
+    request = validate_and_map_create_message_request(dbc, agent=agent)
+    return stream_new_message(request, dbc, checker_type)
 
 
 def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
@@ -487,10 +502,6 @@ def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
     template = request.json.get("template")
 
     image = None
-    # When we add real request image handling remove this!
-    if request.json.get("send_fake_image") is True:
-        image_file = io.open("/api/image(1).png", "rb")
-        image = FileStorage(stream=image_file)
 
     # this code can handle input from the request, we'll just need to set up the request correctly
     # if request.files.get("prompt-image") is not None:

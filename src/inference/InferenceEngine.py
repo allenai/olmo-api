@@ -33,9 +33,9 @@ class BaseInferenceEngineMessage:
 
 
 @dataclass
-class InferenceEngineMessageWithImage(BaseInferenceEngineMessage):
+class InferenceEngineMessageWithFiles(BaseInferenceEngineMessage):
     # We may want to make this generic to "files" later? Need to figure out how to handle extensions and file type checking.
-    image: str | FileStorage
+    files: Sequence[FileStorage | str]
 
 
 @dataclass

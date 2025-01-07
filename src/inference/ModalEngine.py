@@ -10,7 +10,7 @@ from src.inference.InferenceEngine import (
     BaseInferenceEngineMessage,
     InferenceEngine,
     InferenceEngineChunk,
-    InferenceEngineMessageWithImage,
+    InferenceEngineMessageWithFiles,
     InferenceOptions,
     Logprob,
 )
@@ -43,12 +43,14 @@ class ModalEngine(InferenceEngine):
             )
 
             image: Optional[str] = None
-            if isinstance(messages[0], InferenceEngineMessageWithImage):
+            if isinstance(messages[0], InferenceEngineMessageWithFiles):
                 new_message = messages[0]
-                if isinstance(new_message.image, FileStorage):
-                    image = base64.b64encode(new_message.image.stream.read()).decode()
+                if isinstance(new_message.files[0], FileStorage):
+                    image = base64.b64encode(
+                        new_message.files[0].stream.read()
+                    ).decode()
                 else:
-                    image = new_message.image
+                    image = new_message.files[0]
 
             return [
                 {

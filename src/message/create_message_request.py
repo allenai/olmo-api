@@ -1,11 +1,10 @@
-from typing import Optional, Self, Sequence
+from typing import Optional, Self
 
 from flask_pydantic_api.utils import UploadedFile
-from pydantic import BaseModel, Field, model_validator
-from werkzeug.datastructures import FileStorage
+from pydantic import Field, model_validator
 
 from src.api_interface import APIInterface
-from src.dao.message import InferenceOpts, Message, Role
+from src.dao.message import Role
 
 
 class CreateMessageRequest(APIInterface):
@@ -43,33 +42,3 @@ class CreateMessageRequest(APIInterface):
 class CreateMessageRequestWithLists(CreateMessageRequest):
     stop: Optional[list[str]] = Field(default=None)
     files: Optional[list[UploadedFile]] = Field(default=None)
-
-
-class CreateMessageRequestWithFullMessages(BaseModel):
-    parent_id: Optional[str] = Field(default=None)
-    parent: Optional[Message] = Field(default=None)
-    opts: InferenceOpts
-    content: str = Field(min_length=1)
-    role: Role
-    original: Optional[str] = Field(default=None)
-    private: bool
-    root: Optional[Message] = Field(default=None)
-    template: Optional[str] = Field(default=None)
-    model_id: str
-    host: str
-    files: Optional[Sequence[FileStorage]] = Field(default=None)
-
-    @model_validator(mode="after")
-    def parent_exists_if_parent_id_is_set(self) -> Self:
-        if self.parent_id is not None and self.parent is None:
-            raise ValueError(f"Parent message {self.parent_id}")
-
-        return self
-
-    @model_validator(mode="after")
-    def root_exists_when_root_id_is_defined_with_no_parent(self) -> Self:
-        if self.parent is not None:
-            if self.root is None:
-                raise ValueError(f"Message has an invalid root {self.parent.root}")
-
-        return self

@@ -238,11 +238,11 @@ def stream_new_message(
 
     message_chain.reverse()
 
-    chain: list[BaseInferenceEngineMessage | InferenceEngineMessageWithImage] = [
-        InferenceEngineMessageWithImage(
-            role=msg.role, content=msg.content, image=request.image
+    chain: list[BaseInferenceEngineMessage | InferenceEngineMessageWithFiles] = [
+        InferenceEngineMessageWithFiles(
+            role=msg.role, content=msg.content, files=request.files
         )
-        if request.image is not None
+        if request.files is not None
         else BaseInferenceEngineMessage(msg.role, content=msg.content)
         for msg in message_chain
     ]

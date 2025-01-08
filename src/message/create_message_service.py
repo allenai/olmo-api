@@ -20,6 +20,7 @@ from src.inference.InferenceEngine import (
     FinishReason,
     InferenceEngine,
     InferenceEngineMessageWithFiles,
+    InferenceOptions,
 )
 from src.inference.ModalEngine import ModalEngine
 from src.message.GoogleCloudStorage import GoogleCloudStorage
@@ -296,7 +297,7 @@ def stream_new_message(
             for chunk in inference_engine.create_streamed_message(
                 model=model.compute_source_id,
                 messages=chain,
-                inference_options=reply.opts,
+                inference_options=InferenceOptions(**reply.opts.model_dump()),
             ):
                 finish_reason = chunk.finish_reason
 

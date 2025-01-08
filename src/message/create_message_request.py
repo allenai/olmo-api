@@ -1,10 +1,11 @@
-from typing import Optional, Self
+from typing import Optional, Self, Sequence
 
 from flask_pydantic_api.utils import UploadedFile
-from pydantic import Field, field_serializer, model_validator
+from pydantic import BaseModel, Field, model_validator
+from werkzeug.datastructures import FileStorage
 
 from src.api_interface import APIInterface
-from src.dao.message import Role
+from src.dao.message import InferenceOpts, Message, Role
 
 
 class CreateMessageRequest(APIInterface):
@@ -20,7 +21,6 @@ class CreateMessageRequest(APIInterface):
     role: Role
     original: Optional[str] = Field(default=None)
     private: bool
-    root: Optional[str] = Field(default=None)
     template: Optional[str] = Field(default=None)
     model_id: str
     host: str
@@ -44,10 +44,32 @@ class CreateMessageRequestWithLists(CreateMessageRequest):
     stop: Optional[list[str]] = Field(default=None)
     files: Optional[list[UploadedFile]] = Field(default=None)
 
-    # TODO: Remove this when we have real output
-    @field_serializer("files")
-    def serialize_files(self, files: Optional[list[UploadedFile]]):
-        if files is not None:
-            return [file.filename for file in files]
-        else:
-            return None
+
+class CreateMessageRequestWithFullMessages(BaseModel):
+    parent_id: Optional[str] = Field(default=None)
+    parent: Optional[Message] = Field(default=None)
+    opts: InferenceOpts
+    content: str = Field(min_length=1)
+    role: Role
+    original: Optional[str] = Field(default=None)
+    private: bool
+    root: Optional[Message] = Field(default=None)
+    template: Optional[str] = Field(default=None)
+    model_id: str
+    host: str
+    files: Optional[Sequence[FileStorage]] = Field(default=None)
+
+    @model_validator(mode="after")
+    def parent_exists_if_parent_id_is_set(self) -> Self:
+        if self.parent_id is not None and self.parent is None:
+            raise ValueError(f"Parent message {self.parent_id}")
+
+        return self
+
+    @model_validator(mode="after")
+    def root_exists_when_root_id_is_defined_with_no_parent(self) -> Self:
+        if self.parent is not None:
+            if self.root is None:
+                raise ValueError(f"Message has an invalid root {self.parent.root}")
+
+        return self

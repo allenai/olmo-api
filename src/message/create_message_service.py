@@ -503,10 +503,6 @@ def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
 
     image = None
 
-    # this code can handle input from the request, we'll just need to set up the request correctly
-    # if request.files.get("prompt-image") is not None:
-    #     image = request.files["prompt-image"]
-
     if parent is not None:
         root = dbc.message.get(parent.root)
         if root is None:
@@ -544,7 +540,7 @@ def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
         template=template,
         model_id=model_id,
         host=host,
-        image=image,
+        files=[image],
     )
 
 

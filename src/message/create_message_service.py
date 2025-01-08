@@ -450,7 +450,10 @@ def stream_new_message(
 
 
 def get_parent_and_root_messages_and_private(
-    parent_message_id: str | None, dbc: db.Client, request_private: bool | None
+    parent_message_id: str | None,
+    dbc: db.Client,
+    request_private: bool | None,
+    is_anonymous_user: bool,
 ) -> tuple[message.Message | None, message.Message | None, bool | None]:
     parent_message = (
         dbc.message.get(parent_message_id) if parent_message_id is not None else None
@@ -460,11 +463,16 @@ def get_parent_and_root_messages_and_private(
     )
 
     private = (
-        request_private
-        if request_private is not None
-        else root_message.private
-        if root_message is not None
-        else None
+        # Anonymous users aren't allowed to share messages
+        True
+        if is_anonymous_user
+        else (
+            request_private
+            if request_private is not None
+            else root_message.private
+            if root_message is not None
+            else None
+        )
     )
 
     return parent_message, root_message, private
@@ -478,7 +486,7 @@ def create_message_v3(
     agent = authn()
 
     parent_message, root_message, private = get_parent_and_root_messages_and_private(
-        request.parent, dbc, request.private
+        request.parent, dbc, request.private, is_anonymous_user=agent.is_anonymous_user
     )
 
     mapped_request = CreateMessageRequestWithFullMessages(

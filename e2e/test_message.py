@@ -53,7 +53,7 @@ class TestAnonymousMessageEndpoints(base.IntegrationTest):
             self.messages.append(child_and_user)
             self.child_msgs.append(child_and_user)
 
-        assert first_message["private"] is False
+        assert first_message["private"] is True
         assert first_message["expiration_time"] is not None
 
     def tearDown(self):
@@ -79,7 +79,15 @@ class TestMessageEndpoints(base.IntegrationTest):
         # Make sure all endpoints fail w/o auth
         for r in [
             requests.get(f"{self.origin}/v3/messages"),
-            requests.post(f"{self.origin}/v3/message", json={}),
+            requests.post(
+                f"{self.origin}/v3/message",
+                # The Pydantic validation setup  makes it so that we run request validation before auth validation
+                json={
+                    "content": "I'm a magical labrador named Murphy, who are you? ",
+                    "private": True,
+                    **default_model_options,
+                },
+            ),
             requests.get(f"{self.origin}/v3/message/XXX"),
             requests.delete(f"{self.origin}/v3/message/XXX"),
         ]:

@@ -205,32 +205,26 @@ def create_message(
     if msg.role == message.Role.Assistant:
         return msg
 
-    parent_chain: list[message.Message] = []
     # Resolve the message chain if we need to.
+    message_chain = [msg]
     if request.root is not None:
         msgs = message.Message.group_by_id(request.root.flatten())
-        while parent_chain[-1].parent is not None:
-            parent_chain.append(msgs[parent_chain[-1].parent])
+        while message_chain[-1].parent is not None:
+            message_chain.append(msgs[message_chain[-1].parent])
 
     if system_msg is not None:
-        parent_chain.append(system_msg)
+        message_chain.append(system_msg)
 
-    parent_chain.reverse()
+    message_chain.reverse()
 
     chain: list[BaseInferenceEngineMessage | InferenceEngineMessageWithImage] = [
-        # TODO: OEUI-492 when we save images make sure we make an InferenceEngineMessageWithImage if the message has an image
-        BaseInferenceEngineMessage(role=str(msg.role), content=msg.content)
-        for msg in parent_chain
-    ]
-
-    new_message = (
         InferenceEngineMessageWithImage(
             role=msg.role, content=msg.content, image=request.image
         )
         if request.image is not None
         else BaseInferenceEngineMessage(msg.role, content=msg.content)
-    )
-    chain.append(new_message)
+        for msg in message_chain
+    ]
 
     # Create a message that will eventually capture the streamed response.
     # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message

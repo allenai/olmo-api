@@ -133,6 +133,9 @@ CREATE TYPE MODEL_TYPE AS ENUM('base', 'chat');
 ALTER TABLE message
 ADD COLUMN IF NOT EXISTS model_type MODEL_TYPE NULL;
 
+ALTER TYPE MODEL_TYPE
+ADD VALUE 'image_prompt';
+
 -- Add delete cascade to below foreign keys so that deleting any rows in parent tables will automatically remove related rows in child tables --
 ALTER TABLE message DROP CONSTRAINT IF EXISTS message_completion_fkey;
 ALTER TABLE message

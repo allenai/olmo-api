@@ -150,8 +150,10 @@ class Config:
                         "olmo-7b-chat": "dolma-1_7",
                         "OLMo-peteish-dpo-preview": "olmoe",
                         "OLMoE-1B-7B-0924-Instruct": "olmoe",
+                        "OLMo-2-1124-13B-Instruct": "olmo-2-1124-13b",
                     },
                     api_url="https://infinigram-api.allen.ai",
+                    # api_url="http://host.docker.internal:8008",
                 ),
                 hubspot=Hubspot(token=data["hubspot"]["token"]),
                 google_cloud_services=GoogleCloudServices(

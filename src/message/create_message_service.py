@@ -1,4 +1,5 @@
 import dataclasses
+import io
 import json
 import os
 from datetime import datetime, timedelta, timezone
@@ -7,8 +8,8 @@ from typing import Generator, List, Optional
 
 import grpc
 from flask import current_app, request
-from google.protobuf.struct_pb2 import Struct
 from werkzeug import exceptions
+from werkzeug.datastructures import FileStorage
 
 from src import config, db, parse, util
 from src.auth import token
@@ -16,17 +17,18 @@ from src.auth.auth_service import authn
 from src.dao import completion, message
 from src.inference.InferDEngine import InferDEngine
 from src.inference.InferenceEngine import (
+    BaseInferenceEngineMessage,
     FinishReason,
     InferenceEngine,
-    InferenceEngineMessage,
+    InferenceEngineMessageWithImage,
 )
 from src.inference.ModalEngine import ModalEngine
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.GoogleModerateText import GoogleModerateText
 from src.message.SafetyChecker import (
-    SafetyCheckRequest,
-    SafetyCheckerType,
     SafetyChecker,
+    SafetyCheckerType,
+    SafetyCheckRequest,
 )
 from src.message.WildGuard import WildGuard
 
@@ -211,29 +213,25 @@ def create_message(
         return msg
 
     # Resolve the message chain if we need to.
-    chain = [msg]
+    message_chain = [msg]
     if request.root is not None:
         msgs = message.Message.group_by_id(request.root.flatten())
-        while chain[-1].parent is not None:
-            chain.append(msgs[chain[-1].parent])
+        while message_chain[-1].parent is not None:
+            message_chain.append(msgs[message_chain[-1].parent])
 
     if system_msg is not None:
-        chain.append(system_msg)
+        message_chain.append(system_msg)
 
-    chain.reverse()
+    message_chain.reverse()
 
-    # transform to InferenceEngineMessage
-    chain = [
-        InferenceEngineMessage(role=str(msg.role), content=msg.content) for msg in chain
+    chain: list[BaseInferenceEngineMessage | InferenceEngineMessageWithImage] = [
+        InferenceEngineMessageWithImage(
+            role=msg.role, content=msg.content, image=request.image
+        )
+        if request.image is not None
+        else BaseInferenceEngineMessage(msg.role, content=msg.content)
+        for msg in message_chain
     ]
-
-    input = Struct()
-    input.update(
-        {
-            "messages": [dataclasses.asdict(m) for m in chain],
-            "opts": dataclasses.asdict(msg.opts),
-        }
-    )
 
     # Create a message that will eventually capture the streamed response.
     # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message
@@ -427,16 +425,17 @@ def create_message(
 
 @dataclasses.dataclass
 class CreateMessageRequest:
-    parent: message.Message | None
+    parent: Optional[message.Message]
     opts: message.InferenceOpts
     content: str
     role: message.Role
     original: str
     private: bool
-    root: message.Message | None
+    root: Optional[message.Message]
     template: str
     model_id: str
     host: str
+    image: Optional[FileStorage] = None
 
 
 def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
@@ -487,6 +486,16 @@ def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
     root = None
     template = request.json.get("template")
 
+    image = None
+    # When we add real request image handling remove this!
+    if request.json.get("send_fake_image") is True:
+        image_file = io.open("/api/image(1).png", "rb")
+        image = FileStorage(stream=image_file)
+
+    # this code can handle input from the request, we'll just need to set up the request correctly
+    # if request.files.get("prompt-image") is not None:
+    #     image = request.files["prompt-image"]
+
     if parent is not None:
         root = dbc.message.get(parent.root)
         if root is None:
@@ -524,12 +533,13 @@ def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
         template=template,
         model_id=model_id,
         host=host,
+        image=image,
     )
 
 
 def map_datachip_info(
     dbc: db.Client, chain: list[message.Message]
-) -> list[InferenceEngineMessage]:
+) -> list[BaseInferenceEngineMessage]:
     parsedMessages = [
         ParsedMessage(content=parse.MessageContent(message.content), role=message.role)
         for message in chain
@@ -545,7 +555,7 @@ def map_datachip_info(
     }
 
     datachips = [
-        InferenceEngineMessage(
+        BaseInferenceEngineMessage(
             role=pm.role, content=pm.content.replace_datachips(chips)
         )
         for pm in parsedMessages
@@ -558,12 +568,12 @@ def format_message(obj) -> str:
     return json.dumps(obj=obj, cls=util.CustomEncoder) + "\n"
 
 
-def format_prompt(message: InferenceEngineMessage) -> str:
+def format_prompt(message: BaseInferenceEngineMessage) -> str:
     return f"<|{message.role}|>\n{message.content}"
 
 
 def create_prompt_from_engine_input(
-    input_list: List[InferenceEngineMessage],
+    input_list: List[BaseInferenceEngineMessage],
 ) -> str:
     return "\n".join([format_prompt(m) for m in input_list])
 

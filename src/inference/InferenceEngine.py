@@ -3,8 +3,9 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Generator, Optional, Protocol, Sequence
 
+from werkzeug.datastructures import FileStorage
+
 from src import config
-from src.dao import message
 
 
 class FinishReason(StrEnum):
@@ -26,9 +27,15 @@ class FinishReason(StrEnum):
 
 
 @dataclass
-class InferenceEngineMessage:
+class BaseInferenceEngineMessage:
     role: str
     content: str
+
+
+@dataclass
+class InferenceEngineMessageWithImage(BaseInferenceEngineMessage):
+    # We may want to make this generic to "files" later? Need to figure out how to handle extensions and file type checking.
+    image: str | FileStorage
 
 
 @dataclass
@@ -69,7 +76,7 @@ class InferenceEngine(Protocol):
     def create_streamed_message(
         self,
         model: str,
-        messages: Sequence[InferenceEngineMessage],
+        messages: Sequence[BaseInferenceEngineMessage],
         inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
         raise NotImplementedError

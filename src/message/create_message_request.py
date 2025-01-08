@@ -2,6 +2,7 @@ from typing import Optional, Self, Sequence
 
 from flask_pydantic_api.utils import UploadedFile
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from werkzeug import exceptions
 
 from src.api_interface import APIInterface
 from src.dao.message import (
@@ -15,10 +16,57 @@ from src.dao.message import (
     top_p,
 )
 
+# max_tokens: int = Field(
+#     default=max_tokens.default,
+#     ge=max_tokens.min,
+#     le=max_tokens.max,
+#     multiple_of=max_tokens.step,
+# )
+# temperature: float = Field(
+#     default=temperature.default,
+#     ge=temperature.min,
+#     le=temperature.max,
+#     multiple_of=temperature.step,
+# )
+# n: int = Field(default=num.default, ge=num.min, le=num.max, multiple_of=num.step)
+# top_p: float = Field(
+#     default=top_p.default, ge=top_p.min, le=top_p.max, multiple_of=top_p.step
+# )
+# logprobs: Optional[int] = Field(
+#     default=logprobs.default,
+#     ge=logprobs.min,
+#     le=logprobs.max,
+#     multiple_of=logprobs.step,
+# )
 
-class CreateMessageRequest(APIInterface):
+
+class BaseCreateMessageRequest(APIInterface):
     # TODO: Validate that the parent role is different from this role and that it exists
     parent: Optional[str] = Field(default=None)
+    content: str = Field(min_length=1)
+    role: Role
+    original: Optional[str] = Field(default=None)
+    private: bool = Field(default=False)
+    template: Optional[str] = Field(default=None)
+    model: str
+    host: str
+
+    @model_validator(mode="after")
+    def check_original_and_parent_are_different(self) -> Self:
+        if self.original is not None and self.parent == self.original:
+            raise ValueError("The original message cannot also be the parent")
+
+        return self
+
+    @model_validator(mode="after")
+    def check_assistant_message_has_a_parent(self) -> Self:
+        if self.role is Role.Assistant and self.parent is None:
+            raise ValueError("Assistant messages must have a parent")
+
+        return self
+
+
+class CreateMessageRequestV4(BaseCreateMessageRequest):
     max_tokens: int = Field(
         default=max_tokens.default,
         ge=max_tokens.min,
@@ -41,32 +89,15 @@ class CreateMessageRequest(APIInterface):
         le=logprobs.max,
         multiple_of=logprobs.step,
     )
-    content: str = Field(min_length=1)
-    role: Role
-    original: Optional[str] = Field(default=None)
-    private: bool = Field(default=False)
-    template: Optional[str] = Field(default=None)
-    model_id: str
-    host: str
-
-    @model_validator(mode="after")
-    def check_original_and_parent_are_different(self) -> Self:
-        if self.original is not None and self.parent == self.original:
-            raise ValueError("The original message cannot also be the parent")
-
-        return self
-
-    @model_validator(mode="after")
-    def check_assistant_message_has_a_parent(self) -> Self:
-        if self.role is Role.Assistant and self.parent is None:
-            raise ValueError("Assistant messages must have a parent")
-
-        return self
 
 
-class CreateMessageRequestWithLists(CreateMessageRequest):
+class CreateMessageRequestV4WithLists(CreateMessageRequestV4):
     stop: Optional[list[str]] = Field(default=None)
     files: Optional[list[UploadedFile]] = Field(default=None)
+
+
+class CreateMessageRequestV3(BaseCreateMessageRequest):
+    opts: InferenceOpts = Field(default_factory=InferenceOpts)
 
 
 class CreateMessageRequestWithFullMessages(BaseModel):
@@ -76,12 +107,13 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     content: str = Field(min_length=1)
     role: Role
     original: Optional[str] = Field(default=None)
-    private: bool
+    private: bool = Field(default=False)
     root: Optional[Message] = Field(default=None)
     template: Optional[str] = Field(default=None)
     model: str
     host: str
     files: Optional[Sequence[UploadedFile]] = Field(default=None)
+    client: str
 
     model_config = ConfigDict(validate_assignment=True)
 
@@ -130,5 +162,13 @@ class CreateMessageRequestWithFullMessages(BaseModel):
             raise ValueError(
                 "Visibility must be identical for all messages in a thread"
             )
+
+        return self
+
+    @model_validator(mode="after")
+    def current_user_created_thread(self) -> Self:
+        # Only the creator of a thread can create follow-up prompts
+        if self.root is not None and self.root.creator != self.client:
+            raise exceptions.Forbidden()
 
         return self

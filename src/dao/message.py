@@ -75,49 +75,8 @@ class InferenceOpts(BaseModel):
         }
 
     @staticmethod
-    def from_request(requestOpts: dict[str, Any]) -> "InferenceOpts":
-        mt = requestOpts.get(max_tokens.name, max_tokens.default)
-        if not isinstance(mt, int):
-            raise ValueError(f"max_tokens {mt} is not an integer")
-        if mt > max_tokens.max or mt < max_tokens.min:
-            raise ValueError(
-                f"max_tokens {mt} is not in range [{max_tokens.min}, {max_tokens.max}]"
-            )
-
-        temp = float(requestOpts.get(temperature.name, temperature.default))
-        if temp > temperature.max or temp < temperature.min:
-            raise ValueError(
-                f"temperature {temp} is not in range [{temperature.min}, {temperature.max}]"
-            )
-
-        n = requestOpts.get(num.name, num.default)
-        if not isinstance(n, int):
-            raise ValueError(f"num {n} is not an integer")
-        if n > num.max or n < num.min:
-            raise ValueError(f"num {n} is not in range [{num.min}, {num.max}]")
-
-        tp = float(requestOpts.get(top_p.name, top_p.default))
-        if tp > top_p.max or tp < top_p.min:
-            raise ValueError(f"top_p {tp} is not in range ({top_p.min}, {top_p.max}]")
-
-        lp = requestOpts.get(logprobs.name, logprobs.default)
-        if lp is not None:
-            if not isinstance(lp, int):
-                raise ValueError(f"logprobs {lp} is not an integer")
-            if lp > logprobs.max or lp < logprobs.min:
-                raise ValueError(
-                    f"logprobs {lp} is not in range [{logprobs.min}, {logprobs.max}]"
-                )
-
-        sw = requestOpts.get(stop.name, stop.default)
-        if sw is not None:
-            if not isinstance(sw, list):
-                raise ValueError(f"stop words {sw} is not a list")
-            for w in sw:
-                if not isinstance(w, str):
-                    raise ValueError(f"stop word {w} is not a string")
-
-        return InferenceOpts(mt, temp, n, tp, lp, sw)
+    def from_request(request_opts: dict[str, Any]) -> "InferenceOpts":
+        return InferenceOpts(**request_opts)
 
 
 @dataclass

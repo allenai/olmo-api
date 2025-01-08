@@ -24,8 +24,10 @@ from src.inference.InferenceEngine import (
 )
 from src.inference.ModalEngine import ModalEngine
 from src.message.GoogleCloudStorage import GoogleCloudStorage
-from src.message.create_message_request import CreateMessageRequestWithFullMessages
-from src.message.GoogleModerateText import GoogleModerateText
+from src.message.create_message_request import (
+    CreateMessageRequestV3,
+    CreateMessageRequestWithFullMessages,
+)from src.message.GoogleModerateText import GoogleModerateText
 from src.message.SafetyChecker import (
     SafetyChecker,
     SafetyCheckerType,
@@ -447,14 +449,46 @@ def stream_new_message(
     return stream()
 
 
-def create_message(
-    request: CreateMessageRequestWithFullMessages,
+def create_message_v3(
+    request: CreateMessageRequestV3,
     dbc: db.Client,
     checker_type: SafetyCheckerType = SafetyCheckerType.Google,
 ) -> message.Message | Generator[str, None, None]:
     agent = authn()
-    request = validate_and_map_create_message_request(dbc, agent=agent)
-    return stream_new_message(request, dbc, checker_type)
+
+    parent_message = (
+        dbc.message.get(request.parent) if request.parent is not None else None
+    )
+    root_message = (
+        dbc.message.get(parent_message.root) if parent_message is not None else None
+    )
+
+    private = (
+        request.private
+        if request.private is not None
+        else root_message.private
+        if root_message is not None
+        else None
+    )
+
+    # request_dict = request.model_dump()
+
+    mapped_request = CreateMessageRequestWithFullMessages(
+        parent_id=request.parent,
+        parent=parent_message,
+        opts=request.opts,
+        content=request.content,
+        role=request.role,
+        original=request.original,
+        private=private,  # type: ignore - Pydantic handles this being None with the default
+        root=root_message,
+        template=request.template,
+        model=request.model,
+        host=request.host,
+        client=agent.client,
+    )
+
+    return stream_new_message(mapped_request, dbc, checker_type)
 
 
 def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
@@ -472,11 +506,7 @@ def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
 
     if mapped_request.parent is not None:
         root = dbc.message.get(mapped_request.parent.root)
-        if root is None:
-            raise RuntimeError(f"root message {mapped_request.parent.root} not found")
         # Only the creator of a thread can create follow-up prompts
-        if root.creator != agent.client:
-            raise exceptions.Forbidden()
         # Transitively inherit the private status
         if mapped_request.private is None:
             mapped_request.private = root.private

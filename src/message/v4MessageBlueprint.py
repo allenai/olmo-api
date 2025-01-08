@@ -8,8 +8,8 @@ from pydantic import ValidationError
 from src import db
 from src.dao.message import InferenceOpts
 from src.message.create_message_request import (
-    CreateMessageRequest,
-    CreateMessageRequestWithLists,
+    CreateMessageRequestV4,
+    CreateMessageRequestV4WithLists,
 )
 from src.message.create_message_service import (
     CreateMessageRequest as CreateMessageRequestWithFullMessages,
@@ -22,7 +22,7 @@ def create_v4_message_blueprint(dbc: db.Client) -> Blueprint:
 
     @v4_message_blueprint.post("/stream")
     @pydantic_api(name="Stream a prompt response", tags=["v4", "message"])
-    def create_message(create_message_request: CreateMessageRequest) -> Response:
+    def create_message(create_message_request: CreateMessageRequestV4) -> Response:
         files = cast(list[UploadedFile], request.files.getlist("files"))
 
         stop_words = request.form.getlist("stop")
@@ -30,7 +30,7 @@ def create_v4_message_blueprint(dbc: db.Client) -> Blueprint:
         try:
             # HACK: flask-pydantic-api has poor support for lists in form data
             # Making a separate class that handles lists works for now
-            create_message_request_with_lists = CreateMessageRequestWithLists(
+            create_message_request_with_lists = CreateMessageRequestV4WithLists(
                 **create_message_request.model_dump(), files=files, stop=stop_words
             )
         except ValidationError as e:
@@ -54,9 +54,9 @@ def create_v4_message_blueprint(dbc: db.Client) -> Blueprint:
             private=create_message_request_with_lists.private,
             root=root,
             template=create_message_request_with_lists.template,
-            model_id=create_message_request_with_lists.model_id,
+            model_id=create_message_request_with_lists.model,
             host=create_message_request_with_lists.host,
-            opts=InferenceOpts.from_request(create_message_request.model_dump()),
+            opts=InferenceOpts(**create_message_request.model_dump()),
             files=create_message_request_with_lists.files,
         )
 

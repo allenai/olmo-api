@@ -4,8 +4,10 @@ from flask import Blueprint, Response, jsonify
 from flask_pydantic_api.api_wrapper import pydantic_api
 
 from src import db
-from src.message.create_message_request import CreateMessageRequestWithFullMessages
-from src.message.create_message_service import create_message as create_message_service
+from src.message.create_message_request import CreateMessageRequestV3
+from src.message.create_message_service import (
+    create_message_v3 as create_message_service,
+)
 from src.message.message_service import delete_message as delete_message_service
 from src.message.message_service import get_message
 
@@ -17,7 +19,7 @@ def create_v3_message_blueprint(dbc: db.Client) -> Blueprint:
     @v3_message_blueprint.post("/stream")
     @pydantic_api(name="Stream a prompt response", tags=["v3", "message"])
     def create_message(
-        create_message_request: CreateMessageRequestWithFullMessages,
+        create_message_request: CreateMessageRequestV3,
     ) -> Response:
         response = create_message_service(create_message_request, dbc)
 

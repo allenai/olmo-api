@@ -536,33 +536,6 @@ def create_message_v4(
     return stream_new_message(mapped_request, dbc, checker_type)
 
 
-def map_datachip_info(
-    dbc: db.Client, chain: list[message.Message]
-) -> list[BaseInferenceEngineMessage]:
-    parsedMessages = [
-        ParsedMessage(content=parse.MessageContent(message.content), role=message.role)
-        for message in chain
-    ]
-    refs = [
-        datachip.ref
-        for parsedMessages in parsedMessages
-        for datachip in parsedMessages.content.datachips
-    ]
-    chips = {
-        datachip.ref: datachip.content
-        for datachip in dbc.datachip.resolve(list(set(refs)))
-    }
-
-    datachips = [
-        BaseInferenceEngineMessage(
-            role=pm.role, content=pm.content.replace_datachips(chips)
-        )
-        for pm in parsedMessages
-    ]
-
-    return datachips
-
-
 def format_message(obj) -> str:
     return json.dumps(obj=obj, cls=util.CustomEncoder) + "\n"
 

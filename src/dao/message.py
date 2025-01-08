@@ -8,6 +8,8 @@ import bs4
 from psycopg import errors
 from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool
+from pydantic import BaseModel
+from pydantic import Field as PydanticField
 from werkzeug import exceptions
 
 from .. import obj
@@ -32,23 +34,42 @@ class Field:
 
 max_tokens = Field("max_tokens", 2048, 1, 2048, 1)
 temperature = Field("temperature", 0.7, 0.0, 1.0, 0.01)
-num = Field("n", 1, 1, 50, 1)
+# n has a max of 1 when streaming. if we allow for non-streaming requests we can go up to 50
+num = Field("n", 1, 1, 1, 1)
 top_p = Field("top_p", 1.0, 0.01, 1.0, 0.01)
 logprobs = Field("logprobs", None, 0, 10, 1)
 stop = Field("stop", None, None, None)
 
 
-@dataclass
-class InferenceOpts:
-    max_tokens: int = max_tokens.default
-    temperature: float = temperature.default
-    n: int = num.default
-    top_p: float = top_p.default
-    logprobs: Optional[int] = logprobs.default
-    stop: Optional[list[str]] = stop.default
+class InferenceOpts(BaseModel):
+    max_tokens: int = PydanticField(
+        default=max_tokens.default,
+        ge=max_tokens.min,
+        le=max_tokens.max,
+        multiple_of=max_tokens.step,
+    )
+    temperature: float = PydanticField(
+        default=temperature.default,
+        ge=temperature.min,
+        le=temperature.max,
+        multiple_of=temperature.step,
+    )
+    n: int = PydanticField(
+        default=num.default, ge=num.min, le=num.max, multiple_of=num.step
+    )
+    top_p: float = PydanticField(
+        default=top_p.default, ge=top_p.min, le=top_p.max, multiple_of=top_p.step
+    )
+    logprobs: Optional[int] = PydanticField(
+        default=logprobs.default,
+        ge=logprobs.min,
+        le=logprobs.max,
+        multiple_of=logprobs.step,
+    )
+    stop: Optional[list[str]] = PydanticField(default=stop.default)
 
     @staticmethod
-    def schema() -> dict[str, Field]:
+    def opts_schema() -> dict[str, Field]:
         return {
             f.name: f for f in [max_tokens, temperature, num, top_p, logprobs, stop]
         }
@@ -376,7 +397,7 @@ class Store:
                             "content": content,
                             "creator": creator,
                             "role": role,
-                            "opts": Jsonb(asdict(opts)),
+                            "opts": Jsonb(opts.model_dump()),
                             "root": root or mid,
                             "parent": parent,
                             "template": template,

@@ -1,38 +1,39 @@
 from typing import Generator
 
 from flask import Blueprint, Response, jsonify
+from flask_pydantic_api.api_wrapper import pydantic_api
 
 from src import db
-from src.message.create_message_service import create_message
-from src.message.message_service import delete_message, get_message
+from src.message.create_message_request import CreateMessageRequestWithFullMessages
+from src.message.create_message_service import create_message as create_message_service
+from src.message.message_service import delete_message as delete_message_service
+from src.message.message_service import get_message
 
 
-class MessageBlueprint(Blueprint):
-    def __init__(self, dbc: db.Client):
-        super().__init__("message", __name__)
+def create_v3_message_blueprint(dbc: db.Client) -> Blueprint:
+    v3_message_blueprint = Blueprint(name="message", import_name=__name__)
 
-        self.dbc = dbc
-
-        # There used to be a non-streaming endpoint for creating messages. It's gone now.
-        # Both URLs are supported for backwards compatibility.
-        self.post("/")(self.create_message)
-        self.post("/stream")(self.create_message)
-
-        self.get("/<string:id>")(self.message)
-        self.delete("/<string:id>")(self.delete_message)
-
-    def create_message(self) -> Response:
-        response = create_message(self.dbc)
+    @v3_message_blueprint.post("/")
+    @v3_message_blueprint.post("/stream")
+    @pydantic_api(name="Stream a prompt response", tags=["v3", "message"])
+    def create_message(
+        create_message_request: CreateMessageRequestWithFullMessages,
+    ) -> Response:
+        response = create_message_service(create_message_request, dbc)
 
         if isinstance(response, Generator):
             return Response(response, mimetype="application/jsonl")
         else:
             return jsonify(response)
 
-    def message(self, id: str):
-        message = get_message(id=id, dbc=self.dbc)
+    @v3_message_blueprint.get("/<string:id>")
+    def message(id: str):
+        message = get_message(id=id, dbc=dbc)
         return jsonify(message)
 
-    def delete_message(self, id: str):
-        deleted_message = delete_message(id=id, dbc=self.dbc)
+    @v3_message_blueprint.delete("/<string:id>")
+    def delete_message(id: str):
+        deleted_message = delete_message_service(id=id, dbc=dbc)
         return jsonify(deleted_message)
+
+    return v3_message_blueprint

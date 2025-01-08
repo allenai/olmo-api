@@ -38,21 +38,21 @@ def create_v4_message_blueprint(dbc: db.Client) -> Blueprint:
             response.status_code = 400
             return response
 
+        parent = (
+            dbc.message.get(create_message_request_with_lists.parent)
+            if create_message_request_with_lists.parent is not None
+            else None
+        )
+
+        root = dbc.message.get(parent.root) if parent is not None else None
+
         mapped_request = CreateMessageRequestWithFullMessages(
-            parent=(
-                dbc.message.get(create_message_request_with_lists.parent)
-                if create_message_request_with_lists.parent is not None
-                else None
-            ),
+            parent=parent,
             content=create_message_request_with_lists.content,
             role=create_message_request_with_lists.role,
             original=create_message_request_with_lists.original,
             private=create_message_request_with_lists.private,
-            root=(
-                dbc.message.get(create_message_request_with_lists.root)
-                if create_message_request_with_lists.root is not None
-                else None
-            ),
+            root=root,
             template=create_message_request_with_lists.template,
             model_id=create_message_request_with_lists.model_id,
             host=create_message_request_with_lists.host,
@@ -69,10 +69,3 @@ def create_v4_message_blueprint(dbc: db.Client) -> Blueprint:
             return jsonify(stream_response)
 
     return v4_message_blueprint
-
-
-class v4MessageBlueprint(Blueprint):
-    def __init__(self, dbc: db.Client):
-        super().__init__(name="v4_message", import_name=__name__)
-
-        self.dbc = dbc

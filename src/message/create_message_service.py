@@ -10,7 +10,7 @@ from flask import current_app, request
 from werkzeug import exceptions
 from werkzeug.datastructures import FileStorage
 
-from src import config, db, parse, util
+from src import db, parse, util
 from src.auth import token
 from src.auth.auth_service import authn
 from src.dao import completion, message
@@ -23,6 +23,7 @@ from src.inference.InferenceEngine import (
 )
 from src.inference.ModalEngine import ModalEngine
 from src.message.GoogleCloudStorage import GoogleCloudStorage
+from src.message.create_message_request import CreateMessageRequestWithFullMessages
 from src.message.GoogleModerateText import GoogleModerateText
 from src.message.SafetyChecker import (
     SafetyChecker,
@@ -90,7 +91,7 @@ def get_engine(host: str) -> InferenceEngine:
 
 
 def stream_new_message(
-    request: CreateMessageRequest,
+    request: CreateMessageRequestWithFullMessages,
     dbc: db.Client,
     checker_type: SafetyCheckerType = SafetyCheckerType.Google,
 ) -> message.Message | Generator[str, None, None]:
@@ -99,10 +100,10 @@ def stream_new_message(
 
     inference_engine = get_engine(request.host)
 
-    model = inference_engine.get_model_details(request.model_id)
+    model = inference_engine.get_model_details(request.model)
     if not model:
         raise exceptions.BadRequest(
-            f"model {request.model_id} is not available on {request.host}"
+            f"model {request.model} is not available on {request.host}"
         )
 
     is_content_safe = None
@@ -160,7 +161,7 @@ def stream_new_message(
                 creator=agent.client,
                 role=message.Role.System,
                 opts=request.opts,
-                model_id=request.model_id,
+                model_id=request.model,
                 model_host=request.host,
                 root=None,
                 parent=None,
@@ -176,7 +177,7 @@ def stream_new_message(
                 creator=agent.client,
                 role=request.role,
                 opts=request.opts,
-                model_id=request.model_id,
+                model_id=request.model,
                 model_host=request.host,
                 root=system_msg.id,
                 parent=system_msg.id,
@@ -194,7 +195,7 @@ def stream_new_message(
                 creator=agent.client,
                 role=request.role,
                 opts=request.opts,
-                model_id=request.model_id,
+                model_id=request.model,
                 model_host=request.host,
                 root=None,
                 parent=None,
@@ -211,7 +212,7 @@ def stream_new_message(
             creator=agent.client,
             role=request.role,
             opts=request.opts,
-            model_id=request.model_id,
+            model_id=request.model,
             model_host=request.host,
             root=request.parent.root,
             parent=request.parent.id,
@@ -254,7 +255,7 @@ def stream_new_message(
         agent.client,
         message.Role.Assistant,
         msg.opts,
-        model_id=request.model_id,
+        model_id=request.model,
         model_host=request.host,
         root=msg.root,
         parent=msg.id,
@@ -446,7 +447,9 @@ def stream_new_message(
 
 
 def create_message(
-    dbc: db.Client, checker_type: SafetyCheckerType = SafetyCheckerType.Google
+    request: CreateMessageRequestWithFullMessages,
+    dbc: db.Client,
+    checker_type: SafetyCheckerType = SafetyCheckerType.Google,
 ) -> message.Message | Generator[str, None, None]:
     agent = authn()
     request = validate_and_map_create_message_request(dbc, agent=agent)
@@ -454,94 +457,30 @@ def create_message(
 
 
 def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
-    if request.json is None:
-        raise exceptions.BadRequest("no request body")
-
-    pid = request.json.get("parent")
-    parent = dbc.message.get(pid) if pid is not None else None
-    if pid is not None and parent is None:
-        raise exceptions.BadRequest(f"parent message {pid} not found")
-
-    try:
-        requestOpts = request.json.get("opts")
-        opts = (
-            message.InferenceOpts.from_request(requestOpts)
-            if requestOpts is not None
-            else message.InferenceOpts()
-        )
-    except ValueError as e:
-        raise exceptions.BadRequest(str(e))
-
-    if opts.n > 1:
-        raise exceptions.BadRequest("n > 1 not supported when streaming")
-
-    content: str = request.json.get("content")
-    if content.strip() == "":
-        raise exceptions.BadRequest("empty content")
-
-    try:
-        role = message.Role(request.json.get("role", str(message.Role.User)))
-    except ValueError as e:
-        raise exceptions.BadRequest(str(e))
-
-    if role == message.Role.Assistant and parent is None:
-        raise exceptions.BadRequest("assistant messages must have a parent")
-
-    if parent is not None and parent.role == role:
-        raise exceptions.BadRequest("parent and child must have different roles")
-
-    original: str = request.json.get("original")
-    if original is not None and parent is not None and original == parent.id:
-        raise exceptions.BadRequest("original message cannot be parent")
+    mapped_request = CreateMessageRequestWithFullMessages.model_validate(request.json)
 
     # We don't currently allow anonymous users to share messages
-    private: Optional[bool] = (
-        False if agent.is_anonymous_user else request.json.get("private")
+    if agent.is_anonymous_user:
+        mapped_request.private = False
+
+    mapped_request.parent = (
+        dbc.message.get(mapped_request.parent_id)
+        if mapped_request.parent_id is not None
+        else None
     )
-    root = None
-    template = request.json.get("template")
 
-    image = None
-
-    if parent is not None:
-        root = dbc.message.get(parent.root)
+    if mapped_request.parent is not None:
+        root = dbc.message.get(mapped_request.parent.root)
         if root is None:
-            raise RuntimeError(f"root message {parent.root} not found")
+            raise RuntimeError(f"root message {mapped_request.parent.root} not found")
         # Only the creator of a thread can create follow-up prompts
         if root.creator != agent.client:
             raise exceptions.Forbidden()
         # Transitively inherit the private status
-        if private is None:
-            private = root.private
-        # Validate that visibility is the same for all messages in the thread
-        if root.private != private:
-            raise exceptions.BadRequest(
-                "visibility must be identical for all messages in a thread"
-            )
-    elif private is None:
-        private = False
+        if mapped_request.private is None:
+            mapped_request.private = root.private
 
-    if not isinstance(private, bool):
-        raise exceptions.BadRequest("private must be a boolean")
-
-    host = request.json.get("host", config.model_hosts[0])
-    model_id = request.json.get(
-        "model", getattr(config.cfg, config.model_hosts[0]).default_model
-    )
-
-    return CreateMessageRequest(
-        parent=parent,
-        opts=opts,
-        content=content,
-        role=role,
-        original=original,
-        private=private,
-        root=root,
-        template=template,
-        model_id=model_id,
-        host=host,
-        files=[image],
-    )
+    return mapped_request
 
 
 def map_datachip_info(

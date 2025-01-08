@@ -6,15 +6,13 @@ from flask_pydantic_api.utils import UploadedFile
 from pydantic import ValidationError
 
 from src import db
-from src.dao.message import InferenceOpts
 from src.message.create_message_request import (
     CreateMessageRequestV4,
     CreateMessageRequestV4WithLists,
 )
 from src.message.create_message_service import (
-    CreateMessageRequest as CreateMessageRequestWithFullMessages,
+    create_message_v4,
 )
-from src.message.create_message_service import stream_new_message
 
 
 def create_v4_message_blueprint(dbc: db.Client) -> Blueprint:
@@ -38,29 +36,7 @@ def create_v4_message_blueprint(dbc: db.Client) -> Blueprint:
             response.status_code = 400
             return response
 
-        parent = (
-            dbc.message.get(create_message_request_with_lists.parent)
-            if create_message_request_with_lists.parent is not None
-            else None
-        )
-
-        root = dbc.message.get(parent.root) if parent is not None else None
-
-        mapped_request = CreateMessageRequestWithFullMessages(
-            parent=parent,
-            content=create_message_request_with_lists.content,
-            role=create_message_request_with_lists.role,
-            original=create_message_request_with_lists.original,
-            private=create_message_request_with_lists.private,
-            root=root,
-            template=create_message_request_with_lists.template,
-            model_id=create_message_request_with_lists.model,
-            host=create_message_request_with_lists.host,
-            opts=InferenceOpts(**create_message_request.model_dump()),
-            files=create_message_request_with_lists.files,
-        )
-
-        stream_response = stream_new_message(mapped_request, dbc)
+        stream_response = create_message_v4(create_message_request_with_lists, dbc)
         if isinstance(stream_response, Generator):
             return Response(
                 stream_with_context(stream_response), mimetype="application/jsonl"

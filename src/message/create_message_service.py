@@ -6,12 +6,11 @@ from time import time_ns
 from typing import Generator, List, Optional, Sequence
 
 import grpc
-from flask import current_app, request
+from flask import current_app
 from werkzeug import exceptions
 from werkzeug.datastructures import FileStorage
 
 from src import db, parse, util
-from src.auth import token
 from src.auth.auth_service import authn
 from src.dao import completion, message
 from src.inference.InferDEngine import InferDEngine
@@ -26,6 +25,7 @@ from src.inference.ModalEngine import ModalEngine
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.create_message_request import (
     CreateMessageRequestV3,
+    CreateMessageRequestV4WithLists,
     CreateMessageRequestWithFullMessages,
 )from src.message.GoogleModerateText import GoogleModerateText
 from src.message.SafetyChecker import (
@@ -449,6 +449,27 @@ def stream_new_message(
     return stream()
 
 
+def get_parent_and_root_messages_and_private(
+    parent_message_id: str | None, dbc: db.Client, request_private: bool | None
+) -> tuple[message.Message | None, message.Message | None, bool | None]:
+    parent_message = (
+        dbc.message.get(parent_message_id) if parent_message_id is not None else None
+    )
+    root_message = (
+        dbc.message.get(parent_message.root) if parent_message is not None else None
+    )
+
+    private = (
+        request_private
+        if request_private is not None
+        else root_message.private
+        if root_message is not None
+        else None
+    )
+
+    return parent_message, root_message, private
+
+
 def create_message_v3(
     request: CreateMessageRequestV3,
     dbc: db.Client,
@@ -456,22 +477,9 @@ def create_message_v3(
 ) -> message.Message | Generator[str, None, None]:
     agent = authn()
 
-    parent_message = (
-        dbc.message.get(request.parent) if request.parent is not None else None
+    parent_message, root_message, private = get_parent_and_root_messages_and_private(
+        request.parent, dbc, request.private
     )
-    root_message = (
-        dbc.message.get(parent_message.root) if parent_message is not None else None
-    )
-
-    private = (
-        request.private
-        if request.private is not None
-        else root_message.private
-        if root_message is not None
-        else None
-    )
-
-    # request_dict = request.model_dump()
 
     mapped_request = CreateMessageRequestWithFullMessages(
         parent_id=request.parent,
@@ -491,27 +499,41 @@ def create_message_v3(
     return stream_new_message(mapped_request, dbc, checker_type)
 
 
-def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
-    mapped_request = CreateMessageRequestWithFullMessages.model_validate(request.json)
+def create_message_v4(
+    request: CreateMessageRequestV4WithLists,
+    dbc: db.Client,
+    checker_type: SafetyCheckerType = SafetyCheckerType.Google,
+) -> message.Message | Generator[str, None, None]:
+    agent = authn()
 
-    # We don't currently allow anonymous users to share messages
-    if agent.is_anonymous_user:
-        mapped_request.private = False
-
-    mapped_request.parent = (
-        dbc.message.get(mapped_request.parent_id)
-        if mapped_request.parent_id is not None
-        else None
+    parent_message, root_message, private = get_parent_and_root_messages_and_private(
+        request.parent, dbc, request.private
     )
 
-    if mapped_request.parent is not None:
-        root = dbc.message.get(mapped_request.parent.root)
-        # Only the creator of a thread can create follow-up prompts
-        # Transitively inherit the private status
-        if mapped_request.private is None:
-            mapped_request.private = root.private
+    mapped_request = CreateMessageRequestWithFullMessages(
+        parent_id=request.parent,
+        parent=parent_message,
+        opts=message.InferenceOpts(
+            max_tokens=request.max_tokens,
+            temperature=request.temperature,
+            n=request.n,
+            top_p=request.top_p,
+            logprobs=request.logprobs,
+            stop=request.stop,
+        ),
+        content=request.content,
+        role=request.role,
+        original=request.original,
+        private=private,  # type: ignore - Pydantic handles this being None with the default
+        root=root_message,
+        template=request.template,
+        model=request.model,
+        host=request.host,
+        client=agent.client,
+        files=request.files,
+    )
 
-    return mapped_request
+    return stream_new_message(mapped_request, dbc, checker_type)
 
 
 def map_datachip_info(

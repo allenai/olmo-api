@@ -47,24 +47,31 @@ class InferenceOpts(BaseModel):
         ge=max_tokens.min,
         le=max_tokens.max,
         multiple_of=max_tokens.step,
+        strict=True,
     )
     temperature: float = PydanticField(
         default=temperature.default,
         ge=temperature.min,
         le=temperature.max,
         multiple_of=temperature.step,
+        strict=True,
     )
     n: int = PydanticField(
-        default=num.default, ge=num.min, le=num.max, multiple_of=num.step
+        default=num.default, ge=num.min, le=num.max, multiple_of=num.step, strict=True
     )
     top_p: float = PydanticField(
-        default=top_p.default, ge=top_p.min, le=top_p.max, multiple_of=top_p.step
+        default=top_p.default,
+        ge=top_p.min,
+        le=top_p.max,
+        multiple_of=top_p.step,
+        strict=True,
     )
     logprobs: Optional[int] = PydanticField(
         default=logprobs.default,
         ge=logprobs.min,
         le=logprobs.max,
         multiple_of=logprobs.step,
+        strict=True,
     )
     stop: Optional[list[str]] = PydanticField(default=stop.default)
 

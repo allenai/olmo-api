@@ -16,7 +16,7 @@ default_model_options = {
 
 default_options = [
     ("max_tokens", 2048),
-    ("temperature", 1.0),
+    ("temperature", 0.7),
     ("n", 1),
     ("top_p", 1.0),
     ("logprobs", None),

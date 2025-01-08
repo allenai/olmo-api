@@ -34,7 +34,7 @@ class CustomEncoder(json.JSONEncoder):
         if isinstance(obj, datetime):
             return obj.isoformat()
         if isinstance(obj, BaseModel):
-            return obj.model_dump_json()
+            return obj.model_dump()
         if is_dataclass(obj):
             return asdict(obj)
         return json.JSONEncoder.default(self, obj)

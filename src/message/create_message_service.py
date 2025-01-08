@@ -486,7 +486,7 @@ def create_message_v3(
         parent=parent_message,
         opts=request.opts,
         content=request.content,
-        role=request.role,
+        role=request.role,  # type: ignore - Pydantic handles this being None with the default
         original=request.original,
         private=private,  # type: ignore - Pydantic handles this being None with the default
         root=root_message,
@@ -522,7 +522,7 @@ def create_message_v4(
             stop=request.stop,
         ),
         content=request.content,
-        role=request.role,
+        role=request.role,  # type: ignore - Pydantic handles this being None with the default
         original=request.original,
         private=private,  # type: ignore - Pydantic handles this being None with the default
         root=root_message,

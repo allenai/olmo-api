@@ -26,3 +26,6 @@ EOF
 # Merge the local defaults into the production config.
 echo "$prod" "$local" | jq -s '.[0] * .[1]' > "$dir/../config.json"
 echo "wrote \"$dir/../config.json\""
+
+kubectl get secret/cfg --namespace olmo-api --output jsonpath="{.data.service_account\.json}" | base64 -D > "$dir/../service_account.json"
+echo "wrote \"$dir/../service_account.json\""

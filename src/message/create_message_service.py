@@ -215,20 +215,16 @@ def create_message(
     if system_msg is not None:
         message_chain.append(system_msg)
 
-    chain: list[BaseInferenceEngineMessage | InferenceEngineMessageWithImage] = [
-        # TODO: OEUI-492 when we save images make sure we make an InferenceEngineMessageWithImage if the message has an image
-        BaseInferenceEngineMessage(role=str(msg.role), content=msg.content)
-        for msg in message_chain
-    ]
+    message_chain.reverse()
 
-    new_message = (
+    chain: list[BaseInferenceEngineMessage | InferenceEngineMessageWithImage] = [
         InferenceEngineMessageWithImage(
             role=msg.role, content=msg.content, image=request.image
         )
         if request.image is not None
         else BaseInferenceEngineMessage(msg.role, content=msg.content)
-    )
-    chain.append(new_message)
+        for msg in message_chain
+    ]
 
     # Create a message that will eventually capture the streamed response.
     # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message

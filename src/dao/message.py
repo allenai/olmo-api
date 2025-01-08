@@ -221,7 +221,9 @@ class Message:
             snippet=text_snippet(r[1]),
             creator=r[2],
             role=r[3],
-            opts=InferenceOpts(**r[4]),
+            # this uses model_construct instead of the normal constructor because we want to skip validation when it's coming from the DB
+            # since it was saved we trust the data already
+            opts=InferenceOpts.model_construct(**r[4]),
             root=r[5],
             created=r[6],
             deleted=r[7],

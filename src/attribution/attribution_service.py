@@ -231,6 +231,7 @@ def get_attribution(
 
     if request.spans_and_documents_as_list is True:
         return {
+            "index": request.index,
             "documents": sorted(
                 mapped_documents.values(),
                 key=lambda document: document.relevance_score,
@@ -239,7 +240,11 @@ def get_attribution(
             "spans": list(mapped_spans.values()),
         }
     else:
-        return {"documents": mapped_documents, "spans": mapped_spans}
+        return {
+            "index": request.index,
+            "documents": mapped_documents,
+            "spans": mapped_spans,
+        }
 
 
 def _validate_get_attribution_request():

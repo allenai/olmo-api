@@ -3,22 +3,20 @@ import json
 import os
 from datetime import datetime, timedelta, timezone
 from time import time_ns
-from typing import Generator, List, Optional, Sequence
+from typing import Generator, List, Optional
 
 import grpc
 from flask import current_app
 from werkzeug import exceptions
-from werkzeug.datastructures import FileStorage
 
 from src import db, parse, util
 from src.auth.auth_service import authn
 from src.dao import completion, message
 from src.inference.InferDEngine import InferDEngine
 from src.inference.InferenceEngine import (
-    BaseInferenceEngineMessage,
     FinishReason,
     InferenceEngine,
-    InferenceEngineMessageWithFiles,
+    InferenceEngineMessage,
     InferenceOptions,
 )
 from src.inference.ModalEngine import ModalEngine
@@ -68,21 +66,6 @@ def upload_image(filename, bytes):
 class ParsedMessage:
     content: parse.MessageContent
     role: message.Role
-
-
-@dataclasses.dataclass
-class CreateMessageRequest:
-    parent: Optional[message.Message]
-    opts: message.InferenceOpts
-    content: str
-    role: message.Role
-    original: Optional[str]
-    private: bool
-    root: Optional[message.Message]
-    template: Optional[str]
-    model_id: str
-    host: str
-    files: Optional[Sequence[FileStorage]] = None
 
 
 def get_engine(host: str) -> InferenceEngine:
@@ -242,12 +225,8 @@ def stream_new_message(
 
     message_chain.reverse()
 
-    chain: list[BaseInferenceEngineMessage | InferenceEngineMessageWithFiles] = [
-        InferenceEngineMessageWithFiles(
-            role=msg.role, content=msg.content, files=request.files
-        )
-        if request.files is not None
-        else BaseInferenceEngineMessage(msg.role, content=msg.content)
+    chain: list[InferenceEngineMessage] = [
+        InferenceEngineMessage(role=msg.role, content=msg.content, files=request.files)
         for msg in message_chain
     ]
 
@@ -515,7 +494,7 @@ def create_message_v4(
     agent = authn()
 
     parent_message, root_message, private = get_parent_and_root_messages_and_private(
-        request.parent, dbc, request.private
+        request.parent, dbc, request.private, is_anonymous_user=agent.is_anonymous_user
     )
 
     mapped_request = CreateMessageRequestWithFullMessages(
@@ -548,12 +527,12 @@ def format_message(obj) -> str:
     return json.dumps(obj=obj, cls=util.CustomEncoder) + "\n"
 
 
-def format_prompt(message: BaseInferenceEngineMessage) -> str:
+def format_prompt(message: InferenceEngineMessage) -> str:
     return f"<|{message.role}|>\n{message.content}"
 
 
 def create_prompt_from_engine_input(
-    input_list: List[BaseInferenceEngineMessage],
+    input_list: List[InferenceEngineMessage],
 ) -> str:
     return "\n".join([format_prompt(m) for m in input_list])
 

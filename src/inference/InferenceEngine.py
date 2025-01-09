@@ -27,15 +27,10 @@ class FinishReason(StrEnum):
 
 
 @dataclass
-class BaseInferenceEngineMessage:
+class InferenceEngineMessage:
     role: str
     content: str
-
-
-@dataclass
-class InferenceEngineMessageWithFiles(BaseInferenceEngineMessage):
-    # We may want to make this generic to "files" later? Need to figure out how to handle extensions and file type checking.
-    files: Sequence[FileStorage | str]
+    files: Optional[Sequence[FileStorage | str]] = None
 
 
 @dataclass
@@ -76,7 +71,7 @@ class InferenceEngine(Protocol):
     def create_streamed_message(
         self,
         model: str,
-        messages: Sequence[BaseInferenceEngineMessage],
+        messages: Sequence[InferenceEngineMessage],
         inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
         raise NotImplementedError

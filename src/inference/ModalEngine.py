@@ -7,10 +7,9 @@ from werkzeug.datastructures import FileStorage
 
 from src import config
 from src.inference.InferenceEngine import (
-    BaseInferenceEngineMessage,
     InferenceEngine,
     InferenceEngineChunk,
-    InferenceEngineMessageWithFiles,
+    InferenceEngineMessage,
     InferenceOptions,
     Logprob,
 )
@@ -33,7 +32,7 @@ class ModalEngine(InferenceEngine):
     def __get_args_for_model(
         self,
         model: str,
-        messages: Sequence[BaseInferenceEngineMessage],
+        messages: Sequence[InferenceEngineMessage],
         inference_options: InferenceOptions,
     ):
         if model == "mm-olmo-uber-model-v4-synthetic":
@@ -43,7 +42,8 @@ class ModalEngine(InferenceEngine):
             )
 
             image: Optional[str] = None
-            if isinstance(messages[0], InferenceEngineMessageWithFiles):
+            # TODO: This only supports sending files in the first message. We'll need to change this in the future if it supports sending files in each message
+            if messages[0].files is not None and len(messages[0].files) > 0:
                 new_message = messages[0]
                 if isinstance(new_message.files[0], FileStorage):
                     image = base64.b64encode(
@@ -67,7 +67,7 @@ class ModalEngine(InferenceEngine):
     def create_streamed_message(
         self,
         model: str,
-        messages: Sequence[BaseInferenceEngineMessage],
+        messages: Sequence[InferenceEngineMessage],
         inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
         f = modal.Function.lookup(model, "vllm_api", client=self.client)

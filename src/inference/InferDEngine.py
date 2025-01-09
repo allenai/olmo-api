@@ -5,9 +5,9 @@ from inferd import Client as InferdClient
 
 from src import config
 from src.inference.InferenceEngine import (
-    BaseInferenceEngineMessage,
     InferenceEngine,
     InferenceEngineChunk,
+    InferenceEngineMessage,
     InferenceOptions,
     Logprob,
 )
@@ -30,7 +30,7 @@ class InferDEngine(InferenceEngine):
     def create_streamed_message(
         self,
         model: str,
-        messages: Sequence[BaseInferenceEngineMessage],
+        messages: Sequence[InferenceEngineMessage],
         inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
         request = {

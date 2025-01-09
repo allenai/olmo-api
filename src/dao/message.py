@@ -8,6 +8,8 @@ import bs4
 from psycopg import errors
 from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool
+from pydantic import BaseModel
+from pydantic import Field as PydanticField
 from werkzeug import exceptions
 
 from .. import obj
@@ -32,71 +34,56 @@ class Field:
 
 max_tokens = Field("max_tokens", 2048, 1, 2048, 1)
 temperature = Field("temperature", 0.7, 0.0, 1.0, 0.01)
-num = Field("n", 1, 1, 50, 1)
+# n has a max of 1 when streaming. if we allow for non-streaming requests we can go up to 50
+num = Field("n", 1, 1, 1, 1)
 top_p = Field("top_p", 1.0, 0.01, 1.0, 0.01)
 logprobs = Field("logprobs", None, 0, 10, 1)
 stop = Field("stop", None, None, None)
 
 
-@dataclass
-class InferenceOpts:
-    max_tokens: int = max_tokens.default
-    temperature: float = temperature.default
-    n: int = num.default
-    top_p: float = top_p.default
-    logprobs: Optional[int] = logprobs.default
-    stop: Optional[list[str]] = stop.default
+class InferenceOpts(BaseModel):
+    max_tokens: int = PydanticField(
+        default=max_tokens.default,
+        ge=max_tokens.min,
+        le=max_tokens.max,
+        multiple_of=max_tokens.step,
+        strict=True,
+    )
+    temperature: float = PydanticField(
+        default=temperature.default,
+        ge=temperature.min,
+        le=temperature.max,
+        multiple_of=temperature.step,
+        strict=True,
+    )
+    n: int = PydanticField(
+        default=num.default, ge=num.min, le=num.max, multiple_of=num.step, strict=True
+    )
+    top_p: float = PydanticField(
+        default=top_p.default,
+        ge=top_p.min,
+        le=top_p.max,
+        multiple_of=top_p.step,
+        strict=True,
+    )
+    logprobs: Optional[int] = PydanticField(
+        default=logprobs.default,
+        ge=logprobs.min,
+        le=logprobs.max,
+        multiple_of=logprobs.step,
+        strict=True,
+    )
+    stop: Optional[list[str]] = PydanticField(default=stop.default)
 
     @staticmethod
-    def schema() -> dict[str, Field]:
+    def opts_schema() -> dict[str, Field]:
         return {
             f.name: f for f in [max_tokens, temperature, num, top_p, logprobs, stop]
         }
 
     @staticmethod
-    def from_request(requestOpts: dict[str, Any]) -> "InferenceOpts":
-        mt = requestOpts.get(max_tokens.name, max_tokens.default)
-        if not isinstance(mt, int):
-            raise ValueError(f"max_tokens {mt} is not an integer")
-        if mt > max_tokens.max or mt < max_tokens.min:
-            raise ValueError(
-                f"max_tokens {mt} is not in range [{max_tokens.min}, {max_tokens.max}]"
-            )
-
-        temp = float(requestOpts.get(temperature.name, temperature.default))
-        if temp > temperature.max or temp < temperature.min:
-            raise ValueError(
-                f"temperature {temp} is not in range [{temperature.min}, {temperature.max}]"
-            )
-
-        n = requestOpts.get(num.name, num.default)
-        if not isinstance(n, int):
-            raise ValueError(f"num {n} is not an integer")
-        if n > num.max or n < num.min:
-            raise ValueError(f"num {n} is not in range [{num.min}, {num.max}]")
-
-        tp = float(requestOpts.get(top_p.name, top_p.default))
-        if tp > top_p.max or tp < top_p.min:
-            raise ValueError(f"top_p {tp} is not in range ({top_p.min}, {top_p.max}]")
-
-        lp = requestOpts.get(logprobs.name, logprobs.default)
-        if lp is not None:
-            if not isinstance(lp, int):
-                raise ValueError(f"logprobs {lp} is not an integer")
-            if lp > logprobs.max or lp < logprobs.min:
-                raise ValueError(
-                    f"logprobs {lp} is not in range [{logprobs.min}, {logprobs.max}]"
-                )
-
-        sw = requestOpts.get(stop.name, stop.default)
-        if sw is not None:
-            if not isinstance(sw, list):
-                raise ValueError(f"stop words {sw} is not a list")
-            for w in sw:
-                if not isinstance(w, str):
-                    raise ValueError(f"stop word {w} is not a string")
-
-        return InferenceOpts(mt, temp, n, tp, lp, sw)
+    def from_request(request_opts: dict[str, Any]) -> "InferenceOpts":
+        return InferenceOpts(**request_opts)
 
 
 @dataclass
@@ -234,7 +221,9 @@ class Message:
             snippet=text_snippet(r[1]),
             creator=r[2],
             role=r[3],
-            opts=InferenceOpts(**r[4]),
+            # this uses model_construct instead of the normal constructor because we want to skip validation when it's coming from the DB
+            # since it was saved we trust the data already
+            opts=InferenceOpts.model_construct(**r[4]),
             root=r[5],
             created=r[6],
             deleted=r[7],
@@ -376,7 +365,7 @@ class Store:
                             "content": content,
                             "creator": creator,
                             "role": role,
-                            "opts": Jsonb(asdict(opts)),
+                            "opts": Jsonb(opts.model_dump()),
                             "root": root or mid,
                             "parent": parent,
                             "template": template,

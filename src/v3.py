@@ -16,7 +16,7 @@ from src.auth.auth_service import authn
 from src.dao import datachip, label, message, paged
 from src.inference.inference_service import get_available_models
 from src.log import logging_blueprint
-from src.message import MessageBlueprint
+from src.message.v3MessageBlueprint import create_v3_message_blueprint
 from src.user import UserBlueprint
 
 
@@ -52,7 +52,7 @@ class Server(Blueprint):
 
         self.register_blueprint(logging_blueprint, url_prefix="/log")
         self.register_blueprint(
-            blueprint=MessageBlueprint(dbc),
+            blueprint=create_v3_message_blueprint(dbc),
             url_prefix="/message",
         )
         self.register_blueprint(blueprint=UserBlueprint(dbc=dbc))
@@ -123,7 +123,9 @@ class Server(Blueprint):
         return jsonify(get_available_models())
 
     def schema(self):
-        return jsonify({"Message": {"InferenceOpts": message.InferenceOpts.schema()}})
+        return jsonify(
+            {"Message": {"InferenceOpts": message.InferenceOpts.opts_schema()}}
+        )
 
     def create_label(self):
         agent = authn()

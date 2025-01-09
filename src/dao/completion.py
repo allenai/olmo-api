@@ -1,8 +1,10 @@
-from psycopg_pool import ConnectionPool
-from psycopg.types.json import Jsonb
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Optional, Any
-from dataclasses import dataclass, asdict
+from typing import Any, Optional
+
+from psycopg.types.json import Jsonb
+from psycopg_pool import ConnectionPool
+
 from .. import obj
 from .message import InferenceOpts, TokenLogProbs
 
@@ -18,13 +20,17 @@ CompletionRow = tuple[
     int,
     int,
     int,
-    int
+    int,
 ]
 
-def parse_logprobs(logprobs: Optional[list[list[dict[str, Any]]]]) -> Optional[list[list[TokenLogProbs]]]:
+
+def parse_logprobs(
+    logprobs: Optional[list[list[dict[str, Any]]]],
+) -> Optional[list[list[TokenLogProbs]]]:
     if logprobs is None:
         return None
-    return [[ TokenLogProbs(**t) for t in lp ] for lp in logprobs ]
+    return [[TokenLogProbs(**t) for t in lp] for lp in logprobs]
+
 
 @dataclass
 class CompletionOutput:
@@ -33,12 +39,13 @@ class CompletionOutput:
     logprobs: Optional[list[list[TokenLogProbs]]] = None
 
     @staticmethod
-    def from_dict(row: dict[str, Any]) -> 'CompletionOutput':
+    def from_dict(row: dict[str, Any]) -> "CompletionOutput":
         return CompletionOutput(
-            row['text'],
-            row['finish_reason'],
-            parse_logprobs(row.get('logprobs')),
+            row["text"],
+            row["finish_reason"],
+            parse_logprobs(row.get("logprobs")),
         )
+
 
 @dataclass
 class Completion:
@@ -56,12 +63,25 @@ class Completion:
     output_tokens: int
 
     @staticmethod
-    def from_row(row: CompletionRow) -> 'Completion':
-        id, input, outputs, opts, model, sha, created, tokms, genms, qms, intok, outok = row
+    def from_row(row: CompletionRow) -> "Completion":
+        (
+            id,
+            input,
+            outputs,
+            opts,
+            model,
+            sha,
+            created,
+            tokms,
+            genms,
+            qms,
+            intok,
+            outok,
+        ) = row
         return Completion(
             id,
             input,
-            [ CompletionOutput.from_dict(o) for o in outputs ],
+            [CompletionOutput.from_dict(o) for o in outputs],
             InferenceOpts(**opts),
             model,
             sha,
@@ -70,8 +90,9 @@ class Completion:
             genms,
             qms,
             intok,
-            outok
+            outok,
         )
+
 
 class Store:
     def __init__(self, pool: ConnectionPool):
@@ -88,7 +109,7 @@ class Store:
         generation_ms: int,
         queue_ms: int,
         input_tokens: int,
-        output_tokens: int
+        output_tokens: int,
     ) -> Completion:
         with self.pool.connection() as conn:
             with conn.cursor() as cursor:
@@ -126,15 +147,15 @@ class Store:
                 values = (
                     obj.NewID("cpl"),
                     input,
-                    Jsonb([ asdict(o) for o in outputs ]),
-                    Jsonb(asdict(opts)),
+                    Jsonb([asdict(o) for o in outputs]),
+                    Jsonb(opts.model_dump()),
                     model,
                     sha,
                     tokenize_ms,
                     generation_ms,
                     queue_ms,
                     input_tokens,
-                    output_tokens
+                    output_tokens,
                 )
                 row = cursor.execute(q, values).fetchone()
                 if row is None:
@@ -169,7 +190,7 @@ class Store:
     def remove(self, ids: list[str]) -> Optional[list[str]]:
         if len(ids) == 0:
             return
-        
+
         with self.pool.connection() as conn:
             with conn.cursor() as cursor:
                 q = """

@@ -18,7 +18,7 @@ class AuthenticatedClient:
 
 class IntegrationTest(TestCase):
     origin = os.environ.get("ORIGIN", "http://localhost:8000")
-    auth0_token: Optional[str]
+    auth0_token: Optional[str] = None
 
     def get_auth0_token(self):
         if self.auth0_token is None:

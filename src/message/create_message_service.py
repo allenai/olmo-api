@@ -1,5 +1,4 @@
 import dataclasses
-import io
 import json
 import os
 from datetime import datetime, timedelta, timezone
@@ -7,22 +6,25 @@ from time import time_ns
 from typing import Generator, List, Optional
 
 import grpc
-from flask import current_app, request
+from flask import current_app
 from werkzeug import exceptions
-from werkzeug.datastructures import FileStorage
 
-from src import config, db, parse, util
-from src.auth import token
+from src import db, parse, util
 from src.auth.auth_service import authn
 from src.dao import completion, message
 from src.inference.InferDEngine import InferDEngine
 from src.inference.InferenceEngine import (
-    BaseInferenceEngineMessage,
     FinishReason,
     InferenceEngine,
-    InferenceEngineMessageWithImage,
+    InferenceEngineMessage,
+    InferenceOptions,
 )
 from src.inference.ModalEngine import ModalEngine
+from src.message.create_message_request import (
+    CreateMessageRequestV3,
+    CreateMessageRequestV4WithLists,
+    CreateMessageRequestWithFullMessages,
+)
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.GoogleModerateText import GoogleModerateText
 from src.message.SafetyChecker import (
@@ -75,20 +77,20 @@ def get_engine(host: str) -> InferenceEngine:
             return ModalEngine()
 
 
-def create_message(
-    dbc: db.Client, checker_type: SafetyCheckerType = SafetyCheckerType.Google
+def stream_new_message(
+    request: CreateMessageRequestWithFullMessages,
+    dbc: db.Client,
+    checker_type: SafetyCheckerType = SafetyCheckerType.Google,
 ) -> message.Message | Generator[str, None, None]:
     start_all = time_ns()
     agent = authn()
 
-    request = validate_and_map_create_message_request(dbc, agent=agent)
-
     inference_engine = get_engine(request.host)
 
-    model = inference_engine.get_model_details(request.model_id)
+    model = inference_engine.get_model_details(request.model)
     if not model:
         raise exceptions.BadRequest(
-            f"model {request.model_id} is not available on {request.host}"
+            f"model {request.model} is not available on {request.host}"
         )
 
     is_content_safe = None
@@ -146,7 +148,7 @@ def create_message(
                 creator=agent.client,
                 role=message.Role.System,
                 opts=request.opts,
-                model_id=request.model_id,
+                model_id=request.model,
                 model_host=request.host,
                 root=None,
                 parent=None,
@@ -162,7 +164,7 @@ def create_message(
                 creator=agent.client,
                 role=request.role,
                 opts=request.opts,
-                model_id=request.model_id,
+                model_id=request.model,
                 model_host=request.host,
                 root=system_msg.id,
                 parent=system_msg.id,
@@ -180,7 +182,7 @@ def create_message(
                 creator=agent.client,
                 role=request.role,
                 opts=request.opts,
-                model_id=request.model_id,
+                model_id=request.model,
                 model_host=request.host,
                 root=None,
                 parent=None,
@@ -197,7 +199,7 @@ def create_message(
             creator=agent.client,
             role=request.role,
             opts=request.opts,
-            model_id=request.model_id,
+            model_id=request.model,
             model_host=request.host,
             root=request.parent.root,
             parent=request.parent.id,
@@ -224,12 +226,8 @@ def create_message(
 
     message_chain.reverse()
 
-    chain: list[BaseInferenceEngineMessage | InferenceEngineMessageWithImage] = [
-        InferenceEngineMessageWithImage(
-            role=msg.role, content=msg.content, image=request.image
-        )
-        if request.image is not None
-        else BaseInferenceEngineMessage(msg.role, content=msg.content)
+    chain: list[InferenceEngineMessage] = [
+        InferenceEngineMessage(role=msg.role, content=msg.content, files=request.files)
         for msg in message_chain
     ]
 
@@ -240,7 +238,7 @@ def create_message(
         agent.client,
         message.Role.Assistant,
         msg.opts,
-        model_id=request.model_id,
+        model_id=request.model,
         model_host=request.host,
         root=msg.root,
         parent=msg.id,
@@ -273,19 +271,19 @@ def create_message(
 
         # Now yield each chunk as it's returned.
         finish_reason: Optional[FinishReason] = None
+        first_ns = 0
+        chunk_count = 0
+        input_token_count = -1
+        output_token_count = -1
         try:
-            first_ns = 0
-            chunk_count = 0
-            input_token_count = -1
-            output_token_count = -1
             for chunk in inference_engine.create_streamed_message(
                 model=model.compute_source_id,
                 messages=chain,
-                inference_options=reply.opts,
+                inference_options=InferenceOptions(**reply.opts.model_dump()),
             ):
                 finish_reason = chunk.finish_reason
 
-                logprobs = chunk.logprobs if chunk.logprobs is not None else []
+                chunk_logprobs = chunk.logprobs if chunk.logprobs is not None else []
                 mapped_logprobs = [
                     [
                         message.TokenLogProbs(
@@ -293,7 +291,7 @@ def create_message(
                         )
                         for lp in lp_list
                     ]
-                    for lp_list in logprobs
+                    for lp_list in chunk_logprobs
                 ]
 
                 new_chunk = message.MessageChunk(
@@ -350,7 +348,7 @@ def create_message(
         if not agent.is_anonymous_user:
             messageCompletion = dbc.completion.create(
                 prompt,
-                [completion.CompletionOutput(output, finish_reason, logprobs)],
+                [completion.CompletionOutput(output, str(finish_reason), logprobs)],
                 msg.opts,
                 model.compute_source_id,
                 sha,
@@ -364,11 +362,13 @@ def create_message(
         # Finalize the messages and yield
         finalMessage = dbc.message.finalize(msg.id)
         if finalMessage is None:
-            err = RuntimeError(f"failed to finalize message {msg.id}")
+            final_message_error = RuntimeError(f"failed to finalize message {msg.id}")
             yield format_message(
-                message.MessageStreamError(msg.id, str(err), "finalization failure")
+                message.MessageStreamError(
+                    msg.id, str(final_message_error), "finalization failure"
+                )
             )
-            raise err
+            raise final_message_error
 
         finalReply = dbc.message.finalize(
             reply.id,
@@ -378,11 +378,13 @@ def create_message(
             finish_reason,
         )
         if finalReply is None:
-            err = RuntimeError(f"failed to finalize message {reply.id}")
+            final_reply_error = RuntimeError(f"failed to finalize message {reply.id}")
             yield format_message(
-                message.MessageStreamError(reply.id, str(err), "finalization failure")
+                message.MessageStreamError(
+                    reply.id, str(final_reply_error), "finalization failure"
+                )
             )
-            raise err
+            raise final_reply_error
 
         finalMessage = dataclasses.replace(finalMessage, children=[finalReply])
 
@@ -390,13 +392,17 @@ def create_message(
             finalSystemMessage = dbc.message.finalize(system_msg.id)
 
             if finalSystemMessage is None:
-                err = RuntimeError(f"failed to finalize message {system_msg.id}")
+                final_system_message_error = RuntimeError(
+                    f"failed to finalize message {system_msg.id}"
+                )
                 yield format_message(
                     message.MessageStreamError(
-                        system_msg.id, str(err), "finalization failure"
+                        system_msg.id,
+                        str(final_system_message_error),
+                        "finalization failure",
                     )
                 )
-                raise err
+                raise final_system_message_error
 
             finalSystemMessage = dataclasses.replace(
                 finalSystemMessage, children=[finalMessage]
@@ -423,157 +429,111 @@ def create_message(
     return stream()
 
 
-@dataclasses.dataclass
-class CreateMessageRequest:
-    parent: Optional[message.Message]
-    opts: message.InferenceOpts
-    content: str
-    role: message.Role
-    original: str
-    private: bool
-    root: Optional[message.Message]
-    template: str
-    model_id: str
-    host: str
-    image: Optional[FileStorage] = None
+def get_parent_and_root_messages_and_private(
+    parent_message_id: str | None,
+    dbc: db.Client,
+    request_private: bool | None,
+    is_anonymous_user: bool,
+) -> tuple[message.Message | None, message.Message | None, bool | None]:
+    parent_message = (
+        dbc.message.get(parent_message_id) if parent_message_id is not None else None
+    )
+    root_message = (
+        dbc.message.get(parent_message.root) if parent_message is not None else None
+    )
 
-
-def validate_and_map_create_message_request(dbc: db.Client, agent: token.Token):
-    if request.json is None:
-        raise exceptions.BadRequest("no request body")
-
-    pid = request.json.get("parent")
-    parent = dbc.message.get(pid) if pid is not None else None
-    if pid is not None and parent is None:
-        raise exceptions.BadRequest(f"parent message {pid} not found")
-
-    try:
-        requestOpts = request.json.get("opts")
-        opts = (
-            message.InferenceOpts.from_request(requestOpts)
-            if requestOpts is not None
-            else message.InferenceOpts()
+    private = (
+        # Anonymous users aren't allowed to share messages
+        True
+        if is_anonymous_user
+        else (
+            request_private
+            if request_private is not None
+            else root_message.private
+            if root_message is not None
+            else None
         )
-    except ValueError as e:
-        raise exceptions.BadRequest(str(e))
-
-    if opts.n > 1:
-        raise exceptions.BadRequest("n > 1 not supported when streaming")
-
-    content: str = request.json.get("content")
-    if content.strip() == "":
-        raise exceptions.BadRequest("empty content")
-
-    try:
-        role = message.Role(request.json.get("role", str(message.Role.User)))
-    except ValueError as e:
-        raise exceptions.BadRequest(str(e))
-
-    if role == message.Role.Assistant and parent is None:
-        raise exceptions.BadRequest("assistant messages must have a parent")
-
-    if parent is not None and parent.role == role:
-        raise exceptions.BadRequest("parent and child must have different roles")
-
-    original: str = request.json.get("original")
-    if original is not None and parent is not None and original == parent.id:
-        raise exceptions.BadRequest("original message cannot be parent")
-
-    # We don't currently allow anonymous users to share messages
-    private: Optional[bool] = (
-        False if agent.is_anonymous_user else request.json.get("private")
-    )
-    root = None
-    template = request.json.get("template")
-
-    image = None
-    # When we add real request image handling remove this!
-    if request.json.get("send_fake_image") is True:
-        image_file = io.open("/api/image(1).png", "rb")
-        image = FileStorage(stream=image_file)
-
-    # this code can handle input from the request, we'll just need to set up the request correctly
-    # if request.files.get("prompt-image") is not None:
-    #     image = request.files["prompt-image"]
-
-    if parent is not None:
-        root = dbc.message.get(parent.root)
-        if root is None:
-            raise RuntimeError(f"root message {parent.root} not found")
-        # Only the creator of a thread can create follow-up prompts
-        if root.creator != agent.client:
-            raise exceptions.Forbidden()
-        # Transitively inherit the private status
-        if private is None:
-            private = root.private
-        # Validate that visibility is the same for all messages in the thread
-        if root.private != private:
-            raise exceptions.BadRequest(
-                "visibility must be identical for all messages in a thread"
-            )
-    elif private is None:
-        private = False
-
-    if not isinstance(private, bool):
-        raise exceptions.BadRequest("private must be a boolean")
-
-    host = request.json.get("host", config.model_hosts[0])
-    model_id = request.json.get(
-        "model", getattr(config.cfg, config.model_hosts[0]).default_model
     )
 
-    return CreateMessageRequest(
-        parent=parent,
-        opts=opts,
-        content=content,
-        role=role,
-        original=original,
-        private=private,
-        root=root,
-        template=template,
-        model_id=model_id,
-        host=host,
-        image=image,
+    return parent_message, root_message, private
+
+
+def create_message_v3(
+    request: CreateMessageRequestV3,
+    dbc: db.Client,
+    checker_type: SafetyCheckerType = SafetyCheckerType.Google,
+) -> message.Message | Generator[str, None, None]:
+    agent = authn()
+
+    parent_message, root_message, private = get_parent_and_root_messages_and_private(
+        request.parent, dbc, request.private, is_anonymous_user=agent.is_anonymous_user
     )
 
+    mapped_request = CreateMessageRequestWithFullMessages(
+        parent_id=request.parent,
+        parent=parent_message,
+        opts=request.opts,
+        content=request.content,
+        role=request.role,  # type: ignore - Pydantic handles this being None with the default
+        original=request.original,
+        private=private,  # type: ignore - Pydantic handles this being None with the default
+        root=root_message,
+        template=request.template,
+        model=request.model,
+        host=request.host,
+        client=agent.client,
+    )
 
-def map_datachip_info(
-    dbc: db.Client, chain: list[message.Message]
-) -> list[BaseInferenceEngineMessage]:
-    parsedMessages = [
-        ParsedMessage(content=parse.MessageContent(message.content), role=message.role)
-        for message in chain
-    ]
-    refs = [
-        datachip.ref
-        for parsedMessages in parsedMessages
-        for datachip in parsedMessages.content.datachips
-    ]
-    chips = {
-        datachip.ref: datachip.content
-        for datachip in dbc.datachip.resolve(list(set(refs)))
-    }
+    return stream_new_message(mapped_request, dbc, checker_type)
 
-    datachips = [
-        BaseInferenceEngineMessage(
-            role=pm.role, content=pm.content.replace_datachips(chips)
-        )
-        for pm in parsedMessages
-    ]
 
-    return datachips
+def create_message_v4(
+    request: CreateMessageRequestV4WithLists,
+    dbc: db.Client,
+    checker_type: SafetyCheckerType = SafetyCheckerType.Google,
+) -> message.Message | Generator[str, None, None]:
+    agent = authn()
+
+    parent_message, root_message, private = get_parent_and_root_messages_and_private(
+        request.parent, dbc, request.private, is_anonymous_user=agent.is_anonymous_user
+    )
+
+    mapped_request = CreateMessageRequestWithFullMessages(
+        parent_id=request.parent,
+        parent=parent_message,
+        opts=message.InferenceOpts(
+            max_tokens=request.max_tokens,
+            temperature=request.temperature,
+            n=request.n,
+            top_p=request.top_p,
+            logprobs=request.logprobs,
+            stop=request.stop,
+        ),
+        content=request.content,
+        role=request.role,  # type: ignore - Pydantic handles this being None with the default
+        original=request.original,
+        private=private,  # type: ignore - Pydantic handles this being None with the default
+        root=root_message,
+        template=request.template,
+        model=request.model,
+        host=request.host,
+        client=agent.client,
+        files=request.files,
+    )
+
+    return stream_new_message(mapped_request, dbc, checker_type)
 
 
 def format_message(obj) -> str:
     return json.dumps(obj=obj, cls=util.CustomEncoder) + "\n"
 
 
-def format_prompt(message: BaseInferenceEngineMessage) -> str:
+def format_prompt(message: InferenceEngineMessage) -> str:
     return f"<|{message.role}|>\n{message.content}"
 
 
 def create_prompt_from_engine_input(
-    input_list: List[BaseInferenceEngineMessage],
+    input_list: List[InferenceEngineMessage],
 ) -> str:
     return "\n".join([format_prompt(m) for m in input_list])
 

@@ -16,26 +16,27 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./schema:/docker-entrypoint-initdb.d
-      
+
   api:
     build: .
     entrypoint: [ "/api/dev.sh" ]
     volumes:
       - ./:/api
       - ./config.json:/secret/cfg/config.json
+      - ./service_account.json:/secret/cfg/service_account.json
     environment:
       - PYTHONUNBUFFERED=1
       - LOG_LEVEL=DEBUG
       - E2E_AUTH0_CLIENT_SECRET
+      - GOOGLE_APPLICATION_CREDENTIALS=service_account.json
     ports:
       - 8000:8000
-  
+
   message-deletion-job:
     build: ./message_deletion_job
-    profiles: ["scheduled-job"]
+    profiles: [ "scheduled-job" ]
     volumes:
       - ./config.json:/secret/cfg/config.json
-    
-    
+
 volumes:
   pgdata:

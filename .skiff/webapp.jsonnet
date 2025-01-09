@@ -122,7 +122,7 @@ function(apiImage, messageDeletionJobImage, cause, sha, env='prod', branch='', r
 
     local defaultIngressAnno = {
         'nginx.ingress.kubernetes.io/ssl-redirect': 'true',
-        'nginx.ingress.kubernetes.io/proxy-read-timeout': '120'
+        'nginx.ingress.kubernetes.io/proxy-read-timeout': '120',
         'nginx.ingress.kubernetes.io/proxy-body-size': '50M'
     };
 

@@ -20,12 +20,13 @@ from src.inference.InferenceEngine import (
     InferenceOptions,
 )
 from src.inference.ModalEngine import ModalEngine
-from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.create_message_request import (
     CreateMessageRequestV3,
     CreateMessageRequestV4WithLists,
     CreateMessageRequestWithFullMessages,
-)from src.message.GoogleModerateText import GoogleModerateText
+)
+from src.message.GoogleCloudStorage import GoogleCloudStorage
+from src.message.GoogleModerateText import GoogleModerateText
 from src.message.SafetyChecker import (
     SafetyChecker,
     SafetyCheckerType,

@@ -87,6 +87,7 @@ class Hubspot:
 @dataclass
 class GoogleCloudServices:
     api_key: str
+    storage_bucket: str
 
 
 DEFAULT_CONFIG_PATH = "/secret/cfg/config.json"
@@ -156,7 +157,8 @@ class Config:
                 ),
                 hubspot=Hubspot(token=data["hubspot"]["token"]),
                 google_cloud_services=GoogleCloudServices(
-                    api_key=data["google_cloud_services"]["api_key"]
+                    api_key=data["google_cloud_services"]["api_key"],
+                    storage_bucket=data["google_cloud_services"]["storage_bucket"],
                 ),
             )
 

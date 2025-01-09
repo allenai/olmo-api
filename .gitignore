@@ -3,5 +3,5 @@
 /.venv
 /.pytest_cache
 /config.json
-/config.json
+/service_account.json
 .env

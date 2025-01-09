@@ -23,6 +23,7 @@ from src.inference.InferenceEngine import (
     InferenceEngineMessageWithImage,
 )
 from src.inference.ModalEngine import ModalEngine
+from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.GoogleModerateText import GoogleModerateText
 from src.message.SafetyChecker import (
     SafetyChecker,
@@ -52,6 +53,12 @@ def check_message_safety(
         )
 
     return None
+
+
+# TODO: test uploading image bytes with this function and save the image link to DB
+def upload_image(filename, bytes):
+    storage_client = GoogleCloudStorage()
+    storage_client.upload_content(filename, bytes)
 
 
 @dataclasses.dataclass

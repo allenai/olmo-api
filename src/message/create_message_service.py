@@ -395,7 +395,7 @@ def stream_new_message(
             )
 
         # Finalize the messages and yield
-        finalMessage = dbc.message.finalize(msg.id)
+        finalMessage = dbc.message.finalize(msg.id, file_urls=file_urls)
         if finalMessage is None:
             final_message_error = RuntimeError(f"failed to finalize message {msg.id}")
             yield format_message(

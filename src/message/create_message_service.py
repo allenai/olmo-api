@@ -83,7 +83,9 @@ def upload_request_files(
     file_urls: list[str] = []
 
     for i, file in enumerate(files):
+        # We don't want to save filenames since we're not safety checking them for dangerous or personal info
         filename = f"{message_id}-{i}"
+
         if file.content_type is None:
             file_url = storage_client.upload_content(
                 filename, content=file.stream.read()

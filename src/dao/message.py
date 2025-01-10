@@ -243,6 +243,7 @@ class Message:
             model_host=r[19],
             expiration_time=r[20],
             labels=labels,
+            # TODO https://github.com/allenai/playground-issues-repo/issues/9: Get this from the DB
             file_urls=None,
         )
 

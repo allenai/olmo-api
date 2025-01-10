@@ -57,12 +57,6 @@ def check_message_safety(
     return None
 
 
-# TODO: test uploading image bytes with this function and save the image link to DB
-def upload_image(filename, bytes):
-    storage_client = GoogleCloudStorage()
-    storage_client.upload_content(filename, bytes)
-
-
 @dataclasses.dataclass
 class ParsedMessage:
     content: parse.MessageContent
@@ -80,6 +74,7 @@ def get_engine(host: str) -> InferenceEngine:
 def stream_new_message(
     request: CreateMessageRequestWithFullMessages,
     dbc: db.Client,
+    storage_client: GoogleCloudStorage,
     checker_type: SafetyCheckerType = SafetyCheckerType.Google,
 ) -> message.Message | Generator[str, None, None]:
     start_all = time_ns()
@@ -213,6 +208,24 @@ def stream_new_message(
 
     if msg.role == message.Role.Assistant:
         return msg
+
+    file_urls: list[str] = []
+    if request.files is not None and len(request.files) > 0:
+        for i, file in enumerate(request.files):
+            filename = f"{msg.id}-{i}"
+            if file.content_type is None:
+                file_url = storage_client.upload_content(
+                    filename, content=file.stream.read()
+                )
+            else:
+                file_url = storage_client.upload_content(
+                    filename=filename,
+                    content=file.stream.read(),
+                    content_type=file.content_type,
+                )
+
+            file.stream.seek(0)
+            file_urls.append(file_url)
 
     # Resolve the message chain if we need to.
     message_chain = [msg]
@@ -461,6 +474,7 @@ def get_parent_and_root_messages_and_private(
 def create_message_v3(
     request: CreateMessageRequestV3,
     dbc: db.Client,
+    storage_client: GoogleCloudStorage,
     checker_type: SafetyCheckerType = SafetyCheckerType.Google,
 ) -> message.Message | Generator[str, None, None]:
     agent = authn()
@@ -484,12 +498,15 @@ def create_message_v3(
         client=agent.client,
     )
 
-    return stream_new_message(mapped_request, dbc, checker_type)
+    return stream_new_message(
+        mapped_request, dbc, storage_client=storage_client, checker_type=checker_type
+    )
 
 
 def create_message_v4(
     request: CreateMessageRequestV4WithLists,
     dbc: db.Client,
+    storage_client: GoogleCloudStorage,
     checker_type: SafetyCheckerType = SafetyCheckerType.Google,
 ) -> message.Message | Generator[str, None, None]:
     agent = authn()
@@ -521,7 +538,9 @@ def create_message_v4(
         files=request.files,
     )
 
-    return stream_new_message(mapped_request, dbc, checker_type)
+    return stream_new_message(
+        mapped_request, dbc, storage_client=storage_client, checker_type=checker_type
+    )
 
 
 def format_message(obj) -> str:

@@ -7,6 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src import config, db, error, util, v3
 from src.dao import paged
+from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.v4 import create_v4_blueprint
 
 
@@ -38,8 +39,16 @@ def create_app():
 
         return "", 204
 
-    app.register_blueprint(v3.Server(dbc), url_prefix="/v3", name="v3")
-    app.register_blueprint(create_v4_blueprint(dbc=dbc), url_prefix="/v4", name="v4")
+    storage_client = GoogleCloudStorage(
+        bucket_name=cfg.google_cloud_services.storage_bucket
+    )
+
+    app.register_blueprint(v3.Server(dbc, storage_client), url_prefix="/v3", name="v3")
+    app.register_blueprint(
+        create_v4_blueprint(dbc=dbc, storage_client=storage_client),
+        url_prefix="/v4",
+        name="v4",
+    )
     app.register_error_handler(Exception, error.handle)
 
     ProxyFix(

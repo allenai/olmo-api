@@ -8,11 +8,14 @@ from src.message.create_message_request import CreateMessageRequestV3
 from src.message.create_message_service import (
     create_message_v3 as create_message_service,
 )
+from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.message_service import delete_message as delete_message_service
 from src.message.message_service import get_message
 
 
-def create_v3_message_blueprint(dbc: db.Client) -> Blueprint:
+def create_v3_message_blueprint(
+    dbc: db.Client, storage_client: GoogleCloudStorage
+) -> Blueprint:
     v3_message_blueprint = Blueprint(name="message", import_name=__name__)
 
     @v3_message_blueprint.post("/")
@@ -21,7 +24,9 @@ def create_v3_message_blueprint(dbc: db.Client) -> Blueprint:
     def create_message(
         create_message_request: CreateMessageRequestV3,
     ) -> Response:
-        response = create_message_service(create_message_request, dbc)
+        response = create_message_service(
+            create_message_request, dbc, storage_client=storage_client
+        )
 
         if isinstance(response, Generator):
             return Response(response, mimetype="application/jsonl")

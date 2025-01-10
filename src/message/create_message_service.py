@@ -247,23 +247,12 @@ def stream_new_message(
     if msg.role == message.Role.Assistant:
         return msg
 
-    file_urls: list[str] = []
-    if request.files is not None and len(request.files) > 0:
-        for i, file in enumerate(request.files):
-            filename = f"{msg.id}-{i}"
-            if file.content_type is None:
-                file_url = storage_client.upload_content(
-                    filename, content=file.stream.read()
-                )
-            else:
-                file_url = storage_client.upload_content(
-                    filename=filename,
-                    content=file.stream.read(),
-                    content_type=file.content_type,
-                )
+    file_urls = upload_request_files(
+        files=request.files, message_id=msg.id, storage_client=storage_client
+    )
 
-            file.stream.seek(0)
-            file_urls.append(file_url)
+    # TODO: save these to the message in the db
+    msg.file_urls = file_urls
 
     # Resolve the message chain if we need to.
     message_chain = [msg]

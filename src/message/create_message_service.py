@@ -244,7 +244,7 @@ def stream_new_message(
         files=request.files, message_id=msg.id, storage_client=storage_client
     )
 
-    # TODO: save these to the message in the db
+    # TODO https://github.com/allenai/playground-issues-repo/issues/9: Get this from the DB
     msg.file_urls = file_urls
 
     # Resolve the message chain if we need to.

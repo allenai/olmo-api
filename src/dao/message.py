@@ -6,6 +6,7 @@ from typing import Any, Optional, cast
 
 import bs4
 from psycopg import errors
+from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool
 from pydantic import BaseModel
@@ -202,6 +203,48 @@ class Message:
         for c in self.children:
             flat += c.flatten()
         return flat
+
+    @staticmethod
+    def from_dict_row(r: dict) -> "Message":
+        return Message(
+            id=r["id"],
+            content=r["content"],
+            snippet=text_snippet(r["content"]),
+            creator=r["creator"],
+            role=r["role"],
+            opts=InferenceOpts.model_construct(**r["opts"]),
+            root=r["root"],
+            created=r["created"],
+            deleted=r["deleted"],
+            parent=r["parent"],
+            template=r["template"],
+            # logprobs=logprobs,
+            children=None,
+            completion=r["completion"],
+            final=r["final"],
+            original=r["original"],
+            private=r["private"],
+            model_type=r["model_type"],
+            finish_reason=r["finish_reason"],
+            harmful=r["harmful"],
+            model_id=r["model_id"],
+            model_host=r["model_host"],
+            expiration_time=r["expiration_time"],
+            file_urls=r["file_urls"],
+            labels=[
+                label.Label(
+                    id=r["label_id"],
+                    message=r["label_message"],
+                    rating=r["label_rating"],
+                    creator=r["label_creator"],
+                    comment=r["label_comment"],
+                    created=r["label_created"],
+                    deleted=r["label_deleted"],
+                )
+            ]
+            if r["label_id"] is not None
+            else [],
+        )
 
     @staticmethod
     def from_row(r: MessageRow) -> "Message":
@@ -418,7 +461,7 @@ class Store:
 
     def get(self, id: str, agent: Optional[str] = None) -> Optional[Message]:
         with self.pool.connection() as conn:
-            with conn.cursor() as cur:
+            with conn.cursor(row_factory=dict_row) as cur:
                 q = """
                     SELECT
                         message.id,
@@ -443,13 +486,13 @@ class Store:
                         message.model_host,
                         message.expiration_time,
                         message.file_urls,
-                        label.id,
-                        label.message,
-                        label.rating,
-                        label.creator,
-                        label.comment,
-                        label.created,
-                        label.deleted
+                        label.id as label_id,
+                        label.message as label_message,
+                        label.rating as label_rating,
+                        label.creator as label_creator,
+                        label.comment as label_comment,
+                        label.created as label_created,
+                        label.deleted as label_deleted
                     FROM
                         message
                     LEFT JOIN
@@ -473,7 +516,7 @@ class Store:
                     ),
                 ).fetchall()
                 _, msgs = Message.tree(
-                    Message.group_by_id([Message.from_row(r) for r in rows])
+                    Message.group_by_id([Message.from_dict_row(r) for r in rows])
                 )
                 return msgs.get(id)
 

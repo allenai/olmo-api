@@ -1,7 +1,9 @@
 from time import time_ns
-from src import config
-from google.cloud import storage
+
 from flask import current_app
+from google.cloud import storage
+
+from src import config
 
 
 class GoogleCloudStorage:

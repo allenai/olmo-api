@@ -13,9 +13,12 @@ from src.message.create_message_request import (
 from src.message.create_message_service import (
     create_message_v4,
 )
+from src.message.GoogleCloudStorage import GoogleCloudStorage
 
 
-def create_v4_message_blueprint(dbc: db.Client) -> Blueprint:
+def create_v4_message_blueprint(
+    dbc: db.Client, storage_client: GoogleCloudStorage
+) -> Blueprint:
     v4_message_blueprint = Blueprint("message", __name__)
 
     @v4_message_blueprint.post("/stream")
@@ -36,7 +39,9 @@ def create_v4_message_blueprint(dbc: db.Client) -> Blueprint:
             response.status_code = 400
             return response
 
-        stream_response = create_message_v4(create_message_request_with_lists, dbc)
+        stream_response = create_message_v4(
+            create_message_request_with_lists, dbc, storage_client=storage_client
+        )
         if isinstance(stream_response, Generator):
             return Response(
                 stream_with_context(stream_response), mimetype="application/jsonl"

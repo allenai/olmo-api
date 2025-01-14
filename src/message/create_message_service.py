@@ -3,11 +3,12 @@ import json
 import os
 from datetime import datetime, timedelta, timezone
 from time import time_ns
-from typing import Generator, List, Optional
+from typing import Generator, List, Optional, Sequence
 
 import grpc
 from flask import current_app
 from werkzeug import exceptions
+from werkzeug.datastructures import FileStorage
 
 from src import db, parse, util
 from src.auth.auth_service import authn
@@ -57,12 +58,6 @@ def check_message_safety(
     return None
 
 
-# TODO: test uploading image bytes with this function and save the image link to DB
-def upload_image(filename, bytes):
-    storage_client = GoogleCloudStorage()
-    storage_client.upload_content(filename, bytes)
-
-
 @dataclasses.dataclass
 class ParsedMessage:
     content: parse.MessageContent
@@ -77,9 +72,47 @@ def get_engine(host: str) -> InferenceEngine:
             return ModalEngine()
 
 
+def upload_request_files(
+    files: Optional[Sequence[FileStorage]],
+    message_id: str,
+    storage_client: GoogleCloudStorage,
+    root_message_id: str,
+) -> list[str] | None:
+    if files is None or len(files) == 0:
+        return None
+
+    file_urls: list[str] = []
+
+    for i, file in enumerate(files):
+        file_extension = (
+            os.path.splitext(file.filename)[1] if file.filename is not None else ""
+        )
+
+        # We don't want to save filenames since we're not safety checking them for dangerous or personal info
+        filename = f"{root_message_id}/{message_id}-{i}{file_extension}"
+
+        if file.content_type is None:
+            file_url = storage_client.upload_content(
+                filename, content=file.stream.read()
+            )
+        else:
+            file_url = storage_client.upload_content(
+                filename=filename,
+                content=file.stream.read(),
+                content_type=file.content_type,
+            )
+
+        # since we read from the file we need to rewind it so the next consumer can read it
+        file.stream.seek(0)
+        file_urls.append(file_url)
+
+    return file_urls
+
+
 def stream_new_message(
     request: CreateMessageRequestWithFullMessages,
     dbc: db.Client,
+    storage_client: GoogleCloudStorage,
     checker_type: SafetyCheckerType = SafetyCheckerType.Google,
 ) -> message.Message | Generator[str, None, None]:
     start_all = time_ns()
@@ -226,10 +259,20 @@ def stream_new_message(
 
     message_chain.reverse()
 
+    file_urls = upload_request_files(
+        files=request.files,
+        message_id=msg.id,
+        storage_client=storage_client,
+        root_message_id=message_chain[0].id,
+    )
+
     chain: list[InferenceEngineMessage] = [
         InferenceEngineMessage(role=msg.role, content=msg.content, files=request.files)
         for msg in message_chain
     ]
+
+    # TODO https://github.com/allenai/playground-issues-repo/issues/9: Get this from the DB
+    msg.file_urls = file_urls
 
     # Create a message that will eventually capture the streamed response.
     # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message
@@ -461,6 +504,7 @@ def get_parent_and_root_messages_and_private(
 def create_message_v3(
     request: CreateMessageRequestV3,
     dbc: db.Client,
+    storage_client: GoogleCloudStorage,
     checker_type: SafetyCheckerType = SafetyCheckerType.Google,
 ) -> message.Message | Generator[str, None, None]:
     agent = authn()
@@ -484,12 +528,15 @@ def create_message_v3(
         client=agent.client,
     )
 
-    return stream_new_message(mapped_request, dbc, checker_type)
+    return stream_new_message(
+        mapped_request, dbc, storage_client=storage_client, checker_type=checker_type
+    )
 
 
 def create_message_v4(
     request: CreateMessageRequestV4WithLists,
     dbc: db.Client,
+    storage_client: GoogleCloudStorage,
     checker_type: SafetyCheckerType = SafetyCheckerType.Google,
 ) -> message.Message | Generator[str, None, None]:
     agent = authn()
@@ -521,7 +568,9 @@ def create_message_v4(
         files=request.files,
     )
 
-    return stream_new_message(mapped_request, dbc, checker_type)
+    return stream_new_message(
+        mapped_request, dbc, storage_client=storage_client, checker_type=checker_type
+    )
 
 
 def format_message(obj) -> str:

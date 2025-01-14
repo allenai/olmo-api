@@ -126,6 +126,7 @@ MessageRow = tuple[
     str,
     str,
     Optional[datetime],
+    Optional[list[str]],
     # Label fields
     Optional[str],
     Optional[str],
@@ -206,7 +207,7 @@ class Message:
     def from_row(r: MessageRow) -> "Message":
         labels = []
         # If the label id is not None, unpack the label.
-        label_row = 21
+        label_row = 22
         if r[label_row] is not None:
             labels = [label.Label.from_row(cast(label.LabelRow, r[label_row:]))]
 
@@ -242,9 +243,8 @@ class Message:
             model_id=r[18],
             model_host=r[19],
             expiration_time=r[20],
+            file_urls=r[21],
             labels=labels,
-            # TODO https://github.com/allenai/playground-issues-repo/issues/9: Get this from the DB
-            file_urls=None,
         )
 
     def merge(self, m: "Message") -> "Message":
@@ -319,15 +319,16 @@ class Store:
         finish_reason: Optional[str] = None,
         harmful: Optional[bool] = None,
         expiration_time: Optional[datetime] = None,
+        file_urls: Optional[list[str]] = None,
     ) -> Message:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 try:
                     q = """
                         INSERT INTO
-                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private, model_type, finish_reason, harmful, model_id, model_host, expiration_time)
+                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private, model_type, finish_reason, harmful, model_id, model_host, expiration_time, file_urls)
                         VALUES
-                            (%(id)s, %(content)s, %(creator)s, %(role)s, %(opts)s, %(root)s, %(parent)s, %(template)s, %(logprobs)s, %(completion)s, %(final)s, %(original)s, %(private)s, %(model_type)s, %(finish_reason)s, %(harmful)s, %(model_id)s, %(model_host)s, %(expiration_time)s)
+                            (%(id)s, %(content)s, %(creator)s, %(role)s, %(opts)s, %(root)s, %(parent)s, %(template)s, %(logprobs)s, %(completion)s, %(final)s, %(original)s, %(private)s, %(model_type)s, %(finish_reason)s, %(harmful)s, %(model_id)s, %(model_host)s, %(expiration_time)s, %(file_urls)s)
                         RETURNING
                             id,
                             content,
@@ -350,6 +351,7 @@ class Store:
                             model_id,
                             model_host,
                             expiration_time,
+                            file_urls,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -383,6 +385,7 @@ class Store:
                             "model_id": model_id,
                             "model_host": model_host,
                             "expiration_time": expiration_time,
+                            "file_urls": file_urls,
                         },
                     ).fetchone()
 
@@ -439,6 +442,7 @@ class Store:
                         message.model_id,
                         message.model_host,
                         message.expiration_time,
+                        message.file_urls,
                         label.id,
                         label.message,
                         label.rating,
@@ -499,6 +503,7 @@ class Store:
                         message.model_id,
                         message.model_host,
                         message.expiration_time,
+                        message.file_urls,
                         label.id,
                         label.message,
                         label.rating,
@@ -526,6 +531,7 @@ class Store:
         completion: Optional[obj.ID] = None,
         finish_reason: Optional[str] = None,
         harmful: Optional[bool] = None,
+        file_urls: Optional[list[str]] = None,
     ) -> Optional[Message]:
         """
         Used to finalize a Message produced via a streaming response.
@@ -537,14 +543,15 @@ class Store:
                         UPDATE
                             message
                         SET
-                            content = COALESCE(%s, content),
-                            logprobs = COALESCE(%s, logprobs),
-                            completion = COALESCE(%s, completion),
-                            finish_reason = COALESCE(%s, finish_reason),
-                            harmful = COALESCE(%s, harmful),
+                            content = COALESCE(%(content)s, content),
+                            logprobs = COALESCE(%(logprobs)s, logprobs),
+                            completion = COALESCE(%(completion)s, completion),
+                            finish_reason = COALESCE(%(finish_reason)s, finish_reason),
+                            harmful = COALESCE(%(harmful)s, harmful),
+                            file_urls= COALESCE(%(file_urls)s, file_urls),
                             final = true
                         WHERE
-                            id = %s
+                            id = %(id)s
                         RETURNING
                             id,
                             content,
@@ -567,6 +574,7 @@ class Store:
                             model_id,
                             model_host,
                             expiration_time,
+                            file_urls,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -579,14 +587,15 @@ class Store:
                     """
                     row = cur.execute(
                         q,
-                        (
-                            content,
-                            prepare_logprobs(logprobs),
-                            completion,
-                            finish_reason,
-                            harmful,
-                            id,
-                        ),
+                        {
+                            "content": content,
+                            "logprobs": prepare_logprobs(logprobs),
+                            "completion": completion,
+                            "finish_reason": finish_reason,
+                            "harmful": harmful,
+                            "file_urls": file_urls,
+                            "id": id,
+                        },
                     ).fetchone()
                     return Message.from_row(row) if row is not None else None
                 except errors.ForeignKeyViolation as e:
@@ -634,6 +643,7 @@ class Store:
                         updated.model_id,
                         updated.model_host,
                         updated.expiration_time,
+                        updated.file_urls,
                         label.id,
                         label.message,
                         label.rating,
@@ -746,6 +756,7 @@ class Store:
                         message.model_id,
                         message.model_host,
                         message.expiration_time,
+                        message.file_urls,
                         label.id,
                         label.message,
                         label.rating,

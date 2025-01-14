@@ -247,6 +247,13 @@ def stream_new_message(
     if msg.role == message.Role.Assistant:
         return msg
 
+    file_urls = upload_request_files(
+        files=request.files, message_id=msg.id, storage_client=storage_client
+    )
+
+    # These aren't saved in the DB yet, they currently get saved when we finalize
+    msg.file_urls = file_urls
+
     # Resolve the message chain if we need to.
     message_chain = [msg]
     if request.root is not None:
@@ -403,7 +410,7 @@ def stream_new_message(
             )
 
         # Finalize the messages and yield
-        finalMessage = dbc.message.finalize(msg.id)
+        finalMessage = dbc.message.finalize(msg.id, file_urls=file_urls)
         if finalMessage is None:
             final_message_error = RuntimeError(f"failed to finalize message {msg.id}")
             yield format_message(

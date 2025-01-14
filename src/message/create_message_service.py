@@ -76,6 +76,7 @@ def upload_request_files(
     files: Optional[Sequence[FileStorage]],
     message_id: str,
     storage_client: GoogleCloudStorage,
+    root_message_id: str,
 ) -> list[str] | None:
     if files is None or len(files) == 0:
         return None
@@ -83,8 +84,12 @@ def upload_request_files(
     file_urls: list[str] = []
 
     for i, file in enumerate(files):
+        file_extension = (
+            os.path.splitext(file.filename)[1] if file.filename is not None else ""
+        )
+
         # We don't want to save filenames since we're not safety checking them for dangerous or personal info
-        filename = f"{message_id}-{i}"
+        filename = f"{root_message_id}/{message_id}-{i}{file_extension}"
 
         if file.content_type is None:
             file_url = storage_client.upload_content(
@@ -242,13 +247,6 @@ def stream_new_message(
     if msg.role == message.Role.Assistant:
         return msg
 
-    file_urls = upload_request_files(
-        files=request.files, message_id=msg.id, storage_client=storage_client
-    )
-
-    # TODO https://github.com/allenai/playground-issues-repo/issues/9: Get this from the DB
-    msg.file_urls = file_urls
-
     # Resolve the message chain if we need to.
     message_chain = [msg]
     if request.root is not None:
@@ -261,10 +259,20 @@ def stream_new_message(
 
     message_chain.reverse()
 
+    file_urls = upload_request_files(
+        files=request.files,
+        message_id=msg.id,
+        storage_client=storage_client,
+        root_message_id=message_chain[0].id,
+    )
+
     chain: list[InferenceEngineMessage] = [
         InferenceEngineMessage(role=msg.role, content=msg.content, files=request.files)
         for msg in message_chain
     ]
+
+    # TODO https://github.com/allenai/playground-issues-repo/issues/9: Get this from the DB
+    msg.file_urls = file_urls
 
     # Create a message that will eventually capture the streamed response.
     # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message

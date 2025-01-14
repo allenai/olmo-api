@@ -192,6 +192,7 @@ class Message:
     harmful: Optional[bool] = None
     expiration_time: Optional[datetime] = None
     labels: list[label.Label] = field(default_factory=list)
+    file_urls: Optional[list[str]] = None
 
     def flatten(self) -> list["Message"]:
         if self.children is None:
@@ -242,6 +243,8 @@ class Message:
             model_host=r[19],
             expiration_time=r[20],
             labels=labels,
+            # TODO https://github.com/allenai/playground-issues-repo/issues/9: Get this from the DB
+            file_urls=None,
         )
 
     def merge(self, m: "Message") -> "Message":

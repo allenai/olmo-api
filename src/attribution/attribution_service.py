@@ -235,12 +235,12 @@ def get_attribution(
                     span_index=span_index,
                 )
 
-        return {
-            "index": index,
-            "documents": sorted(
-                mapped_documents.values(),
-                key=lambda document: document.relevance_score,
-                reverse=True,
-            ),
-            "spans": list(mapped_spans.values()),
-        }
+    return {
+        "index": index,
+        "documents": sorted(
+            mapped_documents.values(),
+            key=lambda document: document.relevance_score,
+            reverse=True,
+        ),
+        "spans": list(mapped_spans.values()),
+    }

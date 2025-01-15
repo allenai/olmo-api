@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
-from typing import List, Optional, Self, cast
+from typing import Annotated, List, Optional, Self, cast
 
-from flask import json, request
+from pydantic import AfterValidator, Field
 from werkzeug import exceptions
 
 from src.api_interface import APIInterface
@@ -91,16 +91,19 @@ class ResponseAttributionDocument:
         )
 
 
+def model_id_is_valid_for_infini_gram(model_id: str) -> str:
+    valid_model_ids = list(cfg.infini_gram.model_index_map.keys())
+    if model_id not in valid_model_ids:
+        raise ValueError(f"{model_id} must be one of {valid_model_ids}")
+
+    return model_id
+
+
 class GetAttributionRequest(APIInterface):
     prompt: str
     model_response: str
-    model_id: str
-    max_documents: int = 10
-
-
-class MappedGetAttributionRequest(GetAttributionRequest):
-    index: AvailableInfiniGramIndexId
-    spans_and_documents_as_list: bool
+    model_id: Annotated[str, AfterValidator(model_id_is_valid_for_infini_gram)]
+    max_documents: int = Field(default=10)
 
 
 @dataclass
@@ -152,11 +155,14 @@ def update_mapped_document(
 
 
 def get_attribution(
+    request: GetAttributionRequest,
     infini_gram_client: Client,
 ):
-    request = _validate_get_attribution_request()
+    index = AvailableInfiniGramIndexId(
+        cfg.infini_gram.model_index_map[request.model_id]
+    )
     attribution_response = get_document_attributions_index_attribution_post.sync(
-        index=request.index,
+        index=index,
         client=infini_gram_client,
         body=AttributionRequest(
             prompt=request.prompt,
@@ -229,9 +235,8 @@ def get_attribution(
                     span_index=span_index,
                 )
 
-    if request.spans_and_documents_as_list is True:
         return {
-            "index": request.index,
+            "index": index,
             "documents": sorted(
                 mapped_documents.values(),
                 key=lambda document: document.relevance_score,
@@ -239,32 +244,3 @@ def get_attribution(
             ),
             "spans": list(mapped_spans.values()),
         }
-    else:
-        return {
-            "index": request.index,
-            "documents": mapped_documents,
-            "spans": mapped_spans,
-        }
-
-
-def _validate_get_attribution_request():
-    if request.json is None:
-        raise exceptions.BadRequest("no request body")
-
-    try:
-        model_id = request.json.get("model_id")
-        index = AvailableInfiniGramIndexId(cfg.infini_gram.model_index_map[model_id])
-    except AttributeError:
-        raise exceptions.BadRequest(
-            description=f"model_id must be one of: [{', '.join(cfg.infini_gram.model_index_map.keys())}]."
-        )
-
-    spans_and_documents_as_list = request.args.get(
-        "spansAndDocumentsAsList", type=json.loads, default=False
-    )
-
-    return MappedGetAttributionRequest(
-        **request.json,
-        index=index,
-        spans_and_documents_as_list=spans_and_documents_as_list,
-    )

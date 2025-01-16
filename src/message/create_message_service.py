@@ -1,3 +1,4 @@
+import base64
 import dataclasses
 import json
 import os
@@ -28,6 +29,7 @@ from src.message.create_message_request import (
 )
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.GoogleModerateText import GoogleModerateText
+from src.message.GoogleSafeSearch import GoogleSafeSearch
 from src.message.SafetyChecker import (
     SafetyChecker,
     SafetyCheckerType,
@@ -37,10 +39,11 @@ from src.message.WildGuard import WildGuard
 
 
 def check_message_safety(
-    text: str, checker_type: SafetyCheckerType = SafetyCheckerType.Google
+    text: str,
+    checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
 ) -> bool | None:
     safety_checker: SafetyChecker = GoogleModerateText()
-    request = SafetyCheckRequest(text=text)
+    request = SafetyCheckRequest(content=text)
 
     if checker_type == SafetyCheckerType.WildGuard:
         safety_checker = WildGuard()
@@ -56,6 +59,32 @@ def check_message_safety(
         )
 
     return None
+
+
+def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
+    checker = GoogleSafeSearch()
+
+    for file in files:
+        try:
+            image = base64.b64encode(file.stream.read()).decode("utf-8")
+            file.stream.seek(0)
+
+            request = SafetyCheckRequest(image, file.filename)
+            result = checker.check_request(request)
+
+            if not result.is_safe():
+                return False
+
+        except Exception as e:
+            current_app.logger.error(
+                "Skipped image safety check over %s due to error: %s. ",
+                file.filename,
+                repr(e),
+            )
+
+            return None
+
+    return True
 
 
 @dataclasses.dataclass
@@ -93,7 +122,7 @@ def upload_request_files(
 
         if file.content_type is None:
             file_url = storage_client.upload_content(
-                filename, content=file.stream.read()
+                filename=filename, content=file.stream.read()
             )
         else:
             file_url = storage_client.upload_content(
@@ -113,7 +142,7 @@ def stream_new_message(
     request: CreateMessageRequestWithFullMessages,
     dbc: db.Client,
     storage_client: GoogleCloudStorage,
-    checker_type: SafetyCheckerType = SafetyCheckerType.Google,
+    checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
 ) -> message.Message | Generator[str, None, None]:
     start_all = time_ns()
     agent = authn()
@@ -127,6 +156,7 @@ def stream_new_message(
         )
 
     is_content_safe = None
+    is_image_safe = None
     # Capture the SHA and logger, as the current_app context is lost in the generator.
     sha = os.environ.get("SHA") or "DEV"
     logger = current_app.logger
@@ -135,6 +165,7 @@ def stream_new_message(
     if request.role == message.Role.User:
         safety_check_start_time = time_ns()
         is_content_safe = check_message_safety(request.content, checker_type)
+        is_image_safe = check_image_safety(request.files or [])
         safety_check_elapsed_time = (time_ns() - safety_check_start_time) // 1_000_000
 
         # We don't want to save messages from anonymous users
@@ -158,7 +189,7 @@ def stream_new_message(
                 output_tokens=-1,
             )
 
-        if is_content_safe is False:
+        if is_content_safe is False or is_image_safe is False:
             raise exceptions.BadRequest(description="inappropriate_prompt")
 
     # We currently want anonymous users' messages to expire after 1 day
@@ -168,7 +199,7 @@ def stream_new_message(
         else None
     )
 
-    is_msg_harmful = None if is_content_safe is None else not is_content_safe
+    is_msg_harmful = None if is_content_safe is None or is_image_safe is None else False
     system_msg = None
     msg = None
 
@@ -192,40 +223,25 @@ def stream_new_message(
                 harmful=is_msg_harmful,
                 expiration_time=message_expiration_time,
             )
-            msg = dbc.message.create(
-                content=request.content,
-                creator=agent.client,
-                role=request.role,
-                opts=request.opts,
-                model_id=request.model,
-                model_host=request.host,
-                root=system_msg.id,
-                parent=system_msg.id,
-                template=request.template,
-                final=request.role == message.Role.Assistant,
-                original=request.original,
-                private=request.private,
-                harmful=is_msg_harmful,
-                expiration_time=message_expiration_time,
-            )
 
-        else:
-            msg = dbc.message.create(
-                content=request.content,
-                creator=agent.client,
-                role=request.role,
-                opts=request.opts,
-                model_id=request.model,
-                model_host=request.host,
-                root=None,
-                parent=None,
-                template=request.template,
-                final=request.role == message.Role.Assistant,
-                original=request.original,
-                private=request.private,
-                harmful=is_msg_harmful,
-                expiration_time=message_expiration_time,
-            )
+        parent_id = None if system_msg is None else system_msg.id
+
+        msg = dbc.message.create(
+            content=request.content,
+            creator=agent.client,
+            role=request.role,
+            opts=request.opts,
+            model_id=request.model,
+            model_host=request.host,
+            root=parent_id,
+            parent=parent_id,
+            template=request.template,
+            final=request.role == message.Role.Assistant,
+            original=request.original,
+            private=request.private,
+            harmful=is_msg_harmful,
+            expiration_time=message_expiration_time,
+        )
     else:
         msg = dbc.message.create(
             content=request.content,
@@ -505,7 +521,7 @@ def create_message_v3(
     request: CreateMessageRequestV3,
     dbc: db.Client,
     storage_client: GoogleCloudStorage,
-    checker_type: SafetyCheckerType = SafetyCheckerType.Google,
+    checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
 ) -> message.Message | Generator[str, None, None]:
     agent = authn()
 
@@ -537,7 +553,7 @@ def create_message_v4(
     request: CreateMessageRequestV4WithLists,
     dbc: db.Client,
     storage_client: GoogleCloudStorage,
-    checker_type: SafetyCheckerType = SafetyCheckerType.Google,
+    checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
 ) -> message.Message | Generator[str, None, None]:
     agent = authn()
 

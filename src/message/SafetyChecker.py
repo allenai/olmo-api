@@ -1,16 +1,19 @@
 from abc import abstractmethod
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Optional
 
 
 class SafetyCheckerType(StrEnum):
-    Google = "google-moderate-text"
+    GoogleLanguage = "google-moderate-text"
+    GoogleVision = "google-safety-search"
     WildGuard = "wildguard"
 
 
 @dataclass
 class SafetyCheckRequest:
-    text: str
+    content: str
+    name: Optional[str] = None
 
 
 class SafetyCheckResponse:

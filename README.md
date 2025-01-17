@@ -71,8 +71,10 @@ run `openapi-python-client generate --url https://infinigram-api.allen.ai/openap
 
 copy the `infini_gram_api_client` folder from the generated code into `src/attribution/infini_gram_api_client`
 
+**NOTE:** You need to manually edit `api/default/get_document_attributions_index_attribution_post.py` to make sure that `_parse_response()` tries parsing into the subclass first. The codegen may have reverted this manual change.
+
 ## Adding models hosted on Modal
-1. Get the model name. 
+1. Get the model name.
     - If you're getting this yourself, you can check the [reviz-modal repo](https://github.com/allenai/reviz-modal)'s `src` folder. Find the `.py` file with the model and version you want to serve, then find the `MODEL_NAME` variable in the file. That will be the value we use for this.
 2. Add an entry to the local `config.json`'s `modal.available_models` section
     - The `id` and `compute_source_id` should be the model name you got in the earlier step.

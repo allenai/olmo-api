@@ -29,7 +29,7 @@ from src.message.create_message_request import (
 )
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.GoogleModerateText import GoogleModerateText
-from src.message.GoogleSafeSearch import GoogleSafeSearch
+from src.message.GoogleVisionSafeSearch import GoogleVisionSafeSearch
 from src.message.SafetyChecker import (
     SafetyChecker,
     SafetyCheckerType,
@@ -62,7 +62,7 @@ def check_message_safety(
 
 
 def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
-    checker = GoogleSafeSearch()
+    checker = GoogleVisionSafeSearch()
 
     for file in files:
         try:

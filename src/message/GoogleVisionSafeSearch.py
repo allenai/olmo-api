@@ -9,7 +9,7 @@ from src.message.SafetyChecker import (
 import requests
 
 
-class GoogleSafeSearchResponse(SafetyCheckResponse):
+class GoogleVisionSafeSearchResponse(SafetyCheckResponse):
     response: requests.Response
     result: SafeSearchAnnotation
 
@@ -36,7 +36,7 @@ class GoogleSafeSearchResponse(SafetyCheckResponse):
         return violations
 
 
-class GoogleSafeSearch(SafetyChecker):
+class GoogleVisionSafeSearch(SafetyChecker):
     def check_request(self, req: SafetyCheckRequest):
         headers = {
             "Content-Type": "application/json",
@@ -61,11 +61,11 @@ class GoogleSafeSearch(SafetyChecker):
         if not result.ok:
             result.raise_for_status()
 
-        response = GoogleSafeSearchResponse(result)
+        response = GoogleVisionSafeSearchResponse(result)
 
         current_app.logger.info(
             {
-                "checker": "GoogleSafeSearch",
+                "checker": "GoogleVisionSafeSearch",
                 "request": req.name,
                 "duration_ms": result.elapsed / 1_000_000,
                 "violations": response.get_violation_categories(),

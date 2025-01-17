@@ -6,7 +6,7 @@ from typing import Optional
 
 class SafetyCheckerType(StrEnum):
     GoogleLanguage = "google-moderate-text"
-    GoogleVision = "google-safety-search"
+    GoogleVision = "google-safe-search"
     WildGuard = "wildguard"
 
 

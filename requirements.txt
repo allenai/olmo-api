@@ -14,4 +14,5 @@ modal==0.64.26
 gunicorn==23.0.0 
 google-cloud-language==2.15.0
 google-cloud-storage==2.19.0
+google-cloud-vision==3.9.0
 flask-pydantic-api==1.5.0

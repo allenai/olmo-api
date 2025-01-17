@@ -56,7 +56,7 @@ class WildGuard(SafetyChecker):
 
         start_ns = time_ns()
         # the wildguard returns a generator that yields a single response
-        result = list(f.remote_gen(req.text)).pop()
+        result = list(f.remote_gen(req.content)).pop()
         end_ns = time_ns()
 
         response = WildguardResponse(
@@ -68,7 +68,7 @@ class WildGuard(SafetyChecker):
         current_app.logger.info(
             {
                 "checker": "WildGuard",
-                "prompt": req.text,
+                "prompt": req.content,
                 "duration_ms": (end_ns - start_ns) / 1_000_000,
                 "is_safe": response.is_safe(),
             }

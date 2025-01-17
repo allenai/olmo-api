@@ -63,7 +63,7 @@ class GoogleModerateText(SafetyChecker):
 
     def check_request(self, req: SafetyCheckRequest) -> SafetyCheckResponse:
         request = ModerateTextRequest(
-            document=Document(content=req.text, type=Document.Type.PLAIN_TEXT)
+            document=Document(content=req.content, type=Document.Type.PLAIN_TEXT)
         )
 
         start_ns = time_ns()
@@ -75,7 +75,7 @@ class GoogleModerateText(SafetyChecker):
         current_app.logger.info(
             {
                 "checker": "GoogleModerateText",
-                "prompt": req.text,
+                "prompt": req.content,
                 "duration_ms": (end_ns - start_ns) / 1_000_000,
                 "violations": response.get_violation_categories(),
             }

@@ -8,6 +8,4 @@ RUN --mount=type=cache,target=/root/.cache pip install -r requirements.txt
 
 COPY . .
 
-ENV GOOGLE_APPLICATION_CREDENTIALS=/secret/cfg/service_account.json
-
 ENTRYPOINT [ "/api/start.sh" ]

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Type, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -17,25 +17,33 @@ class AttributionSpanWithDocuments:
         left (int):
         right (int):
         length (int):
+        count (int):
+        unigram_logprob_sum (float):
         text (str):
-        token_ids (List[int]):
-        documents (List['DocumentWithPointer']):
+        token_ids (list[int]):
+        documents (list['DocumentWithPointer']):
     """
 
     left: int
     right: int
     length: int
+    count: int
+    unigram_logprob_sum: float
     text: str
-    token_ids: List[int]
-    documents: List["DocumentWithPointer"]
-    additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
+    token_ids: list[int]
+    documents: list["DocumentWithPointer"]
+    additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         left = self.left
 
         right = self.right
 
         length = self.length
+
+        count = self.count
+
+        unigram_logprob_sum = self.unigram_logprob_sum
 
         text = self.text
 
@@ -46,13 +54,15 @@ class AttributionSpanWithDocuments:
             documents_item = documents_item_data.to_dict()
             documents.append(documents_item)
 
-        field_dict: Dict[str, Any] = {}
+        field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
                 "left": left,
                 "right": right,
                 "length": length,
+                "count": count,
+                "unigramLogprobSum": unigram_logprob_sum,
                 "text": text,
                 "tokenIds": token_ids,
                 "documents": documents,
@@ -62,7 +72,7 @@ class AttributionSpanWithDocuments:
         return field_dict
 
     @classmethod
-    def from_dict(cls: Type[T], src_dict: Dict[str, Any]) -> T:
+    def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
         from ..models.document_with_pointer import DocumentWithPointer
 
         d = src_dict.copy()
@@ -72,9 +82,13 @@ class AttributionSpanWithDocuments:
 
         length = d.pop("length")
 
+        count = d.pop("count")
+
+        unigram_logprob_sum = d.pop("unigramLogprobSum")
+
         text = d.pop("text")
 
-        token_ids = cast(List[int], d.pop("tokenIds"))
+        token_ids = cast(list[int], d.pop("tokenIds"))
 
         documents = []
         _documents = d.pop("documents")
@@ -87,6 +101,8 @@ class AttributionSpanWithDocuments:
             left=left,
             right=right,
             length=length,
+            count=count,
+            unigram_logprob_sum=unigram_logprob_sum,
             text=text,
             token_ids=token_ids,
             documents=documents,
@@ -96,7 +112,7 @@ class AttributionSpanWithDocuments:
         return attribution_span_with_documents
 
     @property
-    def additional_keys(self) -> List[str]:
+    def additional_keys(self) -> list[str]:
         return list(self.additional_properties.keys())
 
     def __getitem__(self, key: str) -> Any:

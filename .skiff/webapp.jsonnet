@@ -244,6 +244,10 @@ function(apiImage, messageDeletionJobImage, cause, sha, env='prod', branch='', r
                                     name: 'SHA',
                                     value: sha
                                 },
+                                {
+                                    name: 'GOOGLE_APPLICATION_CREDENTIALS',
+                                    value: '/secret/cfg/service_account.json'
+                                }
                             ],
                             # The "probes" below allow Kubernetes to determine
                             # if your application is working properly.

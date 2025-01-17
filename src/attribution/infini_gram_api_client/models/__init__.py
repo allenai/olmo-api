@@ -9,6 +9,8 @@ from .document import Document
 from .document_metadata import DocumentMetadata
 from .document_with_pointer import DocumentWithPointer
 from .document_with_pointer_metadata import DocumentWithPointerMetadata
+from .fields_considered_for_ranking import FieldsConsideredForRanking
+from .filter_method import FilterMethod
 from .http_validation_error import HTTPValidationError
 from .infini_gram_attribution_response import InfiniGramAttributionResponse
 from .infini_gram_attribution_response_with_documents import InfiniGramAttributionResponseWithDocuments
@@ -17,6 +19,7 @@ from .infini_gram_document_response import InfiniGramDocumentResponse
 from .infini_gram_document_response_metadata import InfiniGramDocumentResponseMetadata
 from .infini_gram_documents_response import InfiniGramDocumentsResponse
 from .search_response import SearchResponse
+from .span_ranking_method import SpanRankingMethod
 from .validation_error import ValidationError
 
 __all__ = (
@@ -29,6 +32,8 @@ __all__ = (
     "DocumentMetadata",
     "DocumentWithPointer",
     "DocumentWithPointerMetadata",
+    "FieldsConsideredForRanking",
+    "FilterMethod",
     "HTTPValidationError",
     "InfiniGramAttributionResponse",
     "InfiniGramAttributionResponseWithDocuments",
@@ -37,5 +42,6 @@ __all__ = (
     "InfiniGramDocumentResponseMetadata",
     "InfiniGramDocumentsResponse",
     "SearchResponse",
+    "SpanRankingMethod",
     "ValidationError",
 )

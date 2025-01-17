@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Type, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -15,16 +15,16 @@ class InfiniGramAttributionResponseWithDocuments:
     """
     Attributes:
         index (str):
-        spans (List['AttributionSpanWithDocuments']):
-        input_tokens (Union[List[str], None]):
+        spans (list['AttributionSpanWithDocuments']):
+        input_tokens (Union[None, list[str]]):
     """
 
     index: str
-    spans: List["AttributionSpanWithDocuments"]
-    input_tokens: Union[List[str], None]
-    additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
+    spans: list["AttributionSpanWithDocuments"]
+    input_tokens: Union[None, list[str]]
+    additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         index = self.index
 
         spans = []
@@ -32,14 +32,14 @@ class InfiniGramAttributionResponseWithDocuments:
             spans_item = spans_item_data.to_dict()
             spans.append(spans_item)
 
-        input_tokens: Union[List[str], None]
+        input_tokens: Union[None, list[str]]
         if isinstance(self.input_tokens, list):
             input_tokens = self.input_tokens
 
         else:
             input_tokens = self.input_tokens
 
-        field_dict: Dict[str, Any] = {}
+        field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
@@ -52,7 +52,7 @@ class InfiniGramAttributionResponseWithDocuments:
         return field_dict
 
     @classmethod
-    def from_dict(cls: Type[T], src_dict: Dict[str, Any]) -> T:
+    def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
         from ..models.attribution_span_with_documents import AttributionSpanWithDocuments
 
         d = src_dict.copy()
@@ -65,18 +65,18 @@ class InfiniGramAttributionResponseWithDocuments:
 
             spans.append(spans_item)
 
-        def _parse_input_tokens(data: object) -> Union[List[str], None]:
+        def _parse_input_tokens(data: object) -> Union[None, list[str]]:
             if data is None:
                 return data
             try:
                 if not isinstance(data, list):
                     raise TypeError()
-                input_tokens_type_0 = cast(List[str], data)
+                input_tokens_type_0 = cast(list[str], data)
 
                 return input_tokens_type_0
             except:  # noqa: E722
                 pass
-            return cast(Union[List[str], None], data)
+            return cast(Union[None, list[str]], data)
 
         input_tokens = _parse_input_tokens(d.pop("inputTokens"))
 
@@ -90,7 +90,7 @@ class InfiniGramAttributionResponseWithDocuments:
         return infini_gram_attribution_response_with_documents
 
     @property
-    def additional_keys(self) -> List[str]:
+    def additional_keys(self) -> list[str]:
         return list(self.additional_properties.keys())
 
     def __getitem__(self, key: str) -> Any:

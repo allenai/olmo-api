@@ -28,7 +28,9 @@ def make_error_response(
                     jsonify({"error": {"code": code, "message": message}}), code
                 )
             else:
-                return make_response(jsonify({"error": {"code": code, **message}}))
+                return make_response(
+                    jsonify({"error": {"code": code, **message}}), code
+                )
 
 
 def handle(e: Exception) -> ResponseReturnValue:

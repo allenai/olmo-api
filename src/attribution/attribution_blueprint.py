@@ -16,7 +16,9 @@ attribution_blueprint = Blueprint(name="attribution", import_name=__name__)
 def get_attribution_for_model_response(
     corpuslink_request: GetAttributionRequest,
 ) -> Response:
-    infini_gram_client = Client(base_url=cfg.infini_gram.api_url)
+    infini_gram_client = Client(
+        base_url=cfg.infini_gram.api_url, raise_on_unexpected_status=True
+    )
 
     attribution_response = get_attribution(
         request=corpuslink_request,

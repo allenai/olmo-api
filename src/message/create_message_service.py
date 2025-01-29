@@ -141,10 +141,6 @@ def upload_request_files(
     return file_urls
 
 
-class ModelOverloadedException(BaseException):
-    pass
-
-
 def stream_new_message(
     request: CreateMessageRequestWithFullMessages,
     dbc: db.Client,
@@ -389,24 +385,22 @@ def stream_new_message(
             pool = multiprocessing.pool.ThreadPool(processes=1)
             results = pool.apply_async(lambda: next(message_generator))
 
-            try:
-                # We handle the first chunk differently since we want to timeout if it takes longer than 5 seconds
-                chunk = results.get(5.0)
-                chunk_logprobs = chunk.logprobs if chunk.logprobs is not None else []
-                mapped_logprobs = [
-                    [
-                        message.TokenLogProbs(
-                            token_id=lp.token_id, text=lp.text, logprob=lp.logprob
-                        )
-                        for lp in lp_list
-                    ]
-                    for lp_list in chunk_logprobs
+            # We handle the first chunk differently since we want to timeout if it takes longer than 5 seconds
+            first_chunk = results.get(5.0)
+            chunk_logprobs = (
+                first_chunk.logprobs if first_chunk.logprobs is not None else []
+            )
+            mapped_logprobs = [
+                [
+                    message.TokenLogProbs(
+                        token_id=lp.token_id, text=lp.text, logprob=lp.logprob
+                    )
+                    for lp in lp_list
                 ]
+                for lp_list in chunk_logprobs
+            ]
 
-                yield map_chunk(chunk)
-
-            except multiprocessing.TimeoutError:
-                raise ModelOverloadedException()
+            yield map_chunk(first_chunk)
 
             for chunk in message_generator:
                 finish_reason = chunk.finish_reason
@@ -434,13 +428,14 @@ def stream_new_message(
                 chunk_count += 1
                 first_ns = time_ns() if first_ns == 0 else first_ns
                 yield map_chunk(chunk)
+
         except grpc.RpcError as e:
             err = f"inference failed: {e}"
             yield format_message(
                 message.MessageStreamError(reply.id, err, "grpc inference failed")
             )
 
-        except ModelOverloadedException:
+        except multiprocessing.TimeoutError:
             yield format_message(
                 message.MessageStreamError(
                     message=reply.id,

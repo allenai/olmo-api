@@ -59,7 +59,7 @@ class InferDEngine(InferenceEngine):
             )
 
             yield InferenceEngineChunk(
-                content=message["text"],
+                content=message.get("text") or "",
                 model=model,
                 logprobs=mapped_logprobs,
                 finish_reason=message.get("finish_reason"),

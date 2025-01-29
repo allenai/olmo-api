@@ -8,6 +8,7 @@ from src.api_interface import APIInterface
 from src.attribution.infini_gram_api_client.api.default import (
     get_document_attributions_index_attribution_post,
 )
+from src.attribution.infini_gram_api_client.errors import UnexpectedStatus
 from src.attribution.infini_gram_api_client.models.attribution_request import (
     AttributionRequest,
 )
@@ -161,28 +162,34 @@ def get_attribution(
     index = AvailableInfiniGramIndexId(
         cfg.infini_gram.model_index_map[request.model_id]
     )
-    attribution_response = get_document_attributions_index_attribution_post.sync(
-        index=index,
-        client=infini_gram_client,
-        body=AttributionRequest(
-            prompt=request.prompt,
-            response=request.model_response,
-            delimiters=["\n", "."],
-            allow_spans_with_partial_words=False,
-            minimum_span_length=1,
-            maximum_frequency=1000000,
-            maximum_span_density=0.05,
-            span_ranking_method="unigram_logprob_sum",
-            include_documents=True,
-            maximum_document_context_length_retrieved=250,
-            maximum_document_context_length_displayed=40,
-            maximum_documents_per_span=10,
-            filter_method="bm25",
-            filter_bm_25_fields_considered="prompt|response",
-            filter_bm_25_ratio_to_keep=1.0,
-            include_input_as_tokens=True,
-        ),
-    )
+
+    try:
+        attribution_response = get_document_attributions_index_attribution_post.sync(
+            index=index,
+            client=infini_gram_client,
+            body=AttributionRequest(
+                prompt=request.prompt,
+                response=request.model_response,
+                delimiters=["\n", "."],
+                allow_spans_with_partial_words=False,
+                minimum_span_length=1,
+                maximum_frequency=1000000,
+                maximum_span_density=0.05,
+                span_ranking_method="unigram_logprob_sum",
+                include_documents=True,
+                maximum_document_context_length_retrieved=250,
+                maximum_document_context_length_displayed=40,
+                maximum_documents_per_span=10,
+                filter_method="bm25",
+                filter_bm_25_fields_considered="prompt|response",
+                filter_bm_25_ratio_to_keep=1.0,
+                include_input_as_tokens=True,
+            ),
+        )
+    except UnexpectedStatus as e:
+        raise exceptions.BadGateway(
+            f"Something went wrong when calling the infini-gram API: {e.status_code} {e.content.decode()}"
+        )
 
     if isinstance(attribution_response, HTTPValidationError):
         # validation error handling

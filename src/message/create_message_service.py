@@ -1,6 +1,8 @@
 import base64
 import dataclasses
 import json
+import multiprocessing
+import multiprocessing.pool
 import os
 from datetime import datetime, timedelta, timezone
 from time import time_ns
@@ -18,6 +20,7 @@ from src.inference.InferDEngine import InferDEngine
 from src.inference.InferenceEngine import (
     FinishReason,
     InferenceEngine,
+    InferenceEngineChunk,
     InferenceEngineMessage,
     InferenceOptions,
 )
@@ -334,42 +337,69 @@ def stream_new_message(
         chunk_count = 0
         input_token_count = -1
         output_token_count = -1
+
+        def map_chunk(chunk: InferenceEngineChunk):
+            # This tells python that we're referencing the variables from the closure and not making new ones
+            nonlocal \
+                finish_reason, \
+                input_token_count, \
+                output_token_count, \
+                chunk_count, \
+                first_ns
+
+            finish_reason = chunk.finish_reason
+
+            chunk_logprobs = chunk.logprobs if chunk.logprobs is not None else []
+            mapped_logprobs = [
+                [
+                    message.TokenLogProbs(
+                        token_id=lp.token_id, text=lp.text, logprob=lp.logprob
+                    )
+                    for lp in lp_list
+                ]
+                for lp_list in chunk_logprobs
+            ]
+
+            new_chunk = message.MessageChunk(
+                message=reply.id,
+                content=chunk.content,
+                logprobs=mapped_logprobs,
+            )
+            chunks.append(new_chunk)
+
+            input_token_count = chunk.input_token_count
+            output_token_count = chunk.output_token_count
+            chunk_count += 1
+            first_ns = time_ns() if first_ns == 0 else first_ns
+
+            return format_message(new_chunk)
+
         try:
-            for chunk in inference_engine.create_streamed_message(
+            message_generator = inference_engine.create_streamed_message(
                 model=model.compute_source_id,
                 messages=chain,
                 inference_options=InferenceOptions(**reply.opts.model_dump()),
-            ):
-                finish_reason = chunk.finish_reason
+            )
 
-                chunk_logprobs = chunk.logprobs if chunk.logprobs is not None else []
-                mapped_logprobs = [
-                    [
-                        message.TokenLogProbs(
-                            token_id=lp.token_id, text=lp.text, logprob=lp.logprob
-                        )
-                        for lp in lp_list
-                    ]
-                    for lp_list in chunk_logprobs
-                ]
+            # Adapted from https://anonbadger.wordpress.com/2018/12/15/python-signal-handlers-and-exceptions/
+            pool = multiprocessing.pool.ThreadPool(processes=1)
+            results = pool.apply_async(lambda: next(message_generator))
 
-                new_chunk = message.MessageChunk(
-                    message=reply.id,
-                    content=chunk.content,
-                    logprobs=mapped_logprobs,
-                )
-                chunks.append(new_chunk)
+            # We handle the first chunk differently since we want to timeout if it takes longer than 5 seconds
+            first_chunk = results.get(5.0)
+            yield map_chunk(first_chunk)
 
-                input_token_count = chunk.input_token_count
-                output_token_count = chunk.output_token_count
-                chunk_count += 1
-                first_ns = time_ns() if first_ns == 0 else first_ns
-                yield format_message(new_chunk)
+            for chunk in message_generator:
+                yield map_chunk(chunk)
+
         except grpc.RpcError as e:
             err = f"inference failed: {e}"
             yield format_message(
                 message.MessageStreamError(reply.id, err, "grpc inference failed")
             )
+
+        except multiprocessing.TimeoutError:
+            finish_reason = FinishReason.ModelOverloaded
 
         gen = time_ns() - start_gen
         gen = gen // 1_000_000
@@ -391,6 +421,15 @@ def stream_new_message(
                 err = "inference aborted for an unknown reason"
                 yield format_message(
                     message.MessageStreamError(reply.id, err, finish_reason)
+                )
+
+            case FinishReason.ModelOverloaded:
+                yield format_message(
+                    message.MessageStreamError(
+                        message=reply.id,
+                        error="model overloaded",
+                        reason=FinishReason.ModelOverloaded,
+                    )
                 )
 
             case FinishReason.Stop:

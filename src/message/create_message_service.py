@@ -436,13 +436,7 @@ def stream_new_message(
             )
 
         except multiprocessing.TimeoutError:
-            yield format_message(
-                message.MessageStreamError(
-                    message=reply.id,
-                    error="model overloaded",
-                    reason=FinishReason.ModelOverloaded,
-                )
-            )
+            finish_reason = FinishReason.ModelOverloaded
 
         gen = time_ns() - start_gen
         gen = gen // 1_000_000
@@ -464,6 +458,15 @@ def stream_new_message(
                 err = "inference aborted for an unknown reason"
                 yield format_message(
                     message.MessageStreamError(reply.id, err, finish_reason)
+                )
+
+            case FinishReason.ModelOverloaded:
+                yield format_message(
+                    message.MessageStreamError(
+                        message=reply.id,
+                        error="model overloaded",
+                        reason=FinishReason.ModelOverloaded,
+                    )
                 )
 
             case FinishReason.Stop:

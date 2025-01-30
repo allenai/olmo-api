@@ -25,6 +25,9 @@ class FinishReason(StrEnum):
     # The generation was aborted for an unknown reason.
     Aborted = "aborted"
 
+    # The model took longer than our timeout to return the first token
+    ModelOverloaded = "model overloaded"
+
 
 @dataclass
 class InferenceEngineMessage:

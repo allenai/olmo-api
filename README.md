@@ -46,7 +46,7 @@ docker compose exec api pytest
 - [Database Access](./docs/db.md)
 
 ## Running the API outside of Docker:
-Change `db.conninfo` in `config.json` to "postgres://app:llmz@localhost:5555/llmx?sslmode=disable"
+Change `db.conninfo` in `config.json` to "postgres://app:llmz@127.0.0.1:5555/llmx?sslmode=disable"
 
 start the postgres container with `docker compose start db`
 

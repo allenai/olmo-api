@@ -166,4 +166,4 @@ class Config:
 
 cfg = Config.load(path=os.environ.get("FLASK_CONFIG_PATH", default=DEFAULT_CONFIG_PATH))
 
-model_hosts = ["inferd", "modal"]
+model_hosts = ["modal", "inferd"]

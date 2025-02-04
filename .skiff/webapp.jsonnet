@@ -278,6 +278,20 @@ function(apiImage, messageDeletionJobImage, cause, sha, env='prod', branch='', r
                                 periodSeconds: 10,
                                 failureThreshold: 3
                             },
+                            livenessProbe: {
+                                httpGet: apiHealthCheck + {
+                                    path: '/health?check=rdy'
+                                },
+                                periodSeconds: 10,
+                                failureThreshold: 6,
+                            },
+                            startupProbe: {
+                                httpGet: apiHealthCheck + {
+                                    path: '/health?check=rdy'
+                                },
+                                periodSeconds: 10,
+                                failureThreshold: 30,
+                            },
                             # This tells Kubernetes what CPU and memory resources your API needs.
                             # We set these values low by default, as most applications receive
                             # bursts of activity and accordingly don't need dedicated resources

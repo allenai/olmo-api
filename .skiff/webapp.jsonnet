@@ -283,7 +283,7 @@ function(apiImage, messageDeletionJobImage, cause, sha, env='prod', branch='', r
                                     path: '/health?check=rdy'
                                 },
                                 periodSeconds: 10,
-                                failureThreshold: 5,
+                                failureThreshold: 6,
                             },
                             startupProbe: {
                                 httpGet: apiHealthCheck + {

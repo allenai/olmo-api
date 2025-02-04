@@ -1,9 +1,12 @@
 from typing import Generator
 
 from flask import Blueprint, Response, jsonify
+from flask.typing import ResponseReturnValue
 from flask_pydantic_api.api_wrapper import pydantic_api
+from pydantic import ValidationError
 
 from src import db
+from src.error import handle_validation_error
 from src.message.create_message_request import CreateMessageRequestV3
 from src.message.create_message_service import (
     create_message_v3 as create_message_service,
@@ -23,15 +26,19 @@ def create_v3_message_blueprint(
     @pydantic_api(name="Stream a prompt response", tags=["v3", "message"])
     def create_message(
         create_message_request: CreateMessageRequestV3,
-    ) -> Response:
-        response = create_message_service(
-            create_message_request, dbc, storage_client=storage_client
-        )
+    ) -> ResponseReturnValue:
+        try:
+            response = create_message_service(
+                create_message_request, dbc, storage_client=storage_client
+            )
 
-        if isinstance(response, Generator):
-            return Response(response, mimetype="application/jsonl")
-        else:
-            return jsonify(response)
+            if isinstance(response, Generator):
+                return Response(response, mimetype="application/jsonl")
+            else:
+                return jsonify(response)
+
+        except ValidationError as e:
+            return handle_validation_error(e)
 
     @v3_message_blueprint.get("/<string:id>")
     def message(id: str):

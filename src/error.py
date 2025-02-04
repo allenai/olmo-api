@@ -8,6 +8,12 @@ from werkzeug import http
 from werkzeug.exceptions import HTTPException
 
 
+def handle_validation_error(e: ValidationError):
+    return make_error_response(
+        400, {"message": str(e), "validation_errors": e.errors(include_context=False)}
+    )
+
+
 def make_error_response(
     code: Optional[int] = None, message: Optional[str | dict] = None
 ) -> ResponseReturnValue:
@@ -38,10 +44,7 @@ def handle(e: Exception) -> ResponseReturnValue:
     if isinstance(e, HTTPException):
         return make_error_response(e.code, e.description)
     if isinstance(e, ValidationError):
-        return make_error_response(
-            400,
-            {"message": str(e), "validation_errors": e.errors(include_context=False)},
-        )
+        return handle_validation_error(e)
     if isinstance(e, ValueError):
         return make_error_response(400, str(e))
     if isinstance(e, NotImplementedError):

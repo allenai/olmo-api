@@ -52,6 +52,13 @@ class GoogleModerateTextResponse(SafetyCheckResponse):
 
         return violations
 
+    def get_scores(self):
+        scores = []
+        for category in self.result.moderation_categories:
+            scores.append({"name": category.name, "confidence": category.confidence})
+
+        return scores
+
 
 class GoogleModerateText(SafetyChecker):
     client: LanguageServiceClient
@@ -78,6 +85,7 @@ class GoogleModerateText(SafetyChecker):
                 "prompt": req.content,
                 "duration_ms": (end_ns - start_ns) / 1_000_000,
                 "violations": response.get_violation_categories(),
+                "scores": response.get_scores(),
             }
         )
 

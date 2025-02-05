@@ -35,6 +35,8 @@ class AttributionRequest:
             each side) to retrieve from the document Default: 250.
         maximum_document_context_length_displayed (Union[Unset, int]): The maximum number of tokens of the context (on
             each side) to display from the document Default: 50.
+        maximum_document_context_length_displayed_long (Union[Unset, int]): The maximum number of tokens of the context
+            (on each side) to display from the document, in the long version Default: 250.
         filter_method (Union[Unset, Any]): Filtering method for post-processing the retrieved documents, options are
             'none', 'bm25' Default: 'none'.
         filter_bm_25_fields_considered (Union[Unset, Any]): The fields to consider for BM25 filtering, options are
@@ -58,6 +60,7 @@ class AttributionRequest:
     maximum_document_display_length: Union[Unset, int] = 100
     maximum_document_context_length_retrieved: Union[Unset, int] = 250
     maximum_document_context_length_displayed: Union[Unset, int] = 50
+    maximum_document_context_length_displayed_long: Union[Unset, int] = 250
     filter_method: Union[Unset, Any] = "none"
     filter_bm_25_fields_considered: Union[Unset, Any] = "response"
     filter_bm_25_ratio_to_keep: Union[Unset, float] = 1.0
@@ -92,6 +95,8 @@ class AttributionRequest:
         maximum_document_context_length_retrieved = self.maximum_document_context_length_retrieved
 
         maximum_document_context_length_displayed = self.maximum_document_context_length_displayed
+
+        maximum_document_context_length_displayed_long = self.maximum_document_context_length_displayed_long
 
         filter_method = self.filter_method
 
@@ -131,6 +136,8 @@ class AttributionRequest:
             field_dict["maximumDocumentContextLengthRetrieved"] = maximum_document_context_length_retrieved
         if maximum_document_context_length_displayed is not UNSET:
             field_dict["maximumDocumentContextLengthDisplayed"] = maximum_document_context_length_displayed
+        if maximum_document_context_length_displayed_long is not UNSET:
+            field_dict["maximumDocumentContextLengthDisplayedLong"] = maximum_document_context_length_displayed_long
         if filter_method is not UNSET:
             field_dict["filterMethod"] = filter_method
         if filter_bm_25_fields_considered is not UNSET:
@@ -171,6 +178,8 @@ class AttributionRequest:
 
         maximum_document_context_length_displayed = d.pop("maximumDocumentContextLengthDisplayed", UNSET)
 
+        maximum_document_context_length_displayed_long = d.pop("maximumDocumentContextLengthDisplayedLong", UNSET)
+
         filter_method = d.pop("filterMethod", UNSET)
 
         filter_bm_25_fields_considered = d.pop("filterBm25FieldsConsidered", UNSET)
@@ -193,6 +202,7 @@ class AttributionRequest:
             maximum_document_display_length=maximum_document_display_length,
             maximum_document_context_length_retrieved=maximum_document_context_length_retrieved,
             maximum_document_context_length_displayed=maximum_document_context_length_displayed,
+            maximum_document_context_length_displayed_long=maximum_document_context_length_displayed_long,
             filter_method=filter_method,
             filter_bm_25_fields_considered=filter_bm_25_fields_considered,
             filter_bm_25_ratio_to_keep=filter_bm_25_ratio_to_keep,

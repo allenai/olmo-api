@@ -20,6 +20,7 @@ class FlattenedSpanDocument:
     text: str
     span_text: str
     relevance_score: Optional[float] = None
+    text_long: Optional[str] = None
 
 
 @dataclass
@@ -90,6 +91,11 @@ def flatten_spans(
                 relevance_score=(
                     document.relevance_score
                     if isinstance(document.relevance_score, float)
+                    else None
+                ),
+                text_long=(
+                    document.text_long
+                    if isinstance(document.text_long, str)
                     else None
                 ),
             )

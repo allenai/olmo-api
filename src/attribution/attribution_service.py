@@ -44,6 +44,7 @@ class ResponseAttributionDocument:
     relevance_score: float
     title: Optional[str] = None
     url: Optional[str] = None
+    text_long: Optional[str] = None
 
     @classmethod
     def from_flattened_span_document(
@@ -89,6 +90,7 @@ class ResponseAttributionDocument:
             relevance_score=(
                 document.relevance_score if document.relevance_score is not None else 0
             ),
+            text_long=document.text_long,
         )
 
 
@@ -179,6 +181,7 @@ def get_attribution(
                 include_documents=True,
                 maximum_document_context_length_retrieved=250,
                 maximum_document_context_length_displayed=40,
+                maximum_document_context_length_displayed_long=250,
                 maximum_documents_per_span=10,
                 filter_method="bm25",
                 filter_bm_25_fields_considered="prompt|response",

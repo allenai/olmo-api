@@ -16,7 +16,7 @@ from src.message.SafetyChecker import (
 
 class GoogleModerateTextResponse(SafetyCheckResponse):
     result: ModerateTextResponse
-    threshold = 0.8
+    threshold = 0.9
     unsafe_violation_categories = [
         "Toxic",
         "Derogatory",
@@ -27,9 +27,7 @@ class GoogleModerateTextResponse(SafetyCheckResponse):
         "Death, Harm & Tragedy",
         "Firearms & Weapons",
         "Public Safety",
-        "Illicit Drugs",
         "War & Conflict",
-        "Legal",
     ]
 
     def __init__(self, result: ModerateTextResponse):
@@ -51,6 +49,13 @@ class GoogleModerateTextResponse(SafetyCheckResponse):
                 violations.append(f"{category.name}: {category.confidence}")
 
         return violations
+
+    def get_scores(self):
+        scores = []
+        for category in self.result.moderation_categories:
+            scores.append({"name": category.name, "confidence": category.confidence})
+
+        return scores
 
 
 class GoogleModerateText(SafetyChecker):
@@ -78,6 +83,7 @@ class GoogleModerateText(SafetyChecker):
                 "prompt": req.content,
                 "duration_ms": (end_ns - start_ns) / 1_000_000,
                 "violations": response.get_violation_categories(),
+                "scores": response.get_scores(),
             }
         )
 

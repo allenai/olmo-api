@@ -16,7 +16,7 @@ from src.message.SafetyChecker import (
 
 class GoogleModerateTextResponse(SafetyCheckResponse):
     result: ModerateTextResponse
-    threshold = 0.75
+    threshold = 0.8
     unsafe_violation_categories = [
         "Toxic",
         "Derogatory",
@@ -48,7 +48,7 @@ class GoogleModerateTextResponse(SafetyCheckResponse):
                 category.name in self.unsafe_violation_categories
                 and category.confidence >= self.threshold
             ):
-                violations.append(category.name)
+                violations.append(f"{category.name}: {category.confidence}")
 
         return violations
 

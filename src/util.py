@@ -1,4 +1,5 @@
 import json
+import os
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -21,6 +22,7 @@ class StackdriverJsonFormatter(jsonlogger.JsonFormatter):
         log_record["severity"] = record.levelname
         log_record["logger"] = record.name
         log_record["timestamp"] = datetime.now(timezone.utc).isoformat()
+        log_record["pid"] = os.getpid()
 
 
 class CustomEncoder(json.JSONEncoder):

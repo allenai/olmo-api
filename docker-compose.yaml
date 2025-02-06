@@ -29,6 +29,7 @@ services:
       - LOG_LEVEL=DEBUG
       - E2E_AUTH0_CLIENT_SECRET
       - GOOGLE_APPLICATION_CREDENTIALS=service_account.json
+      - SHA=DEV
     ports:
       - 8000:8000
 

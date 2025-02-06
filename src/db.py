@@ -33,5 +33,6 @@ class Client:
                 min_size=c.min_size,
                 max_size=c.max_size,
                 check=ConnectionPool.check_connection,
+                kwargs={"application_name": f"olmo-api:{os.getenv('SHA') or ''}"},
             )
         )

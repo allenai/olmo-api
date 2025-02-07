@@ -462,6 +462,8 @@ class Store:
                         label.deleted IS NULL
                     WHERE
                         root = (SELECT root FROM message WHERE id = %s)
+                    AND 
+                        (expiration_time IS NULL OR expiration_time > CURRENT_TIMESTAMP)
                     ORDER BY
                         message.created ASC
                 """
@@ -713,6 +715,8 @@ class Store:
                         parent IS NULL
                     AND
                         (private = false OR creator = %(agent)s)
+                    AND 
+                        (expiration_time IS NULL OR expiration_time > CURRENT_TIMESTAMP)
                     ORDER BY
                         created DESC,
                         id
@@ -782,6 +786,8 @@ class Store:
                         message.final = true
                     AND
                         message.root IN (SELECT id FROM root_ids)
+                    AND 
+                        (expiration_time IS NULL OR expiration_time > CURRENT_TIMESTAMP)
                     ORDER BY
                         message.created DESC,
                         message.id

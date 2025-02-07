@@ -6,7 +6,6 @@ from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src import config, db, error, util, v3
-from src.dao import paged
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.v4 import create_v4_blueprint
 
@@ -26,17 +25,6 @@ def create_app():
 
     @app.get("/health")
     def health():
-        try:
-            # These checks will keep a new pod from starting if something's wrong with the schema
-            dbc.message.get_list(opts=paged.Opts(limit=1))
-            dbc.template.prompts()
-            dbc.label.get_list(opts=paged.Opts(limit=1))
-        except Exception as e:
-            logging.getLogger().error(
-                f"Exception occurred on application startup: {repr(e)}"
-            )
-            return repr(e), 500
-
         return "", 204
 
     storage_client = GoogleCloudStorage(

@@ -206,3 +206,35 @@ ADD COLUMN IF NOT EXISTS expiration_time TIMESTAMPTZ NULL;
 
 ALTER TABLE message
 ADD COLUMN IF NOT EXISTS file_urls TEXT ARRAY NULL;
+
+CREATE OR REPLACE VIEW playground_messages AS
+select message.*,
+  label.rating as label_rating,
+  label.creator as label_creator,
+  label.comment as label_comment,
+  label.created as label_created,
+  label.deleted as label_deleted,
+  completion.input as completion_input,
+  completion.outputs as completion_outputs,
+  completion.opts as completion_opts,
+  completion.model as completion_model,
+  completion.sha as completion_sha,
+  completion.created as completion_created,
+  completion.tokenize_ms as completion_tokenize_ms,
+  completion.generation_ms as completion_generation_ms,
+  completion.input_tokens as completion_input_tokens,
+  completion.output_tokens as completion_output_tokens
+from message
+  JOIN olmo_user ON message.creator = olmo_user.client
+  LEFT JOIN label ON label.message = message.id
+  JOIN completion on completion.id = message.completion
+where message.private != TRUE
+  and message.created <= NOW() - '30 days'::INTERVAL
+  AND olmo_user.terms_accepted_date IS NOT NULL
+  AND (
+    olmo_user.acceptance_revoked_date IS NULL
+    OR olmo_user.acceptance_revoked_date::date < olmo_user.terms_accepted_date::date
+  );
+
+
+GRANT SELECT ON TABLE playground_messages TO playground_messages_viewer;

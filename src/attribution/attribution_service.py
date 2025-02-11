@@ -1,15 +1,19 @@
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Annotated, List, Optional, Self, cast
 
 from pydantic import AfterValidator, Field
-from werkzeug import exceptions
 from rank_bm25 import BM25Okapi  # type: ignore
+from werkzeug import exceptions
 
 from src.api_interface import APIInterface
 from src.attribution.infini_gram_api_client.api.default import (
     get_document_attributions_index_attribution_post,
 )
 from src.attribution.infini_gram_api_client.errors import UnexpectedStatus
+from src.attribution.infini_gram_api_client.models.attribution_document import (
+    AttributionDocument,
+)
 from src.attribution.infini_gram_api_client.models.attribution_request import (
     AttributionRequest,
 )
@@ -28,8 +32,8 @@ from src.util.pii_regex import does_contain_pii
 from .flatten_spans import (
     FlattenedSpan,
     FlattenedSpanDocument,
-    flatten_spans,
     IntermediateAttributionDocument,
+    flatten_spans,
 )
 from .infini_gram_api_client import Client
 
@@ -80,7 +84,8 @@ class ResponseAttributionDocument:
             text_long=document.text_long,
             snippets=[
                 AttributionDocumentSnippet(
-                    text=document.text_snippet, corresponding_span_text=document.span_text
+                    text=document.text_snippet,
+                    corresponding_span_text=document.span_text,
                 )
             ],
             corresponding_spans=[span_index],
@@ -156,11 +161,13 @@ def update_mapped_document(
         mapped_document.corresponding_span_texts.append(span_text)
 
     if not any(
-        snippet.text == new_document.text_snippet for snippet in mapped_document.snippets
+        snippet.text == new_document.text_snippet
+        for snippet in mapped_document.snippets
     ):
         mapped_document.snippets.append(
             AttributionDocumentSnippet(
-                text=new_document.text_snippet, corresponding_span_text=new_document.span_text
+                text=new_document.text_snippet,
+                corresponding_span_text=new_document.span_text,
             )
         )
 
@@ -223,17 +230,21 @@ def get_attribution(
             description="The version of infinigram-api we hit doesn't support or didn't return input_tokens"
         )
 
+    filtered_spans = filter_span_documents(attribution_response.spans)
+
     # populate BM25 relevance scores; truncate excessive context
-    docs = [doc.text for span in attribution_response.spans for doc in span.documents]
+    docs = [doc.text for span in filtered_spans for doc in span.documents]
     if len(docs) > 0:
         tokenized_corpus = [doc.split(" ") for doc in docs]
         bm25 = BM25Okapi(tokenized_corpus)
-        doc_scores = bm25.get_scores((request.prompt + " " + request.model_response).split(" "))
+        doc_scores = bm25.get_scores(
+            (request.prompt + " " + request.model_response).split(" ")
+        )
         i = 0
-        for span in attribution_response.spans:
-            for j in range(len(span.documents)):
-                doc = span.documents[j]
-                span.documents[j] = IntermediateAttributionDocument(
+        for span_to_rank in filtered_spans:
+            for j in range(len(span_to_rank.documents)):
+                doc = span_to_rank.documents[j]
+                span_to_rank.documents[j] = IntermediateAttributionDocument(
                     document_index=doc.document_index,
                     document_length=doc.document_length,
                     display_length=doc.display_length,
@@ -253,7 +264,7 @@ def get_attribution(
 
     flattened_spans = flatten_spans(
         input_tokens=attribution_response.input_tokens,
-        spans=cast(List[AttributionSpan], attribution_response.spans),
+        spans=cast(List[AttributionSpan], filtered_spans),
     )
 
     mapped_documents: dict[int, ResponseAttributionDocument] = {}
@@ -299,3 +310,17 @@ def get_attribution(
         ),
         "spans": list(mapped_spans.values()),
     }
+
+
+def filter_document(document: AttributionDocument):
+    return not does_contain_pii(document.text_long)
+
+
+def filter_span_documents(spans: list[AttributionSpan]):
+    copied_spans = deepcopy(spans)
+
+    for span in copied_spans:
+        filtered_documents = list(filter(filter_document, span.documents))
+        span.documents = filtered_documents
+
+    return copied_spans

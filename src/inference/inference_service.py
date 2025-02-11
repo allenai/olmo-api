@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Sequence, cast
 
 from src import config
@@ -27,7 +27,7 @@ def get_available_models() -> Sequence[ModelEntity]:
         models_for_host: list[ModelEntity] = []
 
         for model in cast(Sequence[config.Model], host_config.available_models):
-            now = datetime.now()
+            now = datetime.now().astimezone(timezone.utc)
 
             model_is_available = now >= model.available_time
             model_is_before_deprecation_time = (

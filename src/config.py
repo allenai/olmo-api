@@ -51,16 +51,20 @@ class Model:
     ):
         available_time = kwargs.get("available_time")
         mapped_available_time = (
-            datetime.datetime.fromisoformat(available_time)
+            datetime.datetime.fromisoformat(available_time).astimezone(
+                datetime.timezone.utc
+            )
             if available_time is not None
-            else datetime.datetime.min
+            else datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
         )
 
         deprecation_time = kwargs.get("deprecation_time")
         mapped_deprecation_time = (
-            datetime.datetime.min
+            datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
             if kwargs.get("is_deprecated") is True
-            else datetime.datetime.fromisoformat(deprecation_time)
+            else datetime.datetime.fromisoformat(deprecation_time).astimezone(
+                datetime.timezone.utc
+            )
             if deprecation_time is not None
             else None
         )

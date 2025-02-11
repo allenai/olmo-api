@@ -23,6 +23,7 @@ from src.attribution.infini_gram_api_client.models.http_validation_error import 
     HTTPValidationError,
 )
 from src.config import cfg
+from src.util.pii_regex import does_contain_pii
 
 from .flatten_spans import (
     FlattenedSpan,
@@ -252,6 +253,9 @@ def get_attribution(
             mapped_spans[span_index] = TopLevelAttributionSpan.from_flattened_span(span)
 
         for current_span_document in span.documents:
+            if does_contain_pii(current_span_document.text_long):
+                continue
+
             if (
                 current_span_document.document_index
                 not in mapped_spans[span_index].documents

@@ -323,4 +323,7 @@ def filter_span_documents(spans: list[AttributionSpan]):
         filtered_documents = list(filter(filter_document, span.documents))
         span.documents = filtered_documents
 
-    return copied_spans
+    spans_with_documents = list(
+        filter(lambda span: len(span.documents) > 0, copied_spans)
+    )
+    return spans_with_documents

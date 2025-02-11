@@ -102,8 +102,14 @@ def model_id_is_valid_for_infini_gram(model_id: str) -> str:
     return model_id
 
 
+def should_block_prompt(prompt: str) -> str:
+    if "lyric" in prompt.lower():
+        raise ValueError("The prompt is blocked due to legal compliance.")
+    return prompt
+
+
 class GetAttributionRequest(APIInterface):
-    prompt: str
+    prompt: Annotated[str, AfterValidator(should_block_prompt)]
     model_response: str
     model_id: Annotated[str, AfterValidator(model_id_is_valid_for_infini_gram)]
     max_documents: int = Field(default=10)  # unused
@@ -158,12 +164,6 @@ def update_mapped_document(
         )
 
 
-def should_block_request(request: GetAttributionRequest) -> bool:
-    if "lyric" in request.prompt.lower():
-        return True
-    return False
-
-
 def get_attribution(
     request: GetAttributionRequest,
     infini_gram_client: Client,
@@ -171,11 +171,6 @@ def get_attribution(
     index = AvailableInfiniGramIndexId(
         cfg.infini_gram.model_index_map[request.model_id]
     )
-
-    if should_block_request(request):
-        raise exceptions.Forbidden(
-            description="The request was blocked by due to legal compliance."
-        )
 
     try:
         attribution_response = get_document_attributions_index_attribution_post.sync(

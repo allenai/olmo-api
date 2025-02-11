@@ -6,10 +6,9 @@ import httpx
 from ... import errors
 from ...client import AuthenticatedClient, Client
 from ...models.attribution_request import AttributionRequest
+from ...models.attribution_response import AttributionResponse
 from ...models.available_infini_gram_index_id import AvailableInfiniGramIndexId
 from ...models.http_validation_error import HTTPValidationError
-from ...models.infini_gram_attribution_response import InfiniGramAttributionResponse
-from ...models.infini_gram_attribution_response_with_documents import InfiniGramAttributionResponseWithDocuments
 from ...types import Response
 
 
@@ -36,29 +35,9 @@ def _get_kwargs(
 
 def _parse_response(
     *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Optional[
-    Union[HTTPValidationError, Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocuments"]]
-]:
+) -> Optional[Union[AttributionResponse, HTTPValidationError]]:
     if response.status_code == 200:
-
-        def _parse_response_200(
-            data: object,
-        ) -> Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocuments"]:
-            try:
-                if not isinstance(data, dict):
-                    raise TypeError()
-                response_200_type_1 = InfiniGramAttributionResponseWithDocuments.from_dict(data)
-
-                return response_200_type_1
-            except:  # noqa: E722
-                pass
-            if not isinstance(data, dict):
-                raise TypeError()
-            response_200_type_0 = InfiniGramAttributionResponse.from_dict(data)
-
-            return response_200_type_0
-
-        response_200 = _parse_response_200(response.json())
+        response_200 = AttributionResponse.from_dict(response.json())
 
         return response_200
     if response.status_code == 422:
@@ -73,9 +52,7 @@ def _parse_response(
 
 def _build_response(
     *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Response[
-    Union[HTTPValidationError, Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocuments"]]
-]:
+) -> Response[Union[AttributionResponse, HTTPValidationError]]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -89,9 +66,7 @@ def sync_detailed(
     *,
     client: Union[AuthenticatedClient, Client],
     body: AttributionRequest,
-) -> Response[
-    Union[HTTPValidationError, Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocuments"]]
-]:
+) -> Response[Union[AttributionResponse, HTTPValidationError]]:
     """Get Document Attributions
 
     Args:
@@ -103,7 +78,7 @@ def sync_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Union[HTTPValidationError, Union['InfiniGramAttributionResponse', 'InfiniGramAttributionResponseWithDocuments']]]
+        Response[Union[AttributionResponse, HTTPValidationError]]
     """
 
     kwargs = _get_kwargs(
@@ -123,9 +98,7 @@ def sync(
     *,
     client: Union[AuthenticatedClient, Client],
     body: AttributionRequest,
-) -> Optional[
-    Union[HTTPValidationError, Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocuments"]]
-]:
+) -> Optional[Union[AttributionResponse, HTTPValidationError]]:
     """Get Document Attributions
 
     Args:
@@ -137,7 +110,7 @@ def sync(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Union[HTTPValidationError, Union['InfiniGramAttributionResponse', 'InfiniGramAttributionResponseWithDocuments']]
+        Union[AttributionResponse, HTTPValidationError]
     """
 
     return sync_detailed(
@@ -152,9 +125,7 @@ async def asyncio_detailed(
     *,
     client: Union[AuthenticatedClient, Client],
     body: AttributionRequest,
-) -> Response[
-    Union[HTTPValidationError, Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocuments"]]
-]:
+) -> Response[Union[AttributionResponse, HTTPValidationError]]:
     """Get Document Attributions
 
     Args:
@@ -166,7 +137,7 @@ async def asyncio_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Union[HTTPValidationError, Union['InfiniGramAttributionResponse', 'InfiniGramAttributionResponseWithDocuments']]]
+        Response[Union[AttributionResponse, HTTPValidationError]]
     """
 
     kwargs = _get_kwargs(
@@ -184,9 +155,7 @@ async def asyncio(
     *,
     client: Union[AuthenticatedClient, Client],
     body: AttributionRequest,
-) -> Optional[
-    Union[HTTPValidationError, Union["InfiniGramAttributionResponse", "InfiniGramAttributionResponseWithDocuments"]]
-]:
+) -> Optional[Union[AttributionResponse, HTTPValidationError]]:
     """Get Document Attributions
 
     Args:
@@ -198,7 +167,7 @@ async def asyncio(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Union[HTTPValidationError, Union['InfiniGramAttributionResponse', 'InfiniGramAttributionResponseWithDocuments']]
+        Union[AttributionResponse, HTTPValidationError]
     """
 
     return (

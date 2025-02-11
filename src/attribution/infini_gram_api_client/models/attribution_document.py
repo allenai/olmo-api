@@ -1,7 +1,11 @@
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
+
+if TYPE_CHECKING:
+    from ..models.attribution_document_metadata import AttributionDocumentMetadata
+
 
 T = TypeVar("T", bound="AttributionDocument")
 
@@ -10,25 +14,80 @@ T = TypeVar("T", bound="AttributionDocument")
 class AttributionDocument:
     """
     Attributes:
-        shard (int):
-        pointer (int):
+        document_index (int):
+        document_length (int):
+        display_length (int):
+        needle_offset (int):
+        metadata (AttributionDocumentMetadata):
+        token_ids (list[int]):
+        text (str):
+        display_length_long (int):
+        needle_offset_long (int):
+        text_long (str):
+        display_offset_snippet (int):
+        needle_offset_snippet (int):
+        text_snippet (str):
     """
 
-    shard: int
-    pointer: int
+    document_index: int
+    document_length: int
+    display_length: int
+    needle_offset: int
+    metadata: "AttributionDocumentMetadata"
+    token_ids: list[int]
+    text: str
+    display_length_long: int
+    needle_offset_long: int
+    text_long: str
+    display_offset_snippet: int
+    needle_offset_snippet: int
+    text_snippet: str
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        shard = self.shard
+        document_index = self.document_index
 
-        pointer = self.pointer
+        document_length = self.document_length
+
+        display_length = self.display_length
+
+        needle_offset = self.needle_offset
+
+        metadata = self.metadata.to_dict()
+
+        token_ids = self.token_ids
+
+        text = self.text
+
+        display_length_long = self.display_length_long
+
+        needle_offset_long = self.needle_offset_long
+
+        text_long = self.text_long
+
+        display_offset_snippet = self.display_offset_snippet
+
+        needle_offset_snippet = self.needle_offset_snippet
+
+        text_snippet = self.text_snippet
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
-                "shard": shard,
-                "pointer": pointer,
+                "documentIndex": document_index,
+                "documentLength": document_length,
+                "displayLength": display_length,
+                "needleOffset": needle_offset,
+                "metadata": metadata,
+                "tokenIds": token_ids,
+                "text": text,
+                "displayLengthLong": display_length_long,
+                "needleOffsetLong": needle_offset_long,
+                "textLong": text_long,
+                "displayOffsetSnippet": display_offset_snippet,
+                "needleOffsetSnippet": needle_offset_snippet,
+                "textSnippet": text_snippet,
             }
         )
 
@@ -36,14 +95,49 @@ class AttributionDocument:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        d = src_dict.copy()
-        shard = d.pop("shard")
+        from ..models.attribution_document_metadata import AttributionDocumentMetadata
 
-        pointer = d.pop("pointer")
+        d = src_dict.copy()
+        document_index = d.pop("documentIndex")
+
+        document_length = d.pop("documentLength")
+
+        display_length = d.pop("displayLength")
+
+        needle_offset = d.pop("needleOffset")
+
+        metadata = AttributionDocumentMetadata.from_dict(d.pop("metadata"))
+
+        token_ids = cast(list[int], d.pop("tokenIds"))
+
+        text = d.pop("text")
+
+        display_length_long = d.pop("displayLengthLong")
+
+        needle_offset_long = d.pop("needleOffsetLong")
+
+        text_long = d.pop("textLong")
+
+        display_offset_snippet = d.pop("displayOffsetSnippet")
+
+        needle_offset_snippet = d.pop("needleOffsetSnippet")
+
+        text_snippet = d.pop("textSnippet")
 
         attribution_document = cls(
-            shard=shard,
-            pointer=pointer,
+            document_index=document_index,
+            document_length=document_length,
+            display_length=display_length,
+            needle_offset=needle_offset,
+            metadata=metadata,
+            token_ids=token_ids,
+            text=text,
+            display_length_long=display_length_long,
+            needle_offset_long=needle_offset_long,
+            text_long=text_long,
+            display_offset_snippet=display_offset_snippet,
+            needle_offset_snippet=needle_offset_snippet,
+            text_snippet=text_snippet,
         )
 
         attribution_document.additional_properties = d

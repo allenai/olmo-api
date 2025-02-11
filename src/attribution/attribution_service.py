@@ -190,6 +190,8 @@ def get_attribution(
                 maximum_span_density=0.05,
                 span_ranking_method="unigram_logprob_sum",
                 maximum_context_length=250,
+                maximum_context_length_long=request.max_display_context_length,
+                maximum_context_length_snippet=40,
                 maximum_documents_per_span=10,
             ),
         )

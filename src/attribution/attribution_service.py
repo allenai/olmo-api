@@ -165,6 +165,12 @@ def update_mapped_document(
         )
 
 
+def should_block_request(request: GetAttributionRequest) -> bool:
+    if "lyric" in request.prompt.lower():
+        return True
+    return False
+
+
 def get_attribution(
     request: GetAttributionRequest,
     infini_gram_client: Client,
@@ -172,6 +178,11 @@ def get_attribution(
     index = AvailableInfiniGramIndexId(
         cfg.infini_gram.model_index_map[request.model_id]
     )
+
+    if should_block_request(request):
+        raise exceptions.Forbidden(
+            description="The request was blocked by due to legal compliance."
+        )
 
     try:
         attribution_response = get_document_attributions_index_attribution_post.sync(

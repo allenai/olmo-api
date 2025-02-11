@@ -1,26 +1,36 @@
 from dataclasses import dataclass
 from itertools import islice
-from typing import Iterable, List, Optional, Sequence
+from typing import Iterable, List, Sequence
 
-from src.attribution.infini_gram_api_client.models.attribution_span_with_documents import (
-    AttributionSpanWithDocuments,
+from src.attribution.infini_gram_api_client.models.attribution_span import (
+    AttributionSpan,
 )
-from src.attribution.infini_gram_api_client.models.document_with_pointer_metadata import (
-    DocumentWithPointerMetadata,
+from src.attribution.infini_gram_api_client.models.attribution_document_metadata import (
+    AttributionDocumentMetadata,
 )
 
 
 @dataclass
-class FlattenedSpanDocument:
+class IntermediateAttributionDocument:
     document_index: int
     document_length: int
     display_length: int
-    metadata: DocumentWithPointerMetadata
+    needle_offset: int
+    metadata: AttributionDocumentMetadata
     token_ids: List[int]
     text: str
+    display_length_long: int
+    needle_offset_long: int
+    text_long: str
+    display_offset_snippet: int
+    needle_offset_snippet: int
+    text_snippet: str
+    relevance_score: float
+
+
+@dataclass
+class FlattenedSpanDocument(IntermediateAttributionDocument):
     span_text: str
-    relevance_score: Optional[float] = None
-    text_long: Optional[str] = None
 
 
 @dataclass
@@ -28,12 +38,12 @@ class FlattenedSpan:
     text: str
     left: int
     right: int
-    nested_spans: List[AttributionSpanWithDocuments]
+    nested_spans: List[AttributionSpan]
     documents: List[FlattenedSpanDocument]
 
 
 def flatten_spans(
-    spans: Sequence[AttributionSpanWithDocuments],
+    spans: Sequence[AttributionSpan],
     input_tokens: Iterable[str],
 ) -> List[FlattenedSpan]:
     # We're sorting by left position here first because that helps clean up some edge cases that happen if we only sort by length
@@ -55,7 +65,7 @@ def flatten_spans(
         left = span.left
         right = span.right
         # This span is a nested span for the top level span, even if there's nothing else under it.
-        nested_spans: List[AttributionSpanWithDocuments] = [span]
+        nested_spans: List[AttributionSpan] = [span]
 
         next_index = i + 1
         for j, span_to_check in enumerate(
@@ -84,20 +94,18 @@ def flatten_spans(
                 document_index=document.document_index,
                 document_length=document.document_length,
                 display_length=document.display_length,
+                needle_offset=document.needle_offset,
                 metadata=document.metadata,
                 token_ids=document.token_ids,
                 text=document.text,
+                display_length_long=document.display_length_long,
+                needle_offset_long=document.needle_offset_long,
+                text_long=document.text_long,
+                display_offset_snippet=document.display_offset_snippet,
+                needle_offset_snippet=document.needle_offset_snippet,
+                text_snippet=document.text_snippet,
+                relevance_score=document.relevance_score,
                 span_text=overlapping_span.text,
-                relevance_score=(
-                    document.relevance_score
-                    if isinstance(document.relevance_score, float)
-                    else None
-                ),
-                text_long=(
-                    document.text_long
-                    if isinstance(document.text_long, str)
-                    else None
-                ),
             )
             for overlapping_span in nested_spans
             for document in overlapping_span.documents

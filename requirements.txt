@@ -11,8 +11,9 @@ attrs>=21.3.0
 python-dateutil>=2.8.0
 pytest==8.3.2
 modal==0.64.26
-gunicorn==23.0.0 
+gunicorn==23.0.0
 google-cloud-language==2.15.0
 google-cloud-storage==2.19.0
 google-cloud-vision==3.9.0
 flask-pydantic-api==1.5.0
+rank_bm25==0.2.2

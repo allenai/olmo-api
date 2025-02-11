@@ -3,6 +3,7 @@ from typing import Annotated, List, Optional, Self, cast
 
 from pydantic import AfterValidator, Field
 from werkzeug import exceptions
+from rank_bm25 import BM25Okapi  # type: ignore
 
 from src.api_interface import APIInterface
 from src.attribution.infini_gram_api_client.api.default import (
@@ -12,8 +13,8 @@ from src.attribution.infini_gram_api_client.errors import UnexpectedStatus
 from src.attribution.infini_gram_api_client.models.attribution_request import (
     AttributionRequest,
 )
-from src.attribution.infini_gram_api_client.models.attribution_span_with_documents import (
-    AttributionSpanWithDocuments,
+from src.attribution.infini_gram_api_client.models.attribution_span import (
+    AttributionSpan,
 )
 from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import (
     AvailableInfiniGramIndexId,
@@ -23,7 +24,12 @@ from src.attribution.infini_gram_api_client.models.http_validation_error import 
 )
 from src.config import cfg
 
-from .flatten_spans import FlattenedSpan, FlattenedSpanDocument, flatten_spans
+from .flatten_spans import (
+    FlattenedSpan,
+    FlattenedSpanDocument,
+    flatten_spans,
+    IntermediateAttributionDocument,
+)
 from .infini_gram_api_client import Client
 
 
@@ -35,7 +41,7 @@ class AttributionDocumentSnippet:
 
 @dataclass
 class ResponseAttributionDocument:
-    text: str
+    text_long: str
     snippets: list[AttributionDocumentSnippet]
     corresponding_spans: List[int]
     corresponding_span_texts: List[str]
@@ -44,7 +50,6 @@ class ResponseAttributionDocument:
     relevance_score: float
     title: Optional[str] = None
     url: Optional[str] = None
-    text_long: Optional[str] = None
 
     @classmethod
     def from_flattened_span_document(
@@ -69,28 +74,23 @@ class ResponseAttributionDocument:
             "dolmino",
         ]:
             source = metadata.get("source", None)
-            if source == "dclm-hero-run-fasttext_for_HF":
-                source = "dclm"
 
         return cls(
-            text=document.text,
+            text_long=document.text_long,
             snippets=[
                 AttributionDocumentSnippet(
-                    text=document.text, corresponding_span_text=document.span_text
+                    text=document.text_snippet, corresponding_span_text=document.span_text
                 )
             ],
             corresponding_spans=[span_index],
             corresponding_span_texts=[document.span_text],
             index=str(document.document_index),
             source=source,
+            relevance_score=document.relevance_score,
             title=document.metadata.additional_properties.get("metadata", {})
             .get("metadata", {})
             .get("title", None),
             url=url,
-            relevance_score=(
-                document.relevance_score if document.relevance_score is not None else 0
-            ),
-            text_long=document.text_long,
         )
 
 
@@ -106,7 +106,8 @@ class GetAttributionRequest(APIInterface):
     prompt: str
     model_response: str
     model_id: Annotated[str, AfterValidator(model_id_is_valid_for_infini_gram)]
-    max_documents: int = Field(default=10)
+    max_documents: int = Field(default=10)  # unused
+    max_display_context_length: int = Field(default=100)
 
 
 @dataclass
@@ -148,13 +149,19 @@ def update_mapped_document(
         mapped_document.corresponding_span_texts.append(span_text)
 
     if not any(
-        snippet.text == new_document.text for snippet in mapped_document.snippets
+        snippet.text == new_document.text_snippet for snippet in mapped_document.snippets
     ):
         mapped_document.snippets.append(
             AttributionDocumentSnippet(
-                text=new_document.text, corresponding_span_text=new_document.span_text
+                text=new_document.text_snippet, corresponding_span_text=new_document.span_text
             )
         )
+
+
+def should_block_request(request: GetAttributionRequest) -> bool:
+    if "lyric" in request.prompt.lower():
+        return True
+    return False
 
 
 def get_attribution(
@@ -165,12 +172,16 @@ def get_attribution(
         cfg.infini_gram.model_index_map[request.model_id]
     )
 
+    if should_block_request(request):
+        raise exceptions.Forbidden(
+            description="The request was blocked by due to legal compliance."
+        )
+
     try:
         attribution_response = get_document_attributions_index_attribution_post.sync(
             index=index,
             client=infini_gram_client,
             body=AttributionRequest(
-                prompt=request.prompt,
                 response=request.model_response,
                 delimiters=["\n", "."],
                 allow_spans_with_partial_words=False,
@@ -178,15 +189,8 @@ def get_attribution(
                 maximum_frequency=1000000,
                 maximum_span_density=0.05,
                 span_ranking_method="unigram_logprob_sum",
-                include_documents=True,
-                maximum_document_context_length_retrieved=250,
-                maximum_document_context_length_displayed=40,
-                maximum_document_context_length_displayed_long=250,
+                maximum_context_length=250,
                 maximum_documents_per_span=10,
-                filter_method="bm25",
-                filter_bm_25_fields_considered="prompt|response",
-                filter_bm_25_ratio_to_keep=1.0,
-                include_input_as_tokens=True,
             ),
         )
     except UnexpectedStatus as e:
@@ -210,9 +214,37 @@ def get_attribution(
             description="The version of infinigram-api we hit doesn't support or didn't return input_tokens"
         )
 
+    # populate BM25 relevance scores; truncate excessive context
+    docs = [doc.text for span in attribution_response.spans for doc in span.documents]
+    if len(docs) > 0:
+        tokenized_corpus = [doc.split(" ") for doc in docs]
+        bm25 = BM25Okapi(tokenized_corpus)
+        doc_scores = bm25.get_scores((request.prompt + " " + request.model_response).split(" "))
+        i = 0
+        for span in attribution_response.spans:
+            for j in range(len(span.documents)):
+                doc = span.documents[j]
+                span.documents[j] = IntermediateAttributionDocument(
+                    document_index=doc.document_index,
+                    document_length=doc.document_length,
+                    display_length=doc.display_length,
+                    needle_offset=doc.needle_offset,
+                    metadata=doc.metadata,
+                    token_ids=doc.token_ids,
+                    text=doc.text,
+                    display_length_long=doc.display_length_long,
+                    needle_offset_long=doc.needle_offset_long,
+                    text_long=doc.text_long,
+                    display_offset_snippet=doc.display_offset_snippet,
+                    needle_offset_snippet=doc.needle_offset_snippet,
+                    text_snippet=doc.text_snippet,
+                    relevance_score=doc_scores[i],
+                )
+                i += 1
+
     flattened_spans = flatten_spans(
         input_tokens=attribution_response.input_tokens,
-        spans=cast(List[AttributionSpanWithDocuments], attribution_response.spans),
+        spans=cast(List[AttributionSpan], attribution_response.spans),
     )
 
     mapped_documents: dict[int, ResponseAttributionDocument] = {}

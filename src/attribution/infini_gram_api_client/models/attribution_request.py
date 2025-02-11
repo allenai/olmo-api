@@ -12,7 +12,6 @@ T = TypeVar("T", bound="AttributionRequest")
 class AttributionRequest:
     """
     Attributes:
-        prompt (str):
         response (str):
         delimiters (Union[Unset, list[str]]): Token IDs that returned spans shouldn't include
         allow_spans_with_partial_words (Union[Unset, bool]): Setting this to False will only check for attributions that
@@ -25,29 +24,16 @@ class AttributionRequest:
             response token) to return in the response Default: 0.05.
         span_ranking_method (Union[Unset, Any]): Ranking method when capping number of spans with maximum_span_density,
             options are 'length' and 'unigram_logprob_sum' Default: 'length'.
-        include_documents (Union[Unset, bool]): Set this to True if you want to have the response include referenced
-            documents along with the spans Default: False.
         maximum_documents_per_span (Union[Unset, int]): The maximum number of documents to retrieve for each span;
             should be no larger than maximum_frequency Default: 10.
-        maximum_document_display_length (Union[Unset, int]): The maximum length in tokens of the returned document text
-            Default: 100.
-        maximum_document_context_length_retrieved (Union[Unset, int]): The maximum number of tokens of the context (on
-            each side) to retrieve from the document Default: 250.
-        maximum_document_context_length_displayed (Union[Unset, int]): The maximum number of tokens of the context (on
-            each side) to display from the document Default: 50.
-        maximum_document_context_length_displayed_long (Union[Unset, int]): The maximum number of tokens of the context
-            (on each side) to display from the document, in the long version Default: 250.
-        filter_method (Union[Unset, Any]): Filtering method for post-processing the retrieved documents, options are
-            'none', 'bm25' Default: 'none'.
-        filter_bm_25_fields_considered (Union[Unset, Any]): The fields to consider for BM25 filtering, options are
-            'prompt', 'response', 'prompt|response' (concat), 'prompt+response' (sum of scores) Default: 'response'.
-        filter_bm_25_ratio_to_keep (Union[Unset, float]): The ratio of documents to keep after filtering with BM25
-            Default: 1.0.
-        include_input_as_tokens (Union[Unset, bool]): Set this to True if you want the response to include the input
-            string as a list of string tokens Default: False.
+        maximum_context_length (Union[Unset, int]): The maximum number of tokens of the context (on each side) to
+            retrieve from the document Default: 250.
+        maximum_context_length_long (Union[Unset, int]): The maximum number of tokens of the context (on each side) for
+            the document modal Default: 100.
+        maximum_context_length_snippet (Union[Unset, int]): The maximum number of tokens of the context (on each side)
+            for the snippet in document cards Default: 40.
     """
 
-    prompt: str
     response: str
     delimiters: Union[Unset, list[str]] = UNSET
     allow_spans_with_partial_words: Union[Unset, bool] = False
@@ -55,21 +41,13 @@ class AttributionRequest:
     maximum_frequency: Union[Unset, int] = 10
     maximum_span_density: Union[Unset, float] = 0.05
     span_ranking_method: Union[Unset, Any] = "length"
-    include_documents: Union[Unset, bool] = False
     maximum_documents_per_span: Union[Unset, int] = 10
-    maximum_document_display_length: Union[Unset, int] = 100
-    maximum_document_context_length_retrieved: Union[Unset, int] = 250
-    maximum_document_context_length_displayed: Union[Unset, int] = 50
-    maximum_document_context_length_displayed_long: Union[Unset, int] = 250
-    filter_method: Union[Unset, Any] = "none"
-    filter_bm_25_fields_considered: Union[Unset, Any] = "response"
-    filter_bm_25_ratio_to_keep: Union[Unset, float] = 1.0
-    include_input_as_tokens: Union[Unset, bool] = False
+    maximum_context_length: Union[Unset, int] = 250
+    maximum_context_length_long: Union[Unset, int] = 100
+    maximum_context_length_snippet: Union[Unset, int] = 40
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        prompt = self.prompt
-
         response = self.response
 
         delimiters: Union[Unset, list[str]] = UNSET
@@ -86,31 +64,18 @@ class AttributionRequest:
 
         span_ranking_method = self.span_ranking_method
 
-        include_documents = self.include_documents
-
         maximum_documents_per_span = self.maximum_documents_per_span
 
-        maximum_document_display_length = self.maximum_document_display_length
+        maximum_context_length = self.maximum_context_length
 
-        maximum_document_context_length_retrieved = self.maximum_document_context_length_retrieved
+        maximum_context_length_long = self.maximum_context_length_long
 
-        maximum_document_context_length_displayed = self.maximum_document_context_length_displayed
-
-        maximum_document_context_length_displayed_long = self.maximum_document_context_length_displayed_long
-
-        filter_method = self.filter_method
-
-        filter_bm_25_fields_considered = self.filter_bm_25_fields_considered
-
-        filter_bm_25_ratio_to_keep = self.filter_bm_25_ratio_to_keep
-
-        include_input_as_tokens = self.include_input_as_tokens
+        maximum_context_length_snippet = self.maximum_context_length_snippet
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
-                "prompt": prompt,
                 "response": response,
             }
         )
@@ -126,34 +91,20 @@ class AttributionRequest:
             field_dict["maximumSpanDensity"] = maximum_span_density
         if span_ranking_method is not UNSET:
             field_dict["spanRankingMethod"] = span_ranking_method
-        if include_documents is not UNSET:
-            field_dict["includeDocuments"] = include_documents
         if maximum_documents_per_span is not UNSET:
             field_dict["maximumDocumentsPerSpan"] = maximum_documents_per_span
-        if maximum_document_display_length is not UNSET:
-            field_dict["maximumDocumentDisplayLength"] = maximum_document_display_length
-        if maximum_document_context_length_retrieved is not UNSET:
-            field_dict["maximumDocumentContextLengthRetrieved"] = maximum_document_context_length_retrieved
-        if maximum_document_context_length_displayed is not UNSET:
-            field_dict["maximumDocumentContextLengthDisplayed"] = maximum_document_context_length_displayed
-        if maximum_document_context_length_displayed_long is not UNSET:
-            field_dict["maximumDocumentContextLengthDisplayedLong"] = maximum_document_context_length_displayed_long
-        if filter_method is not UNSET:
-            field_dict["filterMethod"] = filter_method
-        if filter_bm_25_fields_considered is not UNSET:
-            field_dict["filterBm25FieldsConsidered"] = filter_bm_25_fields_considered
-        if filter_bm_25_ratio_to_keep is not UNSET:
-            field_dict["filterBm25RatioToKeep"] = filter_bm_25_ratio_to_keep
-        if include_input_as_tokens is not UNSET:
-            field_dict["includeInputAsTokens"] = include_input_as_tokens
+        if maximum_context_length is not UNSET:
+            field_dict["maximumContextLength"] = maximum_context_length
+        if maximum_context_length_long is not UNSET:
+            field_dict["maximumContextLengthLong"] = maximum_context_length_long
+        if maximum_context_length_snippet is not UNSET:
+            field_dict["maximumContextLengthSnippet"] = maximum_context_length_snippet
 
         return field_dict
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
         d = src_dict.copy()
-        prompt = d.pop("prompt")
-
         response = d.pop("response")
 
         delimiters = cast(list[str], d.pop("delimiters", UNSET))
@@ -168,28 +119,15 @@ class AttributionRequest:
 
         span_ranking_method = d.pop("spanRankingMethod", UNSET)
 
-        include_documents = d.pop("includeDocuments", UNSET)
-
         maximum_documents_per_span = d.pop("maximumDocumentsPerSpan", UNSET)
 
-        maximum_document_display_length = d.pop("maximumDocumentDisplayLength", UNSET)
+        maximum_context_length = d.pop("maximumContextLength", UNSET)
 
-        maximum_document_context_length_retrieved = d.pop("maximumDocumentContextLengthRetrieved", UNSET)
+        maximum_context_length_long = d.pop("maximumContextLengthLong", UNSET)
 
-        maximum_document_context_length_displayed = d.pop("maximumDocumentContextLengthDisplayed", UNSET)
-
-        maximum_document_context_length_displayed_long = d.pop("maximumDocumentContextLengthDisplayedLong", UNSET)
-
-        filter_method = d.pop("filterMethod", UNSET)
-
-        filter_bm_25_fields_considered = d.pop("filterBm25FieldsConsidered", UNSET)
-
-        filter_bm_25_ratio_to_keep = d.pop("filterBm25RatioToKeep", UNSET)
-
-        include_input_as_tokens = d.pop("includeInputAsTokens", UNSET)
+        maximum_context_length_snippet = d.pop("maximumContextLengthSnippet", UNSET)
 
         attribution_request = cls(
-            prompt=prompt,
             response=response,
             delimiters=delimiters,
             allow_spans_with_partial_words=allow_spans_with_partial_words,
@@ -197,16 +135,10 @@ class AttributionRequest:
             maximum_frequency=maximum_frequency,
             maximum_span_density=maximum_span_density,
             span_ranking_method=span_ranking_method,
-            include_documents=include_documents,
             maximum_documents_per_span=maximum_documents_per_span,
-            maximum_document_display_length=maximum_document_display_length,
-            maximum_document_context_length_retrieved=maximum_document_context_length_retrieved,
-            maximum_document_context_length_displayed=maximum_document_context_length_displayed,
-            maximum_document_context_length_displayed_long=maximum_document_context_length_displayed_long,
-            filter_method=filter_method,
-            filter_bm_25_fields_considered=filter_bm_25_fields_considered,
-            filter_bm_25_ratio_to_keep=filter_bm_25_ratio_to_keep,
-            include_input_as_tokens=include_input_as_tokens,
+            maximum_context_length=maximum_context_length,
+            maximum_context_length_long=maximum_context_length_long,
+            maximum_context_length_snippet=maximum_context_length_snippet,
         )
 
         attribution_request.additional_properties = d

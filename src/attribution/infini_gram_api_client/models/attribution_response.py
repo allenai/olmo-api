@@ -4,23 +4,23 @@ from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 if TYPE_CHECKING:
-    from ..models.attribution_span_with_documents import AttributionSpanWithDocuments
+    from ..models.attribution_span import AttributionSpan
 
 
-T = TypeVar("T", bound="InfiniGramAttributionResponseWithDocuments")
+T = TypeVar("T", bound="AttributionResponse")
 
 
 @_attrs_define
-class InfiniGramAttributionResponseWithDocuments:
+class AttributionResponse:
     """
     Attributes:
         index (str):
-        spans (list['AttributionSpanWithDocuments']):
+        spans (list['AttributionSpan']):
         input_tokens (Union[None, list[str]]):
     """
 
     index: str
-    spans: list["AttributionSpanWithDocuments"]
+    spans: list["AttributionSpan"]
     input_tokens: Union[None, list[str]]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -53,7 +53,7 @@ class InfiniGramAttributionResponseWithDocuments:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.attribution_span_with_documents import AttributionSpanWithDocuments
+        from ..models.attribution_span import AttributionSpan
 
         d = src_dict.copy()
         index = d.pop("index")
@@ -61,7 +61,7 @@ class InfiniGramAttributionResponseWithDocuments:
         spans = []
         _spans = d.pop("spans")
         for spans_item_data in _spans:
-            spans_item = AttributionSpanWithDocuments.from_dict(spans_item_data)
+            spans_item = AttributionSpan.from_dict(spans_item_data)
 
             spans.append(spans_item)
 
@@ -80,14 +80,14 @@ class InfiniGramAttributionResponseWithDocuments:
 
         input_tokens = _parse_input_tokens(d.pop("inputTokens"))
 
-        infini_gram_attribution_response_with_documents = cls(
+        attribution_response = cls(
             index=index,
             spans=spans,
             input_tokens=input_tokens,
         )
 
-        infini_gram_attribution_response_with_documents.additional_properties = d
-        return infini_gram_attribution_response_with_documents
+        attribution_response.additional_properties = d
+        return attribution_response
 
     @property
     def additional_keys(self) -> list[str]:

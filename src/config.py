@@ -1,8 +1,9 @@
+import datetime
 import json
 import os
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Optional, Self
+from typing import Optional, Self, TypedDict, Unpack, cast
 
 
 @dataclass
@@ -17,6 +18,20 @@ class ModelType(StrEnum):
     Chat = "chat"  # chat models, that have been fine-tuned for conversation
 
 
+class ModelConfig(TypedDict):
+    id: str
+    name: str
+    description: str
+    compute_source_id: str
+    model_type: ModelType
+    is_deprecated: Optional[bool]
+    system_prompt: Optional[str]
+    family_id: Optional[str]
+    family_name: Optional[str]
+    available_time: Optional[str]
+    deprecation_time: Optional[str]
+
+
 @dataclass
 class Model:
     id: str
@@ -24,10 +39,48 @@ class Model:
     description: str
     compute_source_id: str
     model_type: ModelType
-    is_deprecated: Optional[bool] = None
+    available_time: datetime.datetime
     system_prompt: Optional[str] = None
     family_id: Optional[str] = None
     family_name: Optional[str] = None
+    deprecation_time: Optional[datetime.datetime] = None
+
+    @staticmethod
+    def from_config(
+        **kwargs: Unpack[ModelConfig],
+    ):
+        available_time = kwargs.get("available_time")
+        mapped_available_time = (
+            datetime.datetime.fromisoformat(available_time).astimezone(
+                datetime.timezone.utc
+            )
+            if available_time is not None
+            else datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
+        )
+
+        deprecation_time = kwargs.get("deprecation_time")
+        mapped_deprecation_time = (
+            datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
+            if kwargs.get("is_deprecated") is True
+            else datetime.datetime.fromisoformat(deprecation_time).astimezone(
+                datetime.timezone.utc
+            )
+            if deprecation_time is not None
+            else None
+        )
+
+        return Model(
+            id=cast(str, kwargs.get("id")),
+            name=cast(str, kwargs.get("name")),
+            description=cast(str, kwargs.get("description")),
+            compute_source_id=cast(str, kwargs.get("compute_source_id")),
+            model_type=cast(ModelType, kwargs.get("model_type")),
+            system_prompt=kwargs.get("system_prompt"),
+            family_id=kwargs.get("family_id"),
+            family_name=kwargs.get("family_name"),
+            available_time=mapped_available_time,
+            deprecation_time=mapped_deprecation_time,
+        )
 
 
 @dataclass
@@ -116,7 +169,8 @@ class Config:
                     token=data["inferd"]["token"],
                     default_model=data["inferd"]["default_model"],
                     available_models=[
-                        Model(**m) for m in data["inferd"]["available_models"]
+                        Model.from_config(**m)
+                        for m in data["inferd"]["available_models"]
                     ],
                 ),
                 server=Server(
@@ -132,7 +186,8 @@ class Config:
                     token_secret=data["modal"].get("token_secret"),
                     default_model=data["modal"].get("default_model"),
                     available_models=[
-                        Model(**m) for m in data["modal"]["available_models"]
+                        Model.from_config(**m)
+                        for m in data["modal"]["available_models"]
                     ],
                 ),
                 auth=Auth(

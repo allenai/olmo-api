@@ -1,8 +1,8 @@
 from typing import cast
 
-from .attribution_service import flatten_spans
-from .infini_gram_api_client.models.infini_gram_attribution_response_with_documents import (
-    InfiniGramAttributionResponseWithDocuments,
+from src.attribution.flatten_spans import flatten_spans
+from src.attribution.infini_gram_api_client.models.attribution_response import (
+    AttributionResponse,
 )
 
 # There's two tests in here. I had trouble with the second (penguin) response not mapping correctly so I figured it'd be good to test that specific one too.
@@ -10,9 +10,7 @@ from .infini_gram_api_client.models.infini_gram_attribution_response_with_docume
 
 
 def test_collapse_spans_collapses_spans():
-    parsed_response = InfiniGramAttributionResponseWithDocuments.from_dict(
-        example_response
-    )
+    parsed_response = AttributionResponse.from_dict(example_response)
 
     collapsed_spans = flatten_spans(
         spans=parsed_response.spans,
@@ -40,9 +38,7 @@ def test_collapse_spans_collapses_spans():
 
 
 def test_collapse_spans_collapses_penguin_spans():
-    parsed_response = InfiniGramAttributionResponseWithDocuments.from_dict(
-        example_penguin_response
-    )
+    parsed_response = AttributionResponse.from_dict(example_penguin_response)
 
     collapsed_spans = flatten_spans(
         spans=parsed_response.spans,

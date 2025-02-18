@@ -109,7 +109,7 @@ def model_id_is_valid_for_infini_gram(model_id: str) -> str:
 
 
 def should_block_prompt(prompt: str) -> str:
-    if "lyric" in prompt.lower():
+    if "lyric" in prompt.lower() or "song" in prompt.lower():
         raise ValueError("The prompt is blocked due to legal compliance.")
     return prompt
 

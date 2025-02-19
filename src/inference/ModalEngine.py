@@ -6,6 +6,7 @@ import modal
 from werkzeug.datastructures import FileStorage
 
 from src import config
+from src.dao.message import Role
 from src.inference.InferenceEngine import (
     InferenceEngine,
     InferenceEngineChunk,
@@ -43,14 +44,20 @@ class ModalEngine(InferenceEngine):
 
             image: Optional[str] = None
             # TODO: This only supports sending files in the first message. We'll need to change this in the future if it supports sending files in each message
-            if messages[0].files is not None and len(messages[0].files) > 0:
-                new_message = messages[0]
-                if isinstance(new_message.files[0], FileStorage):
+            first_user_message = next(
+                message for message in messages if message.role == Role.User
+            )
+
+            if (
+                first_user_message.files is not None
+                and len(first_user_message.files) > 0
+            ):
+                if isinstance(first_user_message.files[0], FileStorage):
                     image = base64.b64encode(
-                        new_message.files[0].stream.read()
+                        first_user_message.files[0].stream.read()
                     ).decode()
                 else:
-                    image = new_message.files[0]
+                    image = first_user_message.files[0]
 
             return [
                 {

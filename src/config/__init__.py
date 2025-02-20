@@ -100,7 +100,8 @@ class Config:
                     token=data["inferd"]["token"],
                     default_model=data["inferd"]["default_model"],
                     available_models=[
-                        map_model(m) for m in data["inferd"]["available_models"]
+                        map_model(host="inferd", model_config=m)
+                        for m in data["inferd"]["available_models"]
                     ],
                 ),
                 server=Server(
@@ -116,7 +117,8 @@ class Config:
                     token_secret=data["modal"].get("token_secret"),
                     default_model=data["modal"].get("default_model"),
                     available_models=[
-                        map_model(m) for m in data["modal"]["available_models"]
+                        map_model(host="modal", model_config=m)
+                        for m in data["modal"]["available_models"]
                     ],
                 ),
                 auth=Auth(

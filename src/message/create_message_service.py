@@ -286,8 +286,15 @@ def stream_new_message(
     )
 
     chain: list[InferenceEngineMessage] = [
-        InferenceEngineMessage(role=msg.role, content=msg.content, files=request.files)
-        for msg in message_chain
+        InferenceEngineMessage(
+            role=message_in_chain.role,
+            content=message_in_chain.content,
+            # We only want to add the request files to the new message. The rest will have file urls associated with them
+            files=request.files
+            if message_in_chain.id == msg.id
+            else message_in_chain.file_urls,
+        )
+        for message_in_chain in message_chain
     ]
 
     # TODO https://github.com/allenai/playground-issues-repo/issues/9: Get this from the DB

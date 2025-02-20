@@ -3,7 +3,7 @@ import os
 from dataclasses import dataclass
 from typing import Self
 
-from src.config.Model import Model, map_model
+from src.config.Model import Model, MultiModalModel, map_model
 from src.config.ModelConfig import ModelType as ModelType
 
 
@@ -19,7 +19,7 @@ class BaseInferenceEngineConfig:
     token: str
     # The default id in the `available_models` list below.
     default_model: str
-    available_models: list[Model]
+    available_models: list[Model | MultiModalModel]
 
 
 @dataclass

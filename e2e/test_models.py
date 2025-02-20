@@ -22,6 +22,7 @@ class TestModelEndpoints(base.IntegrationTest):
         # should have the following fields that match ModelEntity
         entity = response.pop()
         assert "is_visible" in entity
+        assert "host" in entity
         assert "compute_source_id" not in entity
         assert "available_time" not in entity
         assert "deprecation_time" not in entity

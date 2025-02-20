@@ -302,7 +302,11 @@ def get_attribution(
 
 
 def filter_document(document: AttributionDocument):
-    return not does_contain_pii(document.text_long)
+    if document.blocked:
+        return False
+    if does_contain_pii(document.text_long):
+        return False
+    return True
 
 
 def filter_span_documents(spans: list[AttributionSpan]):

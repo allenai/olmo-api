@@ -1,7 +1,9 @@
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
+
+from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
     from ..models.infini_gram_document_response_metadata import InfiniGramDocumentResponseMetadata
@@ -22,6 +24,7 @@ class InfiniGramDocumentResponse:
         metadata (InfiniGramDocumentResponseMetadata):
         token_ids (list[int]):
         text (str):
+        blocked (Union[Unset, bool]):  Default: False.
     """
 
     index: str
@@ -32,6 +35,7 @@ class InfiniGramDocumentResponse:
     metadata: "InfiniGramDocumentResponseMetadata"
     token_ids: list[int]
     text: str
+    blocked: Union[Unset, bool] = False
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -51,6 +55,8 @@ class InfiniGramDocumentResponse:
 
         text = self.text
 
+        blocked = self.blocked
+
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
@@ -65,6 +71,8 @@ class InfiniGramDocumentResponse:
                 "text": text,
             }
         )
+        if blocked is not UNSET:
+            field_dict["blocked"] = blocked
 
         return field_dict
 
@@ -89,6 +97,8 @@ class InfiniGramDocumentResponse:
 
         text = d.pop("text")
 
+        blocked = d.pop("blocked", UNSET)
+
         infini_gram_document_response = cls(
             index=index,
             document_index=document_index,
@@ -98,6 +108,7 @@ class InfiniGramDocumentResponse:
             metadata=metadata,
             token_ids=token_ids,
             text=text,
+            blocked=blocked,
         )
 
         infini_gram_document_response.additional_properties = d

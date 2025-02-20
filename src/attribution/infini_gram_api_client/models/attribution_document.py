@@ -1,7 +1,9 @@
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
+
+from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
     from ..models.attribution_document_metadata import AttributionDocumentMetadata
@@ -27,6 +29,7 @@ class AttributionDocument:
         display_offset_snippet (int):
         needle_offset_snippet (int):
         text_snippet (str):
+        blocked (Union[Unset, bool]):  Default: False.
     """
 
     document_index: int
@@ -42,6 +45,7 @@ class AttributionDocument:
     display_offset_snippet: int
     needle_offset_snippet: int
     text_snippet: str
+    blocked: Union[Unset, bool] = False
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -71,6 +75,8 @@ class AttributionDocument:
 
         text_snippet = self.text_snippet
 
+        blocked = self.blocked
+
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
@@ -90,6 +96,8 @@ class AttributionDocument:
                 "textSnippet": text_snippet,
             }
         )
+        if blocked is not UNSET:
+            field_dict["blocked"] = blocked
 
         return field_dict
 
@@ -124,6 +132,8 @@ class AttributionDocument:
 
         text_snippet = d.pop("textSnippet")
 
+        blocked = d.pop("blocked", UNSET)
+
         attribution_document = cls(
             document_index=document_index,
             document_length=document_length,
@@ -138,6 +148,7 @@ class AttributionDocument:
             display_offset_snippet=display_offset_snippet,
             needle_offset_snippet=needle_offset_snippet,
             text_snippet=text_snippet,
+            blocked=blocked,
         )
 
         attribution_document.additional_properties = d

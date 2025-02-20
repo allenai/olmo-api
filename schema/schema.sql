@@ -227,7 +227,7 @@ select message.*,
 from message
   JOIN olmo_user ON message.creator = olmo_user.client
   LEFT JOIN label ON label.message = message.id
-  JOIN completion on completion.id = message.completion
+  LEFT JOIN completion on completion.id = message.completion
 where message.private != TRUE
   and message.created <= NOW() - '30 days'::INTERVAL
   AND olmo_user.terms_accepted_date IS NOT NULL

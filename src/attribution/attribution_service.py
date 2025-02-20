@@ -119,7 +119,7 @@ class GetAttributionRequest(APIInterface):
     model_response: str
     model_id: Annotated[str, AfterValidator(model_id_is_valid_for_infini_gram)]
     max_documents: int = Field(default=10)  # unused
-    max_display_context_length: int = Field(default=100)
+    max_display_context_length: int = Field(default=250)
 
 
 @dataclass

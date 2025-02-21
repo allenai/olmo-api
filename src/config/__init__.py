@@ -3,7 +3,8 @@ import os
 from dataclasses import dataclass
 from typing import Self
 
-from src.config.Model import Model, MultiModalModel, map_model
+from src.config.Model import Model, MultiModalModel
+from src.config.Model import map_model_from_config as map_model_from_config
 from src.config.ModelConfig import ModelType as ModelType
 
 
@@ -17,9 +18,6 @@ class Database:
 @dataclass
 class BaseInferenceEngineConfig:
     token: str
-    # The default id in the `available_models` list below.
-    default_model: str
-    available_models: list[Model | MultiModalModel]
 
 
 @dataclass
@@ -88,6 +86,7 @@ class Config:
     infini_gram: InfiniGram
     hubspot: Hubspot
     google_cloud_services: GoogleCloudServices
+    models: list[Model | MultiModalModel]
 
     @classmethod
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
@@ -98,11 +97,6 @@ class Config:
                 inferd=InferD(
                     address=data["inferd"]["address"],
                     token=data["inferd"]["token"],
-                    default_model=data["inferd"]["default_model"],
-                    available_models=[
-                        map_model(host="inferd", model_config=m)
-                        for m in data["inferd"]["available_models"]
-                    ],
                 ),
                 server=Server(
                     data["server"]["num_proxies"],
@@ -115,11 +109,6 @@ class Config:
                 modal=Modal(
                     token=data["modal"].get("token"),
                     token_secret=data["modal"].get("token_secret"),
-                    default_model=data["modal"].get("default_model"),
-                    available_models=[
-                        map_model(host="modal", model_config=m)
-                        for m in data["modal"]["available_models"]
-                    ],
                 ),
                 auth=Auth(
                     domain=data["auth"].get("auth0_domain"),
@@ -147,9 +136,11 @@ class Config:
                     api_key=data["google_cloud_services"]["api_key"],
                     storage_bucket=data["google_cloud_services"]["storage_bucket"],
                 ),
+                models=[
+                    map_model_from_config(model_config)
+                    for model_config in data["models"]
+                ],
             )
 
 
 cfg = Config.load(path=os.environ.get("FLASK_CONFIG_PATH", default=DEFAULT_CONFIG_PATH))
-
-model_hosts = ["inferd", "modal"]

@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, computed_field
 from src.config.ModelConfig import (
     FileRequiredToPromptOption,
     ModelConfig,
+    ModelHost,
     ModelType,
     MultiModalModelConfig,
 )
@@ -13,7 +14,7 @@ from src.config.ModelConfig import (
 
 class Model(BaseModel):
     id: str
-    host: str
+    host: ModelHost
     name: str
     description: str
     compute_source_id: str = Field(exclude=True)
@@ -79,8 +80,8 @@ class MultiModalModel(Model):
     allow_files_in_followups: bool = Field(default=False)
 
 
-def map_model(host: str, model_config: ModelConfig | MultiModalModelConfig):
+def map_model_from_config(model_config: ModelConfig | MultiModalModelConfig):
     if model_config.get("accepted_file_types") is not None:
-        return MultiModalModel.model_validate({**model_config, "host": host})
+        return MultiModalModel.model_validate(model_config)
 
-    return Model.model_validate({**model_config, "host": host})
+    return Model.model_validate(model_config)

@@ -238,3 +238,9 @@ where message.private != TRUE
 
 
 GRANT SELECT ON TABLE playground_messages TO playground_messages_viewer;
+
+CREATE INDEX IF NOT EXISTS message_root_fkey_ix ON message (root);
+CREATE INDEX IF NOT EXISTS message_original_fkey_ix ON message (original);
+CREATE INDEX IF NOT EXISTS message_parent_fkey_ix ON message (parent);
+CREATE INDEX IF NOT EXISTS message_created_ix ON message (created)
+WHERE message.created != NULL;

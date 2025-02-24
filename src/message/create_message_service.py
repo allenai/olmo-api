@@ -16,6 +16,7 @@ from werkzeug.datastructures import FileStorage
 from src import db, parse, util
 from src.auth.auth_service import authn
 from src.bot_detection.create_assessment import create_assessment
+from src.config import cfg
 from src.dao import completion, message
 from src.inference.InferDEngine import InferDEngine
 from src.inference.InferenceEngine import (
@@ -159,11 +160,13 @@ def stream_new_message(
             f"model {request.model} is not available on {request.host}"
         )
 
-    recaptcha_key = os.getenv("RECAPTCHA_KEY")
-    if recaptcha_key is not None and request.captchaToken is not None:
+    if (
+        cfg.google_cloud_services.recaptcha_key is not None
+        and request.captchaToken is not None
+    ):
         create_assessment(
             project_id="ai2-reviz",
-            recaptcha_key=recaptcha_key,
+            recaptcha_key=cfg.google_cloud_services.recaptcha_key,
             token=request.captchaToken,
             recaptcha_action="prompt_submission",
         )

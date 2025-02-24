@@ -136,8 +136,10 @@ class Config:
                 google_cloud_services=GoogleCloudServices(
                     api_key=data["google_cloud_services"]["api_key"],
                     storage_bucket=data["google_cloud_services"]["storage_bucket"],
+                    # Getting the recaptcha key from env lets us use a separate key for dev work
                     recaptcha_key=os.getenv(
-                        "RECAPTCHA_KEY", data["google_cloud_services"]["recaptcha_key"]
+                        "RECAPTCHA_KEY",
+                        data["google_cloud_services"].get("recaptcha_key"),
                     ),
                 ),
                 models=[

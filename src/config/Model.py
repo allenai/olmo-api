@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
 from typing import Optional
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import AwareDatetime, BaseModel, Field, computed_field
 
 from src.config.ModelConfig import (
     FileRequiredToPromptOption,
     ModelConfig,
+    ModelHost,
     ModelType,
     MultiModalModelConfig,
 )
@@ -13,25 +14,27 @@ from src.config.ModelConfig import (
 
 class Model(BaseModel):
     id: str
-    host: str
+    host: ModelHost
     name: str
     description: str
     compute_source_id: str = Field(exclude=True)
     model_type: ModelType
-    available_time: datetime = Field(exclude=True)
     system_prompt: Optional[str] = None
     family_id: Optional[str] = None
     family_name: Optional[str] = None
-    deprecation_time: Optional[datetime] = Field(default=None, exclude=True)
+    available_time: Optional[AwareDatetime] = Field(default=None, exclude=True)
+    deprecation_time: Optional[AwareDatetime] = Field(default=None, exclude=True)
 
     @computed_field
     @property
     def is_deprecated(self) -> bool:
         now = datetime.now().astimezone(timezone.utc)
 
-        model_is_not_available_yet = now < self.available_time
+        model_is_not_available_yet = (
+            False if self.available_time is None else now < self.available_time
+        )
         model_is_after_deprecation_time = (
-            now > self.deprecation_time if self.deprecation_time is not None else False
+            False if self.deprecation_time is None else now > self.deprecation_time
         )
 
         return model_is_not_available_yet or model_is_after_deprecation_time
@@ -41,9 +44,11 @@ class Model(BaseModel):
     def is_visible(self) -> bool:
         now = datetime.now().astimezone(timezone.utc)
 
-        model_is_available = now >= self.available_time
+        model_is_available = (
+            True if self.available_time is None else now >= self.available_time
+        )
         model_is_before_deprecation_time = (
-            now < self.deprecation_time if self.deprecation_time is not None else True
+            True if self.deprecation_time is None else now < self.deprecation_time
         )
 
         return model_is_available and model_is_before_deprecation_time
@@ -54,15 +59,6 @@ class Model(BaseModel):
             datetime.fromisoformat(available_time).astimezone(timezone.utc)
             if available_time is not None
             else datetime.min.replace(tzinfo=timezone.utc)
-        )
-
-        deprecation_time = kwargs.get("deprecation_time")
-        kwargs["deprecation_time"] = (
-            datetime.min.replace(tzinfo=timezone.utc)
-            if kwargs.get("is_deprecated") is True
-            else datetime.fromisoformat(deprecation_time).astimezone(timezone.utc)
-            if deprecation_time is not None
-            else None
         )
 
         super().__init__(**kwargs)
@@ -79,8 +75,8 @@ class MultiModalModel(Model):
     allow_files_in_followups: bool = Field(default=False)
 
 
-def map_model(host: str, model_config: ModelConfig | MultiModalModelConfig):
+def map_model_from_config(model_config: ModelConfig | MultiModalModelConfig):
     if model_config.get("accepted_file_types") is not None:
-        return MultiModalModel.model_validate({**model_config, "host": host})
+        return MultiModalModel.model_validate(model_config)
 
-    return Model.model_validate({**model_config, "host": host})
+    return Model.model_validate(model_config)

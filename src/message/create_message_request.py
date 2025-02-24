@@ -27,6 +27,7 @@ class BaseCreateMessageRequest(APIInterface):
     template: Optional[str] = Field(default=None)
     model: str
     host: str
+    captchaToken: Optional[str] = Field(default=None)
 
     @model_validator(mode="after")
     def check_original_and_parent_are_different(self) -> Self:
@@ -91,6 +92,7 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     host: str
     files: Optional[Sequence[UploadedFile]] = Field(default=None)
     client: str
+    captchaToken: Optional[str] = Field(default=None)
 
     model_config = ConfigDict(validate_assignment=True)
 

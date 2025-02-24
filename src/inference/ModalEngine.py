@@ -5,7 +5,9 @@ from typing import Generator, Optional, Sequence
 import modal
 from werkzeug.datastructures import FileStorage
 
-from src import config
+from src.config import Model, cfg
+from src.config.get_models_by_host import get_models_by_host
+from src.config.ModelConfig import ModelHost
 from src.dao.message import Role
 from src.inference.InferenceEngine import (
     InferenceEngine,
@@ -17,16 +19,16 @@ from src.inference.InferenceEngine import (
 
 
 class ModalEngine(InferenceEngine):
-    available_models: Sequence[config.Model]
+    available_models: Sequence[Model]
     client: modal.Client
 
     def __init__(self) -> None:
-        self.available_models = config.cfg.modal.available_models
+        self.available_models = get_models_by_host(ModelHost.Modal)
         self.client = modal.Client.from_credentials(
-            config.cfg.modal.token, config.cfg.modal.token_secret
+            cfg.modal.token, cfg.modal.token_secret
         )
 
-    def get_model_details(self, model_id: str) -> config.Model:
+    def get_model_details(self, model_id: str) -> Model | None:
         model = next((m for m in self.available_models if m.id == model_id), None)
         return model
 

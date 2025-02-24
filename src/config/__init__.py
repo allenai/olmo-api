@@ -1,5 +1,6 @@
 import os
 from functools import cache
+from typing import cast
 
 from werkzeug.local import LocalProxy
 
@@ -15,4 +16,4 @@ def get_config():
     )
 
 
-cfg = LocalProxy(get_config)
+cfg = cast(Config, LocalProxy(get_config))

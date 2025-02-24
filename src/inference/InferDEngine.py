@@ -3,7 +3,9 @@ from typing import Generator, Sequence
 
 from inferd import Client as InferdClient
 
-from src import config
+from src.config import Model, cfg
+from src.config.get_models_by_host import get_models_by_host
+from src.config.ModelConfig import ModelHost
 from src.inference.InferenceEngine import (
     InferenceEngine,
     InferenceEngineChunk,
@@ -15,15 +17,13 @@ from src.inference.InferenceEngine import (
 
 class InferDEngine(InferenceEngine):
     inferDClient: InferdClient
-    available_models: Sequence[config.Model]
+    available_models: Sequence[Model]
 
     def __init__(self) -> None:
-        self.inferDClient = InferdClient(
-            config.cfg.inferd.address, config.cfg.inferd.token
-        )
-        self.available_models = config.cfg.inferd.available_models
+        self.inferDClient = InferdClient(cfg.inferd.address, cfg.inferd.token)
+        self.available_models = get_models_by_host(ModelHost.InferD)
 
-    def get_model_details(self, model_id: str) -> config.Model:
+    def get_model_details(self, model_id: str) -> Model | None:
         model = next((m for m in self.available_models if m.id == model_id), None)
         return model
 

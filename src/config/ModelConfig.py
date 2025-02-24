@@ -7,13 +7,18 @@ class ModelType(StrEnum):
     Chat = "chat"  # chat models, that have been fine-tuned for conversation
 
 
+class ModelHost(StrEnum):
+    InferD = "inferd"
+    Modal = "modal"
+
+
 class ModelConfig(TypedDict):
     id: str
     name: str
+    host: ModelHost
     description: str
     compute_source_id: str
     model_type: ModelType
-    is_deprecated: Optional[bool]
     system_prompt: Optional[str]
     family_id: Optional[str]
     family_name: Optional[str]

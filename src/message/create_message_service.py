@@ -15,6 +15,7 @@ from werkzeug.datastructures import FileStorage
 
 from src import db, parse, util
 from src.auth.auth_service import authn
+from src.bot_detection.create_assessment import create_assessment
 from src.dao import completion, message
 from src.inference.InferDEngine import InferDEngine
 from src.inference.InferenceEngine import (
@@ -156,6 +157,15 @@ def stream_new_message(
     if not model:
         raise exceptions.BadRequest(
             f"model {request.model} is not available on {request.host}"
+        )
+
+    recaptcha_key = os.getenv("RECAPTCHA_KEY")
+    if recaptcha_key is not None and request.captchaToken is not None:
+        create_assessment(
+            project_id="ai2-reviz",
+            recaptcha_key=recaptcha_key,
+            token=request.captchaToken,
+            recaptcha_action="prompt_submission",
         )
 
     is_content_safe = None
@@ -588,6 +598,7 @@ def create_message_v3(
         model=request.model,
         host=request.host,
         client=agent.client,
+        captchaToken=request.captchaToken,
     )
 
     return stream_new_message(
@@ -628,6 +639,7 @@ def create_message_v4(
         host=request.host,
         client=agent.client,
         files=request.files,
+        captchaToken=request.captchaToken,
     )
 
     return stream_new_message(

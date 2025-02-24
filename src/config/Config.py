@@ -1,4 +1,5 @@
 import json
+import os
 from dataclasses import dataclass
 from typing import Self
 
@@ -69,6 +70,7 @@ class Hubspot:
 class GoogleCloudServices:
     api_key: str
     storage_bucket: str
+    recaptcha_key: str
 
 
 DEFAULT_CONFIG_PATH = "/secret/cfg/config.json"
@@ -79,7 +81,7 @@ class Config:
     db: Database
     inferd: InferD
     server: Server
-    modal: BaseInferenceEngineConfig
+    modal: Modal
     auth: Auth
     wildguard: Wildguard
     infini_gram: InfiniGram
@@ -134,6 +136,9 @@ class Config:
                 google_cloud_services=GoogleCloudServices(
                     api_key=data["google_cloud_services"]["api_key"],
                     storage_bucket=data["google_cloud_services"]["storage_bucket"],
+                    recaptcha_key=os.getenv(
+                        "RECAPTCHA_KEY", data["google_cloud_services"]["recaptcha_key"]
+                    ),
                 ),
                 models=[
                     map_model_from_config(model_config)

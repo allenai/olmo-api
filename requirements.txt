@@ -19,3 +19,4 @@ flask-pydantic-api==1.5.0
 rank_bm25==0.2.2
 time-machine==2.16.0
 google-cloud-recaptcha-enterprise==1.27.0
+python-dotenv==1.0.1

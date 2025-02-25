@@ -1,12 +1,12 @@
 from http import HTTPStatus
-from typing import Any, Optional, Union
+from typing import Any
 
 import httpx
 
-from ... import errors
-from ...client import AuthenticatedClient, Client
-from ...models.available_infini_gram_index_id import AvailableInfiniGramIndexId
-from ...types import Response
+from src.attribution.infini_gram_api_client import errors
+from src.attribution.infini_gram_api_client.client import AuthenticatedClient, Client
+from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
+from src.attribution.infini_gram_api_client.types import Response
 
 
 def _get_kwargs() -> dict[str, Any]:
@@ -19,8 +19,8 @@ def _get_kwargs() -> dict[str, Any]:
 
 
 def _parse_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Optional[list[AvailableInfiniGramIndexId]]:
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> list[AvailableInfiniGramIndexId] | None:
     if response.status_code == 200:
         response_200 = []
         _response_200 = response.json()
@@ -32,12 +32,11 @@ def _parse_response(
         return response_200
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
-    else:
-        return None
+    return None
 
 
 def _build_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+    *, client: AuthenticatedClient | Client, response: httpx.Response
 ) -> Response[list[AvailableInfiniGramIndexId]]:
     return Response(
         status_code=HTTPStatus(response.status_code),
@@ -49,7 +48,7 @@ def _build_response(
 
 def sync_detailed(
     *,
-    client: Union[AuthenticatedClient, Client],
+    client: AuthenticatedClient | Client,
 ) -> Response[list[AvailableInfiniGramIndexId]]:
     """Get Available Indexes
 
@@ -72,8 +71,8 @@ def sync_detailed(
 
 def sync(
     *,
-    client: Union[AuthenticatedClient, Client],
-) -> Optional[list[AvailableInfiniGramIndexId]]:
+    client: AuthenticatedClient | Client,
+) -> list[AvailableInfiniGramIndexId] | None:
     """Get Available Indexes
 
     Raises:
@@ -91,7 +90,7 @@ def sync(
 
 async def asyncio_detailed(
     *,
-    client: Union[AuthenticatedClient, Client],
+    client: AuthenticatedClient | Client,
 ) -> Response[list[AvailableInfiniGramIndexId]]:
     """Get Available Indexes
 
@@ -112,8 +111,8 @@ async def asyncio_detailed(
 
 async def asyncio(
     *,
-    client: Union[AuthenticatedClient, Client],
-) -> Optional[list[AvailableInfiniGramIndexId]]:
+    client: AuthenticatedClient | Client,
+) -> list[AvailableInfiniGramIndexId] | None:
     """Get Available Indexes
 
     Raises:

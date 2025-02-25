@@ -1,4 +1,5 @@
-from typing import Optional, Self, Sequence
+from collections.abc import Sequence
+from typing import Self
 
 from flask_pydantic_api.utils import UploadedFile
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -19,27 +20,29 @@ from src.dao.message import (
 
 class BaseCreateMessageRequest(APIInterface):
     # TODO: Validate that the parent role is different from this role and that it exists
-    parent: Optional[str] = Field(default=None)
+    parent: str | None = Field(default=None)
     content: str = Field(min_length=1)
-    role: Optional[Role] = Field(default=Role.User)
-    original: Optional[str] = Field(default=None)
+    role: Role | None = Field(default=Role.User)
+    original: str | None = Field(default=None)
     private: bool = Field(default=False)
-    template: Optional[str] = Field(default=None)
+    template: str | None = Field(default=None)
     model: str
     host: str
-    captchaToken: Optional[str] = Field(default=None)
+    captchaToken: str | None = Field(default=None)
 
     @model_validator(mode="after")
     def check_original_and_parent_are_different(self) -> Self:
         if self.original is not None and self.parent == self.original:
-            raise ValueError("The original message cannot also be the parent")
+            msg = "The original message cannot also be the parent"
+            raise ValueError(msg)
 
         return self
 
     @model_validator(mode="after")
     def check_assistant_message_has_a_parent(self) -> Self:
         if self.role is Role.Assistant and self.parent is None:
-            raise ValueError("Assistant messages must have a parent")
+            msg = "Assistant messages must have a parent"
+            raise ValueError(msg)
 
         return self
 
@@ -58,10 +61,8 @@ class CreateMessageRequestV4(BaseCreateMessageRequest):
         multiple_of=temperature.step,
     )
     n: int = Field(default=num.default, ge=num.min, le=num.max, multiple_of=num.step)
-    top_p: float = Field(
-        default=top_p.default, ge=top_p.min, le=top_p.max, multiple_of=top_p.step
-    )
-    logprobs: Optional[int] = Field(
+    top_p: float = Field(default=top_p.default, ge=top_p.min, le=top_p.max, multiple_of=top_p.step)
+    logprobs: int | None = Field(
         default=logprobs.default,
         ge=logprobs.min,
         le=logprobs.max,
@@ -70,8 +71,8 @@ class CreateMessageRequestV4(BaseCreateMessageRequest):
 
 
 class CreateMessageRequestV4WithLists(CreateMessageRequestV4):
-    stop: Optional[list[str]] = Field(default=None)
-    files: Optional[list[UploadedFile]] = Field(default=None)
+    stop: list[str] | None = Field(default=None)
+    files: list[UploadedFile] | None = Field(default=None)
 
 
 class CreateMessageRequestV3(BaseCreateMessageRequest):
@@ -79,68 +80,68 @@ class CreateMessageRequestV3(BaseCreateMessageRequest):
 
 
 class CreateMessageRequestWithFullMessages(BaseModel):
-    parent_id: Optional[str] = Field(default=None)
-    parent: Optional[Message] = Field(default=None)
+    parent_id: str | None = Field(default=None)
+    parent: Message | None = Field(default=None)
     opts: InferenceOpts = Field(default_factory=InferenceOpts)
     content: str = Field(min_length=1)
     role: Role
-    original: Optional[str] = Field(default=None)
+    original: str | None = Field(default=None)
     private: bool = Field(default=False)
-    root: Optional[Message] = Field(default=None)
-    template: Optional[str] = Field(default=None)
+    root: Message | None = Field(default=None)
+    template: str | None = Field(default=None)
     model: str
     host: str
-    files: Optional[Sequence[UploadedFile]] = Field(default=None)
+    files: Sequence[UploadedFile] | None = Field(default=None)
     client: str
-    captchaToken: Optional[str] = Field(default=None)
+    captchaToken: str | None = Field(default=None)
 
     model_config = ConfigDict(validate_assignment=True)
 
     @model_validator(mode="after")
     def parent_exists_if_parent_id_is_set(self) -> Self:
         if self.parent_id is not None and self.parent is None:
-            raise ValueError(f"Parent message {self.parent_id} not found")
+            msg = f"Parent message {self.parent_id} not found"
+            raise ValueError(msg)
 
         return self
 
     @model_validator(mode="after")
     def root_exists_when_root_id_is_defined_with_no_parent(self) -> Self:
         if self.parent is not None and self.root is None:
-            raise ValueError(f"Message has an invalid root {self.parent.root}")
+            msg = f"Message has an invalid root {self.parent.root}"
+            raise ValueError(msg)
 
         return self
 
     @model_validator(mode="after")
     def assistant_message_has_a_parent(self) -> Self:
         if self.role == Role.Assistant and self.parent is None:
-            raise ValueError("Assistant messages must have a parent")
+            msg = "Assistant messages must have a parent"
+            raise ValueError(msg)
 
         return self
 
     @model_validator(mode="after")
     def parent_and_child_have_different_roles(self) -> Self:
         if self.parent is not None and self.parent.role == self.role:
-            raise ValueError("Parent and child must have different roles")
+            msg = "Parent and child must have different roles"
+            raise ValueError(msg)
 
         return self
 
     @model_validator(mode="after")
     def original_message_and_parent_are_different(self) -> Self:
-        if (
-            self.original is not None
-            and self.parent_id is not None
-            and self.original == self.parent_id
-        ):
-            raise ValueError("Original and parent messages must be different")
+        if self.original is not None and self.parent_id is not None and self.original == self.parent_id:
+            msg = "Original and parent messages must be different"
+            raise ValueError(msg)
 
         return self
 
     @model_validator(mode="after")
     def private_matches_root_private(self) -> Self:
         if self.root is not None and self.root.private != self.private:
-            raise ValueError(
-                "Visibility must be identical for all messages in a thread"
-            )
+            msg = "Visibility must be identical for all messages in a thread"
+            raise ValueError(msg)
 
         return self
 
@@ -148,6 +149,6 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     def current_user_created_thread(self) -> Self:
         # Only the creator of a thread can create follow-up prompts
         if self.root is not None and self.root.creator != self.client:
-            raise exceptions.Forbidden()
+            raise exceptions.Forbidden
 
         return self

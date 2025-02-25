@@ -1,7 +1,6 @@
 import os
 import uuid
 from dataclasses import dataclass
-from typing import Optional
 from unittest import TestCase
 
 import requests
@@ -12,13 +11,13 @@ from src.constants import ANONYMOUS_USER_ID_HEADER
 @dataclass
 class AuthenticatedClient:
     client: str
-    token: Optional[str]
+    token: str | None
     is_anonymous: bool = False
 
 
 class IntegrationTest(TestCase):
     origin = os.environ.get("ORIGIN", "http://localhost:8000")
-    auth0_token: Optional[str] = None
+    auth0_token: str | None = None
 
     def get_auth0_token(self):
         if self.auth0_token is None:
@@ -60,8 +59,7 @@ class IntegrationTest(TestCase):
     def auth(self, u: AuthenticatedClient) -> dict[str, str]:
         if u.is_anonymous:
             return {ANONYMOUS_USER_ID_HEADER: str(u.client)}
-        else:
-            return {"Authorization": f"Bearer {u.token}"}
+        return {"Authorization": f"Bearer {u.token}"}
 
     def json(self, h: dict[str, str]) -> dict[str, str]:
         return {"Content-Type": "application/json", **h}

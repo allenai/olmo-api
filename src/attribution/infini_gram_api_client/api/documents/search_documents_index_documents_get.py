@@ -1,23 +1,23 @@
 from http import HTTPStatus
-from typing import Any, Optional, Union
+from typing import Any
 
 import httpx
 
-from ... import errors
-from ...client import AuthenticatedClient, Client
-from ...models.available_infini_gram_index_id import AvailableInfiniGramIndexId
-from ...models.http_validation_error import HTTPValidationError
-from ...models.search_response import SearchResponse
-from ...types import UNSET, Response, Unset
+from src.attribution.infini_gram_api_client import errors
+from src.attribution.infini_gram_api_client.client import AuthenticatedClient, Client
+from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
+from src.attribution.infini_gram_api_client.models.http_validation_error import HTTPValidationError
+from src.attribution.infini_gram_api_client.models.search_response import SearchResponse
+from src.attribution.infini_gram_api_client.types import UNSET, Response, Unset
 
 
 def _get_kwargs(
     index: AvailableInfiniGramIndexId,
     *,
     search: str,
-    maximum_document_display_length: Union[Unset, int] = 10,
-    page: Union[Unset, int] = 0,
-    page_size: Union[Unset, int] = 10,
+    maximum_document_display_length: Unset | int = 10,
+    page: Unset | int = 0,
+    page_size: Unset | int = 10,
 ) -> dict[str, Any]:
     params: dict[str, Any] = {}
 
@@ -41,25 +41,22 @@ def _get_kwargs(
 
 
 def _parse_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Optional[Union[HTTPValidationError, SearchResponse]]:
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> HTTPValidationError | SearchResponse | None:
     if response.status_code == 200:
-        response_200 = SearchResponse.from_dict(response.json())
+        return SearchResponse.from_dict(response.json())
 
-        return response_200
     if response.status_code == 422:
-        response_422 = HTTPValidationError.from_dict(response.json())
+        return HTTPValidationError.from_dict(response.json())
 
-        return response_422
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
-    else:
-        return None
+    return None
 
 
 def _build_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Response[Union[HTTPValidationError, SearchResponse]]:
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> Response[HTTPValidationError | SearchResponse]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -71,12 +68,12 @@ def _build_response(
 def sync_detailed(
     index: AvailableInfiniGramIndexId,
     *,
-    client: Union[AuthenticatedClient, Client],
+    client: AuthenticatedClient | Client,
     search: str,
-    maximum_document_display_length: Union[Unset, int] = 10,
-    page: Union[Unset, int] = 0,
-    page_size: Union[Unset, int] = 10,
-) -> Response[Union[HTTPValidationError, SearchResponse]]:
+    maximum_document_display_length: Unset | int = 10,
+    page: Unset | int = 0,
+    page_size: Unset | int = 10,
+) -> Response[HTTPValidationError | SearchResponse]:
     """Search Documents
 
     Args:
@@ -112,12 +109,12 @@ def sync_detailed(
 def sync(
     index: AvailableInfiniGramIndexId,
     *,
-    client: Union[AuthenticatedClient, Client],
+    client: AuthenticatedClient | Client,
     search: str,
-    maximum_document_display_length: Union[Unset, int] = 10,
-    page: Union[Unset, int] = 0,
-    page_size: Union[Unset, int] = 10,
-) -> Optional[Union[HTTPValidationError, SearchResponse]]:
+    maximum_document_display_length: Unset | int = 10,
+    page: Unset | int = 0,
+    page_size: Unset | int = 10,
+) -> HTTPValidationError | SearchResponse | None:
     """Search Documents
 
     Args:
@@ -148,12 +145,12 @@ def sync(
 async def asyncio_detailed(
     index: AvailableInfiniGramIndexId,
     *,
-    client: Union[AuthenticatedClient, Client],
+    client: AuthenticatedClient | Client,
     search: str,
-    maximum_document_display_length: Union[Unset, int] = 10,
-    page: Union[Unset, int] = 0,
-    page_size: Union[Unset, int] = 10,
-) -> Response[Union[HTTPValidationError, SearchResponse]]:
+    maximum_document_display_length: Unset | int = 10,
+    page: Unset | int = 0,
+    page_size: Unset | int = 10,
+) -> Response[HTTPValidationError | SearchResponse]:
     """Search Documents
 
     Args:
@@ -187,12 +184,12 @@ async def asyncio_detailed(
 async def asyncio(
     index: AvailableInfiniGramIndexId,
     *,
-    client: Union[AuthenticatedClient, Client],
+    client: AuthenticatedClient | Client,
     search: str,
-    maximum_document_display_length: Union[Unset, int] = 10,
-    page: Union[Unset, int] = 0,
-    page_size: Union[Unset, int] = 10,
-) -> Optional[Union[HTTPValidationError, SearchResponse]]:
+    maximum_document_display_length: Unset | int = 10,
+    page: Unset | int = 0,
+    page_size: Unset | int = 10,
+) -> HTTPValidationError | SearchResponse | None:
     """Search Documents
 
     Args:

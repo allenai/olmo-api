@@ -1,5 +1,5 @@
+from collections.abc import Generator, Sequence
 from dataclasses import asdict
-from typing import Generator, Sequence
 
 from inferd import Client as InferdClient
 
@@ -24,8 +24,7 @@ class InferDEngine(InferenceEngine):
         self.available_models = get_models_by_host(ModelHost.InferD)
 
     def get_model_details(self, model_id: str) -> Model | None:
-        model = next((m for m in self.available_models if m.id == model_id), None)
-        return model
+        return next((m for m in self.available_models if m.id == model_id), None)
 
     def create_streamed_message(
         self,

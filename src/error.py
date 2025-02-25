@@ -1,5 +1,4 @@
 from logging import getLogger
-from typing import Optional
 
 from flask import jsonify, make_response, render_template, request
 from flask.typing import ResponseReturnValue
@@ -9,14 +8,10 @@ from werkzeug.exceptions import HTTPException
 
 
 def handle_validation_error(e: ValidationError):
-    return make_error_response(
-        400, {"message": str(e), "validation_errors": e.errors(include_context=False)}
-    )
+    return make_error_response(400, {"message": str(e), "validation_errors": e.errors(include_context=False)})
 
 
-def make_error_response(
-    code: Optional[int] = None, message: Optional[str | dict] = None
-) -> ResponseReturnValue:
+def make_error_response(code: int | None = None, message: str | dict | None = None) -> ResponseReturnValue:
     if code is None:
         code = 500
     if message is None:
@@ -30,13 +25,8 @@ def make_error_response(
             )
         case _:
             if isinstance(message, str):
-                return make_response(
-                    jsonify({"error": {"code": code, "message": message}}), code
-                )
-            else:
-                return make_response(
-                    jsonify({"error": {"code": code, **message}}), code
-                )
+                return make_response(jsonify({"error": {"code": code, "message": message}}), code)
+            return make_response(jsonify({"error": {"code": code, **message}}), code)
 
 
 def handle(e: Exception) -> ResponseReturnValue:

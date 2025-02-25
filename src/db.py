@@ -23,7 +23,7 @@ class Client:
 
     @classmethod
     def from_config(cls, c: config.Database) -> Self:
-        logging.getLogger(("psycopg.pool")).setLevel(logging.INFO)
+        logging.getLogger("psycopg.pool").setLevel(logging.INFO)
         logging.getLogger().debug(
             f"Creating connection pool for worker pid {os.getpid()} with min_size {c.min_size}, max_size {c.max_size}"
         )

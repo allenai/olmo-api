@@ -15,7 +15,7 @@ class Auth0JWTBearerTokenValidator(JWTBearerTokenValidator):
         issuer = f"https://{domain}/"
         jsonurl = urlopen(f"{issuer}.well-known/jwks.json")
         public_key = JsonWebKey.import_key_set(json.loads(jsonurl.read()))
-        super(Auth0JWTBearerTokenValidator, self).__init__(public_key)
+        super().__init__(public_key)
         self.claims_options = {
             "exp": {"essential": True},
             "aud": {"essential": True, "value": audience},

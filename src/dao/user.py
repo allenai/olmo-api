@@ -1,19 +1,18 @@
 from datetime import datetime
-from typing import Optional
 
 from psycopg_pool import ConnectionPool
 
 from src import obj
 from src.api_interface import APIInterface
 
-UserRow = tuple[str, str, datetime, Optional[datetime]]
+UserRow = tuple[str, str, datetime, datetime | None]
 
 
 class User(APIInterface):
     id: obj.ID
     client: str
     terms_accepted_date: datetime
-    acceptance_revoked_date: Optional[datetime]
+    acceptance_revoked_date: datetime | None
 
     @classmethod
     def from_row(cls, row: UserRow) -> "User":
@@ -42,10 +41,9 @@ class Store:
     def create_new_id() -> str:
         return obj.NewID("user")
 
-    def get_by_client(self, client: str) -> Optional[User]:
-        with self.pool.connection() as conn:
-            with conn.cursor() as cur:
-                q = """
+    def get_by_client(self, client: str) -> User | None:
+        with self.pool.connection() as conn, conn.cursor() as cur:
+            q = """
                     SELECT
                         id, client, terms_accepted_date, acceptance_revoked_date
                     FROM
@@ -54,19 +52,18 @@ class Store:
                         client = %(client)s
                 """
 
-                row = cur.execute(query=q, params={"client": client}).fetchone()
-                return User.from_row(row=row) if row is not None else None
+            row = cur.execute(query=q, params={"client": client}).fetchone()
+            return User.from_row(row=row) if row is not None else None
 
     def update(
         self,
         client: str,
-        id: Optional[str] = None,
-        terms_accepted_date: Optional[datetime] = None,
-        acceptance_revoked_date: Optional[datetime] = None,
-    ) -> Optional[User]:
-        with self.pool.connection() as conn:
-            with conn.cursor() as cur:
-                q = """
+        id: str | None = None,
+        terms_accepted_date: datetime | None = None,
+        acceptance_revoked_date: datetime | None = None,
+    ) -> User | None:
+        with self.pool.connection() as conn, conn.cursor() as cur:
+            q = """
                     UPDATE
                         olmo_user
                     SET
@@ -78,27 +75,26 @@ class Store:
                         id, client, terms_accepted_date, acceptance_revoked_date
                 """
 
-                row = cur.execute(
-                    q,
-                    {
-                        "id": id,
-                        "client": client,
-                        "terms_accepted_date": terms_accepted_date,
-                        "acceptance_revoked_date": acceptance_revoked_date,
-                    },
-                ).fetchone()
+            row = cur.execute(
+                q,
+                {
+                    "id": id,
+                    "client": client,
+                    "terms_accepted_date": terms_accepted_date,
+                    "acceptance_revoked_date": acceptance_revoked_date,
+                },
+            ).fetchone()
 
-                return User.from_row(row) if row is not None else None
+            return User.from_row(row) if row is not None else None
 
     def create(
         self,
         client: str,
-        terms_accepted_date: Optional[datetime] = None,
-        acceptance_revoked_date: Optional[datetime] = None,
+        terms_accepted_date: datetime | None = None,
+        acceptance_revoked_date: datetime | None = None,
     ) -> User:
-        with self.pool.connection() as conn:
-            with conn.cursor() as cur:
-                q = """
+        with self.pool.connection() as conn, conn.cursor() as cur:
+            q = """
                     INSERT INTO
                         olmo_user (id, client, terms_accepted_date, acceptance_revoked_date)
                     VALUES
@@ -107,18 +103,19 @@ class Store:
                         id, client, terms_accepted_date, acceptance_revoked_date
                 """
 
-                new_id = obj.NewID("user")
-                row = cur.execute(
-                    query=q,
-                    params={
-                        "id": new_id,
-                        "client": client,
-                        "terms_accepted_date": terms_accepted_date,
-                        "acceptance_revoked_date": acceptance_revoked_date,
-                    },
-                ).fetchone()
+            new_id = obj.NewID("user")
+            row = cur.execute(
+                query=q,
+                params={
+                    "id": new_id,
+                    "client": client,
+                    "terms_accepted_date": terms_accepted_date,
+                    "acceptance_revoked_date": acceptance_revoked_date,
+                },
+            ).fetchone()
 
-                if row is None:
-                    raise RuntimeError("failed to create user")
+            if row is None:
+                msg = "failed to create user"
+                raise RuntimeError(msg)
 
-                return User.from_row(row)
+            return User.from_row(row)

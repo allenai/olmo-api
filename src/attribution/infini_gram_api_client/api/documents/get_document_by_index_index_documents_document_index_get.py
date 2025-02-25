@@ -1,21 +1,21 @@
 from http import HTTPStatus
-from typing import Any, Optional, Union
+from typing import Any
 
 import httpx
 
-from ... import errors
-from ...client import AuthenticatedClient, Client
-from ...models.available_infini_gram_index_id import AvailableInfiniGramIndexId
-from ...models.http_validation_error import HTTPValidationError
-from ...models.infini_gram_document_response import InfiniGramDocumentResponse
-from ...types import UNSET, Response, Unset
+from src.attribution.infini_gram_api_client import errors
+from src.attribution.infini_gram_api_client.client import AuthenticatedClient, Client
+from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
+from src.attribution.infini_gram_api_client.models.http_validation_error import HTTPValidationError
+from src.attribution.infini_gram_api_client.models.infini_gram_document_response import InfiniGramDocumentResponse
+from src.attribution.infini_gram_api_client.types import UNSET, Response, Unset
 
 
 def _get_kwargs(
     index: AvailableInfiniGramIndexId,
     document_index: int,
     *,
-    maximum_document_display_length: Union[Unset, int] = 10,
+    maximum_document_display_length: Unset | int = 10,
 ) -> dict[str, Any]:
     params: dict[str, Any] = {}
 
@@ -33,25 +33,22 @@ def _get_kwargs(
 
 
 def _parse_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Optional[Union[HTTPValidationError, InfiniGramDocumentResponse]]:
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> HTTPValidationError | InfiniGramDocumentResponse | None:
     if response.status_code == 200:
-        response_200 = InfiniGramDocumentResponse.from_dict(response.json())
+        return InfiniGramDocumentResponse.from_dict(response.json())
 
-        return response_200
     if response.status_code == 422:
-        response_422 = HTTPValidationError.from_dict(response.json())
+        return HTTPValidationError.from_dict(response.json())
 
-        return response_422
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
-    else:
-        return None
+    return None
 
 
 def _build_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Response[Union[HTTPValidationError, InfiniGramDocumentResponse]]:
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> Response[HTTPValidationError | InfiniGramDocumentResponse]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -64,9 +61,9 @@ def sync_detailed(
     index: AvailableInfiniGramIndexId,
     document_index: int,
     *,
-    client: Union[AuthenticatedClient, Client],
-    maximum_document_display_length: Union[Unset, int] = 10,
-) -> Response[Union[HTTPValidationError, InfiniGramDocumentResponse]]:
+    client: AuthenticatedClient | Client,
+    maximum_document_display_length: Unset | int = 10,
+) -> Response[HTTPValidationError | InfiniGramDocumentResponse]:
     """Get Document By Index
 
     Args:
@@ -99,9 +96,9 @@ def sync(
     index: AvailableInfiniGramIndexId,
     document_index: int,
     *,
-    client: Union[AuthenticatedClient, Client],
-    maximum_document_display_length: Union[Unset, int] = 10,
-) -> Optional[Union[HTTPValidationError, InfiniGramDocumentResponse]]:
+    client: AuthenticatedClient | Client,
+    maximum_document_display_length: Unset | int = 10,
+) -> HTTPValidationError | InfiniGramDocumentResponse | None:
     """Get Document By Index
 
     Args:
@@ -129,9 +126,9 @@ async def asyncio_detailed(
     index: AvailableInfiniGramIndexId,
     document_index: int,
     *,
-    client: Union[AuthenticatedClient, Client],
-    maximum_document_display_length: Union[Unset, int] = 10,
-) -> Response[Union[HTTPValidationError, InfiniGramDocumentResponse]]:
+    client: AuthenticatedClient | Client,
+    maximum_document_display_length: Unset | int = 10,
+) -> Response[HTTPValidationError | InfiniGramDocumentResponse]:
     """Get Document By Index
 
     Args:
@@ -162,9 +159,9 @@ async def asyncio(
     index: AvailableInfiniGramIndexId,
     document_index: int,
     *,
-    client: Union[AuthenticatedClient, Client],
-    maximum_document_display_length: Union[Unset, int] = 10,
-) -> Optional[Union[HTTPValidationError, InfiniGramDocumentResponse]]:
+    client: AuthenticatedClient | Client,
+    maximum_document_display_length: Unset | int = 10,
+) -> HTTPValidationError | InfiniGramDocumentResponse | None:
     """Get Document By Index
 
     Args:

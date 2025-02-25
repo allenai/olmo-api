@@ -3,10 +3,10 @@ from typing import Any
 
 import httpx
 
-from ... import errors
-from ...client import AuthenticatedClient, Client
-from ...models.available_infini_gram_index_id import AvailableInfiniGramIndexId
-from ...types import Response
+from src.attribution.infini_gram_api_client import errors
+from src.attribution.infini_gram_api_client.client import AuthenticatedClient, Client
+from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
+from src.attribution.infini_gram_api_client.types import Response
 
 
 def _get_kwargs() -> dict[str, Any]:

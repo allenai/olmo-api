@@ -4,7 +4,7 @@ from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 if TYPE_CHECKING:
-    from ..models.document import Document
+    from src.attribution.infini_gram_api_client.models.document import Document
 
 
 T = TypeVar("T", bound="SearchResponse")
@@ -61,7 +61,7 @@ class SearchResponse:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.document import Document
+        from src.attribution.infini_gram_api_client.models.document import Document
 
         d = src_dict.copy()
         index = d.pop("index")

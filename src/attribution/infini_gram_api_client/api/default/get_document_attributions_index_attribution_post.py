@@ -3,13 +3,13 @@ from typing import Any
 
 import httpx
 
-from ... import errors
-from ...client import AuthenticatedClient, Client
-from ...models.attribution_request import AttributionRequest
-from ...models.attribution_response import AttributionResponse
-from ...models.available_infini_gram_index_id import AvailableInfiniGramIndexId
-from ...models.http_validation_error import HTTPValidationError
-from ...types import Response
+from src.attribution.infini_gram_api_client import errors
+from src.attribution.infini_gram_api_client.client import AuthenticatedClient, Client
+from src.attribution.infini_gram_api_client.models.attribution_request import AttributionRequest
+from src.attribution.infini_gram_api_client.models.attribution_response import AttributionResponse
+from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
+from src.attribution.infini_gram_api_client.models.http_validation_error import HTTPValidationError
+from src.attribution.infini_gram_api_client.types import Response
 
 
 def _get_kwargs(
@@ -37,13 +37,11 @@ def _parse_response(
     *, client: AuthenticatedClient | Client, response: httpx.Response
 ) -> AttributionResponse | HTTPValidationError | None:
     if response.status_code == 200:
-        response_200 = AttributionResponse.from_dict(response.json())
+        return AttributionResponse.from_dict(response.json())
 
-        return response_200
     if response.status_code == 422:
-        response_422 = HTTPValidationError.from_dict(response.json())
+        return HTTPValidationError.from_dict(response.json())
 
-        return response_422
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
     return None

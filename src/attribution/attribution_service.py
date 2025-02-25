@@ -67,7 +67,7 @@ class ResponseAttributionDocument:
             url = None
 
         source = document.metadata.additional_properties.get("path", "").split("/")[0]
-        if source not in [
+        if source not in {
             "arxiv",
             "algebraic-stack",
             "open-web-math",
@@ -75,7 +75,7 @@ class ResponseAttributionDocument:
             "starcoder",
             "wiki",
             "dolmino",
-        ]:
+        }:
             source = metadata.get("source", None)
 
         return cls(
@@ -99,14 +99,16 @@ class ResponseAttributionDocument:
 def model_id_is_valid_for_infini_gram(model_id: str) -> str:
     valid_model_ids = list(cfg.infini_gram.model_index_map.keys())
     if model_id not in valid_model_ids:
-        raise ValueError(f"{model_id} must be one of {valid_model_ids}")
+        msg = f"{model_id} must be one of {valid_model_ids}"
+        raise ValueError(msg)
 
     return model_id
 
 
 def should_block_prompt(prompt: str) -> str:
     if "lyric" in prompt.lower() or "song" in prompt.lower():
-        raise ValueError("The prompt is blocked due to legal compliance.")
+        msg = "The prompt is blocked due to legal compliance."
+        raise ValueError(msg)
     return prompt
 
 
@@ -188,8 +190,9 @@ def get_attribution(
             ),
         )
     except UnexpectedStatus as e:
+        msg = f"Something went wrong when calling the infini-gram API: {e.status_code} {e.content.decode()}"
         raise exceptions.BadGateway(
-            f"Something went wrong when calling the infini-gram API: {e.status_code} {e.content.decode()}"
+            msg
         )
 
     if isinstance(attribution_response, HTTPValidationError):
@@ -282,9 +285,7 @@ def get_attribution(
 def filter_document(document: AttributionDocument):
     if document.blocked:
         return False
-    if does_contain_pii(document.text_long):
-        return False
-    return True
+    return not does_contain_pii(document.text_long)
 
 
 def filter_span_documents(spans: list[AttributionSpan]):
@@ -294,5 +295,4 @@ def filter_span_documents(spans: list[AttributionSpan]):
         filtered_documents = list(filter(filter_document, span.documents))
         span.documents = filtered_documents
 
-    spans_with_documents = list(filter(lambda span: len(span.documents) > 0, copied_spans))
-    return spans_with_documents
+    return list(filter(lambda span: len(span.documents) > 0, copied_spans))

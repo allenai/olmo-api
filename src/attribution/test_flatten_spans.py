@@ -32,7 +32,7 @@ def test_collapse_spans_collapses_spans():
         collapsed_spans[3].text
         == " Tipping isn't common in Italy, but round up the taxi fare or leave a small tip in the event of exceptional service"
     )
-    assert sum([len(span.documents) for span in collapsed_spans[3].nested_spans]) == len(collapsed_spans[3].documents)
+    assert sum(len(span.documents) for span in collapsed_spans[3].nested_spans) == len(collapsed_spans[3].documents)
 
 
 def test_collapse_spans_collapses_penguin_spans():

@@ -11,10 +11,11 @@ def get_message(id: str, dbc: db.Client):
     message = dbc.message.get(id, agent=agent.client)
 
     if message is None:
-        raise exceptions.NotFound()
+        raise exceptions.NotFound
 
     if message.creator != agent.client and message.private:
-        raise exceptions.Forbidden("You do not have access to that private message.")
+        msg = "You do not have access to that private message."
+        raise exceptions.Forbidden(msg)
 
     return message
 
@@ -26,21 +27,23 @@ def delete_message(id: str, dbc: db.Client):
     root_message = next((m for m in message_list if m.id == id), None)
 
     if root_message is None:
-        raise exceptions.NotFound()
+        raise exceptions.NotFound
 
     if root_message.creator != agent.client:
+        msg = "The current thread was not created by the current user. You do not have permission to delete the current thread."
         raise exceptions.Forbidden(
-            "The current thread was not created by the current user. You do not have permission to delete the current thread."
+            msg
         )
 
     # prevent deletion if the current thread is out of the 30-day window
     if datetime.now(UTC) - root_message.created > timedelta(days=30):
-        raise exceptions.Forbidden("The current thread is over 30 days.")
+        msg = "The current thread is over 30 days."
+        raise exceptions.Forbidden(msg)
 
     # Remove messages
-    msg_ids = list(map(lambda m: m.id, message_list))
+    msg_ids = [m.id for m in message_list]
     dbc.message.remove(msg_ids)
 
     # Remove related rows in Completion table
-    related_cpl_ids = [id for id in list(map(lambda m: m.completion, message_list)) if id is not None]
+    related_cpl_ids = [id for id in [m.completion for m in message_list] if id is not None]
     dbc.completion.remove(related_cpl_ids)

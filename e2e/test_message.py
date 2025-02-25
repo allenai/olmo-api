@@ -387,7 +387,8 @@ class TestMessageValidation(base.IntegrationTest):
                     actual = msg["opts"][default_name]
                     expected = opts.get(default_name, default_value)
                     if actual != expected:
-                        raise AssertionError(f"Value for {default_name} was {actual}, expected {expected}")
+                        msg = f"Value for {default_name} was {actual}, expected {expected}"
+                        raise AssertionError(msg)
 
     def tearDown(self):
         for id, user in self.messages:
@@ -432,7 +433,8 @@ class TestLogProbs(base.IntegrationTest):
         lp1, lp2 = assistant_logprobs[0][0], assistant_logprobs[0][1]
         lp1 = assistant_logprobs[0][0]
         assert isinstance(lp1.get("text"), str)
-        assert isinstance(lp1.get("token_id"), int) and lp1.get("token_id") >= 0
+        assert isinstance(lp1.get("token_id"), int)
+        assert lp1.get("token_id") >= 0
         assert isinstance(lp1.get("logprob"), float)
         assert lp1.get("logprob") > lp2.get("logprob")
 

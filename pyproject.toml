@@ -671,6 +671,9 @@ select = [
     "YTT303",
 ]
 
+[tool.ruff.lint.flake8-builtins]
+builtins-ignorelist = ["id"]
+
 [tool.ruff.lint.extend-per-file-ignores]
 "test_*.py" = [
     "PLC1901",

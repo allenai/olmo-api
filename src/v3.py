@@ -65,18 +65,19 @@ class Server(Blueprint):
     def prompt(self, id: str):
         prompt = self.dbc.template.prompt(id)
         if prompt is None:
-            raise exceptions.NotFound()
+            raise exceptions.NotFound
         return jsonify(prompt)
 
     def update_prompt(self, id: str):
         agent = authn()
         if request.json is None:
-            raise exceptions.BadRequest("missing JSON body")
+            msg = "missing JSON body"
+            raise exceptions.BadRequest(msg)
         prompt = self.dbc.template.prompt(id)
         if prompt is None:
-            raise exceptions.NotFound()
+            raise exceptions.NotFound
         if prompt.author != agent.client:
-            raise exceptions.Forbidden()
+            raise exceptions.Forbidden
 
         prompt = self.dbc.template.update_prompt(
             id,
@@ -85,22 +86,23 @@ class Server(Blueprint):
             request.json.get("deleted"),
         )
         if prompt is None:
-            raise exceptions.NotFound()
+            raise exceptions.NotFound
         return jsonify(prompt)
 
     def delete_prompt(self, id: str):
         agent = authn()
         prompt = self.dbc.template.prompt(id)
         if prompt is None:
-            raise exceptions.NotFound()
+            raise exceptions.NotFound
         if prompt.author != agent.client:
-            raise exceptions.Forbidden()
+            raise exceptions.Forbidden
         return jsonify(self.dbc.template.update_prompt(id, deleted=True))
 
     def create_prompt(self):
         agent = authn()
         if request.json is None:
-            raise exceptions.BadRequest("missing JSON body")
+            msg = "missing JSON body"
+            raise exceptions.BadRequest(msg)
 
         prompt = self.dbc.template.create_prompt(request.json.get("name"), request.json.get("content"), agent.client)
         return jsonify(prompt)
@@ -125,12 +127,14 @@ class Server(Blueprint):
     def create_label(self):
         agent = authn()
         if request.json is None:
-            raise exceptions.BadRequest("missing JSON body")
+            msg = "missing JSON body"
+            raise exceptions.BadRequest(msg)
 
         mid = request.json.get("message")
         msg = self.dbc.message.get(mid)
         if msg is None:
-            raise exceptions.BadRequest(f"message {mid} not found")
+            msg = f"message {mid} not found"
+            raise exceptions.BadRequest(msg)
 
         try:
             rating = label.Rating(request.json.get("rating"))
@@ -142,14 +146,15 @@ class Server(Blueprint):
             creator=agent.client,
         )
         if existing.meta.total != 0:
-            raise exceptions.UnprocessableEntity(f"message {mid} already has label {existing.labels[0].id}")
+            msg = f"message {mid} already has label {existing.labels[0].id}"
+            raise exceptions.UnprocessableEntity(msg)
         lbl = self.dbc.label.create(msg.id, rating, agent.client, request.json.get("comment"))
         return jsonify(lbl)
 
     def label(self, id: str):
         label = self.dbc.label.get(id)
         if label is None:
-            raise exceptions.NotFound()
+            raise exceptions.NotFound
         return jsonify(label)
 
     def labels(self):
@@ -180,12 +185,12 @@ class Server(Blueprint):
         agent = authn()
         label = self.dbc.label.get(id)
         if label is None:
-            raise exceptions.NotFound()
+            raise exceptions.NotFound
         if label.creator != agent.client:
-            raise exceptions.Forbidden()
+            raise exceptions.Forbidden
         deleted = self.dbc.label.delete(id)
         if deleted is None:
-            raise exceptions.NotFound()
+            raise exceptions.NotFound
         return jsonify(deleted)
 
     def completion(self, id: str):
@@ -193,57 +198,64 @@ class Server(Blueprint):
         # TODO: OEUI-141 we need to use Auth0 permissions instead of checking this list
         # Only admins can view completions, since they might be related to private messages.
         if agent.client not in config.cfg.server.admins:
-            raise exceptions.Forbidden()
+            raise exceptions.Forbidden
         c = self.dbc.completion.get(id)
         if c is None:
-            raise exceptions.NotFound()
+            raise exceptions.NotFound
         return jsonify(c)
 
     def create_datachip(self):
         agent = authn()
         if request.json is None:
-            raise exceptions.BadRequest("missing JSON body")
+            msg = "missing JSON body"
+            raise exceptions.BadRequest(msg)
 
         name = request.json.get("name", "").strip()
         if name == "":
-            raise exceptions.BadRequest("must specify a non-empty name")
+            msg = "must specify a non-empty name"
+            raise exceptions.BadRequest(msg)
 
         content = request.json.get("content", "").strip()
         if content == "":
-            raise exceptions.BadRequest("must specify non-empty content")
+            msg = "must specify non-empty content"
+            raise exceptions.BadRequest(msg)
 
         if len(content.encode("utf-8")) > 500 * 1024 * 1024:
-            raise exceptions.RequestEntityTooLarge("content must be < 500MB")
+            msg = "content must be < 500MB"
+            raise exceptions.RequestEntityTooLarge(msg)
 
         return jsonify(self.dbc.datachip.create(name, content, agent.client))
 
     def datachip(self, id: str):
         chips = self.dbc.datachip.get([id])
         if len(chips) == 0:
-            raise exceptions.NotFound()
+            raise exceptions.NotFound
         if len(chips) > 1:
-            raise exceptions.InternalServerError("multiple chips with same ID")
+            msg = "multiple chips with same ID"
+            raise exceptions.InternalServerError(msg)
         return jsonify(chips[0])
 
     def patch_datachip(self, id: str):
         agent = authn()
         if request.json is None:
-            raise exceptions.BadRequest("missing JSON body")
+            msg = "missing JSON body"
+            raise exceptions.BadRequest(msg)
 
         chips = self.dbc.datachip.get([id])
         if len(chips) == 0:
-            raise exceptions.NotFound()
+            raise exceptions.NotFound
         if len(chips) > 1:
-            raise exceptions.InternalServerError("multiple chips with same ID")
+            msg = "multiple chips with same ID"
+            raise exceptions.InternalServerError(msg)
 
         chip = chips[0]
         if chip.creator != agent.client:
-            raise exceptions.Forbidden()
+            raise exceptions.Forbidden
 
         deleted = request.json.get("deleted")
         updated = self.dbc.datachip.update(id, datachip.Update(deleted))
         if updated is None:
-            raise exceptions.NotFound()
+            raise exceptions.NotFound
         return jsonify(updated)
 
     def datachips(self):

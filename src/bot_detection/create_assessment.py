@@ -33,11 +33,6 @@ def create_assessment(project_id: str, recaptcha_key: str, token: str, recaptcha
 
     # Check if the token is valid.
     if not response.token_properties.valid:
-        print(
-            "The CreateAssessment call failed because the token was "
-            + "invalid for the following reasons: "
-            + str(response.token_properties.invalid_reason)
-        )
         return None
 
     return response

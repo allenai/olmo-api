@@ -73,8 +73,8 @@ class TestPrivateMessages(base.IntegrationTest):
         r.raise_for_status()
         im1 = json.loads(util.last_response_line(r))
         self.messages.append((im1["id"], u1))
-        assert im1["private"] == True
-        assert im1["children"][0]["private"] == True
+        assert im1["private"] is True
+        assert im1["children"][0]["private"] is True
 
         # Make sure child messages transitively inherit the root's private level
         r = requests.post(
@@ -87,7 +87,7 @@ class TestPrivateMessages(base.IntegrationTest):
         )
         r.raise_for_status()
         im2 = json.loads(util.last_response_line(r))
-        assert im2["private"] == True
+        assert im2["private"] is True
 
         # Verify visibility enforcement of GET /message/:id endpoints
         private_ids = [im1["id"], im1["children"][0]["id"], im2["id"], im2["children"][0]["id"]]

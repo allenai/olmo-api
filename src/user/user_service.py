@@ -23,14 +23,13 @@ def upsert_user(dbc: db.Client, client: str) -> User | None:
     user = dbc.user.get_by_client(request.client)
 
     if user is not None:
-        updated_user = dbc.user.update(
+        return dbc.user.update(
             client=request.client,
             id=request.id,
             terms_accepted_date=request.terms_accepted_date,
             acceptance_revoked_date=request.acceptance_revoked_date,
         )
 
-        return updated_user
     new_user = dbc.user.create(
         client=request.client,
         terms_accepted_date=request.terms_accepted_date,
@@ -45,7 +44,8 @@ def upsert_user(dbc: db.Client, client: str) -> User | None:
 
 def _map_and_validate_upsert_user_request(client: str):
     if request.json is None:
-        raise exceptions.BadRequest("no request body")
+        msg = "no request body"
+        raise exceptions.BadRequest(msg)
 
     return UpsertUserRequest(client=client, **request.json)
 

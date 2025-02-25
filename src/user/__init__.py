@@ -1,15 +1,11 @@
-from typing import Optional
-
 from flask import Blueprint, jsonify, request
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import ValidationError
 from werkzeug import exceptions
 
 from src import db
-from src.api_interface import APIInterface as APIInterface
 from src.auth.auth_service import authn, request_agent
 from src.auth.authenticated_client import AuthenticatedClient
 from src.auth.resource_protectors import required_auth_protector
-from src.dao.user import User as User
 from src.user.user_service import (
     MigrateFromAnonymousUserRequest,
     migrate_user_from_anonymous_user,
@@ -31,7 +27,7 @@ class UserBlueprint(Blueprint):
     def whoami(self):
         agent = request_agent()
         if agent is None or agent.expired():
-            raise exceptions.Unauthorized()
+            raise exceptions.Unauthorized
 
         user = self.dbc.user.get_by_client(agent.client)
         has_accepted_terms_and_conditions = (
@@ -59,7 +55,8 @@ class UserBlueprint(Blueprint):
     def migrate_from_anonymous_user(self):
         with required_auth_protector.acquire() as token:
             if request.json is None:
-                raise exceptions.BadRequest("no request body")
+                msg = "no request body"
+                raise exceptions.BadRequest(msg)
 
             try:
                 migration_request = MigrateFromAnonymousUserRequest.model_validate({
@@ -75,4 +72,4 @@ class UserBlueprint(Blueprint):
 
                 return migration_result.model_dump_json()
             except ValidationError as e:
-                raise exceptions.BadRequest(e.json())
+                raise exceptions.BadRequest(e.json()) from e

@@ -4,7 +4,7 @@ from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 if TYPE_CHECKING:
-    from ..models.attribution_document import AttributionDocument
+    from src.attribution.infini_gram_api_client.models.attribution_document import AttributionDocument
 
 
 T = TypeVar("T", bound="AttributionSpan")
@@ -71,7 +71,7 @@ class AttributionSpan:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.attribution_document import AttributionDocument
+        from src.attribution.infini_gram_api_client.models.attribution_document import AttributionDocument
 
         d = src_dict.copy()
         left = d.pop("left")

@@ -19,7 +19,8 @@ def timedelta_from_str(s: str) -> datetime.timedelta:
     """
     number = int(s.strip()[:-1])
     if number <= 0:
-        raise ValueError(f"timedelta must be a positive, non-zero integer: {number}")
+        msg = f"timedelta must be a positive, non-zero integer: {number}"
+        raise ValueError(msg)
 
     unit = s.strip()[-1]
     match unit:
@@ -30,7 +31,8 @@ def timedelta_from_str(s: str) -> datetime.timedelta:
         case "s":
             return datetime.timedelta(seconds=number)
         case _:
-            raise ValueError(f"Invalid unit: {unit}")
+            msg = f"Invalid unit: {unit}"
+            raise ValueError(msg)
 
 
 @dataclass
@@ -91,7 +93,8 @@ class MessageContent:
         content = self.content
         for idx, dcp in enumerate(self.datachips):
             if dcp.ref not in chips:
-                raise ValueError(f'Missing datachip value for "{dcp.ref}"')
+                msg = f'Missing datachip value for "{dcp.ref}"'
+                raise ValueError(msg)
             content = dcp.replace_with(content, chips[dcp.ref])
             # Update the offsets of all subsequent datachips
             for sibling in self.datachips[idx + 1 :]:

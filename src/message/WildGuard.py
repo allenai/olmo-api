@@ -31,15 +31,13 @@ class WildguardResponse(SafetyCheckResponse):
 
     def is_safe(self) -> bool:
         if self.request_harmful is None:
-            raise RuntimeError("WildGuard check result is None")
+            msg = "WildGuard check result is None"
+            raise RuntimeError(msg)
 
         return self.transform_value(self.request_harmful)
 
     def transform_value(self, val: str) -> bool:
-        if val.lower() == "yes":
-            return True
-
-        return False
+        return val.lower() == "yes"
 
 
 class WildGuard(SafetyChecker):

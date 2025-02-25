@@ -35,7 +35,7 @@ class GoogleCloudStorage:
         try:
             self.bucket.delete_blob(blob_name=filename)
         except Exception as e:
-            current_app.logger.error(
+            current_app.logger.exception(
                 f"Failed to delete {filename} from the bucket:{self.bucket.name} on GoogleCloudStorage",
                 repr(e),
             )

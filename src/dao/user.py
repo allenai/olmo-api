@@ -42,9 +42,8 @@ class Store:
         return obj.NewID("user")
 
     def get_by_client(self, client: str) -> User | None:
-        with self.pool.connection() as conn:
-            with conn.cursor() as cur:
-                q = """
+        with self.pool.connection() as conn, conn.cursor() as cur:
+            q = """
                     SELECT
                         id, client, terms_accepted_date, acceptance_revoked_date
                     FROM
@@ -53,8 +52,8 @@ class Store:
                         client = %(client)s
                 """
 
-                row = cur.execute(query=q, params={"client": client}).fetchone()
-                return User.from_row(row=row) if row is not None else None
+            row = cur.execute(query=q, params={"client": client}).fetchone()
+            return User.from_row(row=row) if row is not None else None
 
     def update(
         self,
@@ -63,9 +62,8 @@ class Store:
         terms_accepted_date: datetime | None = None,
         acceptance_revoked_date: datetime | None = None,
     ) -> User | None:
-        with self.pool.connection() as conn:
-            with conn.cursor() as cur:
-                q = """
+        with self.pool.connection() as conn, conn.cursor() as cur:
+            q = """
                     UPDATE
                         olmo_user
                     SET
@@ -77,17 +75,17 @@ class Store:
                         id, client, terms_accepted_date, acceptance_revoked_date
                 """
 
-                row = cur.execute(
-                    q,
-                    {
-                        "id": id,
-                        "client": client,
-                        "terms_accepted_date": terms_accepted_date,
-                        "acceptance_revoked_date": acceptance_revoked_date,
-                    },
-                ).fetchone()
+            row = cur.execute(
+                q,
+                {
+                    "id": id,
+                    "client": client,
+                    "terms_accepted_date": terms_accepted_date,
+                    "acceptance_revoked_date": acceptance_revoked_date,
+                },
+            ).fetchone()
 
-                return User.from_row(row) if row is not None else None
+            return User.from_row(row) if row is not None else None
 
     def create(
         self,
@@ -95,9 +93,8 @@ class Store:
         terms_accepted_date: datetime | None = None,
         acceptance_revoked_date: datetime | None = None,
     ) -> User:
-        with self.pool.connection() as conn:
-            with conn.cursor() as cur:
-                q = """
+        with self.pool.connection() as conn, conn.cursor() as cur:
+            q = """
                     INSERT INTO
                         olmo_user (id, client, terms_accepted_date, acceptance_revoked_date)
                     VALUES
@@ -106,18 +103,19 @@ class Store:
                         id, client, terms_accepted_date, acceptance_revoked_date
                 """
 
-                new_id = obj.NewID("user")
-                row = cur.execute(
-                    query=q,
-                    params={
-                        "id": new_id,
-                        "client": client,
-                        "terms_accepted_date": terms_accepted_date,
-                        "acceptance_revoked_date": acceptance_revoked_date,
-                    },
-                ).fetchone()
+            new_id = obj.NewID("user")
+            row = cur.execute(
+                query=q,
+                params={
+                    "id": new_id,
+                    "client": client,
+                    "terms_accepted_date": terms_accepted_date,
+                    "acceptance_revoked_date": acceptance_revoked_date,
+                },
+            ).fetchone()
 
-                if row is None:
-                    raise RuntimeError("failed to create user")
+            if row is None:
+                msg = "failed to create user"
+                raise RuntimeError(msg)
 
-                return User.from_row(row)
+            return User.from_row(row)

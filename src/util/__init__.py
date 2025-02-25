@@ -1,7 +1,7 @@
 import json
 import os
 from dataclasses import asdict, is_dataclass
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from flask.json.provider import JSONProvider
@@ -16,7 +16,7 @@ class StackdriverJsonFormatter(jsonlogger.JsonFormatter):
     """
 
     def add_fields(self, log_record, record, message_dict):
-        super(StackdriverJsonFormatter, self).add_fields(log_record, record, message_dict)
+        super().add_fields(log_record, record, message_dict)
         log_record["severity"] = record.levelname
         log_record["logger"] = record.name
         log_record["timestamp"] = datetime.now(UTC).isoformat()

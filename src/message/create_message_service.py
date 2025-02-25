@@ -60,7 +60,7 @@ def check_message_safety(
         return result.is_safe()
 
     except Exception as e:
-        current_app.logger.error("Skipped message safety check due to error: %s. ", repr(e))
+        current_app.logger.exception("Skipped message safety check due to error: %s. ", repr(e))
 
     return None
 
@@ -80,7 +80,7 @@ def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
                 return False
 
         except Exception as e:
-            current_app.logger.error(
+            current_app.logger.exception(
                 "Skipped image safety check over %s due to error: %s. ",
                 file.filename,
                 repr(e),
@@ -151,7 +151,8 @@ def stream_new_message(
 
     model = inference_engine.get_model_details(request.model)
     if not model:
-        raise exceptions.BadRequest(f"model {request.model} is not available on {request.host}")
+        msg = f"model {request.model} is not available on {request.host}"
+        raise exceptions.BadRequest(msg)
 
     if cfg.google_cloud_services.recaptcha_key is not None and request.captchaToken is not None:
         create_assessment(
@@ -394,7 +395,7 @@ def stream_new_message(
             finish_reason = FinishReason.ModelOverloaded
 
         gen = time_ns() - start_gen
-        gen = gen // 1_000_000
+        gen //= 1000000
 
         match finish_reason:
             case FinishReason.UnclosedStream:

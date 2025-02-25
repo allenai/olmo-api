@@ -27,8 +27,7 @@ class ModalEngine(InferenceEngine):
         self.client = modal.Client.from_credentials(cfg.modal.token, cfg.modal.token_secret)
 
     def get_model_details(self, model_id: str) -> Model | None:
-        model = next((m for m in self.available_models if m.id == model_id), None)
-        return model
+        return next((m for m in self.available_models if m.id == model_id), None)
 
     def __get_args_for_model(
         self,

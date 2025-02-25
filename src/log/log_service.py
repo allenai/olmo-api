@@ -2,11 +2,11 @@ import datetime
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from logging import getLogger
 
 
-class LogSeverity(str, Enum):
+class LogSeverity(StrEnum):
     TRACE = "trace"
     DEBUG = "debug"
     INFO = "info"

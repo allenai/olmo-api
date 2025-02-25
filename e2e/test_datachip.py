@@ -172,7 +172,7 @@ class TestDatachipEndpoints(base.IntegrationTest):
         assert r.status_code == 200
         deleted = r.json()
         for k, v in dc1.items():
-            if k != "deleted" and k != "updated":
+            if k not in {"deleted", "updated"}:
                 assert v == deleted[k]
             assert deleted["deleted"] is not None
             assert datetime.fromisoformat(deleted["updated"]) > datetime.fromisoformat(dc1["updated"])
@@ -209,7 +209,7 @@ class TestDatachipEndpoints(base.IntegrationTest):
         assert r.status_code == 200
         undeleted = r.json()
         for k, v in dc1.items():
-            if k != "deleted" and k != "updated":
+            if k not in {"deleted", "updated"}:
                 assert v == deleted[k]
             assert undeleted["deleted"] is None
             assert datetime.fromisoformat(undeleted["updated"]) > datetime.fromisoformat(deleted["updated"])

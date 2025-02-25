@@ -33,14 +33,16 @@ class BaseCreateMessageRequest(APIInterface):
     @model_validator(mode="after")
     def check_original_and_parent_are_different(self) -> Self:
         if self.original is not None and self.parent == self.original:
-            raise ValueError("The original message cannot also be the parent")
+            msg = "The original message cannot also be the parent"
+            raise ValueError(msg)
 
         return self
 
     @model_validator(mode="after")
     def check_assistant_message_has_a_parent(self) -> Self:
         if self.role is Role.Assistant and self.parent is None:
-            raise ValueError("Assistant messages must have a parent")
+            msg = "Assistant messages must have a parent"
+            raise ValueError(msg)
 
         return self
 
@@ -98,42 +100,48 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     @model_validator(mode="after")
     def parent_exists_if_parent_id_is_set(self) -> Self:
         if self.parent_id is not None and self.parent is None:
-            raise ValueError(f"Parent message {self.parent_id} not found")
+            msg = f"Parent message {self.parent_id} not found"
+            raise ValueError(msg)
 
         return self
 
     @model_validator(mode="after")
     def root_exists_when_root_id_is_defined_with_no_parent(self) -> Self:
         if self.parent is not None and self.root is None:
-            raise ValueError(f"Message has an invalid root {self.parent.root}")
+            msg = f"Message has an invalid root {self.parent.root}"
+            raise ValueError(msg)
 
         return self
 
     @model_validator(mode="after")
     def assistant_message_has_a_parent(self) -> Self:
         if self.role == Role.Assistant and self.parent is None:
-            raise ValueError("Assistant messages must have a parent")
+            msg = "Assistant messages must have a parent"
+            raise ValueError(msg)
 
         return self
 
     @model_validator(mode="after")
     def parent_and_child_have_different_roles(self) -> Self:
         if self.parent is not None and self.parent.role == self.role:
-            raise ValueError("Parent and child must have different roles")
+            msg = "Parent and child must have different roles"
+            raise ValueError(msg)
 
         return self
 
     @model_validator(mode="after")
     def original_message_and_parent_are_different(self) -> Self:
         if self.original is not None and self.parent_id is not None and self.original == self.parent_id:
-            raise ValueError("Original and parent messages must be different")
+            msg = "Original and parent messages must be different"
+            raise ValueError(msg)
 
         return self
 
     @model_validator(mode="after")
     def private_matches_root_private(self) -> Self:
         if self.root is not None and self.root.private != self.private:
-            raise ValueError("Visibility must be identical for all messages in a thread")
+            msg = "Visibility must be identical for all messages in a thread"
+            raise ValueError(msg)
 
         return self
 
@@ -141,6 +149,6 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     def current_user_created_thread(self) -> Self:
         # Only the creator of a thread can create follow-up prompts
         if self.root is not None and self.root.creator != self.client:
-            raise exceptions.Forbidden()
+            raise exceptions.Forbidden
 
         return self

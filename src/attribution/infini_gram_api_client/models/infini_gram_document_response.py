@@ -3,10 +3,12 @@ from typing import TYPE_CHECKING, Any, TypeVar, cast
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..types import UNSET, Unset
+from src.attribution.infini_gram_api_client.types import UNSET, Unset
 
 if TYPE_CHECKING:
-    from ..models.infini_gram_document_response_metadata import InfiniGramDocumentResponseMetadata
+    from src.attribution.infini_gram_api_client.models.infini_gram_document_response_metadata import (
+        InfiniGramDocumentResponseMetadata,
+    )
 
 
 T = TypeVar("T", bound="InfiniGramDocumentResponse")
@@ -76,7 +78,9 @@ class InfiniGramDocumentResponse:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.infini_gram_document_response_metadata import InfiniGramDocumentResponseMetadata
+        from src.attribution.infini_gram_api_client.models.infini_gram_document_response_metadata import (
+            InfiniGramDocumentResponseMetadata,
+        )
 
         d = src_dict.copy()
         index = d.pop("index")

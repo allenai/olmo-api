@@ -51,7 +51,7 @@ def request_agent() -> Token | None:
 def authn() -> Token:
     agent = request_agent()
     if agent is None or agent.expired():
-        raise exceptions.Unauthorized()
+        raise exceptions.Unauthorized
 
     current_app.logger.info({
         "path": request.path,

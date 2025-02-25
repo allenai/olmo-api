@@ -5,7 +5,8 @@ from typing import Any
 from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool
 
-from .. import obj
+from src import obj
+
 from .message import InferenceOpts, TokenLogProbs
 
 CompletionRow = tuple[
@@ -111,9 +112,8 @@ class Store:
         input_tokens: int,
         output_tokens: int,
     ) -> Completion:
-        with self.pool.connection() as conn:
-            with conn.cursor() as cursor:
-                q = """
+        with self.pool.connection() as conn, conn.cursor() as cursor:
+            q = """
                     INSERT INTO
                         completion (
                             id,
@@ -144,28 +144,28 @@ class Store:
                         input_tokens,
                         output_tokens
                 """
-                values = (
-                    obj.NewID("cpl"),
-                    input,
-                    Jsonb([asdict(o) for o in outputs]),
-                    Jsonb(opts.model_dump()),
-                    model,
-                    sha,
-                    tokenize_ms,
-                    generation_ms,
-                    queue_ms,
-                    input_tokens,
-                    output_tokens,
-                )
-                row = cursor.execute(q, values).fetchone()
-                if row is None:
-                    raise RuntimeError("failed to create completion")
-                return Completion.from_row(row)
+            values = (
+                obj.NewID("cpl"),
+                input,
+                Jsonb([asdict(o) for o in outputs]),
+                Jsonb(opts.model_dump()),
+                model,
+                sha,
+                tokenize_ms,
+                generation_ms,
+                queue_ms,
+                input_tokens,
+                output_tokens,
+            )
+            row = cursor.execute(q, values).fetchone()
+            if row is None:
+                msg = "failed to create completion"
+                raise RuntimeError(msg)
+            return Completion.from_row(row)
 
     def get(self, id: str) -> Completion | None:
-        with self.pool.connection() as conn:
-            with conn.cursor() as cursor:
-                q = """
+        with self.pool.connection() as conn, conn.cursor() as cursor:
+            q = """
                     SELECT
                         id,
                         input,
@@ -184,20 +184,19 @@ class Store:
                     WHERE
                         id = %s
                 """
-                row = cursor.execute(q, (id,)).fetchone()
-                return Completion.from_row(row) if row is not None else None
+            row = cursor.execute(q, (id,)).fetchone()
+            return Completion.from_row(row) if row is not None else None
 
     def remove(self, ids: list[str]) -> None:
         if len(ids) == 0:
             return None
 
-        with self.pool.connection() as conn:
-            with conn.cursor() as cursor:
-                q = """
+        with self.pool.connection() as conn, conn.cursor() as cursor:
+            q = """
                     DELETE
                     FROM
                         completion
                     WHERE
                         id = ANY(%s)
                 """
-                cursor.execute(q, (ids,))
+            cursor.execute(q, (ids,))

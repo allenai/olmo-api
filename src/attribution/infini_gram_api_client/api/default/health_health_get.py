@@ -3,9 +3,9 @@ from typing import Any
 
 import httpx
 
-from ... import errors
-from ...client import AuthenticatedClient, Client
-from ...types import Response
+from src.attribution.infini_gram_api_client import errors
+from src.attribution.infini_gram_api_client.client import AuthenticatedClient, Client
+from src.attribution.infini_gram_api_client.types import Response
 
 
 def _get_kwargs() -> dict[str, Any]:

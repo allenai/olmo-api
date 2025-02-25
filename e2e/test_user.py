@@ -1,7 +1,7 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
 import requests
-from zoneinfo import ZoneInfo
 
 from . import base
 
@@ -26,10 +26,7 @@ class TestUserEndpoints(base.IntegrationTest):
 
         payload = r.json()
         assert payload["client"] == "murphy@allenai.org"
-        assert (
-            payload["termsAcceptedDate"]
-            == terms_accepted_date.astimezone(timezone.utc).isoformat()
-        )
+        assert payload["termsAcceptedDate"] == terms_accepted_date.astimezone(UTC).isoformat()
 
         # whoami should return that the user has accepted T&Cs
         r = requests.get(url=f"{self.origin}/v3/whoami", cookies={"token": user.token})
@@ -49,14 +46,8 @@ class TestUserEndpoints(base.IntegrationTest):
 
         payload = r.json()
         assert payload["client"] == "murphy@allenai.org"
-        assert (
-            payload["termsAcceptedDate"]
-            == terms_accepted_date.astimezone(timezone.utc).isoformat()
-        )
-        assert (
-            payload["acceptanceRevokedDate"]
-            == acceptance_revoked_date.astimezone(timezone.utc).isoformat()
-        )
+        assert payload["termsAcceptedDate"] == terms_accepted_date.astimezone(UTC).isoformat()
+        assert payload["acceptanceRevokedDate"] == acceptance_revoked_date.astimezone(UTC).isoformat()
 
         # whoami should return that the user has not accepted T&Cs if they've revoked
         r = requests.get(url=f"{self.origin}/v3/whoami", cookies={"token": user.token})
@@ -74,14 +65,8 @@ class TestUserEndpoints(base.IntegrationTest):
         r.raise_for_status()
 
         payload = r.json()
-        assert (
-            payload["termsAcceptedDate"]
-            == new_terms_accepted_date.astimezone(timezone.utc).isoformat()
-        )
-        assert (
-            payload["acceptanceRevokedDate"]
-            == acceptance_revoked_date.astimezone(timezone.utc).isoformat()
-        )
+        assert payload["termsAcceptedDate"] == new_terms_accepted_date.astimezone(UTC).isoformat()
+        assert payload["acceptanceRevokedDate"] == acceptance_revoked_date.astimezone(UTC).isoformat()
 
         # whoami should return that the user has accepted T&Cs if they've revoked acceptance then accepted again later
         r = requests.get(url=f"{self.origin}/v3/whoami", cookies={"token": user.token})

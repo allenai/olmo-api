@@ -1,4 +1,5 @@
-from typing import Optional, Self, Sequence
+from collections.abc import Sequence
+from typing import Self
 
 from flask_pydantic_api.utils import UploadedFile
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -19,15 +20,15 @@ from src.dao.message import (
 
 class BaseCreateMessageRequest(APIInterface):
     # TODO: Validate that the parent role is different from this role and that it exists
-    parent: Optional[str] = Field(default=None)
+    parent: str | None = Field(default=None)
     content: str = Field(min_length=1)
-    role: Optional[Role] = Field(default=Role.User)
-    original: Optional[str] = Field(default=None)
+    role: Role | None = Field(default=Role.User)
+    original: str | None = Field(default=None)
     private: bool = Field(default=False)
-    template: Optional[str] = Field(default=None)
+    template: str | None = Field(default=None)
     model: str
     host: str
-    captchaToken: Optional[str] = Field(default=None)
+    captchaToken: str | None = Field(default=None)
 
     @model_validator(mode="after")
     def check_original_and_parent_are_different(self) -> Self:
@@ -58,10 +59,8 @@ class CreateMessageRequestV4(BaseCreateMessageRequest):
         multiple_of=temperature.step,
     )
     n: int = Field(default=num.default, ge=num.min, le=num.max, multiple_of=num.step)
-    top_p: float = Field(
-        default=top_p.default, ge=top_p.min, le=top_p.max, multiple_of=top_p.step
-    )
-    logprobs: Optional[int] = Field(
+    top_p: float = Field(default=top_p.default, ge=top_p.min, le=top_p.max, multiple_of=top_p.step)
+    logprobs: int | None = Field(
         default=logprobs.default,
         ge=logprobs.min,
         le=logprobs.max,
@@ -70,8 +69,8 @@ class CreateMessageRequestV4(BaseCreateMessageRequest):
 
 
 class CreateMessageRequestV4WithLists(CreateMessageRequestV4):
-    stop: Optional[list[str]] = Field(default=None)
-    files: Optional[list[UploadedFile]] = Field(default=None)
+    stop: list[str] | None = Field(default=None)
+    files: list[UploadedFile] | None = Field(default=None)
 
 
 class CreateMessageRequestV3(BaseCreateMessageRequest):
@@ -79,20 +78,20 @@ class CreateMessageRequestV3(BaseCreateMessageRequest):
 
 
 class CreateMessageRequestWithFullMessages(BaseModel):
-    parent_id: Optional[str] = Field(default=None)
-    parent: Optional[Message] = Field(default=None)
+    parent_id: str | None = Field(default=None)
+    parent: Message | None = Field(default=None)
     opts: InferenceOpts = Field(default_factory=InferenceOpts)
     content: str = Field(min_length=1)
     role: Role
-    original: Optional[str] = Field(default=None)
+    original: str | None = Field(default=None)
     private: bool = Field(default=False)
-    root: Optional[Message] = Field(default=None)
-    template: Optional[str] = Field(default=None)
+    root: Message | None = Field(default=None)
+    template: str | None = Field(default=None)
     model: str
     host: str
-    files: Optional[Sequence[UploadedFile]] = Field(default=None)
+    files: Sequence[UploadedFile] | None = Field(default=None)
     client: str
-    captchaToken: Optional[str] = Field(default=None)
+    captchaToken: str | None = Field(default=None)
 
     model_config = ConfigDict(validate_assignment=True)
 
@@ -126,11 +125,7 @@ class CreateMessageRequestWithFullMessages(BaseModel):
 
     @model_validator(mode="after")
     def original_message_and_parent_are_different(self) -> Self:
-        if (
-            self.original is not None
-            and self.parent_id is not None
-            and self.original == self.parent_id
-        ):
+        if self.original is not None and self.parent_id is not None and self.original == self.parent_id:
             raise ValueError("Original and parent messages must be different")
 
         return self
@@ -138,9 +133,7 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     @model_validator(mode="after")
     def private_matches_root_private(self) -> Self:
         if self.root is not None and self.root.private != self.private:
-            raise ValueError(
-                "Visibility must be identical for all messages in a thread"
-            )
+            raise ValueError("Visibility must be identical for all messages in a thread")
 
         return self
 

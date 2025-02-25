@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -45,7 +45,7 @@ class AttributionDocument:
     display_offset_snippet: int
     needle_offset_snippet: int
     text_snippet: str
-    blocked: Union[Unset, bool] = False
+    blocked: Unset | bool = False
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -79,23 +79,21 @@ class AttributionDocument:
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
-        field_dict.update(
-            {
-                "documentIndex": document_index,
-                "documentLength": document_length,
-                "displayLength": display_length,
-                "needleOffset": needle_offset,
-                "metadata": metadata,
-                "tokenIds": token_ids,
-                "text": text,
-                "displayLengthLong": display_length_long,
-                "needleOffsetLong": needle_offset_long,
-                "textLong": text_long,
-                "displayOffsetSnippet": display_offset_snippet,
-                "needleOffsetSnippet": needle_offset_snippet,
-                "textSnippet": text_snippet,
-            }
-        )
+        field_dict.update({
+            "documentIndex": document_index,
+            "documentLength": document_length,
+            "displayLength": display_length,
+            "needleOffset": needle_offset,
+            "metadata": metadata,
+            "tokenIds": token_ids,
+            "text": text,
+            "displayLengthLong": display_length_long,
+            "needleOffsetLong": needle_offset_long,
+            "textLong": text_long,
+            "displayOffsetSnippet": display_offset_snippet,
+            "needleOffsetSnippet": needle_offset_snippet,
+            "textSnippet": text_snippet,
+        })
         if blocked is not UNSET:
             field_dict["blocked"] = blocked
 

@@ -1,11 +1,13 @@
-from datetime import datetime
-from typing import Optional
-from psycopg_pool import ConnectionPool
 from dataclasses import dataclass
+from datetime import datetime
+
+from psycopg_pool import ConnectionPool
 from werkzeug import exceptions
+
 from .. import obj
 
-PromptTemplateRow = tuple[str, str, str, str, datetime, datetime, Optional[datetime]]
+PromptTemplateRow = tuple[str, str, str, str, datetime, datetime, datetime | None]
+
 
 @dataclass
 class PromptTemplate:
@@ -17,7 +19,7 @@ class PromptTemplate:
     creator: str
     created: datetime
     updated: datetime
-    deleted: Optional[datetime]
+    deleted: datetime | None
 
     @classmethod
     def from_row(cls, row: PromptTemplateRow) -> "PromptTemplate":
@@ -30,8 +32,9 @@ class PromptTemplate:
             creator=author,
             created=created,
             updated=updated,
-            deleted=deleted
+            deleted=deleted,
         )
+
 
 class Store:
     def __init__(self, pool: ConnectionPool):
@@ -78,7 +81,7 @@ class Store:
                     raise RuntimeError("failed to create prompt template")
                 return PromptTemplate.from_row(row)
 
-    def prompt(self, id: str) -> Optional[PromptTemplate]:
+    def prompt(self, id: str) -> PromptTemplate | None:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 q = """
@@ -93,12 +96,8 @@ class Store:
                 return PromptTemplate.from_row(row) if row is not None else None
 
     def update_prompt(
-        self,
-        id: str,
-        name: Optional[str] = None,
-        content: Optional[str] = None,
-        deleted: Optional[bool] = None
-    ) -> Optional[PromptTemplate]:
+        self, id: str, name: str | None = None, content: str | None = None, deleted: bool | None = None
+    ) -> PromptTemplate | None:
         if name is not None and name.strip() == "":
             raise exceptions.BadRequest("name must not be empty")
         if content is not None and content.strip() == "":
@@ -121,4 +120,3 @@ class Store:
                 """
                 row = cur.execute(q, (name, content, id)).fetchone()
                 return PromptTemplate.from_row(row) if row is not None else None
-

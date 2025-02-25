@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from flask import request
 from pydantic import Field
@@ -13,12 +12,12 @@ from src.hubspot_service import create_contact
 
 class UpsertUserRequest(APIInterface):
     client: str
-    id: Optional[str] = None
-    terms_accepted_date: Optional[datetime] = None
-    acceptance_revoked_date: Optional[datetime] = None
+    id: str | None = None
+    terms_accepted_date: datetime | None = None
+    acceptance_revoked_date: datetime | None = None
 
 
-def upsert_user(dbc: db.Client, client: str) -> Optional[User]:
+def upsert_user(dbc: db.Client, client: str) -> User | None:
     request = _map_and_validate_upsert_user_request(client)
 
     user = dbc.user.get_by_client(request.client)
@@ -32,17 +31,16 @@ def upsert_user(dbc: db.Client, client: str) -> Optional[User]:
         )
 
         return updated_user
-    else:
-        new_user = dbc.user.create(
-            client=request.client,
-            terms_accepted_date=request.terms_accepted_date,
-            acceptance_revoked_date=request.acceptance_revoked_date,
-        )
+    new_user = dbc.user.create(
+        client=request.client,
+        terms_accepted_date=request.terms_accepted_date,
+        acceptance_revoked_date=request.acceptance_revoked_date,
+    )
 
-        if new_user:
-            create_contact()
+    if new_user:
+        create_contact()
 
-        return new_user
+    return new_user
 
 
 def _map_and_validate_upsert_user_request(client: str):
@@ -58,13 +56,11 @@ class MigrateFromAnonymousUserRequest(APIInterface):
 
 
 class MigrateFromAnonymousUserResponse(APIInterface):
-    updated_user: Optional[User] = Field()
+    updated_user: User | None = Field()
     messages_updated_count: int = Field()
 
 
-def migrate_user_from_anonymous_user(
-    dbc: db.Client, anonymous_user_id: str, new_user_id: str
-):
+def migrate_user_from_anonymous_user(dbc: db.Client, anonymous_user_id: str, new_user_id: str):
     # migrate tos
     previous_user = dbc.user.get_by_client(anonymous_user_id)
     new_user = dbc.user.get_by_client(new_user_id)
@@ -72,15 +68,11 @@ def migrate_user_from_anonymous_user(
     updated_user = None
 
     if previous_user is not None and new_user is not None:
-        most_recent_terms_accepted_date = max(
-            previous_user.terms_accepted_date, new_user.terms_accepted_date
-        )
+        most_recent_terms_accepted_date = max(previous_user.terms_accepted_date, new_user.terms_accepted_date)
 
         # TODO: carry over acceptance revoked date
 
-        updated_user = dbc.user.update(
-            client=new_user_id, terms_accepted_date=most_recent_terms_accepted_date
-        )
+        updated_user = dbc.user.update(client=new_user_id, terms_accepted_date=most_recent_terms_accepted_date)
 
     elif previous_user is not None and new_user is None:
         updated_user = dbc.user.create(

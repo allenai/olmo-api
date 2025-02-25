@@ -1,8 +1,9 @@
-import string
 import secrets
+import string
 
 # obj.ID is a unique identifier for an object.
 ID = str
+
 
 def NewID(prefix: str) -> ID:
     """
@@ -16,4 +17,3 @@ def NewID(prefix: str) -> ID:
         id += string.ascii_uppercase[secrets.randbelow(len(string.ascii_uppercase))]
         id += string.digits[secrets.randbelow(len(string.digits))]
     return f"{prefix}_{id}"
-

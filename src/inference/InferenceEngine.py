@@ -1,7 +1,8 @@
 from abc import abstractmethod
+from collections.abc import Generator, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Generator, Optional, Protocol, Sequence
+from typing import Protocol
 
 from werkzeug.datastructures import FileStorage
 
@@ -33,7 +34,7 @@ class FinishReason(StrEnum):
 class InferenceEngineMessage:
     role: str
     content: str
-    files: Optional[Sequence[FileStorage | str]] = None
+    files: Sequence[FileStorage | str] | None = None
 
 
 @dataclass
@@ -46,10 +47,10 @@ class Logprob:
 @dataclass
 class InferenceEngineChunk:
     content: str
-    finish_reason: Optional[FinishReason] = None
-    id: Optional[str] = None
-    created: Optional[str] = None
-    model: Optional[str] = None
+    finish_reason: FinishReason | None = None
+    id: str | None = None
+    created: str | None = None
+    model: str | None = None
     logprobs: Sequence[Sequence[Logprob]] = field(default_factory=list)
     input_token_count: int = -1
     output_token_count: int = -1
@@ -61,8 +62,8 @@ class InferenceOptions:
     temperature: float = 1.0
     n: int = 1
     top_p: float = 1.0
-    logprobs: Optional[int] = None
-    stop: Optional[list[str]] = None
+    logprobs: int | None = None
+    stop: list[str] | None = None
 
 
 class InferenceEngine(Protocol):

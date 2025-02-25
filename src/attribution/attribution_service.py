@@ -1,6 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Annotated, List, Optional, Self, cast
+from typing import Annotated, Self, cast
 
 from pydantic import AfterValidator, Field
 from rank_bm25 import BM25Okapi  # type: ignore
@@ -48,18 +48,16 @@ class AttributionDocumentSnippet:
 class ResponseAttributionDocument:
     text_long: str
     snippets: list[AttributionDocumentSnippet]
-    corresponding_spans: List[int]
-    corresponding_span_texts: List[str]
+    corresponding_spans: list[int]
+    corresponding_span_texts: list[str]
     index: str
     source: str
     relevance_score: float
-    title: Optional[str] = None
-    url: Optional[str] = None
+    title: str | None = None
+    url: str | None = None
 
     @classmethod
-    def from_flattened_span_document(
-        cls, document: FlattenedSpanDocument, span_index: int
-    ) -> Self:
+    def from_flattened_span_document(cls, document: FlattenedSpanDocument, span_index: int) -> Self:
         metadata = document.metadata.additional_properties.get("metadata", {})
         if "metadata" in metadata:
             url = metadata["metadata"].get("url", None)
@@ -93,9 +91,7 @@ class ResponseAttributionDocument:
             index=str(document.document_index),
             source=source,
             relevance_score=document.relevance_score,
-            title=document.metadata.additional_properties.get("metadata", {})
-            .get("metadata", {})
-            .get("title", None),
+            title=document.metadata.additional_properties.get("metadata", {}).get("metadata", {}).get("title", None),
             url=url,
         )
 
@@ -125,12 +121,12 @@ class GetAttributionRequest(APIInterface):
 @dataclass
 class ResponseAttributionSpan:
     text: str
-    documents: List[int] = field(default_factory=lambda: [])
+    documents: list[int] = field(default_factory=list)
 
 
 @dataclass
 class TopLevelAttributionSpan(ResponseAttributionSpan):
-    nested_spans: List[ResponseAttributionSpan] = field(default_factory=lambda: [])
+    nested_spans: list[ResponseAttributionSpan] = field(default_factory=list)
 
     @classmethod
     def from_flattened_span(cls, span: FlattenedSpan) -> Self:
@@ -139,9 +135,7 @@ class TopLevelAttributionSpan(ResponseAttributionSpan):
             nested_spans=[
                 ResponseAttributionSpan(
                     text=nested_span.text,
-                    documents=[
-                        document.document_index for document in nested_span.documents
-                    ],
+                    documents=[document.document_index for document in nested_span.documents],
                 )
                 for nested_span in span.nested_spans
             ],
@@ -160,10 +154,7 @@ def update_mapped_document(
     if span_text not in mapped_document.corresponding_span_texts:
         mapped_document.corresponding_span_texts.append(span_text)
 
-    if not any(
-        snippet.text == new_document.text_snippet
-        for snippet in mapped_document.snippets
-    ):
+    if not any(snippet.text == new_document.text_snippet for snippet in mapped_document.snippets):
         mapped_document.snippets.append(
             AttributionDocumentSnippet(
                 text=new_document.text_snippet,
@@ -176,9 +167,7 @@ def get_attribution(
     request: GetAttributionRequest,
     infini_gram_client: Client,
 ):
-    index = AvailableInfiniGramIndexId(
-        cfg.infini_gram.model_index_map[request.model_id]
-    )
+    index = AvailableInfiniGramIndexId(cfg.infini_gram.model_index_map[request.model_id])
 
     try:
         attribution_response = get_document_attributions_index_attribution_post.sync(
@@ -210,9 +199,7 @@ def get_attribution(
         )
 
     if attribution_response is None:
-        raise exceptions.BadGateway(
-            description="Something went wrong when calling the infini-gram API"
-        )
+        raise exceptions.BadGateway(description="Something went wrong when calling the infini-gram API")
 
     if attribution_response.input_tokens is None:
         raise exceptions.BadGateway(
@@ -226,9 +213,7 @@ def get_attribution(
     if len(docs) > 0:
         tokenized_corpus = [doc.split(" ") for doc in docs]
         bm25 = BM25Okapi(tokenized_corpus)
-        doc_scores = bm25.get_scores(
-            (request.prompt + " " + request.model_response).split(" ")
-        )
+        doc_scores = bm25.get_scores((request.prompt + " " + request.model_response).split(" "))
         i = 0
         for span_to_rank in filtered_spans:
             for j in range(len(span_to_rank.documents)):
@@ -253,7 +238,7 @@ def get_attribution(
 
     flattened_spans = flatten_spans(
         input_tokens=attribution_response.input_tokens,
-        spans=cast(List[AttributionSpan], filtered_spans),
+        spans=cast(list[AttributionSpan], filtered_spans),
     )
 
     mapped_documents: dict[int, ResponseAttributionDocument] = {}
@@ -267,19 +252,12 @@ def get_attribution(
             if does_contain_pii(current_span_document.text_long):
                 continue
 
-            if (
-                current_span_document.document_index
-                not in mapped_spans[span_index].documents
-            ):
-                mapped_spans[span_index].documents.append(
-                    current_span_document.document_index
-                )
+            if current_span_document.document_index not in mapped_spans[span_index].documents:
+                mapped_spans[span_index].documents.append(current_span_document.document_index)
 
             if current_span_document.document_index not in mapped_documents:
                 mapped_documents[current_span_document.document_index] = (
-                    ResponseAttributionDocument.from_flattened_span_document(
-                        current_span_document, span_index
-                    )
+                    ResponseAttributionDocument.from_flattened_span_document(current_span_document, span_index)
                 )
             else:
                 update_mapped_document(
@@ -316,7 +294,5 @@ def filter_span_documents(spans: list[AttributionSpan]):
         filtered_documents = list(filter(filter_document, span.documents))
         span.documents = filtered_documents
 
-    spans_with_documents = list(
-        filter(lambda span: len(span.documents) > 0, copied_spans)
-    )
+    spans_with_documents = list(filter(lambda span: len(span.documents) > 0, copied_spans))
     return spans_with_documents

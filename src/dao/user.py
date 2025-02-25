@@ -1,19 +1,18 @@
 from datetime import datetime
-from typing import Optional
 
 from psycopg_pool import ConnectionPool
 
 from src import obj
 from src.api_interface import APIInterface
 
-UserRow = tuple[str, str, datetime, Optional[datetime]]
+UserRow = tuple[str, str, datetime, datetime | None]
 
 
 class User(APIInterface):
     id: obj.ID
     client: str
     terms_accepted_date: datetime
-    acceptance_revoked_date: Optional[datetime]
+    acceptance_revoked_date: datetime | None
 
     @classmethod
     def from_row(cls, row: UserRow) -> "User":
@@ -42,7 +41,7 @@ class Store:
     def create_new_id() -> str:
         return obj.NewID("user")
 
-    def get_by_client(self, client: str) -> Optional[User]:
+    def get_by_client(self, client: str) -> User | None:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 q = """
@@ -60,10 +59,10 @@ class Store:
     def update(
         self,
         client: str,
-        id: Optional[str] = None,
-        terms_accepted_date: Optional[datetime] = None,
-        acceptance_revoked_date: Optional[datetime] = None,
-    ) -> Optional[User]:
+        id: str | None = None,
+        terms_accepted_date: datetime | None = None,
+        acceptance_revoked_date: datetime | None = None,
+    ) -> User | None:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 q = """
@@ -93,8 +92,8 @@ class Store:
     def create(
         self,
         client: str,
-        terms_accepted_date: Optional[datetime] = None,
-        acceptance_revoked_date: Optional[datetime] = None,
+        terms_accepted_date: datetime | None = None,
+        acceptance_revoked_date: datetime | None = None,
     ) -> User:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:

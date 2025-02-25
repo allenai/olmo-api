@@ -1,34 +1,40 @@
 from dataclasses import dataclass
-from typing import Optional
+from enum import StrEnum
+
 from flask import Request
 from werkzeug import exceptions
-from enum import StrEnum
+
 
 class SortDirection(StrEnum):
     ASC = "ASC"
     DESC = "DESC"
+
 
 @dataclass
 class Sort:
     field: str
     direction: SortDirection = SortDirection.DESC
 
+
 @dataclass
 class ListMeta:
     total: int
-    offset: Optional[int] = None
-    limit: Optional[int] = None
-    sort: Optional[Sort] = None
+    offset: int | None = None
+    limit: int | None = None
+    sort: Sort | None = None
+
 
 @dataclass
 class List:
     meta: ListMeta
 
+
 @dataclass
 class Opts:
-    offset: Optional[int] = None
-    limit: Optional[int] = None
-    sort: Optional[Sort] = None
+    offset: int | None = None
+    limit: int | None = None
+    sort: Sort | None = None
+
 
 def parse_opts_from_querystring(request: Request, max_limit: int = 100) -> Opts:
     try:
@@ -59,5 +65,3 @@ def parse_opts_from_querystring(request: Request, max_limit: int = 100) -> Opts:
         raise exceptions.BadRequest(f"invalid sort: {e}")
 
     return Opts(offset, limit, sort)
-
-

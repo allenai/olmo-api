@@ -1,23 +1,26 @@
-from psycopg_pool import ConnectionPool
-from psycopg import errors
+import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+
+from psycopg import errors
+from psycopg_pool import ConnectionPool
+
 from .. import obj
 from . import paged
-
-import re
 
 DATACHIP_REF_DELIM = "/"
 
 DatachipRef = str
 
+
 def make_datachip_ref(creator: str, name: str) -> DatachipRef:
     return f"{creator}{DATACHIP_REF_DELIM}{name}"
 
+
 class DuplicateDatachipRefError(ValueError):
     def __init__(self, ref: DatachipRef):
-        super().__init__(f"datachip \"{ref}\" already exists")
+        super().__init__(f'datachip "{ref}" already exists')
+
 
 @dataclass
 class Datachip:
@@ -28,28 +31,29 @@ class Datachip:
     creator: str
     created: datetime
     updated: datetime
-    deleted: Optional[datetime] = None
+    deleted: datetime | None = None
+
 
 @dataclass
 class Update:
-    deleted: Optional[bool] = None
+    deleted: bool | None = None
+
 
 @dataclass
 class DatachipList(paged.List):
     datachips: list[Datachip]
 
+
 def is_valid_datachip_name(name: str) -> bool:
     return re.match(r"^[a-zA-Z0-9_-]+$", name) is not None
+
 
 class Store:
     def __init__(self, pool: ConnectionPool):
         self.pool = pool
 
     def list_all(
-        self,
-        creator: Optional[str] = None,
-        deleted: bool = False,
-        opts: paged.Opts = paged.Opts()
+        self, creator: str | None = None, deleted: bool = False, opts: paged.Opts = paged.Opts()
     ) -> DatachipList:
         # TODO: add sort support for datachips
         if opts.sort is not None:
@@ -79,7 +83,7 @@ class Store:
                         name,
                         id
                     """
-                args = { "creator": creator, "deleted": deleted }
+                args = {"creator": creator, "deleted": deleted}
 
                 if opts.offset is not None:
                     q += "\nOFFSET %(offset)s "
@@ -108,7 +112,7 @@ class Store:
     def create(self, name: str, content: str, creator: str) -> Datachip:
         if not is_valid_datachip_name(name):
             raise ValueError(
-                f"invalid datachip name: \"{name}\", only alphanumeric characters and `_` or `-` are allowed"
+                f'invalid datachip name: "{name}", only alphanumeric characters and `_` or `-` are allowed'
             )
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
@@ -123,7 +127,7 @@ class Store:
                             RETURNING
                                 id, name, ref, content, creator, created, updated
                         """,
-                        (obj.NewID("dc"), name, ref, content, creator)
+                        (obj.NewID("dc"), name, ref, content, creator),
                     )
                     row = cur.fetchone()
                     if row is None:
@@ -151,7 +155,7 @@ class Store:
                         WHERE
                             id = ANY(%s)
                     """,
-                    (ids,)
+                    (ids,),
                 )
                 return [Datachip(*row) for row in cur.fetchall()]
 
@@ -174,11 +178,11 @@ class Store:
                         WHERE
                             ref = ANY(%s)
                     """,
-                    (refs,)
+                    (refs,),
                 )
                 return [Datachip(*row) for row in cur.fetchall()]
 
-    def update(self, id: str, up: Update) -> Optional[Datachip]:
+    def update(self, id: str, up: Update) -> Datachip | None:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
@@ -193,8 +197,7 @@ class Store:
                         RETURNING
                             id, name, ref, content, creator, created, updated, deleted
                     """,
-                    (id,)
+                    (id,),
                 )
                 row = cur.fetchone()
                 return Datachip(*row) if row is not None else None
-

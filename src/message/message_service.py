@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from werkzeug import exceptions
 
@@ -34,7 +34,7 @@ def delete_message(id: str, dbc: db.Client):
         )
 
     # prevent deletion if the current thread is out of the 30-day window
-    if datetime.now(timezone.utc) - root_message.created > timedelta(days=30):
+    if datetime.now(UTC) - root_message.created > timedelta(days=30):
         raise exceptions.Forbidden("The current thread is over 30 days.")
 
     # Remove messages
@@ -42,7 +42,5 @@ def delete_message(id: str, dbc: db.Client):
     dbc.message.remove(msg_ids)
 
     # Remove related rows in Completion table
-    related_cpl_ids = [
-        id for id in list(map(lambda m: m.completion, message_list)) if id is not None
-    ]
+    related_cpl_ids = [id for id in list(map(lambda m: m.completion, message_list)) if id is not None]
     dbc.completion.remove(related_cpl_ids)

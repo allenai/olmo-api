@@ -2,7 +2,7 @@ import re
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import bs4
 from psycopg import errors
@@ -29,7 +29,7 @@ class Field:
     default: Any
     min: Any
     max: Any
-    step: Optional[int | float] = None
+    step: int | float | None = None
 
 
 max_tokens = Field("max_tokens", 2048, 1, 2048, 1)
@@ -56,9 +56,7 @@ class InferenceOpts(BaseModel):
         multiple_of=temperature.step,
         strict=True,
     )
-    n: int = PydanticField(
-        default=num.default, ge=num.min, le=num.max, multiple_of=num.step, strict=True
-    )
+    n: int = PydanticField(default=num.default, ge=num.min, le=num.max, multiple_of=num.step, strict=True)
     top_p: float = PydanticField(
         default=top_p.default,
         ge=top_p.min,
@@ -66,20 +64,18 @@ class InferenceOpts(BaseModel):
         multiple_of=top_p.step,
         strict=True,
     )
-    logprobs: Optional[int] = PydanticField(
+    logprobs: int | None = PydanticField(
         default=logprobs.default,
         ge=logprobs.min,
         le=logprobs.max,
         multiple_of=logprobs.step,
         strict=True,
     )
-    stop: Optional[list[str]] = PydanticField(default=stop.default)
+    stop: list[str] | None = PydanticField(default=stop.default)
 
     @staticmethod
     def opts_schema() -> dict[str, Field]:
-        return {
-            f.name: f for f in [max_tokens, temperature, num, top_p, logprobs, stop]
-        }
+        return {f.name: f for f in [max_tokens, temperature, num, top_p, logprobs, stop]}
 
     @staticmethod
     def from_request(request_opts: dict[str, Any]) -> "InferenceOpts":
@@ -94,8 +90,8 @@ class TokenLogProbs:
 
 
 def prepare_logprobs(
-    logprobs: Optional[list[list[TokenLogProbs]]],
-) -> Optional[list[Jsonb]]:
+    logprobs: list[list[TokenLogProbs]] | None,
+) -> list[Jsonb] | None:
     if logprobs is None:
         return None
     # TODO: logprobs is a JSONB[] field now, but should probably be JSONB[][]; though this only
@@ -112,29 +108,29 @@ MessageRow = tuple[
     dict[str, Any],
     str,
     datetime,
-    Optional[datetime],
-    Optional[str],
-    Optional[str],
-    Optional[list[list[dict]]],
-    Optional[str],
+    datetime | None,
+    str | None,
+    str | None,
+    list[list[dict]] | None,
+    str | None,
     bool,
-    Optional[str],
+    str | None,
     bool,
-    Optional[ModelType],
-    Optional[str],
-    Optional[bool],
+    ModelType | None,
+    str | None,
+    bool | None,
     str,
     str,
-    Optional[datetime],
-    Optional[list[str]],
+    datetime | None,
+    list[str] | None,
     # Label fields
-    Optional[str],
-    Optional[str],
-    Optional[int],
-    Optional[str],
-    Optional[str],
-    Optional[datetime],
-    Optional[datetime],
+    str | None,
+    str | None,
+    int | None,
+    str | None,
+    str | None,
+    datetime | None,
+    datetime | None,
 ]
 
 MessagesByID = dict[str, "Message"]
@@ -144,7 +140,7 @@ MessagesByID = dict[str, "Message"]
 class MessageChunk:
     message: obj.ID
     content: str
-    logprobs: Optional[list[list[TokenLogProbs]]] = None
+    logprobs: list[list[TokenLogProbs]] | None = None
 
 
 @dataclass
@@ -179,21 +175,21 @@ class Message:
     created: datetime
     model_id: str
     model_host: str
-    deleted: Optional[datetime] = None
-    parent: Optional[str] = None
-    template: Optional[str] = None
-    logprobs: Optional[list[list[TokenLogProbs]]] = None
-    children: Optional[list["Message"]] = None
-    completion: Optional[str] = None
+    deleted: datetime | None = None
+    parent: str | None = None
+    template: str | None = None
+    logprobs: list[list[TokenLogProbs]] | None = None
+    children: list["Message"] | None = None
+    completion: str | None = None
     final: bool = False
-    original: Optional[str] = None
+    original: str | None = None
     private: bool = False
-    model_type: Optional[ModelType] = None
-    finish_reason: Optional[str] = None
-    harmful: Optional[bool] = None
-    expiration_time: Optional[datetime] = None
+    model_type: ModelType | None = None
+    finish_reason: str | None = None
+    harmful: bool | None = None
+    expiration_time: datetime | None = None
     labels: list[label.Label] = field(default_factory=list)
-    file_urls: Optional[list[str]] = None
+    file_urls: list[str] | None = None
 
     def flatten(self) -> list["Message"]:
         if self.children is None:
@@ -249,9 +245,7 @@ class Message:
 
     def merge(self, m: "Message") -> "Message":
         if self.id != m.id:
-            raise RuntimeError(
-                f"cannot merge messages with different ids: {self.id} != {m.id}"
-            )
+            raise RuntimeError(f"cannot merge messages with different ids: {self.id} != {m.id}")
         return replace(self, labels=self.labels + m.labels)
 
     @staticmethod
@@ -307,19 +301,19 @@ class Store:
         opts: InferenceOpts,
         model_id: str,
         model_host: str,
-        root: Optional[str] = None,
-        parent: Optional[str] = None,
-        template: Optional[str] = None,
-        logprobs: Optional[list[list[TokenLogProbs]]] = None,
-        completion: Optional[obj.ID] = None,
+        root: str | None = None,
+        parent: str | None = None,
+        template: str | None = None,
+        logprobs: list[list[TokenLogProbs]] | None = None,
+        completion: obj.ID | None = None,
         final: bool = True,
-        original: Optional[str] = None,
+        original: str | None = None,
         private: bool = False,
-        model_type: Optional[ModelType] = None,
-        finish_reason: Optional[str] = None,
-        harmful: Optional[bool] = None,
-        expiration_time: Optional[datetime] = None,
-        file_urls: Optional[list[str]] = None,
+        model_type: ModelType | None = None,
+        finish_reason: str | None = None,
+        harmful: bool | None = None,
+        expiration_time: datetime | None = None,
+        file_urls: list[str] | None = None,
     ) -> Message:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
@@ -397,26 +391,18 @@ class Store:
                     # throw something more generic that the server translates
                     match e.diag.constraint_name:
                         case "message_completion_fkey":
-                            raise exceptions.BadRequest(
-                                f'completion "{completion}" not found'
-                            )
+                            raise exceptions.BadRequest(f'completion "{completion}" not found')
                         case "message_original_fkey":
-                            raise exceptions.BadRequest(
-                                f'original "{original}" not found'
-                            )
+                            raise exceptions.BadRequest(f'original "{original}" not found')
                         case "message_parent_fkey":
                             raise exceptions.BadRequest(f'parent "{parent}" not found')
                         case "message_root_fkey":
                             raise exceptions.BadRequest(f'root "{root}" not found')
                         case "message_template_fkey":
-                            raise exceptions.BadRequest(
-                                f'template "{template}" not found'
-                            )
-                    raise exceptions.BadRequest(
-                        f"unknown foreign key violation: {e.diag.constraint_name}"
-                    )
+                            raise exceptions.BadRequest(f'template "{template}" not found')
+                    raise exceptions.BadRequest(f"unknown foreign key violation: {e.diag.constraint_name}")
 
-    def get(self, id: str, agent: Optional[str] = None) -> Optional[Message]:
+    def get(self, id: str, agent: str | None = None) -> Message | None:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 q = """
@@ -474,9 +460,7 @@ class Store:
                         id,
                     ),
                 ).fetchall()
-                _, msgs = Message.tree(
-                    Message.group_by_id([Message.from_row(r) for r in rows])
-                )
+                _, msgs = Message.tree(Message.group_by_id([Message.from_row(r) for r in rows]))
                 return msgs.get(id)
 
     def get_by_root(self, id: str) -> list[Message]:
@@ -528,13 +512,13 @@ class Store:
     def finalize(
         self,
         id: obj.ID,
-        content: Optional[str] = None,
-        logprobs: Optional[list[list[TokenLogProbs]]] = None,
-        completion: Optional[obj.ID] = None,
-        finish_reason: Optional[str] = None,
-        harmful: Optional[bool] = None,
-        file_urls: Optional[list[str]] = None,
-    ) -> Optional[Message]:
+        content: str | None = None,
+        logprobs: list[list[TokenLogProbs]] | None = None,
+        completion: obj.ID | None = None,
+        finish_reason: str | None = None,
+        harmful: bool | None = None,
+        file_urls: list[str] | None = None,
+    ) -> Message | None:
         """
         Used to finalize a Message produced via a streaming response.
         """
@@ -603,14 +587,10 @@ class Store:
                 except errors.ForeignKeyViolation as e:
                     match e.diag.constraint_name:
                         case "message_completion_fkey":
-                            raise exceptions.BadRequest(
-                                f'completion "{completion}" not found'
-                            )
-                    raise exceptions.BadRequest(
-                        f"unknown foreign key violation: {e.diag.constraint_name}"
-                    )
+                            raise exceptions.BadRequest(f'completion "{completion}" not found')
+                    raise exceptions.BadRequest(f"unknown foreign key violation: {e.diag.constraint_name}")
 
-    def delete(self, id: str, agent: Optional[str] = None) -> Optional[Message]:
+    def delete(self, id: str, agent: str | None = None) -> Message | None:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 q = """
@@ -685,10 +665,10 @@ class Store:
     # TODO: allow listing non-final messages
     def get_list(
         self,
-        creator: Optional[str] = None,
+        creator: str | None = None,
         deleted: bool = False,
         opts: paged.Opts = paged.Opts(),
-        agent: Optional[str] = None,
+        agent: str | None = None,
     ) -> MessageList:
         """
         Returns messages from the database. If agent is set, both private messages
@@ -809,13 +789,9 @@ class Store:
                     )
 
                 total = rows[0][0]
-                roots, _ = Message.tree(
-                    Message.group_by_id([Message.from_row(r[1:]) for r in rows])
-                )
+                roots, _ = Message.tree(Message.group_by_id([Message.from_row(r[1:]) for r in rows]))
 
-                return MessageList(
-                    messages=roots, meta=paged.ListMeta(total, opts.offset, opts.limit)
-                )
+                return MessageList(messages=roots, meta=paged.ListMeta(total, opts.offset, opts.limit))
 
     def migrate_messages_to_new_user(self, previous_user_id: str, new_user_id: str):
         with self.pool.connection() as conn:

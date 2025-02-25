@@ -142,8 +142,5 @@ class Config:
                         data["google_cloud_services"].get("recaptcha_key"),
                     ),
                 ),
-                models=[
-                    map_model_from_config(model_config)
-                    for model_config in data["models"]
-                ],
+                models=[map_model_from_config(model_config) for model_config in data["models"]],
             )

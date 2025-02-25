@@ -5,11 +5,11 @@ from pydantic import BaseModel, Field, ValidationError
 from werkzeug import exceptions
 
 from src import db
-from src.api_interface import APIInterface
+from src.api_interface import APIInterface as APIInterface
 from src.auth.auth_service import authn, request_agent
 from src.auth.authenticated_client import AuthenticatedClient
 from src.auth.resource_protectors import required_auth_protector
-from src.dao.user import User
+from src.dao.user import User as User
 from src.user.user_service import (
     MigrateFromAnonymousUserRequest,
     migrate_user_from_anonymous_user,
@@ -37,10 +37,7 @@ class UserBlueprint(Blueprint):
         has_accepted_terms_and_conditions = (
             user is not None
             and user.terms_accepted_date is not None
-            and (
-                user.acceptance_revoked_date is None
-                or user.acceptance_revoked_date < user.terms_accepted_date
-            )
+            and (user.acceptance_revoked_date is None or user.acceptance_revoked_date < user.terms_accepted_date)
         )
 
         return jsonify(
@@ -65,12 +62,10 @@ class UserBlueprint(Blueprint):
                 raise exceptions.BadRequest("no request body")
 
             try:
-                migration_request = MigrateFromAnonymousUserRequest.model_validate(
-                    {
-                        "anonymous_user_id": request.json["anonymous_user_id"],
-                        "new_user_id": token.sub,
-                    }
-                )
+                migration_request = MigrateFromAnonymousUserRequest.model_validate({
+                    "anonymous_user_id": request.json["anonymous_user_id"],
+                    "new_user_id": token.sub,
+                })
 
                 migration_result = migrate_user_from_anonymous_user(
                     dbc=self.dbc,

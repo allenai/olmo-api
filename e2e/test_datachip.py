@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import requests
 
@@ -10,7 +10,7 @@ class TestDatachipEndpoints(base.IntegrationTest):
 
     def runTest(self):
         # Deleted datachip refs can't be reused, which means we need to prefix names used in this test.
-        prefix = f"{type(self).__name__}_{datetime.now(timezone.utc).strftime('%s')}_"
+        prefix = f"{type(self).__name__}_{datetime.now(UTC).strftime('%s')}_"
 
         # Make sure all endpoints require auth
         for r in [
@@ -27,9 +27,7 @@ class TestDatachipEndpoints(base.IntegrationTest):
         # Must specify a non-empty name
         empty = ["", "   "]
         for name in empty:
-            r = requests.post(
-                f"{self.origin}/v3/datachip", headers=self.auth(u1), json={"name": name}
-            )
+            r = requests.post(f"{self.origin}/v3/datachip", headers=self.auth(u1), json={"name": name})
             assert r.status_code == 400
 
         # Names must only have alphanumeric characters and _ or -. We don't test for everything.
@@ -84,15 +82,10 @@ class TestDatachipEndpoints(base.IntegrationTest):
             json={"name": f"{prefix}KingOfSlobber", "content": "Sam Skjønsberg"},
         )
         assert r.status_code == 400
-        assert (
-            r.json()["error"]["message"]
-            == f'datachip "{u1.client}/{prefix}KingOfSlobber" already exists'
-        )
+        assert r.json()["error"]["message"] == f'datachip "{u1.client}/{prefix}KingOfSlobber" already exists'
 
         # Get the chip
-        r = requests.get(
-            f"{self.origin}/v3/datachip/{dc1['id']}", headers=self.auth(u1)
-        )
+        r = requests.get(f"{self.origin}/v3/datachip/{dc1['id']}", headers=self.auth(u1))
         assert r.status_code == 200
         for k, v in dc1.items():
             assert v == r.json()[k]
@@ -112,9 +105,7 @@ class TestDatachipEndpoints(base.IntegrationTest):
         assert dclist1["meta"]["offset"] == 0
 
         # Verify pagination
-        r = requests.get(
-            f"{self.origin}/v3/datachips", params={"limit": 1}, headers=self.auth(u1)
-        )
+        r = requests.get(f"{self.origin}/v3/datachips", params={"limit": 1}, headers=self.auth(u1))
         assert r.status_code == 200
         dclist2 = r.json()
         assert len(dclist2["datachips"]) == 1
@@ -184,9 +175,7 @@ class TestDatachipEndpoints(base.IntegrationTest):
             if k != "deleted" and k != "updated":
                 assert v == deleted[k]
             assert deleted["deleted"] is not None
-            assert datetime.fromisoformat(deleted["updated"]) > datetime.fromisoformat(
-                dc1["updated"]
-            )
+            assert datetime.fromisoformat(deleted["updated"]) > datetime.fromisoformat(dc1["updated"])
 
         # Deleted refs still can't be reused
         r = requests.post(
@@ -195,9 +184,7 @@ class TestDatachipEndpoints(base.IntegrationTest):
             json={"name": dc1["name"], "content": "Sam Skjønsberg"},
         )
         assert r.status_code == 400
-        assert (
-            r.json()["error"]["message"] == f"datachip \"{dc1['ref']}\" already exists"
-        )
+        assert r.json()["error"]["message"] == f"datachip \"{dc1['ref']}\" already exists"
 
         # Make sure deleted things aren't listed by default
         r = requests.get(f"{self.origin}/v3/datachips", headers=self.auth(u1))
@@ -225,9 +212,7 @@ class TestDatachipEndpoints(base.IntegrationTest):
             if k != "deleted" and k != "updated":
                 assert v == deleted[k]
             assert undeleted["deleted"] is None
-            assert datetime.fromisoformat(
-                undeleted["updated"]
-            ) > datetime.fromisoformat(deleted["updated"])
+            assert datetime.fromisoformat(undeleted["updated"]) > datetime.fromisoformat(deleted["updated"])
 
     def tearDown(self):
         for id, user in self.chips:

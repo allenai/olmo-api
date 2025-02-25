@@ -1,9 +1,9 @@
 import datetime
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
 from logging import getLogger
-from typing import Mapping, Optional
 
 
 class LogSeverity(str, Enum):
@@ -31,12 +31,13 @@ class LogEntry:
     body: str
     resource: str
     timestamp: datetime.time = datetime.time()
-    attributes: Optional[Mapping[str, str]] = None
+    attributes: Mapping[str, str] | None = None
     type: str = "LogEntry"
-    
+
     @property
     def is_valid(self) -> bool:
         return self.severity is not None or self.body is not None or self.resource is not None
+
 
 def log(log_entry: LogEntry) -> None:
     logger = getLogger()

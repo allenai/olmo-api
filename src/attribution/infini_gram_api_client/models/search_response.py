@@ -48,16 +48,14 @@ class SearchResponse:
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
-        field_dict.update(
-            {
-                "index": index,
-                "documents": documents,
-                "page": page,
-                "pageSize": page_size,
-                "pageCount": page_count,
-                "totalDocuments": total_documents,
-            }
-        )
+        field_dict.update({
+            "index": index,
+            "documents": documents,
+            "page": page,
+            "pageSize": page_size,
+            "pageCount": page_count,
+            "totalDocuments": total_documents,
+        })
 
         return field_dict
 

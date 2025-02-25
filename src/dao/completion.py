@@ -1,6 +1,6 @@
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool
@@ -25,8 +25,8 @@ CompletionRow = tuple[
 
 
 def parse_logprobs(
-    logprobs: Optional[list[list[dict[str, Any]]]],
-) -> Optional[list[list[TokenLogProbs]]]:
+    logprobs: list[list[dict[str, Any]]] | None,
+) -> list[list[TokenLogProbs]] | None:
     if logprobs is None:
         return None
     return [[TokenLogProbs(**t) for t in lp] for lp in logprobs]
@@ -36,7 +36,7 @@ def parse_logprobs(
 class CompletionOutput:
     text: str
     finish_reason: str
-    logprobs: Optional[list[list[TokenLogProbs]]] = None
+    logprobs: list[list[TokenLogProbs]] | None = None
 
     @staticmethod
     def from_dict(row: dict[str, Any]) -> "CompletionOutput":
@@ -162,7 +162,7 @@ class Store:
                     raise RuntimeError("failed to create completion")
                 return Completion.from_row(row)
 
-    def get(self, id: str) -> Optional[Completion]:
+    def get(self, id: str) -> Completion | None:
         with self.pool.connection() as conn:
             with conn.cursor() as cursor:
                 q = """
@@ -187,7 +187,7 @@ class Store:
                 row = cursor.execute(q, (id,)).fetchone()
                 return Completion.from_row(row) if row is not None else None
 
-    def remove(self, ids: list[str]) -> Optional[list[str]]:
+    def remove(self, ids: list[str]) -> list[str] | None:
         if len(ids) == 0:
             return
 

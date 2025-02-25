@@ -1,18 +1,22 @@
-from datetime import datetime
-from psycopg_pool import ConnectionPool
 from dataclasses import dataclass
+from datetime import datetime
 from enum import IntEnum
-from typing import Optional
+
+from psycopg_pool import ConnectionPool
 from werkzeug import exceptions
+
 from .. import obj
 from . import paged
+
 
 class Rating(IntEnum):
     FLAG = -1
     NEGATIVE = 0
     POSITIVE = 1
 
-LabelRow = tuple[str, str, int, str, Optional[str], datetime, Optional[datetime]]
+
+LabelRow = tuple[str, str, int, str, str | None, datetime, datetime | None]
+
 
 @dataclass
 class Label:
@@ -20,32 +24,26 @@ class Label:
     message: str
     rating: Rating
     creator: str
-    comment: Optional[str]
+    comment: str | None
     created: datetime
-    deleted: Optional[datetime]
+    deleted: datetime | None
 
     @staticmethod
-    def from_row(row: LabelRow) -> 'Label':
+    def from_row(row: LabelRow) -> "Label":
         id, message, rating, creator, comment, created, deleted = row
-        return Label(
-            id,
-            message,
-            Rating(rating),
-            creator,
-            comment,
-            created,
-            deleted
-        )
+        return Label(id, message, Rating(rating), creator, comment, created, deleted)
+
 
 @dataclass
 class LabelsList(paged.List):
     labels: list[Label]
 
+
 class Store:
     def __init__(self, pool: ConnectionPool):
         self.pool = pool
 
-    def create(self, message: str, rating: Rating, creator: str, comment: Optional[str]) -> Label:
+    def create(self, message: str, rating: Rating, creator: str, comment: str | None) -> Label:
         if comment is not None and comment.strip() == "":
             raise exceptions.BadRequest("comment cannot be empty")
         with self.pool.connection() as conn:
@@ -58,19 +56,13 @@ class Store:
                     RETURNING
                         id, message, rating, creator, comment, created, deleted
                 """
-                values = (
-                    obj.NewID("lbl"),
-                    message,
-                    rating,
-                    creator,
-                    comment.strip() if comment is not None else None
-                )
+                values = (obj.NewID("lbl"), message, rating, creator, comment.strip() if comment is not None else None)
                 row = cur.execute(q, values).fetchone()
                 if row is None:
                     raise RuntimeError("failed to create label")
                 return Label.from_row(row)
 
-    def get(self, id: str) -> Optional[Label]:
+    def get(self, id: str) -> Label | None:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 q = """
@@ -86,11 +78,11 @@ class Store:
 
     def get_list(
         self,
-        message: Optional[str] = None,
-        creator: Optional[str] = None,
+        message: str | None = None,
+        creator: str | None = None,
         deleted: bool = False,
-        rating: Optional[Rating] = None,
-        opts: paged.Opts = paged.Opts()
+        rating: Rating | None = None,
+        opts: paged.Opts = paged.Opts(),
     ) -> LabelsList:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
@@ -128,15 +120,15 @@ class Store:
                     rating,
                     rating is None,
                     opts.offset,
-                    opts.limit
+                    opts.limit,
                 )
-                rows = cur.execute(q, values).fetchall() # type: ignore
+                rows = cur.execute(q, values).fetchall()  # type: ignore
                 total = rows[0][7] if len(rows) > 0 else 0
                 labels = [Label.from_row(row[:7]) for row in rows]
                 meta = paged.ListMeta(total, opts.offset, opts.limit, paged.Sort(field, paged.SortDirection(dir)))
                 return LabelsList(meta, labels)
 
-    def delete(self, id: str) -> Optional[Label]:
+    def delete(self, id: str) -> Label | None:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 q = """

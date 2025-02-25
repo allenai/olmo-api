@@ -1,8 +1,9 @@
 import datetime
 import re
+from dataclasses import dataclass
+
 from .dao.datachip import DatachipRef
 
-from dataclasses import dataclass
 
 def timedelta_from_str(s: str) -> datetime.timedelta:
     """
@@ -31,6 +32,7 @@ def timedelta_from_str(s: str) -> datetime.timedelta:
         case _:
             raise ValueError(f"Invalid unit: {unit}")
 
+
 @dataclass
 class DatachipPlaceholder:
     """
@@ -44,6 +46,7 @@ class DatachipPlaceholder:
     This is a convenience mechanism for embedding frequently referenced and/or
     long values.
     """
+
     match: re.Match
     offset: int = 0
 
@@ -66,13 +69,15 @@ class DatachipPlaceholder:
         """
         Returns a new string with the datachip replaced with the given value.
         """
-        return content[:self.match.start() + self.offset] + value + content[self.match.end() + self.offset:]
+        return content[: self.match.start() + self.offset] + value + content[self.match.end() + self.offset :]
+
 
 class MessageContent:
     """
     MessageContent is a wrapper around message content that provides an API for
     finding and replacing datachips.
     """
+
     def __init__(self, content: str):
         self.content = content
         self.datachips = []
@@ -86,10 +91,9 @@ class MessageContent:
         content = self.content
         for idx, dcp in enumerate(self.datachips):
             if dcp.ref not in chips:
-                raise ValueError(f"Missing datachip value for \"{dcp.ref}\"")
+                raise ValueError(f'Missing datachip value for "{dcp.ref}"')
             content = dcp.replace_with(content, chips[dcp.ref])
             # Update the offsets of all subsequent datachips
-            for sibling in self.datachips[idx + 1:]:
+            for sibling in self.datachips[idx + 1 :]:
                 sibling.offset += len(chips[dcp.ref]) - len(dcp)
         return content
-

@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any, Optional, Union
+from typing import Any
 
 import httpx
 
@@ -34,8 +34,8 @@ def _get_kwargs(
 
 
 def _parse_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Optional[Union[AttributionResponse, HTTPValidationError]]:
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> AttributionResponse | HTTPValidationError | None:
     if response.status_code == 200:
         response_200 = AttributionResponse.from_dict(response.json())
 
@@ -46,13 +46,12 @@ def _parse_response(
         return response_422
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
-    else:
-        return None
+    return None
 
 
 def _build_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Response[Union[AttributionResponse, HTTPValidationError]]:
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> Response[AttributionResponse | HTTPValidationError]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -64,9 +63,9 @@ def _build_response(
 def sync_detailed(
     index: AvailableInfiniGramIndexId,
     *,
-    client: Union[AuthenticatedClient, Client],
+    client: AuthenticatedClient | Client,
     body: AttributionRequest,
-) -> Response[Union[AttributionResponse, HTTPValidationError]]:
+) -> Response[AttributionResponse | HTTPValidationError]:
     """Get Document Attributions
 
     Args:
@@ -96,9 +95,9 @@ def sync_detailed(
 def sync(
     index: AvailableInfiniGramIndexId,
     *,
-    client: Union[AuthenticatedClient, Client],
+    client: AuthenticatedClient | Client,
     body: AttributionRequest,
-) -> Optional[Union[AttributionResponse, HTTPValidationError]]:
+) -> AttributionResponse | HTTPValidationError | None:
     """Get Document Attributions
 
     Args:
@@ -123,9 +122,9 @@ def sync(
 async def asyncio_detailed(
     index: AvailableInfiniGramIndexId,
     *,
-    client: Union[AuthenticatedClient, Client],
+    client: AuthenticatedClient | Client,
     body: AttributionRequest,
-) -> Response[Union[AttributionResponse, HTTPValidationError]]:
+) -> Response[AttributionResponse | HTTPValidationError]:
     """Get Document Attributions
 
     Args:
@@ -153,9 +152,9 @@ async def asyncio_detailed(
 async def asyncio(
     index: AvailableInfiniGramIndexId,
     *,
-    client: Union[AuthenticatedClient, Client],
+    client: AuthenticatedClient | Client,
     body: AttributionRequest,
-) -> Optional[Union[AttributionResponse, HTTPValidationError]]:
+) -> AttributionResponse | HTTPValidationError | None:
     """Get Document Attributions
 
     Args:

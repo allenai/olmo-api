@@ -1,6 +1,6 @@
 import io
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from flask import (
     Blueprint,
@@ -57,9 +57,7 @@ class Server(Blueprint):
             url_prefix="/message",
         )
         self.register_blueprint(blueprint=UserBlueprint(dbc=dbc))
-        self.register_blueprint(
-            blueprint=attribution_blueprint, url_prefix="/attribution"
-        )
+        self.register_blueprint(blueprint=attribution_blueprint, url_prefix="/attribution")
 
     def prompts(self):
         return jsonify(self.dbc.template.prompts(deleted="deleted" in request.args))
@@ -104,9 +102,7 @@ class Server(Blueprint):
         if request.json is None:
             raise exceptions.BadRequest("missing JSON body")
 
-        prompt = self.dbc.template.create_prompt(
-            request.json.get("name"), request.json.get("content"), agent.client
-        )
+        prompt = self.dbc.template.create_prompt(request.json.get("name"), request.json.get("content"), agent.client)
         return jsonify(prompt)
 
     def messages(self):
@@ -124,9 +120,7 @@ class Server(Blueprint):
         return jsonify(get_available_models())
 
     def schema(self):
-        return jsonify(
-            {"Message": {"InferenceOpts": message.InferenceOpts.opts_schema()}}
-        )
+        return jsonify({"Message": {"InferenceOpts": message.InferenceOpts.opts_schema()}})
 
     def create_label(self):
         agent = authn()
@@ -148,12 +142,8 @@ class Server(Blueprint):
             creator=agent.client,
         )
         if existing.meta.total != 0:
-            raise exceptions.UnprocessableEntity(
-                f"message {mid} already has label {existing.labels[0].id}"
-            )
-        lbl = self.dbc.label.create(
-            msg.id, rating, agent.client, request.json.get("comment")
-        )
+            raise exceptions.UnprocessableEntity(f"message {mid} already has label {existing.labels[0].id}")
+        lbl = self.dbc.label.create(msg.id, rating, agent.client, request.json.get("comment"))
         return jsonify(lbl)
 
     def label(self, id: str):
@@ -181,7 +171,7 @@ class Server(Blueprint):
             return jsonify(ll)
 
         labels = "\n".join([json.dumps(l, cls=util.CustomEncoder) for l in ll.labels])
-        filename = f"labels-{int(datetime.now(timezone.utc).timestamp())}.jsonl"
+        filename = f"labels-{int(datetime.now(UTC).timestamp())}.jsonl"
         body = io.BytesIO(labels.encode("utf-8"))
 
         return send_file(body, as_attachment=True, download_name=filename)

@@ -14,23 +14,19 @@ class GoogleCloudStorage:
         self.client = storage.Client()
         self.bucket = self.client.bucket(bucket_name)
 
-    def upload_content(
-        self, filename: str, content: bytes | str, content_type: str = "text/plain"
-    ):
+    def upload_content(self, filename: str, content: bytes | str, content_type: str = "text/plain"):
         start_ns = time_ns()
         blob = self.bucket.blob(filename)
         blob.upload_from_string(data=content, content_type=content_type)
         blob.make_public()
         end_ns = time_ns()
 
-        current_app.logger.info(
-            {
-                "service": "GoogleCloudStorage",
-                "action": "upload",
-                "filename": filename,
-                "duration_ms": (end_ns - start_ns) / 1_000_000,
-            }
-        )
+        current_app.logger.info({
+            "service": "GoogleCloudStorage",
+            "action": "upload",
+            "filename": filename,
+            "duration_ms": (end_ns - start_ns) / 1_000_000,
+        })
 
         return blob.public_url
 
@@ -46,14 +42,12 @@ class GoogleCloudStorage:
 
         end_ns = time_ns()
 
-        current_app.logger.info(
-            {
-                "service": "GoogleCloudStorage",
-                "action": "delete",
-                "filename": filename,
-                "duration_ms": (end_ns - start_ns) / 1_000_000,
-            }
-        )
+        current_app.logger.info({
+            "service": "GoogleCloudStorage",
+            "action": "delete",
+            "filename": filename,
+            "duration_ms": (end_ns - start_ns) / 1_000_000,
+        })
 
     def get_file_link(self, filename: str):
         blob = self.bucket.get_blob(blob_name=filename)

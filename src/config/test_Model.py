@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import time_machine
 
@@ -15,7 +15,7 @@ def test_is_not_visible_when_not_available_yet() -> None:
         "description": "desc",
         "compute_source_id": "csid",
         "model_type": ModelType.Chat,
-        "available_time": datetime(2025, 1, 2).astimezone(timezone.utc).isoformat(),
+        "available_time": datetime(2025, 1, 2).astimezone(UTC).isoformat(),
         "system_prompt": None,
         "family_id": None,
         "family_name": None,
@@ -41,7 +41,7 @@ def test_is_not_visible_when_past_deprecated_time() -> None:
         "system_prompt": None,
         "family_id": None,
         "family_name": None,
-        "deprecation_time": datetime(2024, 1, 1).astimezone(timezone.utc).isoformat(),
+        "deprecation_time": datetime(2024, 1, 1).astimezone(UTC).isoformat(),
     }
 
     model = map_model_from_config(test_model_config)
@@ -59,11 +59,11 @@ def test_is_not_visible_when_past_deprecated_time_and_available_time() -> None:
         "description": "desc",
         "compute_source_id": "csid",
         "model_type": ModelType.Chat,
-        "available_time": datetime(2023, 1, 1).astimezone(timezone.utc).isoformat(),
+        "available_time": datetime(2023, 1, 1).astimezone(UTC).isoformat(),
         "system_prompt": None,
         "family_id": None,
         "family_name": None,
-        "deprecation_time": datetime(2024, 1, 1).astimezone(timezone.utc).isoformat(),
+        "deprecation_time": datetime(2024, 1, 1).astimezone(UTC).isoformat(),
     }
 
     model = map_model_from_config(test_model_config)
@@ -81,7 +81,7 @@ def test_is_visible_when_past_available_time() -> None:
         "description": "desc",
         "compute_source_id": "csid",
         "model_type": ModelType.Chat,
-        "available_time": datetime(2023, 1, 1).astimezone(timezone.utc).isoformat(),
+        "available_time": datetime(2023, 1, 1).astimezone(UTC).isoformat(),
         "system_prompt": None,
         "family_id": None,
         "family_name": None,
@@ -129,7 +129,7 @@ def test_is_visible_when_deprecation_time_is_in_the_future() -> None:
         "system_prompt": None,
         "family_id": None,
         "family_name": None,
-        "deprecation_time": datetime(2026, 1, 1).astimezone(timezone.utc).isoformat(),
+        "deprecation_time": datetime(2026, 1, 1).astimezone(UTC).isoformat(),
     }
 
     model = map_model_from_config(test_model_config)

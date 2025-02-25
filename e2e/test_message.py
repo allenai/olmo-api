@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 import requests
@@ -42,9 +42,7 @@ class TestAnonymousMessageEndpoints(base.IntegrationTest):
         )
         create_message_request.raise_for_status()
 
-        response_messages = [
-            json.loads(util.last_response_line(create_message_request))
-        ]
+        response_messages = [json.loads(util.last_response_line(create_message_request))]
         first_message = response_messages[0]
         self.messages.append((first_message["id"], anonymous_user))
 
@@ -60,14 +58,10 @@ class TestAnonymousMessageEndpoints(base.IntegrationTest):
         # Since the delete operation cascades, we have to find all child messages
         # and remove them from self.messages. Otherwise, we'll run into 404 errors
         # when executing r.raise_for_status()
-        messages_to_delete = [
-            msg for msg in self.messages if msg not in self.child_msgs
-        ]
+        messages_to_delete = [msg for msg in self.messages if msg not in self.child_msgs]
 
         for id, user in messages_to_delete:
-            r = requests.delete(
-                f"{self.origin}/v3/message/{id}", headers=self.auth(user)
-            )
+            r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
             r.raise_for_status()
 
 
@@ -128,10 +122,8 @@ class TestMessageEndpoints(base.IntegrationTest):
             assert m["content"] == "I'm a magical labrador named Murphy, who are you? "
             assert m["creator"] == u1.client
             assert m["role"] == "user"
-            assert (
-                m["model_type"] is None
-            )  # We only set model_type for assistant messages
-            assert datetime.fromisoformat(m["created"]) <= datetime.now(timezone.utc)
+            assert m["model_type"] is None  # We only set model_type for assistant messages
+            assert datetime.fromisoformat(m["created"]) <= datetime.now(UTC)
             assert m["deleted"] is None
             assert m["root"] == m["id"]
             assert m["template"] is None
@@ -182,14 +174,12 @@ class TestMessageEndpoints(base.IntegrationTest):
         actual = []
         node = r.json()
         while node is not None:
-            actual.append(
-                (
-                    node["id"],
-                    node["role"],
-                    node["model_type"],
-                    len(node["children"]) if node["children"] else 0,
-                )
-            )
+            actual.append((
+                node["id"],
+                node["role"],
+                node["model_type"],
+                len(node["children"]) if node["children"] else 0,
+            ))
             node = node["children"][0] if node["children"] else None
         assert actual == expect
 
@@ -222,9 +212,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert m2["id"] in ids
         # assert ids.index(m2["id"]) < ids.index(m1["id"])
         for m in msglist["messages"]:
-            r = requests.get(
-                f"{self.origin}/v3/message/{m['id']}", headers=self.auth(u1)
-            )
+            r = requests.get(f"{self.origin}/v3/message/{m['id']}", headers=self.auth(u1))
             r.raise_for_status()
             assert r.json() == m
 
@@ -240,9 +228,7 @@ class TestMessageEndpoints(base.IntegrationTest):
             assert m["id"] in offset_ids
         assert m1["id"] in offset_ids
 
-        r = requests.get(
-            f"{self.origin}/v3/messages?offset=1&limit=1", headers=self.auth(u1)
-        )
+        r = requests.get(f"{self.origin}/v3/messages?offset=1&limit=1", headers=self.auth(u1))
         r.raise_for_status()
         limit_msglist = r.json()
         assert limit_msglist["meta"]["total"] > 0
@@ -286,9 +272,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         # assert r.status_code == 403
 
         # Delete message m1
-        r = requests.delete(
-            f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1)
-        )
+        r = requests.delete(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
         r.raise_for_status()
         assert r.status_code == 200
         self.messages = list(filter(lambda m: m[0] != m1["id"], self.messages))
@@ -298,16 +282,12 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert r.status_code == 404
 
         # Deleting message m1 again should also get a 404
-        r = requests.delete(
-            f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1)
-        )
+        r = requests.delete(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
         assert r.status_code == 404
 
         # If a deleted parent message has children, those children should be deleted as well
         for c in m1["children"]:
-            r = requests.get(
-                f"{self.origin}/v3/message/{c['id']}", headers=self.auth(u1)
-            )
+            r = requests.get(f"{self.origin}/v3/message/{c['id']}", headers=self.auth(u1))
             assert r.status_code == 404
 
         # Don't list deleted messages by default
@@ -349,9 +329,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         self.messages = [msg for msg in self.messages if msg not in self.child_msgs]
 
         for id, user in self.messages:
-            r = requests.delete(
-                f"{self.origin}/v3/message/{id}", headers=self.auth(user)
-            )
+            r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
             r.raise_for_status()
 
 
@@ -385,9 +363,7 @@ class TestMessageValidation(base.IntegrationTest):
                         **default_model_options,
                     },
                 )
-                assert (
-                    r.status_code == 400
-                ), f"Expected 400 for invalid value {v} for {name}"
+                assert r.status_code == 400, f"Expected 400 for invalid value {v} for {name}"
             for v in valid:
                 # top_p can only be set to a value that isn't 1.0 if temperature is > 0
                 opts = {name: v}
@@ -404,24 +380,18 @@ class TestMessageValidation(base.IntegrationTest):
                         **default_model_options,
                     },
                 )
-                assert (
-                    r.status_code == 200
-                ), f"Expected 200 for valid value {v} for {name}"
+                assert r.status_code == 200, f"Expected 200 for valid value {v} for {name}"
                 msg = json.loads(util.last_response_line(r))
                 self.messages.append((msg["id"], u3))
                 for default_name, default_value in default_options:
                     actual = msg["opts"][default_name]
                     expected = opts.get(default_name, default_value)
                     if actual != expected:
-                        raise AssertionError(
-                            f"Value for {default_name} was {actual}, expected {expected}"
-                        )
+                        raise AssertionError(f"Value for {default_name} was {actual}, expected {expected}")
 
     def tearDown(self):
         for id, user in self.messages:
-            r = requests.delete(
-                f"{self.origin}/v3/message/{id}", headers=self.auth(user)
-            )
+            r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
             r.raise_for_status()
 
 
@@ -468,7 +438,5 @@ class TestLogProbs(base.IntegrationTest):
 
     def tearDown(self):
         for id, user in self.messages:
-            r = requests.delete(
-                f"{self.origin}/v3/message/{id}", headers=self.auth(user)
-            )
+            r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
             r.raise_for_status()

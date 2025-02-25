@@ -1,12 +1,13 @@
-from google.cloud.vision import Likelihood, SafeSearchAnnotation
+import requests
 from flask import current_app
+from google.cloud.vision import Likelihood, SafeSearchAnnotation
+
 from src import config
 from src.message.SafetyChecker import (
     SafetyChecker,
     SafetyCheckRequest,
     SafetyCheckResponse,
 )
-import requests
 
 
 class GoogleVisionSafeSearchResponse(SafetyCheckResponse):
@@ -63,13 +64,11 @@ class GoogleVisionSafeSearch(SafetyChecker):
 
         response = GoogleVisionSafeSearchResponse(result)
 
-        current_app.logger.info(
-            {
-                "checker": "GoogleVisionSafeSearch",
-                "request": req.name,
-                "duration_ms": result.elapsed / 1_000_000,
-                "violations": response.get_violation_categories(),
-            }
-        )
+        current_app.logger.info({
+            "checker": "GoogleVisionSafeSearch",
+            "request": req.name,
+            "duration_ms": result.elapsed / 1_000_000,
+            "violations": response.get_violation_categories(),
+        })
 
         return response

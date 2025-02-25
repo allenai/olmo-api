@@ -701,7 +701,7 @@ class Store:
                         created DESC,
                         id
                 """
-                args = {
+                args: dict[str, Any] = {
                     "creator": creator,
                     "deleted": deleted,
                     "agent": agent,
@@ -789,9 +789,14 @@ class Store:
                     )
 
                 total = rows[0][0]
-                roots, _ = Message.tree(Message.group_by_id([Message.from_row(r[1:]) for r in rows]))
+                tree_roots, _ = Message.tree(
+                    Message.group_by_id([Message.from_row(r[1:]) for r in rows])
+                )
 
-                return MessageList(messages=roots, meta=paged.ListMeta(total, opts.offset, opts.limit))
+                return MessageList(
+                    messages=tree_roots,
+                    meta=paged.ListMeta(total, opts.offset, opts.limit),
+                )
 
     def migrate_messages_to_new_user(self, previous_user_id: str, new_user_id: str):
         with self.pool.connection() as conn:

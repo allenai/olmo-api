@@ -24,7 +24,7 @@ class Model(BaseModel):
     available_time: AwareDatetime | None = Field(default=None, exclude=True)
     deprecation_time: AwareDatetime | None = Field(default=None, exclude=True)
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def is_deprecated(self) -> bool:
         now = datetime.now().astimezone(UTC)
@@ -34,7 +34,7 @@ class Model(BaseModel):
 
         return model_is_not_available_yet or model_is_after_deprecation_time
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def is_visible(self) -> bool:
         now = datetime.now().astimezone(UTC)

@@ -187,9 +187,9 @@ class Store:
                 row = cursor.execute(q, (id,)).fetchone()
                 return Completion.from_row(row) if row is not None else None
 
-    def remove(self, ids: list[str]) -> list[str] | None:
+    def remove(self, ids: list[str]) -> None:
         if len(ids) == 0:
-            return
+            return None
 
         with self.pool.connection() as conn:
             with conn.cursor() as cursor:

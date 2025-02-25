@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any, Optional
 
 from psycopg import errors
 from psycopg_pool import ConnectionPool
@@ -34,9 +35,11 @@ class Datachip:
     deleted: datetime | None = None
 
 
+
 @dataclass
 class Update:
     deleted: bool | None = None
+
 
 
 @dataclass
@@ -53,7 +56,10 @@ class Store:
         self.pool = pool
 
     def list_all(
-        self, creator: str | None = None, deleted: bool = False, opts: paged.Opts = paged.Opts()
+        self,
+        creator: Optional[str] = None,
+        deleted: bool = False,
+        opts: paged.Opts = paged.Opts(),
     ) -> DatachipList:
         # TODO: add sort support for datachips
         if opts.sort is not None:
@@ -83,7 +89,7 @@ class Store:
                         name,
                         id
                     """
-                args = {"creator": creator, "deleted": deleted}
+                args: dict[str, Any] = {"creator": creator, "deleted": deleted}
 
                 if opts.offset is not None:
                     q += "\nOFFSET %(offset)s "
@@ -103,11 +109,16 @@ class Store:
                     args["offset"] = 0
                     row = cur.execute(q, args).fetchone()
                     total = row[0] if row is not None else 0
-                    return DatachipList(datachips=[], meta=paged.ListMeta(total, opts.offset, opts.limit))
+                    return DatachipList(
+                        datachips=[],
+                        meta=paged.ListMeta(total, opts.offset, opts.limit),
+                    )
 
                 total = rows[0][0]
                 dc = [Datachip(*row[1:]) for row in rows]
-                return DatachipList(datachips=dc, meta=paged.ListMeta(total, opts.offset, opts.limit))
+                return DatachipList(
+                    datachips=dc, meta=paged.ListMeta(total, opts.offset, opts.limit)
+                )
 
     def create(self, name: str, content: str, creator: str) -> Datachip:
         if not is_valid_datachip_name(name):

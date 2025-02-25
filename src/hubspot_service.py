@@ -1,3 +1,5 @@
+from typing import Optional, cast
+
 import requests
 from flask import current_app
 
@@ -7,13 +9,16 @@ from src.config import cfg
 HUBSPOT_URL = "https://api.hubapi.com"
 
 
-def get_contact(user_info: UserInfo | None):
+def get_contact(user_info: Optional[UserInfo]):
     url = f"{HUBSPOT_URL}/crm/v3/objects/contacts/search"
 
     if user_info is None:
         return
 
-    headers = {"Authorization": f"Bearer {cfg.hubspot.token}", "Content-Type": "application/json"}
+    headers = {
+        "Authorization": f"Bearer {cfg.hubspot.token}",
+        "Content-Type": "application/json",
+    }
     data = {
         "filterGroups": [
             {
@@ -32,7 +37,7 @@ def get_contact(user_info: UserInfo | None):
 
     if response.status_code == 200:
         data = response.json()
-        return len(data.get("results", [])) > 0
+        return len(cast(list, data.get("results", []))) > 0
     return False
 
 
@@ -43,7 +48,10 @@ def create_contact():
         return
 
     url = f"{HUBSPOT_URL}/crm/v3/objects/contacts"
-    headers = {"Authorization": f"Bearer {cfg.hubspot.token}", "Content-Type": "application/json"}
+    headers = {
+        "Authorization": f"Bearer {cfg.hubspot.token}",
+        "Content-Type": "application/json",
+    }
     if user_info is None:
         return
 
@@ -61,4 +69,6 @@ def create_contact():
     if response.status_code == 201:
         current_app.logger.info("Contact created successfully:", response.json())
     else:
-        current_app.logger.error("Error creating contact:", response.status_code, response.text)
+        current_app.logger.error(
+            "Error creating contact:", response.status_code, response.text
+        )

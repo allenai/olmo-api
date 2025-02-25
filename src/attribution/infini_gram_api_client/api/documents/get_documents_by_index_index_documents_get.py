@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import httpx
 
@@ -14,10 +14,10 @@ from ...types import UNSET, Response, Unset
 def _get_kwargs(
     index: AvailableInfiniGramIndexId,
     *,
-    document_indexes: list[int],
+    document_indexes: List[int],
     maximum_document_display_length: Union[Unset, int] = 10,
-) -> dict[str, Any]:
-    params: dict[str, Any] = {}
+) -> Dict[str, Any]:
+    params: Dict[str, Any] = {}
 
     json_document_indexes = document_indexes
 
@@ -27,7 +27,7 @@ def _get_kwargs(
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
-    _kwargs: dict[str, Any] = {
+    _kwargs: Dict[str, Any] = {
         "method": "get",
         "url": f"/{index}/documents",
         "params": params,
@@ -39,11 +39,11 @@ def _get_kwargs(
 def _parse_response(
     *, client: Union[AuthenticatedClient, Client], response: httpx.Response
 ) -> Optional[Union[HTTPValidationError, InfiniGramDocumentsResponse]]:
-    if response.status_code == 200:
+    if response.status_code == HTTPStatus.OK:
         response_200 = InfiniGramDocumentsResponse.from_dict(response.json())
 
         return response_200
-    if response.status_code == 422:
+    if response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY:
         response_422 = HTTPValidationError.from_dict(response.json())
 
         return response_422
@@ -68,14 +68,14 @@ def sync_detailed(
     index: AvailableInfiniGramIndexId,
     *,
     client: Union[AuthenticatedClient, Client],
-    document_indexes: list[int],
+    document_indexes: List[int],
     maximum_document_display_length: Union[Unset, int] = 10,
 ) -> Response[Union[HTTPValidationError, InfiniGramDocumentsResponse]]:
     """Get Documents By Index
 
     Args:
         index (AvailableInfiniGramIndexId):
-        document_indexes (list[int]):
+        document_indexes (List[int]):
         maximum_document_display_length (Union[Unset, int]):  Default: 10.
 
     Raises:
@@ -103,14 +103,14 @@ def sync(
     index: AvailableInfiniGramIndexId,
     *,
     client: Union[AuthenticatedClient, Client],
-    document_indexes: list[int],
+    document_indexes: List[int],
     maximum_document_display_length: Union[Unset, int] = 10,
 ) -> Optional[Union[HTTPValidationError, InfiniGramDocumentsResponse]]:
     """Get Documents By Index
 
     Args:
         index (AvailableInfiniGramIndexId):
-        document_indexes (list[int]):
+        document_indexes (List[int]):
         maximum_document_display_length (Union[Unset, int]):  Default: 10.
 
     Raises:
@@ -133,14 +133,14 @@ async def asyncio_detailed(
     index: AvailableInfiniGramIndexId,
     *,
     client: Union[AuthenticatedClient, Client],
-    document_indexes: list[int],
+    document_indexes: List[int],
     maximum_document_display_length: Union[Unset, int] = 10,
 ) -> Response[Union[HTTPValidationError, InfiniGramDocumentsResponse]]:
     """Get Documents By Index
 
     Args:
         index (AvailableInfiniGramIndexId):
-        document_indexes (list[int]):
+        document_indexes (List[int]):
         maximum_document_display_length (Union[Unset, int]):  Default: 10.
 
     Raises:
@@ -166,14 +166,14 @@ async def asyncio(
     index: AvailableInfiniGramIndexId,
     *,
     client: Union[AuthenticatedClient, Client],
-    document_indexes: list[int],
+    document_indexes: List[int],
     maximum_document_display_length: Union[Unset, int] = 10,
 ) -> Optional[Union[HTTPValidationError, InfiniGramDocumentsResponse]]:
     """Get Documents By Index
 
     Args:
         index (AvailableInfiniGramIndexId):
-        document_indexes (list[int]):
+        document_indexes (List[int]):
         maximum_document_display_length (Union[Unset, int]):  Default: 10.
 
     Raises:

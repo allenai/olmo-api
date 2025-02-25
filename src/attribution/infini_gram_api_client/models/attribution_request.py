@@ -1,4 +1,4 @@
-from typing import Any, TypeVar, Union, cast
+from typing import Any, Dict, List, Type, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -13,7 +13,7 @@ class AttributionRequest:
     """
     Attributes:
         response (str):
-        delimiters (Union[Unset, list[str]]): Token IDs that returned spans shouldn't include
+        delimiters (Union[Unset, List[str]]): Token IDs that returned spans shouldn't include
         allow_spans_with_partial_words (Union[Unset, bool]): Setting this to False will only check for attributions that
             start and end with a full word Default: False.
         minimum_span_length (Union[Unset, int]): The minimum length to qualify an n-gram span as "interesting" Default:
@@ -23,7 +23,7 @@ class AttributionRequest:
         maximum_span_density (Union[Unset, float]): The maximum density of spans (measured in number of spans per
             response token) to return in the response Default: 0.05.
         span_ranking_method (Union[Unset, Any]): Ranking method when capping number of spans with maximum_span_density,
-            options are 'length' and 'unigram_logprob_sum' Default: 'length'.
+            options are 'length' and 'unigram_logprob_sum'
         maximum_documents_per_span (Union[Unset, int]): The maximum number of documents to retrieve for each span;
             should be no larger than maximum_frequency Default: 10.
         maximum_context_length (Union[Unset, int]): The maximum number of tokens of the context (on each side) to
@@ -35,22 +35,22 @@ class AttributionRequest:
     """
 
     response: str
-    delimiters: Union[Unset, list[str]] = UNSET
+    delimiters: Union[Unset, List[str]] = UNSET
     allow_spans_with_partial_words: Union[Unset, bool] = False
     minimum_span_length: Union[Unset, int] = 1
     maximum_frequency: Union[Unset, int] = 10
     maximum_span_density: Union[Unset, float] = 0.05
-    span_ranking_method: Union[Unset, Any] = "length"
+    span_ranking_method: Union[Unset, Any] = UNSET
     maximum_documents_per_span: Union[Unset, int] = 10
     maximum_context_length: Union[Unset, int] = 250
     maximum_context_length_long: Union[Unset, int] = 100
     maximum_context_length_snippet: Union[Unset, int] = 40
-    additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
+    additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         response = self.response
 
-        delimiters: Union[Unset, list[str]] = UNSET
+        delimiters: Union[Unset, List[str]] = UNSET
         if not isinstance(self.delimiters, Unset):
             delimiters = self.delimiters
 
@@ -72,7 +72,7 @@ class AttributionRequest:
 
         maximum_context_length_snippet = self.maximum_context_length_snippet
 
-        field_dict: dict[str, Any] = {}
+        field_dict: Dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
@@ -103,11 +103,11 @@ class AttributionRequest:
         return field_dict
 
     @classmethod
-    def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
+    def from_dict(cls: Type[T], src_dict: Dict[str, Any]) -> T:
         d = src_dict.copy()
         response = d.pop("response")
 
-        delimiters = cast(list[str], d.pop("delimiters", UNSET))
+        delimiters = cast(List[str], d.pop("delimiters", UNSET))
 
         allow_spans_with_partial_words = d.pop("allowSpansWithPartialWords", UNSET)
 
@@ -145,7 +145,7 @@ class AttributionRequest:
         return attribution_request
 
     @property
-    def additional_keys(self) -> list[str]:
+    def additional_keys(self) -> List[str]:
         return list(self.additional_properties.keys())
 
     def __getitem__(self, key: str) -> Any:

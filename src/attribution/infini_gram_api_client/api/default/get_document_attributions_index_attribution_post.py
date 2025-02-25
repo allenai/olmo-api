@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 import httpx
 
@@ -16,10 +16,10 @@ def _get_kwargs(
     index: AvailableInfiniGramIndexId,
     *,
     body: AttributionRequest,
-) -> dict[str, Any]:
-    headers: dict[str, Any] = {}
+) -> Dict[str, Any]:
+    headers: Dict[str, Any] = {}
 
-    _kwargs: dict[str, Any] = {
+    _kwargs: Dict[str, Any] = {
         "method": "post",
         "url": f"/{index}/attribution",
     }
@@ -36,11 +36,11 @@ def _get_kwargs(
 def _parse_response(
     *, client: Union[AuthenticatedClient, Client], response: httpx.Response
 ) -> Optional[Union[AttributionResponse, HTTPValidationError]]:
-    if response.status_code == 200:
+    if response.status_code == HTTPStatus.OK:
         response_200 = AttributionResponse.from_dict(response.json())
 
         return response_200
-    if response.status_code == 422:
+    if response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY:
         response_422 = HTTPValidationError.from_dict(response.json())
 
         return response_422

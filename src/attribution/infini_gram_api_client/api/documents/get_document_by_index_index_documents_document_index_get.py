@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 import httpx
 
@@ -16,14 +16,14 @@ def _get_kwargs(
     document_index: int,
     *,
     maximum_document_display_length: Union[Unset, int] = 10,
-) -> dict[str, Any]:
-    params: dict[str, Any] = {}
+) -> Dict[str, Any]:
+    params: Dict[str, Any] = {}
 
     params["maximum_document_display_length"] = maximum_document_display_length
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
-    _kwargs: dict[str, Any] = {
+    _kwargs: Dict[str, Any] = {
         "method": "get",
         "url": f"/{index}/documents/{document_index}",
         "params": params,
@@ -35,11 +35,11 @@ def _get_kwargs(
 def _parse_response(
     *, client: Union[AuthenticatedClient, Client], response: httpx.Response
 ) -> Optional[Union[HTTPValidationError, InfiniGramDocumentResponse]]:
-    if response.status_code == 200:
+    if response.status_code == HTTPStatus.OK:
         response_200 = InfiniGramDocumentResponse.from_dict(response.json())
 
         return response_200
-    if response.status_code == 422:
+    if response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY:
         response_422 = HTTPValidationError.from_dict(response.json())
 
         return response_422

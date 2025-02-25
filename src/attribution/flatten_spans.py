@@ -2,11 +2,11 @@ from dataclasses import dataclass
 from itertools import islice
 from typing import Iterable, List, Sequence
 
-from src.attribution.infini_gram_api_client.models.attribution_span import (
-    AttributionSpan,
-)
 from src.attribution.infini_gram_api_client.models.attribution_document_metadata import (
     AttributionDocumentMetadata,
+)
+from src.attribution.infini_gram_api_client.models.attribution_span import (
+    AttributionSpan,
 )
 
 
@@ -104,7 +104,7 @@ def flatten_spans(
                 display_offset_snippet=document.display_offset_snippet,
                 needle_offset_snippet=document.needle_offset_snippet,
                 text_snippet=document.text_snippet,
-                relevance_score=document.relevance_score,
+                relevance_score=document.relevance_score,  # type: ignore[attr-defined]
                 span_text=overlapping_span.text,
             )
             for overlapping_span in nested_spans

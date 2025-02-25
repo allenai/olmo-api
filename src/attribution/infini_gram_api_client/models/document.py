@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Type, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -21,7 +21,7 @@ class Document:
         display_length (int):
         needle_offset (int):
         metadata (DocumentMetadata):
-        token_ids (list[int]):
+        token_ids (List[int]):
         text (str):
         blocked (Union[Unset, bool]):  Default: False.
     """
@@ -31,12 +31,12 @@ class Document:
     display_length: int
     needle_offset: int
     metadata: "DocumentMetadata"
-    token_ids: list[int]
+    token_ids: List[int]
     text: str
     blocked: Union[Unset, bool] = False
-    additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
+    additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         document_index = self.document_index
 
         document_length = self.document_length
@@ -53,7 +53,7 @@ class Document:
 
         blocked = self.blocked
 
-        field_dict: dict[str, Any] = {}
+        field_dict: Dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
@@ -72,7 +72,7 @@ class Document:
         return field_dict
 
     @classmethod
-    def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
+    def from_dict(cls: Type[T], src_dict: Dict[str, Any]) -> T:
         from ..models.document_metadata import DocumentMetadata
 
         d = src_dict.copy()
@@ -86,7 +86,7 @@ class Document:
 
         metadata = DocumentMetadata.from_dict(d.pop("metadata"))
 
-        token_ids = cast(list[int], d.pop("tokenIds"))
+        token_ids = cast(List[int], d.pop("tokenIds"))
 
         text = d.pop("text")
 
@@ -107,7 +107,7 @@ class Document:
         return document
 
     @property
-    def additional_keys(self) -> list[str]:
+    def additional_keys(self) -> List[str]:
         return list(self.additional_properties.keys())
 
     def __getitem__(self, key: str) -> Any:

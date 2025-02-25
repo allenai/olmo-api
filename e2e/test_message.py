@@ -9,8 +9,8 @@ from e2e import util
 from . import base
 
 default_model_options = {
-    "host": "modal",
-    "model": "OLMoE-1B-7B-0924-Instruct",
+    "host": (None, "modal"),
+    "model": (None, "OLMoE-1B-7B-0924-Instruct"),
 }
 
 
@@ -32,11 +32,16 @@ class TestAnonymousMessageEndpoints(base.IntegrationTest):
         anonymous_user = self.user(anonymous=True)
 
         create_message_request = requests.post(
-            f"{self.origin}/v3/message",
+            f"{self.origin}/v4/message/stream",
             headers=self.auth(anonymous_user),
             json={
                 "content": "I'm a magical labrador named Murphy, who are you? ",
                 "private": True,
+                **default_model_options,
+            },
+            files={
+                "content": (None, "I'm a magical labrador named Murphy, who are you?"),
+                "private": (None, str(True)),
                 **default_model_options,
             },
         )

@@ -151,8 +151,8 @@ def stream_new_message(
 
     model = inference_engine.get_model_details(request.model)
     if not model:
-        msg = f"model {request.model} is not available on {request.host}"
-        raise exceptions.BadRequest(msg)
+        error_message = f"model {request.model} is not available on {request.host}"
+        raise exceptions.BadRequest(error_message)
 
     if cfg.google_cloud_services.recaptcha_key is not None and request.captchaToken is not None:
         create_assessment(
@@ -429,9 +429,9 @@ def stream_new_message(
         prompt = create_prompt_from_engine_input(chain)
         output, logprobs = create_output_from_chunks(chunks)
 
-        messageCompletion = None
+        message_completion = None
         if not agent.is_anonymous_user:
-            messageCompletion = dbc.completion.create(
+            message_completion = dbc.completion.create(
                 prompt,
                 [completion.CompletionOutput(output, str(finish_reason), logprobs)],
                 msg.opts,
@@ -445,25 +445,25 @@ def stream_new_message(
             )
 
         # Finalize the messages and yield
-        finalMessage = dbc.message.finalize(msg.id, file_urls=file_urls)
-        if finalMessage is None:
+        final_message = dbc.message.finalize(msg.id, file_urls=file_urls)
+        if final_message is None:
             final_message_error = RuntimeError(f"failed to finalize message {msg.id}")
             yield format_message(message.MessageStreamError(msg.id, str(final_message_error), "finalization failure"))
             raise final_message_error
 
-        finalReply = dbc.message.finalize(
+        final_reply = dbc.message.finalize(
             reply.id,
             output,
             logprobs,
-            messageCompletion.id if messageCompletion is not None else None,
+            message_completion.id if message_completion is not None else None,
             finish_reason,
         )
-        if finalReply is None:
+        if final_reply is None:
             final_reply_error = RuntimeError(f"failed to finalize message {reply.id}")
             yield format_message(message.MessageStreamError(reply.id, str(final_reply_error), "finalization failure"))
             raise final_reply_error
 
-        finalMessage = dataclasses.replace(finalMessage, children=[finalReply])
+        final_message = dataclasses.replace(final_message, children=[final_reply])
 
         if system_msg is not None:
             finalSystemMessage = dbc.message.finalize(system_msg.id)
@@ -479,8 +479,8 @@ def stream_new_message(
                 )
                 raise final_system_message_error
 
-            finalSystemMessage = dataclasses.replace(finalSystemMessage, children=[finalMessage])
-            finalMessage = finalSystemMessage
+            finalSystemMessage = dataclasses.replace(finalSystemMessage, children=[final_message])
+            final_message = finalSystemMessage
 
         end_all = time_ns()
         logger.info({
@@ -495,7 +495,7 @@ def stream_new_message(
             "safety_check_id": checker_type,
         })
 
-        yield format_message(finalMessage)
+        yield format_message(final_message)
 
     return stream()
 

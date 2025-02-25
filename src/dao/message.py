@@ -13,7 +13,7 @@ from pydantic import Field as PydanticField
 from werkzeug import exceptions
 
 from src import obj
-from src.config import ModelType
+from src.config.Model import ModelType
 
 from . import label, paged
 

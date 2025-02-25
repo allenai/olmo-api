@@ -789,9 +789,7 @@ class Store:
                     )
 
                 total = rows[0][0]
-                tree_roots, _ = Message.tree(
-                    Message.group_by_id([Message.from_row(r[1:]) for r in rows])
-                )
+                tree_roots, _ = Message.tree(Message.group_by_id([Message.from_row(r[1:]) for r in rows]))
 
                 return MessageList(
                     messages=tree_roots,

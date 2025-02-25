@@ -1,7 +1,7 @@
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from psycopg import errors
 from psycopg_pool import ConnectionPool
@@ -35,11 +35,9 @@ class Datachip:
     deleted: datetime | None = None
 
 
-
 @dataclass
 class Update:
     deleted: bool | None = None
-
 
 
 @dataclass
@@ -57,7 +55,7 @@ class Store:
 
     def list_all(
         self,
-        creator: Optional[str] = None,
+        creator: str | None = None,
         deleted: bool = False,
         opts: paged.Opts = paged.Opts(),
     ) -> DatachipList:
@@ -116,9 +114,7 @@ class Store:
 
                 total = rows[0][0]
                 dc = [Datachip(*row[1:]) for row in rows]
-                return DatachipList(
-                    datachips=dc, meta=paged.ListMeta(total, opts.offset, opts.limit)
-                )
+                return DatachipList(datachips=dc, meta=paged.ListMeta(total, opts.offset, opts.limit))
 
     def create(self, name: str, content: str, creator: str) -> Datachip:
         if not is_valid_datachip_name(name):

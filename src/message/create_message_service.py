@@ -7,7 +7,7 @@ import os
 from collections.abc import Generator, Sequence
 from datetime import UTC, datetime, timedelta
 from time import time_ns
-from typing import Generator, List, Optional, Sequence, cast
+from typing import cast
 
 import grpc
 from flask import current_app
@@ -505,12 +505,8 @@ def get_parent_and_root_messages_and_private(
     request_private: bool | None,
     is_anonymous_user: bool,
 ) -> tuple[message.Message | None, message.Message | None, bool]:
-    parent_message = (
-        dbc.message.get(parent_message_id) if parent_message_id is not None else None
-    )
-    root_message = (
-        dbc.message.get(parent_message.root) if parent_message is not None else None
-    )
+    parent_message = dbc.message.get(parent_message_id) if parent_message_id is not None else None
+    root_message = dbc.message.get(parent_message.root) if parent_message is not None else None
 
     private = (
         # Anonymous users aren't allowed to share messages

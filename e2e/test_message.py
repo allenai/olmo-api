@@ -79,11 +79,11 @@ class TestMessageEndpoints(base.IntegrationTest):
         for r in [
             requests.get(f"{self.origin}/v3/messages"),
             requests.post(
-                f"{self.origin}/v3/message",
+                f"{self.origin}/v4/message/stream",
                 # The Pydantic validation setup  makes it so that we run request validation before auth validation
-                json={
-                    "content": "I'm a magical labrador named Murphy, who are you? ",
-                    "private": True,
+                files={
+                    "content": (None, "I'm a magical labrador named Murphy, who are you?"),
+                    "private": (None, str(True)),
                     **default_model_options,
                 },
             ),
@@ -97,10 +97,10 @@ class TestMessageEndpoints(base.IntegrationTest):
 
         # Create a message belonging to u1
         r = requests.post(
-            f"{self.origin}/v3/message",
+            f"{self.origin}/v4/message/stream",
             headers=self.auth(u1),
-            json={
-                "content": "I'm a magical labrador named Murphy, who are you? ",
+            files={
+                "content": (None, "I'm a magical labrador named Murphy, who are you?"),
                 **default_model_options,
             },
         )
@@ -146,11 +146,11 @@ class TestMessageEndpoints(base.IntegrationTest):
 
         # Make sure that creating messages with parents works as expected
         r = requests.post(
-            f"{self.origin}/v3/message",
+            f"{self.origin}/v4/message/stream",
             headers=self.auth(u1),
-            json={
-                "content": "Complete this thought: I like ",
-                "parent": c1["id"],
+            files={
+                "content": (None, "Complete this thought: I like "),
+                "parent": (None, c1["id"]),
                 **default_model_options,
             },
         )
@@ -190,10 +190,10 @@ class TestMessageEndpoints(base.IntegrationTest):
 
         # Create a message belonging to u2
         r = requests.post(
-            f"{self.origin}/v3/message",
+            f"{self.origin}/v4/message/stream",
             headers=self.auth(u2),
-            json={
-                "content": "I'm a wizardly horse named Grasshopper, who are you? ",
+            files={
+                "content": (None, "I'm a wizardly horse named Grasshopper, who are you? "),
                 **default_model_options,
             },
         )
@@ -318,9 +318,9 @@ class TestMessageEndpoints(base.IntegrationTest):
         ]
         for content, snippet in cases:
             r = requests.post(
-                f"{self.origin}/v3/message",
+                f"{self.origin}/v4/message/stream",
                 headers=self.auth(u1),
-                json={"content": content, **default_model_options},
+                files={"content": (None, content), **default_model_options},
             )
             r.raise_for_status()
             m = json.loads(util.last_response_line(r))
@@ -360,28 +360,28 @@ class TestMessageValidation(base.IntegrationTest):
         for name, invalid, valid in fields:
             for v in invalid:
                 r = requests.post(
-                    f"{self.origin}/v3/message",
+                    f"{self.origin}/v4/message/stream",
                     headers=self.auth(u3),
-                    json={
-                        "content": f'Testing invalid value "{v}" for {name}',
-                        "opts": {name: v},
+                    files={
+                        "content": (None, f'Testing invalid value "{v}" for {name}'),
+                        name: (None, v),
                         **default_model_options,
                     },
                 )
                 assert r.status_code == 400, f"Expected 400 for invalid value {v} for {name}"
             for v in valid:
                 # top_p can only be set to a value that isn't 1.0 if temperature is > 0
-                opts = {name: v}
+                opts = {name: (None, v)}
                 if name == "top_p" and v != 1.0:
-                    opts["temperature"] = 0.5
+                    opts["temperature"] = (None, 0.5)
 
                 r = requests.post(
-                    f"{self.origin}/v3/message",
+                    f"{self.origin}/v4/message/stream",
                     headers=self.auth(u3),
-                    json={
+                    files={
                         "content": f'Testing valid value "{v}" for {name}',
-                        "opts": opts,
-                        "private": True,
+                        "private": str(True),
+                        **opts,
                         **default_model_options,
                     },
                 )
@@ -410,14 +410,14 @@ class TestLogProbs(base.IntegrationTest):
 
         # Create a message w/ logprobs
         r = requests.post(
-            f"{self.origin}/v3/message",
+            f"{self.origin}/v4/message/stream",
             headers=self.auth(u1),
-            json={
+            files={
                 # Together doesn't support Tulu right now. If you want to test logprobs using InferD, change the model sent here to "tulu2"
                 # Only "tulu2" supports logprobs currently https://github.com/allenai/inferd-olmo/issues/1
-                "model": "tulu2",
-                "content": "why are labradors smarter than unicorns?",
-                "opts": {"logprobs": 2},
+                "model": (None, "tulu2"),
+                "content": (None, "why are labradors smarter than unicorns?"),
+                "logprobs": (None, str(2)),
                 **default_model_options,
             },
         )

@@ -1,17 +1,17 @@
 from time import time_ns
 
 from flask import current_app
-from google.cloud import storage
+from google.cloud.storage import Bucket, Client
 
 from src import config
 
 
 class GoogleCloudStorage:
-    client: storage.Client
-    bucket: storage.Bucket
+    client: Client
+    bucket: Bucket
 
     def __init__(self, bucket_name=config.cfg.google_cloud_services.storage_bucket):
-        self.client = storage.Client()
+        self.client = Client()
         self.bucket = self.client.bucket(bucket_name)
 
     def upload_content(

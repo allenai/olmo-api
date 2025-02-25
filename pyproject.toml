@@ -1,2 +1,18 @@
 [tool.pyright]
 pythonVersion = "3.11.3"
+
+[[tool.mypy.overrides]]
+module = ["authlib.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["inferd"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["grpc"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["google.cloud.storage"]
+ignore_missing_imports = true

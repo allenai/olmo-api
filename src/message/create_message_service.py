@@ -6,7 +6,7 @@ import multiprocessing.pool
 import os
 from datetime import datetime, timedelta, timezone
 from time import time_ns
-from typing import Generator, List, Optional, Sequence
+from typing import Generator, List, Optional, Sequence, cast
 
 import grpc
 from flask import current_app
@@ -552,7 +552,7 @@ def get_parent_and_root_messages_and_private(
     dbc: db.Client,
     request_private: bool | None,
     is_anonymous_user: bool,
-) -> tuple[message.Message | None, message.Message | None, bool | None]:
+) -> tuple[message.Message | None, message.Message | None, bool]:
     parent_message = (
         dbc.message.get(parent_message_id) if parent_message_id is not None else None
     )
@@ -569,7 +569,7 @@ def get_parent_and_root_messages_and_private(
             if request_private is not None
             else root_message.private
             if root_message is not None
-            else None
+            else False
         )
     )
 
@@ -593,9 +593,9 @@ def create_message_v3(
         parent=parent_message,
         opts=request.opts,
         content=request.content,
-        role=request.role,  # type: ignore - Pydantic handles this being None with the default
+        role=cast(message.Role, request.role),
         original=request.original,
-        private=private,  # type: ignore - Pydantic handles this being None with the default
+        private=private,
         root=root_message,
         template=request.template,
         model=request.model,
@@ -633,9 +633,9 @@ def create_message_v4(
             stop=request.stop,
         ),
         content=request.content,
-        role=request.role,  # type: ignore - Pydantic handles this being None with the default
+        role=cast(message.Role, request.role),
         original=request.original,
-        private=private,  # type: ignore - Pydantic handles this being None with the default
+        private=private,
         root=root_message,
         template=request.template,
         model=request.model,

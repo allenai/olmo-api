@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 import httpx
 
@@ -9,8 +9,8 @@ from ...models.available_infini_gram_index_id import AvailableInfiniGramIndexId
 from ...types import Response
 
 
-def _get_kwargs() -> Dict[str, Any]:
-    _kwargs: Dict[str, Any] = {
+def _get_kwargs() -> dict[str, Any]:
+    _kwargs: dict[str, Any] = {
         "method": "get",
         "url": "/indexes",
     }
@@ -20,8 +20,8 @@ def _get_kwargs() -> Dict[str, Any]:
 
 def _parse_response(
     *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Optional[List[AvailableInfiniGramIndexId]]:
-    if response.status_code == HTTPStatus.OK:
+) -> Optional[list[AvailableInfiniGramIndexId]]:
+    if response.status_code == 200:
         response_200 = []
         _response_200 = response.json()
         for response_200_item_data in _response_200:
@@ -38,7 +38,7 @@ def _parse_response(
 
 def _build_response(
     *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Response[List[AvailableInfiniGramIndexId]]:
+) -> Response[list[AvailableInfiniGramIndexId]]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -50,7 +50,7 @@ def _build_response(
 def sync_detailed(
     *,
     client: Union[AuthenticatedClient, Client],
-) -> Response[List[AvailableInfiniGramIndexId]]:
+) -> Response[list[AvailableInfiniGramIndexId]]:
     """Get Available Indexes
 
     Raises:
@@ -58,7 +58,7 @@ def sync_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[List[AvailableInfiniGramIndexId]]
+        Response[list[AvailableInfiniGramIndexId]]
     """
 
     kwargs = _get_kwargs()
@@ -73,7 +73,7 @@ def sync_detailed(
 def sync(
     *,
     client: Union[AuthenticatedClient, Client],
-) -> Optional[List[AvailableInfiniGramIndexId]]:
+) -> Optional[list[AvailableInfiniGramIndexId]]:
     """Get Available Indexes
 
     Raises:
@@ -81,7 +81,7 @@ def sync(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        List[AvailableInfiniGramIndexId]
+        list[AvailableInfiniGramIndexId]
     """
 
     return sync_detailed(
@@ -92,7 +92,7 @@ def sync(
 async def asyncio_detailed(
     *,
     client: Union[AuthenticatedClient, Client],
-) -> Response[List[AvailableInfiniGramIndexId]]:
+) -> Response[list[AvailableInfiniGramIndexId]]:
     """Get Available Indexes
 
     Raises:
@@ -100,7 +100,7 @@ async def asyncio_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[List[AvailableInfiniGramIndexId]]
+        Response[list[AvailableInfiniGramIndexId]]
     """
 
     kwargs = _get_kwargs()
@@ -113,7 +113,7 @@ async def asyncio_detailed(
 async def asyncio(
     *,
     client: Union[AuthenticatedClient, Client],
-) -> Optional[List[AvailableInfiniGramIndexId]]:
+) -> Optional[list[AvailableInfiniGramIndexId]]:
     """Get Available Indexes
 
     Raises:
@@ -121,7 +121,7 @@ async def asyncio(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        List[AvailableInfiniGramIndexId]
+        list[AvailableInfiniGramIndexId]
     """
 
     return (

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Type, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -20,8 +20,8 @@ class AttributionSpan:
         count (int):
         unigram_logprob_sum (float):
         text (str):
-        token_ids (List[int]):
-        documents (List['AttributionDocument']):
+        token_ids (list[int]):
+        documents (list['AttributionDocument']):
     """
 
     left: int
@@ -30,11 +30,11 @@ class AttributionSpan:
     count: int
     unigram_logprob_sum: float
     text: str
-    token_ids: List[int]
-    documents: List["AttributionDocument"]
-    additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
+    token_ids: list[int]
+    documents: list["AttributionDocument"]
+    additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         left = self.left
 
         right = self.right
@@ -54,7 +54,7 @@ class AttributionSpan:
             documents_item = documents_item_data.to_dict()
             documents.append(documents_item)
 
-        field_dict: Dict[str, Any] = {}
+        field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
@@ -72,7 +72,7 @@ class AttributionSpan:
         return field_dict
 
     @classmethod
-    def from_dict(cls: Type[T], src_dict: Dict[str, Any]) -> T:
+    def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
         from ..models.attribution_document import AttributionDocument
 
         d = src_dict.copy()
@@ -88,7 +88,7 @@ class AttributionSpan:
 
         text = d.pop("text")
 
-        token_ids = cast(List[int], d.pop("tokenIds"))
+        token_ids = cast(list[int], d.pop("tokenIds"))
 
         documents = []
         _documents = d.pop("documents")
@@ -112,7 +112,7 @@ class AttributionSpan:
         return attribution_span
 
     @property
-    def additional_keys(self) -> List[str]:
+    def additional_keys(self) -> list[str]:
         return list(self.additional_properties.keys())
 
     def __getitem__(self, key: str) -> Any:

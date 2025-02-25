@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any, Dict, Optional, Union
+from typing import Any, Optional, Union
 
 import httpx
 
@@ -15,14 +15,14 @@ def _get_kwargs(
     index: AvailableInfiniGramIndexId,
     *,
     query: str,
-) -> Dict[str, Any]:
-    params: Dict[str, Any] = {}
+) -> dict[str, Any]:
+    params: dict[str, Any] = {}
 
     params["query"] = query
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
-    _kwargs: Dict[str, Any] = {
+    _kwargs: dict[str, Any] = {
         "method": "get",
         "url": f"/{index}/count",
         "params": params,
@@ -34,11 +34,11 @@ def _get_kwargs(
 def _parse_response(
     *, client: Union[AuthenticatedClient, Client], response: httpx.Response
 ) -> Optional[Union[HTTPValidationError, InfiniGramCountResponse]]:
-    if response.status_code == HTTPStatus.OK:
+    if response.status_code == 200:
         response_200 = InfiniGramCountResponse.from_dict(response.json())
 
         return response_200
-    if response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY:
+    if response.status_code == 422:
         response_422 = HTTPValidationError.from_dict(response.json())
 
         return response_422

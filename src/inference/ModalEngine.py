@@ -55,7 +55,11 @@ class ModalEngine(InferenceEngine):
                     "opts": asdict(inference_options),
                 }
             ]
-        msgs = [asdict(msg) for msg in messages]
+
+        # Modal doesn't like additional arguments, especially 'files'
+        # We prevent it from showing up by filtering anything with None
+        # This isn't a problem with the UI but it shows up in e2e tests
+        msgs = [{k: v for k, v in asdict(msg).items() if v is not None} for msg in messages]
         opts = asdict(inference_options)
         return [msgs, opts]
 

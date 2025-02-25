@@ -28,6 +28,8 @@ def create_v4_message_blueprint(dbc: db.Client, storage_client: GoogleCloudStora
         create_message_request: CreateMessageRequestV4,
     ) -> ResponseReturnValue:
         request_files = request.files.getlist("files")
+        # Defaulting to an empty list can cause problems with Modal
+        # This isn't happening from the UI but it is happening through e2e tests, so better safe than sorry!
         files = cast(list[UploadedFile], request_files) if len(request_files) > 0 else None
 
         stop_words = request.form.getlist("stop")

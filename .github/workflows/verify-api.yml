@@ -36,4 +36,4 @@ jobs:
             python-version: '3.11'
             cache: 'pip' 
         - run: pip install -r ./requirements.txt
-        - run: mypy --config ./pyproject.toml
+        - run: mypy . --config ./pyproject.toml

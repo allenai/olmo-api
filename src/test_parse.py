@@ -1,9 +1,11 @@
-from . import parse
-from datetime import timedelta
 from dataclasses import dataclass
-from .dao.datachip import DatachipRef
+from datetime import timedelta
 
 import pytest
+
+from . import parse
+from .dao.datachip import DatachipRef
+
 
 def test_parse_valid_timedelta():
     tests = [
@@ -14,8 +16,11 @@ def test_parse_valid_timedelta():
         ("42m", timedelta(minutes=42)),
         ("42s", timedelta(seconds=42)),
     ]
-    for (input, expected) in tests:
-        assert parse.timedelta_from_str(input) == expected, f"Failed to parse timedelta parse.timedelta(\"{input}\") != {expected}"
+    for input, expected in tests:
+        assert (
+            parse.timedelta_from_str(input) == expected
+        ), f'Failed to parse timedelta parse.timedelta("{input}") != {expected}'
+
 
 def test_parse_invalid_timedelta():
     tests = [
@@ -25,14 +30,14 @@ def test_parse_invalid_timedelta():
         "1 hour",
         "1 minute",
         "1 second",
-        "1 month"
-        "1d30m",
+        "1 month" "1d30m",
         "-1d",
         "1.5d",
     ]
     for input in tests:
         with pytest.raises(ValueError):
             parse.timedelta_from_str(input)
+
 
 @dataclass
 class DatachipTestCase:
@@ -41,6 +46,7 @@ class DatachipTestCase:
     expected_output: str
     chips: dict[DatachipRef, str]
     should_raise: bool = False
+
 
 def test_parse_and_replace_datachips():
     tests = [
@@ -68,7 +74,9 @@ Logan
             {
                 DatachipRef("sams@allenai.org/to"): "Murphy",
                 DatachipRef("sams@allenai.org/from"): "Logan",
-                DatachipRef("murphy@allenai.org/activity"): "dig elaborate, muddy holes to bury valuable bones, treasure and other amassed, random things in the ground",
+                DatachipRef(
+                    "murphy@allenai.org/activity"
+                ): "dig elaborate, muddy holes to bury valuable bones, treasure and other amassed, random things in the ground",
             },
         ),
         # Emojis
@@ -76,26 +84,21 @@ Logan
             "emoji",
             """👋 :sams@allenai.org/name""",
             "👋 Murphy",
-            { DatachipRef("sams@allenai.org/name"): "Murphy" },
+            {DatachipRef("sams@allenai.org/name"): "Murphy"},
         ),
         DatachipTestCase(
             "leading",
             """:sams@allenai.org/name says hello""",
             "Murphy says hello",
-            { DatachipRef("sams@allenai.org/name"): "Murphy" },
+            {DatachipRef("sams@allenai.org/name"): "Murphy"},
         ),
         DatachipTestCase(
             "trailing",
             """my name is :sams@allenai.org/name""",
             "my name is Murphy",
-            { DatachipRef("sams@allenai.org/name"): "Murphy" },
+            {DatachipRef("sams@allenai.org/name"): "Murphy"},
         ),
-        DatachipTestCase(
-            "none",
-            """Hi there!""",
-            "Hi there!",
-            {}
-        ),
+        DatachipTestCase("none", """Hi there!""", "Hi there!", {}),
         DatachipTestCase(
             "missing",
             """my name is :sams@allenai.org/name""",
@@ -112,4 +115,3 @@ Logan
         else:
             details = f"Failed to parse datachips for test {test.name}"
             assert msg.replace_datachips(test.chips) == test.expected_output, details
-

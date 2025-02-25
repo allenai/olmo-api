@@ -13,7 +13,8 @@ def log() -> Response:
         raise exceptions.UnsupportedMediaType
 
     if request.json is None:
-        raise exceptions.BadRequest("missing JSON body")
+        msg = "missing JSON body"
+        raise exceptions.BadRequest(msg)
 
     log_entry = LogEntry(
         severity=request.json.get("severity"),
@@ -24,7 +25,8 @@ def log() -> Response:
     )
 
     if log_entry.is_valid is False:
-        raise exceptions.BadRequest("one or more required fields were not provided")
+        msg = "one or more required fields were not provided"
+        raise exceptions.BadRequest(msg)
 
     log_service(log_entry)
 

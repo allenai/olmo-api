@@ -2,7 +2,7 @@ import re
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import bs4
 from psycopg import errors
@@ -12,8 +12,9 @@ from pydantic import BaseModel
 from pydantic import Field as PydanticField
 from werkzeug import exceptions
 
-from .. import obj
-from ..config import ModelType
+from src import obj
+from src.config.Model import ModelType
+
 from . import label, paged
 
 
@@ -29,7 +30,7 @@ class Field:
     default: Any
     min: Any
     max: Any
-    step: Optional[int | float] = None
+    step: int | float | None = None
 
 
 max_tokens = Field("max_tokens", 2048, 1, 2048, 1)
@@ -56,9 +57,7 @@ class InferenceOpts(BaseModel):
         multiple_of=temperature.step,
         strict=True,
     )
-    n: int = PydanticField(
-        default=num.default, ge=num.min, le=num.max, multiple_of=num.step, strict=True
-    )
+    n: int = PydanticField(default=num.default, ge=num.min, le=num.max, multiple_of=num.step, strict=True)
     top_p: float = PydanticField(
         default=top_p.default,
         ge=top_p.min,
@@ -66,20 +65,18 @@ class InferenceOpts(BaseModel):
         multiple_of=top_p.step,
         strict=True,
     )
-    logprobs: Optional[int] = PydanticField(
+    logprobs: int | None = PydanticField(
         default=logprobs.default,
         ge=logprobs.min,
         le=logprobs.max,
         multiple_of=logprobs.step,
         strict=True,
     )
-    stop: Optional[list[str]] = PydanticField(default=stop.default)
+    stop: list[str] | None = PydanticField(default=stop.default)
 
     @staticmethod
     def opts_schema() -> dict[str, Field]:
-        return {
-            f.name: f for f in [max_tokens, temperature, num, top_p, logprobs, stop]
-        }
+        return {f.name: f for f in [max_tokens, temperature, num, top_p, logprobs, stop]}
 
     @staticmethod
     def from_request(request_opts: dict[str, Any]) -> "InferenceOpts":
@@ -94,13 +91,13 @@ class TokenLogProbs:
 
 
 def prepare_logprobs(
-    logprobs: Optional[list[list[TokenLogProbs]]],
-) -> Optional[list[Jsonb]]:
+    logprobs: list[list[TokenLogProbs]] | None,
+) -> list[Jsonb] | None:
     if logprobs is None:
         return None
     # TODO: logprobs is a JSONB[] field now, but should probably be JSONB[][]; though this only
     # matters if we decide we want to query by index, which seems unlikely.
-    return [Jsonb(list([asdict(lp) for lp in lps])) for lps in logprobs]
+    return [Jsonb([asdict(lp) for lp in lps]) for lps in logprobs]
 
 
 MessageRow = tuple[
@@ -112,29 +109,29 @@ MessageRow = tuple[
     dict[str, Any],
     str,
     datetime,
-    Optional[datetime],
-    Optional[str],
-    Optional[str],
-    Optional[list[list[dict]]],
-    Optional[str],
+    datetime | None,
+    str | None,
+    str | None,
+    list[list[dict]] | None,
+    str | None,
     bool,
-    Optional[str],
+    str | None,
     bool,
-    Optional[ModelType],
-    Optional[str],
-    Optional[bool],
+    ModelType | None,
+    str | None,
+    bool | None,
     str,
     str,
-    Optional[datetime],
-    Optional[list[str]],
+    datetime | None,
+    list[str] | None,
     # Label fields
-    Optional[str],
-    Optional[str],
-    Optional[int],
-    Optional[str],
-    Optional[str],
-    Optional[datetime],
-    Optional[datetime],
+    str | None,
+    str | None,
+    int | None,
+    str | None,
+    str | None,
+    datetime | None,
+    datetime | None,
 ]
 
 MessagesByID = dict[str, "Message"]
@@ -144,7 +141,7 @@ MessagesByID = dict[str, "Message"]
 class MessageChunk:
     message: obj.ID
     content: str
-    logprobs: Optional[list[list[TokenLogProbs]]] = None
+    logprobs: list[list[TokenLogProbs]] | None = None
 
 
 @dataclass
@@ -179,21 +176,21 @@ class Message:
     created: datetime
     model_id: str
     model_host: str
-    deleted: Optional[datetime] = None
-    parent: Optional[str] = None
-    template: Optional[str] = None
-    logprobs: Optional[list[list[TokenLogProbs]]] = None
-    children: Optional[list["Message"]] = None
-    completion: Optional[str] = None
+    deleted: datetime | None = None
+    parent: str | None = None
+    template: str | None = None
+    logprobs: list[list[TokenLogProbs]] | None = None
+    children: list["Message"] | None = None
+    completion: str | None = None
     final: bool = False
-    original: Optional[str] = None
+    original: str | None = None
     private: bool = False
-    model_type: Optional[ModelType] = None
-    finish_reason: Optional[str] = None
-    harmful: Optional[bool] = None
-    expiration_time: Optional[datetime] = None
+    model_type: ModelType | None = None
+    finish_reason: str | None = None
+    harmful: bool | None = None
+    expiration_time: datetime | None = None
     labels: list[label.Label] = field(default_factory=list)
-    file_urls: Optional[list[str]] = None
+    file_urls: list[str] | None = None
 
     def flatten(self) -> list["Message"]:
         if self.children is None:
@@ -249,9 +246,8 @@ class Message:
 
     def merge(self, m: "Message") -> "Message":
         if self.id != m.id:
-            raise RuntimeError(
-                f"cannot merge messages with different ids: {self.id} != {m.id}"
-            )
+            msg = f"cannot merge messages with different ids: {self.id} != {m.id}"
+            raise RuntimeError(msg)
         return replace(self, labels=self.labels + m.labels)
 
     @staticmethod
@@ -285,7 +281,7 @@ class Message:
             # This is because the only messages with > 1 children are those that are
             # generated by the model, and the creation order matches the model's selection
             # order -- the most probable come first.
-            msgs[m.parent].children = sorted(siblings + [m], key=lambda x: x.created)
+            msgs[m.parent].children = sorted([*siblings, m], key=lambda x: x.created)
 
         return roots, msgs
 
@@ -307,19 +303,19 @@ class Store:
         opts: InferenceOpts,
         model_id: str,
         model_host: str,
-        root: Optional[str] = None,
-        parent: Optional[str] = None,
-        template: Optional[str] = None,
-        logprobs: Optional[list[list[TokenLogProbs]]] = None,
-        completion: Optional[obj.ID] = None,
+        root: str | None = None,
+        parent: str | None = None,
+        template: str | None = None,
+        logprobs: list[list[TokenLogProbs]] | None = None,
+        completion: obj.ID | None = None,
         final: bool = True,
-        original: Optional[str] = None,
+        original: str | None = None,
         private: bool = False,
-        model_type: Optional[ModelType] = None,
-        finish_reason: Optional[str] = None,
-        harmful: Optional[bool] = None,
-        expiration_time: Optional[datetime] = None,
-        file_urls: Optional[list[str]] = None,
+        model_type: ModelType | None = None,
+        finish_reason: str | None = None,
+        harmful: bool | None = None,
+        expiration_time: datetime | None = None,
+        file_urls: list[str] | None = None,
     ) -> Message:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
@@ -390,36 +386,34 @@ class Store:
                     ).fetchone()
 
                     if row is None:
-                        raise RuntimeError("failed to create message")
+                        msg = "failed to create message"
+                        raise RuntimeError(msg)
                     return Message.from_row(row)
                 except errors.ForeignKeyViolation as e:
                     # TODO: the dao probably shouldn't throw HTTP exceptions, instead it should
                     # throw something more generic that the server translates
                     match e.diag.constraint_name:
                         case "message_completion_fkey":
-                            raise exceptions.BadRequest(
-                                f'completion "{completion}" not found'
-                            )
+                            msg = f'completion "{completion}" not found'
+                            raise exceptions.BadRequest(msg)
                         case "message_original_fkey":
-                            raise exceptions.BadRequest(
-                                f'original "{original}" not found'
-                            )
+                            msg = f'original "{original}" not found'
+                            raise exceptions.BadRequest(msg)
                         case "message_parent_fkey":
-                            raise exceptions.BadRequest(f'parent "{parent}" not found')
+                            msg = f'parent "{parent}" not found'
+                            raise exceptions.BadRequest(msg)
                         case "message_root_fkey":
-                            raise exceptions.BadRequest(f'root "{root}" not found')
+                            msg = f'root "{root}" not found'
+                            raise exceptions.BadRequest(msg)
                         case "message_template_fkey":
-                            raise exceptions.BadRequest(
-                                f'template "{template}" not found'
-                            )
-                    raise exceptions.BadRequest(
-                        f"unknown foreign key violation: {e.diag.constraint_name}"
-                    )
+                            msg = f'template "{template}" not found'
+                            raise exceptions.BadRequest(msg)
+                    msg = f"unknown foreign key violation: {e.diag.constraint_name}"
+                    raise exceptions.BadRequest(msg)
 
-    def get(self, id: str, agent: Optional[str] = None) -> Optional[Message]:
-        with self.pool.connection() as conn:
-            with conn.cursor() as cur:
-                q = """
+    def get(self, id: str, agent: str | None = None) -> Message | None:
+        with self.pool.connection() as conn, conn.cursor() as cur:
+            q = """
                     SELECT
                         message.id,
                         message.content,
@@ -462,27 +456,24 @@ class Store:
                         label.deleted IS NULL
                     WHERE
                         root = (SELECT root FROM message WHERE id = %s)
-                    AND 
+                    AND
                         (expiration_time IS NULL OR expiration_time > CURRENT_TIMESTAMP)
                     ORDER BY
                         message.created ASC
                 """
-                rows = cur.execute(
-                    q,
-                    (
-                        agent,
-                        id,
-                    ),
-                ).fetchall()
-                _, msgs = Message.tree(
-                    Message.group_by_id([Message.from_row(r) for r in rows])
-                )
-                return msgs.get(id)
+            rows = cur.execute(
+                q,
+                (
+                    agent,
+                    id,
+                ),
+            ).fetchall()
+            _, msgs = Message.tree(Message.group_by_id([Message.from_row(r) for r in rows]))
+            return msgs.get(id)
 
     def get_by_root(self, id: str) -> list[Message]:
-        with self.pool.connection() as conn:
-            with conn.cursor() as cur:
-                q = """
+        with self.pool.connection() as conn, conn.cursor() as cur:
+            q = """
                     SELECT
                         message.id,
                         message.content,
@@ -522,26 +513,25 @@ class Store:
                     WHERE
                         root = %s
                 """
-                rows = cur.execute(q, (id,)).fetchall()
-                return [Message.from_row(r) for r in rows]
+            rows = cur.execute(q, (id,)).fetchall()
+            return [Message.from_row(r) for r in rows]
 
     def finalize(
         self,
         id: obj.ID,
-        content: Optional[str] = None,
-        logprobs: Optional[list[list[TokenLogProbs]]] = None,
-        completion: Optional[obj.ID] = None,
-        finish_reason: Optional[str] = None,
-        harmful: Optional[bool] = None,
-        file_urls: Optional[list[str]] = None,
-    ) -> Optional[Message]:
+        content: str | None = None,
+        logprobs: list[list[TokenLogProbs]] | None = None,
+        completion: obj.ID | None = None,
+        finish_reason: str | None = None,
+        harmful: bool | None = None,
+        file_urls: list[str] | None = None,
+    ) -> Message | None:
         """
         Used to finalize a Message produced via a streaming response.
         """
-        with self.pool.connection() as conn:
-            with conn.cursor() as cur:
-                try:
-                    q = """
+        with self.pool.connection() as conn, conn.cursor() as cur:
+            try:
+                q = """
                         UPDATE
                             message
                         SET
@@ -587,33 +577,30 @@ class Store:
                             NULL,
                             NULL
                     """
-                    row = cur.execute(
-                        q,
-                        {
-                            "content": content,
-                            "logprobs": prepare_logprobs(logprobs),
-                            "completion": completion,
-                            "finish_reason": finish_reason,
-                            "harmful": harmful,
-                            "file_urls": file_urls,
-                            "id": id,
-                        },
-                    ).fetchone()
-                    return Message.from_row(row) if row is not None else None
-                except errors.ForeignKeyViolation as e:
-                    match e.diag.constraint_name:
-                        case "message_completion_fkey":
-                            raise exceptions.BadRequest(
-                                f'completion "{completion}" not found'
-                            )
-                    raise exceptions.BadRequest(
-                        f"unknown foreign key violation: {e.diag.constraint_name}"
-                    )
+                row = cur.execute(
+                    q,
+                    {
+                        "content": content,
+                        "logprobs": prepare_logprobs(logprobs),
+                        "completion": completion,
+                        "finish_reason": finish_reason,
+                        "harmful": harmful,
+                        "file_urls": file_urls,
+                        "id": id,
+                    },
+                ).fetchone()
+                return Message.from_row(row) if row is not None else None
+            except errors.ForeignKeyViolation as e:
+                match e.diag.constraint_name:
+                    case "message_completion_fkey":
+                        msg = f'completion "{completion}" not found'
+                        raise exceptions.BadRequest(msg)
+                msg = f"unknown foreign key violation: {e.diag.constraint_name}"
+                raise exceptions.BadRequest(msg)
 
-    def delete(self, id: str, agent: Optional[str] = None) -> Optional[Message]:
-        with self.pool.connection() as conn:
-            with conn.cursor() as cur:
-                q = """
+    def delete(self, id: str, agent: str | None = None) -> Message | None:
+        with self.pool.connection() as conn, conn.cursor() as cur:
+            q = """
                     WITH updated AS (
                         UPDATE
                             message
@@ -665,30 +652,29 @@ class Store:
                         label.deleted IS NULL
 
                 """
-                row = cur.execute(q, (id, agent)).fetchone()
-                return Message.from_row(row) if row is not None else None
+            row = cur.execute(q, (id, agent)).fetchone()
+            return Message.from_row(row) if row is not None else None
 
     def remove(self, ids: list[str]) -> None:
         if len(ids) == 0:
             return
 
-        with self.pool.connection() as conn:
-            with conn.cursor() as cursor:
-                q = """
+        with self.pool.connection() as conn, conn.cursor() as cursor:
+            q = """
                     DELETE
                     FROM
                         message
                     WHERE id = ANY(%s)
                 """
-                cursor.execute(q, (ids,))
+            cursor.execute(q, (ids,))
 
     # TODO: allow listing non-final messages
     def get_list(
         self,
-        creator: Optional[str] = None,
+        creator: str | None = None,
         deleted: bool = False,
         opts: paged.Opts = paged.Opts(),
-        agent: Optional[str] = None,
+        agent: str | None = None,
     ) -> MessageList:
         """
         Returns messages from the database. If agent is set, both private messages
@@ -696,10 +682,10 @@ class Store:
         """
         # TODO: add sort support for messages
         if opts.sort is not None:
-            raise NotImplementedError("sorting messages is not supported")
-        with self.pool.connection() as conn:
-            with conn.cursor() as cur:
-                roots = """
+            msg = "sorting messages is not supported"
+            raise NotImplementedError(msg)
+        with self.pool.connection() as conn, conn.cursor() as cur:
+            roots = """
                     SELECT
                         message.id,
                         COUNT(*) OVER() AS total
@@ -715,27 +701,27 @@ class Store:
                         parent IS NULL
                     AND
                         (private = false OR creator = %(agent)s)
-                    AND 
+                    AND
                         (expiration_time IS NULL OR expiration_time > CURRENT_TIMESTAMP)
                     ORDER BY
                         created DESC,
                         id
                 """
-                args: dict[str, Any] = {
-                    "creator": creator,
-                    "deleted": deleted,
-                    "agent": agent,
-                }
+            args: dict[str, Any] = {
+                "creator": creator,
+                "deleted": deleted,
+                "agent": agent,
+            }
 
-                if opts.limit is not None:
-                    roots += "\nLIMIT %(limit)s "
-                    args["limit"] = opts.limit
+            if opts.limit is not None:
+                roots += "\nLIMIT %(limit)s "
+                args["limit"] = opts.limit
 
-                if opts.offset is not None:
-                    roots += "\nOFFSET %(offset)s "
-                    args["offset"] = opts.offset
+            if opts.offset is not None:
+                roots += "\nOFFSET %(offset)s "
+                args["offset"] = opts.offset
 
-                q = f"""
+            q = f"""
                     WITH root_ids AS ({roots})
                     SELECT
                         (SELECT total FROM root_ids LIMIT 1),
@@ -786,37 +772,35 @@ class Store:
                         message.final = true
                     AND
                         message.root IN (SELECT id FROM root_ids)
-                    AND 
+                    AND
                         (expiration_time IS NULL OR expiration_time > CURRENT_TIMESTAMP)
                     ORDER BY
                         message.created DESC,
                         message.id
                 """
-                args["agent"] = agent
+            args["agent"] = agent
 
-                rows = cur.execute(q, args).fetchall()
+            rows = cur.execute(q, args).fetchall()
 
-                # This should only happen in two circumstances:
-                # 1. There's no messages
-                # 2. The offset is greater than the number of root messages
-                if len(rows) == 0:
-                    args["offset"] = 0
-                    row = cur.execute(q, args).fetchone()
-                    total = row[0] if row is not None else 0
-                    return MessageList(
-                        messages=[],
-                        meta=paged.ListMeta(total, opts.offset, opts.limit, opts.sort),
-                    )
-
-                total = rows[0][0]
-                tree_roots, _ = Message.tree(
-                    Message.group_by_id([Message.from_row(r[1:]) for r in rows])
-                )
-
+            # This should only happen in two circumstances:
+            # 1. There's no messages
+            # 2. The offset is greater than the number of root messages
+            if len(rows) == 0:
+                args["offset"] = 0
+                row = cur.execute(q, args).fetchone()
+                total = row[0] if row is not None else 0
                 return MessageList(
-                    messages=tree_roots,
-                    meta=paged.ListMeta(total, opts.offset, opts.limit),
+                    messages=[],
+                    meta=paged.ListMeta(total, opts.offset, opts.limit, opts.sort),
                 )
+
+            total = rows[0][0]
+            tree_roots, _ = Message.tree(Message.group_by_id([Message.from_row(r[1:]) for r in rows]))
+
+            return MessageList(
+                messages=tree_roots,
+                meta=paged.ListMeta(total, opts.offset, opts.limit),
+            )
 
     def migrate_messages_to_new_user(self, previous_user_id: str, new_user_id: str):
         with self.pool.connection() as conn:

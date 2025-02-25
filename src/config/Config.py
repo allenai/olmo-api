@@ -3,9 +3,7 @@ import os
 from dataclasses import dataclass
 from typing import Self
 
-from src.config.Model import Model, MultiModalModel
-from src.config.Model import map_model_from_config as map_model_from_config
-from src.config.ModelConfig import ModelType as ModelType
+from src.config.Model import Model, MultiModalModel, map_model_from_config
 
 
 @dataclass
@@ -91,7 +89,7 @@ class Config:
 
     @classmethod
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
-        with open(path) as f:
+        with open(path, encoding="locale") as f:
             data = json.load(f)
             return cls(
                 db=Database(**data["db"]),
@@ -142,8 +140,5 @@ class Config:
                         data["google_cloud_services"].get("recaptcha_key"),
                     ),
                 ),
-                models=[
-                    map_model_from_config(model_config)
-                    for model_config in data["models"]
-                ],
+                models=[map_model_from_config(model_config) for model_config in data["models"]],
             )

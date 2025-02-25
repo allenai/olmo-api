@@ -1,7 +1,9 @@
-from . import base, util
+import json
 
 import requests
-import json
+
+from . import base, util
+
 
 class TestCompletionEndpoints(base.IntegrationTest):
     messages: list[tuple[str, base.AuthenticatedClient]] = []
@@ -10,16 +12,20 @@ class TestCompletionEndpoints(base.IntegrationTest):
         u1 = self.user("test1@localhost")
 
         # Make sure all endpoints fail w/o auth and for non-admins
-        for (r, status) in [
+        for r, status in [
             (requests.get(f"{self.origin}/v3/completion/XXX"), 401),
-            (requests.get(f"{self.origin}/v3/completion/XXX", headers=self.auth(u1)), 403)
+            (requests.get(f"{self.origin}/v3/completion/XXX", headers=self.auth(u1)), 403),
         ]:
             assert r.status_code == status
 
         a1 = self.user("murphy@localhost")
-        r = requests.post(f"{self.origin}/v3/message", headers=self.auth(a1), json={
-            "content": "Is Grasshopper a unicorn?",
-        })
+        r = requests.post(
+            f"{self.origin}/v3/message",
+            headers=self.auth(a1),
+            json={
+                "content": "Is Grasshopper a unicorn?",
+            },
+        )
         r.raise_for_status()
         m = json.loads(util.last_response_line(r))
         self.messages.append((m["id"], a1))
@@ -30,7 +36,6 @@ class TestCompletionEndpoints(base.IntegrationTest):
         r.raise_for_status()
 
     def tearDown(self):
-        for (id, user) in self.messages:
+        for id, user in self.messages:
             r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
             r.raise_for_status()
-

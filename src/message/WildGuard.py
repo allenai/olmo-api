@@ -1,29 +1,28 @@
 import dataclasses
 from time import time_ns
-from typing import Optional
 
-from flask import current_app
 import modal
+from flask import current_app
 
 from src import config
 from src.message.SafetyChecker import (
+    SafetyChecker,
     SafetyCheckRequest,
     SafetyCheckResponse,
-    SafetyChecker,
 )
 
 
 @dataclasses.dataclass
 class WildguardRequest:
     prompt: str
-    response: Optional[str] = None
+    response: str | None = None
 
 
 @dataclasses.dataclass
 class WildguardResponse(SafetyCheckResponse):
-    request_harmful: Optional[str] = None
-    response_refusal: Optional[str] = None
-    response_harmful: Optional[str] = None
+    request_harmful: str | None = None
+    response_refusal: str | None = None
+    response_harmful: str | None = None
 
     def __init__(self, request_harmful, response_refusal, response_harmful):
         self.request_harmful = request_harmful
@@ -32,24 +31,20 @@ class WildguardResponse(SafetyCheckResponse):
 
     def is_safe(self) -> bool:
         if self.request_harmful is None:
-            raise RuntimeError("WildGuard check result is None")
+            msg = "WildGuard check result is None"
+            raise RuntimeError(msg)
 
         return self.transform_value(self.request_harmful)
 
     def transform_value(self, val: str) -> bool:
-        if val.lower() == "yes":
-            return True
-
-        return False
+        return val.lower() == "yes"
 
 
 class WildGuard(SafetyChecker):
     client: modal.Client
 
     def __init__(self) -> None:
-        self.client = modal.Client.from_credentials(
-            config.cfg.modal.token, config.cfg.modal.token_secret
-        )
+        self.client = modal.Client.from_credentials(config.cfg.modal.token, config.cfg.modal.token_secret)
 
     def check_request(self, req: SafetyCheckRequest) -> SafetyCheckResponse:
         f = modal.Function.lookup("wildguard", "wildguard_api", client=self.client)
@@ -65,13 +60,11 @@ class WildGuard(SafetyChecker):
             response_harmful=result["response_harmful"],
         )
 
-        current_app.logger.info(
-            {
-                "checker": "WildGuard",
-                "prompt": req.content,
-                "duration_ms": (end_ns - start_ns) / 1_000_000,
-                "is_safe": response.is_safe(),
-            }
-        )
+        current_app.logger.info({
+            "checker": "WildGuard",
+            "prompt": req.content,
+            "duration_ms": (end_ns - start_ns) / 1_000_000,
+            "is_safe": response.is_safe(),
+        })
 
         return response

@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class SpanRankingMethod(str, Enum):
+class SpanRankingMethod(StrEnum):
     LENGTH = "length"
     UNIGRAM_LOGPROB_SUM = "unigram_logprob_sum"
 

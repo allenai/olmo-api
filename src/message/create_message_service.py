@@ -4,9 +4,10 @@ import json
 import multiprocessing
 import multiprocessing.pool
 import os
-from datetime import datetime, timedelta, timezone
+from collections.abc import Generator, Sequence
+from datetime import UTC, datetime, timedelta
 from time import time_ns
-from typing import Generator, List, Optional, Sequence, cast
+from typing import cast
 
 import grpc
 from flask import current_app
@@ -59,9 +60,7 @@ def check_message_safety(
         return result.is_safe()
 
     except Exception as e:
-        current_app.logger.error(
-            "Skipped message safety check due to error: %s. ", repr(e)
-        )
+        current_app.logger.exception("Skipped message safety check due to error: %s. ", repr(e))
 
     return None
 
@@ -81,7 +80,7 @@ def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
                 return False
 
         except Exception as e:
-            current_app.logger.error(
+            current_app.logger.exception(
                 "Skipped image safety check over %s due to error: %s. ",
                 file.filename,
                 repr(e),
@@ -107,7 +106,7 @@ def get_engine(host: str) -> InferenceEngine:
 
 
 def upload_request_files(
-    files: Optional[Sequence[FileStorage]],
+    files: Sequence[FileStorage] | None,
     message_id: str,
     storage_client: GoogleCloudStorage,
     root_message_id: str,
@@ -118,17 +117,13 @@ def upload_request_files(
     file_urls: list[str] = []
 
     for i, file in enumerate(files):
-        file_extension = (
-            os.path.splitext(file.filename)[1] if file.filename is not None else ""
-        )
+        file_extension = os.path.splitext(file.filename)[1] if file.filename is not None else ""
 
         # We don't want to save filenames since we're not safety checking them for dangerous or personal info
         filename = f"{root_message_id}/{message_id}-{i}{file_extension}"
 
         if file.content_type is None:
-            file_url = storage_client.upload_content(
-                filename=filename, content=file.stream.read()
-            )
+            file_url = storage_client.upload_content(filename=filename, content=file.stream.read())
         else:
             file_url = storage_client.upload_content(
                 filename=filename,
@@ -156,14 +151,10 @@ def stream_new_message(
 
     model = inference_engine.get_model_details(request.model)
     if not model:
-        raise exceptions.BadRequest(
-            f"model {request.model} is not available on {request.host}"
-        )
+        error_message = f"model {request.model} is not available on {request.host}"
+        raise exceptions.BadRequest(error_message)
 
-    if (
-        cfg.google_cloud_services.recaptcha_key is not None
-        and request.captchaToken is not None
-    ):
+    if cfg.google_cloud_services.recaptcha_key is not None and request.captchaToken is not None:
         create_assessment(
             project_id="ai2-reviz",
             recaptcha_key=cfg.google_cloud_services.recaptcha_key,
@@ -209,11 +200,7 @@ def stream_new_message(
             raise exceptions.BadRequest(description="inappropriate_prompt")
 
     # We currently want anonymous users' messages to expire after 1 day
-    message_expiration_time = (
-        datetime.now(timezone.utc) + timedelta(days=1)
-        if agent.is_anonymous_user
-        else None
-    )
+    message_expiration_time = datetime.now(UTC) + timedelta(days=1) if agent.is_anonymous_user else None
 
     is_msg_harmful = None if is_content_safe is None or is_image_safe is None else False
     system_msg = None
@@ -303,9 +290,7 @@ def stream_new_message(
             role=message_in_chain.role,
             content=message_in_chain.content,
             # We only want to add the request files to the new message. The rest will have file urls associated with them
-            files=request.files
-            if message_in_chain.id == msg.id
-            else message_in_chain.file_urls,
+            files=request.files if message_in_chain.id == msg.id else message_in_chain.file_urls,
         )
         for message_in_chain in message_chain
     ]
@@ -352,7 +337,7 @@ def stream_new_message(
             yield format_message(msg)
 
         # Now yield each chunk as it's returned.
-        finish_reason: Optional[FinishReason] = None
+        finish_reason: FinishReason | None = None
         first_ns = 0
         chunk_count = 0
         input_token_count = -1
@@ -360,23 +345,13 @@ def stream_new_message(
 
         def map_chunk(chunk: InferenceEngineChunk):
             # This tells python that we're referencing the variables from the closure and not making new ones
-            nonlocal \
-                finish_reason, \
-                input_token_count, \
-                output_token_count, \
-                chunk_count, \
-                first_ns
+            nonlocal finish_reason, input_token_count, output_token_count, chunk_count, first_ns
 
             finish_reason = chunk.finish_reason
 
             chunk_logprobs = chunk.logprobs if chunk.logprobs is not None else []
             mapped_logprobs = [
-                [
-                    message.TokenLogProbs(
-                        token_id=lp.token_id, text=lp.text, logprob=lp.logprob
-                    )
-                    for lp in lp_list
-                ]
+                [message.TokenLogProbs(token_id=lp.token_id, text=lp.text, logprob=lp.logprob) for lp in lp_list]
                 for lp_list in chunk_logprobs
             ]
 
@@ -414,34 +389,26 @@ def stream_new_message(
 
         except grpc.RpcError as e:
             err = f"inference failed: {e}"
-            yield format_message(
-                message.MessageStreamError(reply.id, err, "grpc inference failed")
-            )
+            yield format_message(message.MessageStreamError(reply.id, err, "grpc inference failed"))
 
         except multiprocessing.TimeoutError:
             finish_reason = FinishReason.ModelOverloaded
 
         gen = time_ns() - start_gen
-        gen = gen // 1_000_000
+        gen //= 1000000
 
         match finish_reason:
             case FinishReason.UnclosedStream:
                 err = "inference failed for an unknown reason: sometimes this happens when the prompt is too long"
-                yield format_message(
-                    message.MessageStreamError(reply.id, err, finish_reason)
-                )
+                yield format_message(message.MessageStreamError(reply.id, err, finish_reason))
 
             case FinishReason.Length:
                 err = "the conversation is too large for the model to process, please shorten the conversation and try again"
-                yield format_message(
-                    message.MessageStreamError(reply.id, err, finish_reason)
-                )
+                yield format_message(message.MessageStreamError(reply.id, err, finish_reason))
 
             case FinishReason.Aborted:
                 err = "inference aborted for an unknown reason"
-                yield format_message(
-                    message.MessageStreamError(reply.id, err, finish_reason)
-                )
+                yield format_message(message.MessageStreamError(reply.id, err, finish_reason))
 
             case FinishReason.ModelOverloaded:
                 yield format_message(
@@ -462,9 +429,9 @@ def stream_new_message(
         prompt = create_prompt_from_engine_input(chain)
         output, logprobs = create_output_from_chunks(chunks)
 
-        messageCompletion = None
+        message_completion = None
         if not agent.is_anonymous_user:
-            messageCompletion = dbc.completion.create(
+            message_completion = dbc.completion.create(
                 prompt,
                 [completion.CompletionOutput(output, str(finish_reason), logprobs)],
                 msg.opts,
@@ -478,41 +445,31 @@ def stream_new_message(
             )
 
         # Finalize the messages and yield
-        finalMessage = dbc.message.finalize(msg.id, file_urls=file_urls)
-        if finalMessage is None:
+        final_message = dbc.message.finalize(msg.id, file_urls=file_urls)
+        if final_message is None:
             final_message_error = RuntimeError(f"failed to finalize message {msg.id}")
-            yield format_message(
-                message.MessageStreamError(
-                    msg.id, str(final_message_error), "finalization failure"
-                )
-            )
+            yield format_message(message.MessageStreamError(msg.id, str(final_message_error), "finalization failure"))
             raise final_message_error
 
-        finalReply = dbc.message.finalize(
+        final_reply = dbc.message.finalize(
             reply.id,
             output,
             logprobs,
-            messageCompletion.id if messageCompletion is not None else None,
+            message_completion.id if message_completion is not None else None,
             finish_reason,
         )
-        if finalReply is None:
+        if final_reply is None:
             final_reply_error = RuntimeError(f"failed to finalize message {reply.id}")
-            yield format_message(
-                message.MessageStreamError(
-                    reply.id, str(final_reply_error), "finalization failure"
-                )
-            )
+            yield format_message(message.MessageStreamError(reply.id, str(final_reply_error), "finalization failure"))
             raise final_reply_error
 
-        finalMessage = dataclasses.replace(finalMessage, children=[finalReply])
+        final_message = dataclasses.replace(final_message, children=[final_reply])
 
         if system_msg is not None:
             finalSystemMessage = dbc.message.finalize(system_msg.id)
 
             if finalSystemMessage is None:
-                final_system_message_error = RuntimeError(
-                    f"failed to finalize message {system_msg.id}"
-                )
+                final_system_message_error = RuntimeError(f"failed to finalize message {system_msg.id}")
                 yield format_message(
                     message.MessageStreamError(
                         system_msg.id,
@@ -522,27 +479,23 @@ def stream_new_message(
                 )
                 raise final_system_message_error
 
-            finalSystemMessage = dataclasses.replace(
-                finalSystemMessage, children=[finalMessage]
-            )
-            finalMessage = finalSystemMessage
+            finalSystemMessage = dataclasses.replace(finalSystemMessage, children=[final_message])
+            final_message = finalSystemMessage
 
         end_all = time_ns()
-        logger.info(
-            {
-                "event": "inference.timing",
-                "ttft_ms": (first_ns - start_all) // 1e6,
-                "total_ms": (end_all - start_all) // 1e6,
-                "safety_ms": safety_check_elapsed_time,
-                "input_tokens": input_token_count,
-                "output_tokens": output_token_count,
-                "sha": sha,
-                "model": model.id,
-                "safety_check_id": checker_type,
-            }
-        )
+        logger.info({
+            "event": "inference.timing",
+            "ttft_ms": (first_ns - start_all) // 1e6,
+            "total_ms": (end_all - start_all) // 1e6,
+            "safety_ms": safety_check_elapsed_time,
+            "input_tokens": input_token_count,
+            "output_tokens": output_token_count,
+            "sha": sha,
+            "model": model.id,
+            "safety_check_id": checker_type,
+        })
 
-        yield format_message(finalMessage)
+        yield format_message(final_message)
 
     return stream()
 
@@ -553,12 +506,8 @@ def get_parent_and_root_messages_and_private(
     request_private: bool | None,
     is_anonymous_user: bool,
 ) -> tuple[message.Message | None, message.Message | None, bool]:
-    parent_message = (
-        dbc.message.get(parent_message_id) if parent_message_id is not None else None
-    )
-    root_message = (
-        dbc.message.get(parent_message.root) if parent_message is not None else None
-    )
+    parent_message = dbc.message.get(parent_message_id) if parent_message_id is not None else None
+    root_message = dbc.message.get(parent_message.root) if parent_message is not None else None
 
     private = (
         # Anonymous users aren't allowed to share messages
@@ -604,9 +553,7 @@ def create_message_v3(
         captchaToken=request.captchaToken,
     )
 
-    return stream_new_message(
-        mapped_request, dbc, storage_client=storage_client, checker_type=checker_type
-    )
+    return stream_new_message(mapped_request, dbc, storage_client=storage_client, checker_type=checker_type)
 
 
 def create_message_v4(
@@ -645,9 +592,7 @@ def create_message_v4(
         captchaToken=request.captchaToken,
     )
 
-    return stream_new_message(
-        mapped_request, dbc, storage_client=storage_client, checker_type=checker_type
-    )
+    return stream_new_message(mapped_request, dbc, storage_client=storage_client, checker_type=checker_type)
 
 
 def format_message(obj) -> str:
@@ -659,12 +604,12 @@ def format_prompt(message: InferenceEngineMessage) -> str:
 
 
 def create_prompt_from_engine_input(
-    input_list: List[InferenceEngineMessage],
+    input_list: list[InferenceEngineMessage],
 ) -> str:
     return "\n".join([format_prompt(m) for m in input_list])
 
 
-def create_output_from_chunks(chunks: List[message.MessageChunk]):
+def create_output_from_chunks(chunks: list[message.MessageChunk]):
     output = ""
     logprobs: list[list[message.TokenLogProbs]] = []
 

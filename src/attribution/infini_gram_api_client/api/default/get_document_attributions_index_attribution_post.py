@@ -1,15 +1,15 @@
 from http import HTTPStatus
-from typing import Any, Optional, Union
+from typing import Any
 
 import httpx
 
-from ... import errors
-from ...client import AuthenticatedClient, Client
-from ...models.attribution_request import AttributionRequest
-from ...models.attribution_response import AttributionResponse
-from ...models.available_infini_gram_index_id import AvailableInfiniGramIndexId
-from ...models.http_validation_error import HTTPValidationError
-from ...types import Response
+from src.attribution.infini_gram_api_client import errors
+from src.attribution.infini_gram_api_client.client import AuthenticatedClient, Client
+from src.attribution.infini_gram_api_client.models.attribution_request import AttributionRequest
+from src.attribution.infini_gram_api_client.models.attribution_response import AttributionResponse
+from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
+from src.attribution.infini_gram_api_client.models.http_validation_error import HTTPValidationError
+from src.attribution.infini_gram_api_client.types import Response
 
 
 def _get_kwargs(
@@ -34,25 +34,22 @@ def _get_kwargs(
 
 
 def _parse_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Optional[Union[AttributionResponse, HTTPValidationError]]:
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> AttributionResponse | HTTPValidationError | None:
     if response.status_code == 200:
-        response_200 = AttributionResponse.from_dict(response.json())
+        return AttributionResponse.from_dict(response.json())
 
-        return response_200
     if response.status_code == 422:
-        response_422 = HTTPValidationError.from_dict(response.json())
+        return HTTPValidationError.from_dict(response.json())
 
-        return response_422
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
-    else:
-        return None
+    return None
 
 
 def _build_response(
-    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
-) -> Response[Union[AttributionResponse, HTTPValidationError]]:
+    *, client: AuthenticatedClient | Client, response: httpx.Response
+) -> Response[AttributionResponse | HTTPValidationError]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -64,9 +61,9 @@ def _build_response(
 def sync_detailed(
     index: AvailableInfiniGramIndexId,
     *,
-    client: Union[AuthenticatedClient, Client],
+    client: AuthenticatedClient | Client,
     body: AttributionRequest,
-) -> Response[Union[AttributionResponse, HTTPValidationError]]:
+) -> Response[AttributionResponse | HTTPValidationError]:
     """Get Document Attributions
 
     Args:
@@ -96,9 +93,9 @@ def sync_detailed(
 def sync(
     index: AvailableInfiniGramIndexId,
     *,
-    client: Union[AuthenticatedClient, Client],
+    client: AuthenticatedClient | Client,
     body: AttributionRequest,
-) -> Optional[Union[AttributionResponse, HTTPValidationError]]:
+) -> AttributionResponse | HTTPValidationError | None:
     """Get Document Attributions
 
     Args:
@@ -123,9 +120,9 @@ def sync(
 async def asyncio_detailed(
     index: AvailableInfiniGramIndexId,
     *,
-    client: Union[AuthenticatedClient, Client],
+    client: AuthenticatedClient | Client,
     body: AttributionRequest,
-) -> Response[Union[AttributionResponse, HTTPValidationError]]:
+) -> Response[AttributionResponse | HTTPValidationError]:
     """Get Document Attributions
 
     Args:
@@ -153,9 +150,9 @@ async def asyncio_detailed(
 async def asyncio(
     index: AvailableInfiniGramIndexId,
     *,
-    client: Union[AuthenticatedClient, Client],
+    client: AuthenticatedClient | Client,
     body: AttributionRequest,
-) -> Optional[Union[AttributionResponse, HTTPValidationError]]:
+) -> AttributionResponse | HTTPValidationError | None:
     """Get Document Attributions
 
     Args:

@@ -4,7 +4,7 @@ from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 if TYPE_CHECKING:
-    from ..models.document import Document
+    from src.attribution.infini_gram_api_client.models.document import Document
 
 
 T = TypeVar("T", bound="InfiniGramDocumentsResponse")
@@ -32,18 +32,16 @@ class InfiniGramDocumentsResponse:
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
-        field_dict.update(
-            {
-                "index": index,
-                "documents": documents,
-            }
-        )
+        field_dict.update({
+            "index": index,
+            "documents": documents,
+        })
 
         return field_dict
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.document import Document
+        from src.attribution.infini_gram_api_client.models.document import Document
 
         d = src_dict.copy()
         index = d.pop("index")

@@ -1,7 +1,6 @@
 from abc import abstractmethod
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Optional
 
 
 class SafetyCheckerType(StrEnum):
@@ -13,7 +12,7 @@ class SafetyCheckerType(StrEnum):
 @dataclass
 class SafetyCheckRequest:
     content: str
-    name: Optional[str] = None
+    name: str | None = None
 
 
 class SafetyCheckResponse:

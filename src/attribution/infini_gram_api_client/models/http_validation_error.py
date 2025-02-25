@@ -1,12 +1,12 @@
-from typing import TYPE_CHECKING, Any, TypeVar, Union
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..types import UNSET, Unset
+from src.attribution.infini_gram_api_client.types import UNSET, Unset
 
 if TYPE_CHECKING:
-    from ..models.validation_error import ValidationError
+    from src.attribution.infini_gram_api_client.models.validation_error import ValidationError
 
 
 T = TypeVar("T", bound="HTTPValidationError")
@@ -19,11 +19,11 @@ class HTTPValidationError:
         detail (Union[Unset, list['ValidationError']]):
     """
 
-    detail: Union[Unset, list["ValidationError"]] = UNSET
+    detail: Unset | list["ValidationError"] = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        detail: Union[Unset, list[dict[str, Any]]] = UNSET
+        detail: Unset | list[dict[str, Any]] = UNSET
         if not isinstance(self.detail, Unset):
             detail = []
             for detail_item_data in self.detail:
@@ -40,7 +40,7 @@ class HTTPValidationError:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.validation_error import ValidationError
+        from src.attribution.infini_gram_api_client.models.validation_error import ValidationError
 
         d = src_dict.copy()
         detail = []

@@ -4,7 +4,7 @@ from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 if TYPE_CHECKING:
-    from ..models.attribution_document import AttributionDocument
+    from src.attribution.infini_gram_api_client.models.attribution_document import AttributionDocument
 
 
 T = TypeVar("T", bound="AttributionSpan")
@@ -56,24 +56,22 @@ class AttributionSpan:
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
-        field_dict.update(
-            {
-                "left": left,
-                "right": right,
-                "length": length,
-                "count": count,
-                "unigramLogprobSum": unigram_logprob_sum,
-                "text": text,
-                "tokenIds": token_ids,
-                "documents": documents,
-            }
-        )
+        field_dict.update({
+            "left": left,
+            "right": right,
+            "length": length,
+            "count": count,
+            "unigramLogprobSum": unigram_logprob_sum,
+            "text": text,
+            "tokenIds": token_ids,
+            "documents": documents,
+        })
 
         return field_dict
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.attribution_document import AttributionDocument
+        from src.attribution.infini_gram_api_client.models.attribution_document import AttributionDocument
 
         d = src_dict.copy()
         left = d.pop("left")

@@ -1,4 +1,5 @@
-from typing import Generator, cast
+from collections.abc import Generator
+from typing import cast
 
 from flask import Blueprint, Response, jsonify, request, stream_with_context
 from flask.typing import ResponseReturnValue
@@ -18,9 +19,7 @@ from src.message.create_message_service import (
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 
 
-def create_v4_message_blueprint(
-    dbc: db.Client, storage_client: GoogleCloudStorage
-) -> Blueprint:
+def create_v4_message_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage) -> Blueprint:
     v4_message_blueprint = Blueprint("message", __name__)
 
     @v4_message_blueprint.post("/stream")
@@ -39,15 +38,10 @@ def create_v4_message_blueprint(
                 **create_message_request.model_dump(), files=files, stop=stop_words
             )
 
-            stream_response = create_message_v4(
-                create_message_request_with_lists, dbc, storage_client=storage_client
-            )
+            stream_response = create_message_v4(create_message_request_with_lists, dbc, storage_client=storage_client)
             if isinstance(stream_response, Generator):
-                return Response(
-                    stream_with_context(stream_response), mimetype="application/jsonl"
-                )
-            else:
-                return jsonify(stream_response)
+                return Response(stream_with_context(stream_response), mimetype="application/jsonl")
+            return jsonify(stream_response)
 
         except ValidationError as e:
             return handle_validation_error(e)

@@ -1,4 +1,4 @@
-from typing import Generator
+from collections.abc import Generator
 
 from flask import Blueprint, Response, jsonify
 from flask.typing import ResponseReturnValue
@@ -16,9 +16,7 @@ from src.message.message_service import delete_message as delete_message_service
 from src.message.message_service import get_message
 
 
-def create_v3_message_blueprint(
-    dbc: db.Client, storage_client: GoogleCloudStorage
-) -> Blueprint:
+def create_v3_message_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage) -> Blueprint:
     v3_message_blueprint = Blueprint(name="message", import_name=__name__)
 
     @v3_message_blueprint.post("/")
@@ -28,14 +26,11 @@ def create_v3_message_blueprint(
         create_message_request: CreateMessageRequestV3,
     ) -> ResponseReturnValue:
         try:
-            response = create_message_service(
-                create_message_request, dbc, storage_client=storage_client
-            )
+            response = create_message_service(create_message_request, dbc, storage_client=storage_client)
 
             if isinstance(response, Generator):
                 return Response(response, mimetype="application/jsonl")
-            else:
-                return jsonify(response)
+            return jsonify(response)
 
         except ValidationError as e:
             return handle_validation_error(e)

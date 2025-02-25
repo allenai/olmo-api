@@ -1,4 +1,4 @@
-from typing import Optional, cast
+from typing import cast
 
 import requests
 from flask import current_app
@@ -9,7 +9,7 @@ from src.config import cfg
 HUBSPOT_URL = "https://api.hubapi.com"
 
 
-def get_contact(user_info: Optional[UserInfo]):
+def get_contact(user_info: UserInfo | None):
     url = f"{HUBSPOT_URL}/crm/v3/objects/contacts/search"
 
     if user_info is None:
@@ -69,6 +69,4 @@ def create_contact():
     if response.status_code == 201:
         current_app.logger.info("Contact created successfully:", response.json())
     else:
-        current_app.logger.error(
-            "Error creating contact:", response.status_code, response.text
-        )
+        current_app.logger.error("Error creating contact:", response.status_code, response.text)

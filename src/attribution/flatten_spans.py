@@ -1,6 +1,7 @@
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from itertools import islice
-from typing import Iterable, List, Sequence, cast
+from typing import cast
 
 from src.attribution.infini_gram_api_client.models.attribution_document_metadata import (
     AttributionDocumentMetadata,
@@ -17,7 +18,7 @@ class IntermediateAttributionDocument:
     display_length: int
     needle_offset: int
     metadata: AttributionDocumentMetadata
-    token_ids: List[int]
+    token_ids: list[int]
     text: str
     display_length_long: int
     needle_offset_long: int
@@ -38,14 +39,14 @@ class FlattenedSpan:
     text: str
     left: int
     right: int
-    nested_spans: List[AttributionSpan]
-    documents: List[FlattenedSpanDocument]
+    nested_spans: list[AttributionSpan]
+    documents: list[FlattenedSpanDocument]
 
 
 def flatten_spans(
     spans: Sequence[AttributionSpan],
     input_tokens: Iterable[str],
-) -> List[FlattenedSpan]:
+) -> list[FlattenedSpan]:
     # We're sorting by left position here first because that helps clean up some edge cases that happen if we only sort by length
     # Sorting by length lets us reduce the number of loops we do math in and (i think) removes the need to account for double-nested spans
     spans_sorted_by_left_position_then_length = sorted(
@@ -53,8 +54,8 @@ def flatten_spans(
         key=lambda span: (span.left, span.length),
     )
 
-    top_level_spans: List[FlattenedSpan] = []
-    spans_already_nested: List[int] = []
+    top_level_spans: list[FlattenedSpan] = []
+    spans_already_nested: list[int] = []
 
     # starting from the first span in the text (lowest left value), check to see if any spans overlap it or are inside it
     for i, span in enumerate(spans_sorted_by_left_position_then_length):
@@ -65,23 +66,18 @@ def flatten_spans(
         left = span.left
         right = span.right
         # This span is a nested span for the top level span, even if there's nothing else under it.
-        nested_spans: List[AttributionSpan] = [span]
+        nested_spans: list[AttributionSpan] = [span]
 
         next_index = i + 1
         for j, span_to_check in enumerate(
             # check for nested spans that come after this one in the list
-            iterable=islice(
-                spans_sorted_by_left_position_then_length, next_index, None
-            ),
+            iterable=islice(spans_sorted_by_left_position_then_length, next_index, None),
             start=next_index,
         ):
             if j in spans_already_nested:
                 continue
 
-            if (
-                left <= span_to_check.left < right
-                or left <= span_to_check.right < right
-            ):
+            if left <= span_to_check.left < right or left <= span_to_check.right < right:
                 spans_already_nested.append(j)
                 nested_spans.append(span_to_check)
 
@@ -109,9 +105,7 @@ def flatten_spans(
                 span_text=overlapping_span.text,
             )
             for overlapping_span in nested_spans
-            for document in cast(
-                list[IntermediateAttributionDocument], overlapping_span.documents
-            )
+            for document in cast(list[IntermediateAttributionDocument], overlapping_span.documents)
         ]
 
         text = "".join(islice(input_tokens, left, right))

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from itertools import islice
-from typing import Iterable, List, Sequence
+from typing import Iterable, List, Sequence, cast
 
 from src.attribution.infini_gram_api_client.models.attribution_document_metadata import (
     AttributionDocumentMetadata,
@@ -104,11 +104,14 @@ def flatten_spans(
                 display_offset_snippet=document.display_offset_snippet,
                 needle_offset_snippet=document.needle_offset_snippet,
                 text_snippet=document.text_snippet,
-                relevance_score=document.relevance_score,  # type: ignore[attr-defined]
+                # we add relevance_score in the intermediate document
+                relevance_score=document.relevance_score,
                 span_text=overlapping_span.text,
             )
             for overlapping_span in nested_spans
-            for document in overlapping_span.documents
+            for document in cast(
+                list[IntermediateAttributionDocument], overlapping_span.documents
+            )
         ]
 
         text = "".join(islice(input_tokens, left, right))

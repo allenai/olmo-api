@@ -1,5 +1,6 @@
 from enum import StrEnum
-from typing import TypedDict
+
+from typing_extensions import TypedDict
 
 
 class ModelType(StrEnum):

@@ -7,6 +7,7 @@ from typing import Any
 from flask.json.provider import JSONProvider
 from pydantic import BaseModel
 from pythonjsonlogger import jsonlogger
+from werkzeug.datastructures import FileStorage
 
 
 class StackdriverJsonFormatter(jsonlogger.JsonFormatter):
@@ -37,6 +38,8 @@ class CustomEncoder(json.JSONEncoder):
             return obj.model_dump()
         if is_dataclass(obj):
             return asdict(obj)
+        if isinstance(obj, FileStorage):
+            return obj.filename
         return json.JSONEncoder.default(self, obj)
 
 

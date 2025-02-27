@@ -266,3 +266,50 @@ CREATE INDEX IF NOT EXISTS message_original_fkey_ix ON message (original);
 CREATE INDEX IF NOT EXISTS message_parent_fkey_ix ON message (parent);
 CREATE INDEX IF NOT EXISTS message_created_ix ON message (created)
 WHERE message.created != NULL;
+
+CREATE OR REPLACE VIEW playground_messages_internal_only AS
+select message.id,
+  message.content,
+  message.creator,
+  message.role,
+  message.opts,
+  message.root,
+  message.created,
+  message.deleted,
+  message.parent,
+  message.template,
+  message.logprobs,
+  message.completion,
+  message.final,
+  message.original,
+  message.private,
+  -- BigQuery doesn't like enums so we cast it to text here
+  message.model_type::TEXT,
+  message.finish_reason,
+  message.harmful,
+  message.model_id,
+  message.model_host,
+  message.expiration_time,
+  message.file_urls,
+  label.rating as label_rating,
+  label.creator as label_creator,
+  label.comment as label_comment,
+  label.created as label_created,
+  label.deleted as label_deleted,
+  completion.input as completion_input,
+  completion.outputs as completion_outputs,
+  completion.opts as completion_opts,
+  completion.model as completion_model,
+  completion.sha as completion_sha,
+  completion.created as completion_created,
+  completion.tokenize_ms as completion_tokenize_ms,
+  completion.generation_ms as completion_generation_ms,
+  completion.input_tokens as completion_input_tokens,
+  completion.output_tokens as completion_output_tokens
+from message
+  JOIN olmo_user ON message.creator = olmo_user.client
+  LEFT JOIN label ON label.message = message.id
+  LEFT JOIN completion on completion.id = message.completion
+where message.private != TRUE;
+
+GRANT SELECT ON TABLE playground_messages_internal_only TO playground_messages_viewer;

@@ -594,10 +594,8 @@ def create_message_v4(
         captchaToken=request.captchaToken,
     )
 
-    model = get_model_by_host_and_id(request.host, request.model)
-    validate_message_files_from_config(
-        request.files,
-    )
+    model_config = get_model_by_host_and_id(mapped_request.host, mapped_request.model)
+    validate_message_files_from_config(request.files, config=model_config, has_parent=mapped_request.parent is not None)
 
     return stream_new_message(mapped_request, dbc, storage_client=storage_client, checker_type=checker_type)
 

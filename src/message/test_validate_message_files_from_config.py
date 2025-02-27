@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from io import StringIO
-from typing import IO, Any, Optional, cast
+from typing import IO, Any, cast
 
 import pytest
 from flask_pydantic_api.utils import UploadedFile
@@ -13,7 +13,7 @@ from src.message.validate_message_files_from_config import validate_message_file
 
 def create_model_config(
     # Allowing dict[str, Any] keeps autocomplete but gets the typing to stop yelling at us if we don't have the entire dict
-    partial_config: Optional[MultiModalModelConfig | dict[str, Any]] = None,
+    partial_config: MultiModalModelConfig | dict[str, Any] | None = None,
 ) -> Model | MultiModalModel:
     config: MultiModalModelConfig = {
         "id": "id",

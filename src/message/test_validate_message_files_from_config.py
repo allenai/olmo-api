@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from io import StringIO
 from typing import IO, Any, Optional, cast
 
@@ -5,6 +6,7 @@ import pytest
 from flask_pydantic_api.utils import UploadedFile
 from pydantic import ValidationError
 
+from src.config.Model import Model, MultiModalModel, map_model_from_config
 from src.config.ModelConfig import FileRequiredToPromptOption, ModelHost, ModelType, MultiModalModelConfig
 from src.message.validate_message_files_from_config import validate_message_files_from_config
 
@@ -12,7 +14,7 @@ from src.message.validate_message_files_from_config import validate_message_file
 def create_model_config(
     # Allowing dict[str, Any] keeps autocomplete but gets the typing to stop yelling at us if we don't have the entire dict
     partial_config: Optional[MultiModalModelConfig | dict[str, Any]] = None,
-) -> MultiModalModelConfig:
+) -> Model | MultiModalModel:
     config: MultiModalModelConfig = {
         "id": "id",
         "name": "name",
@@ -28,15 +30,19 @@ def create_model_config(
         "accepts_files": True,
         "accepted_file_types": [],
         "max_files_per_message": None,
-        "require_file_to_prompt": None,
+        "require_file_to_prompt": FileRequiredToPromptOption.NoRequirement,
         "max_total_file_size": None,
-        "allow_files_in_followups": None,
+        "allow_files_in_followups": False,
     }
 
     if partial_config is not None:
         config.update(cast(MultiModalModelConfig, partial_config))
 
-    return config
+    return map_model_from_config(config)
+
+
+def create_uploaded_files(count: int) -> Sequence[UploadedFile]:
+    return [UploadedFile(cast(IO, StringIO("foo")))] * count
 
 
 @pytest.mark.parametrize(
@@ -82,7 +88,7 @@ def create_model_config(
     ],
 )
 def test_file_validation_errors(model_config, has_parent: bool, error_message: str, uploaded_file_count: int):  # noqa: FBT001
-    uploaded_files = [UploadedFile(cast(IO, StringIO("foo")))] * uploaded_file_count
+    uploaded_files = create_uploaded_files(uploaded_file_count)
 
     with pytest.raises(ValidationError, match=error_message):
         validate_message_files_from_config(uploaded_files, model_config, has_parent=has_parent)
@@ -126,8 +132,36 @@ def test_file_validation_errors(model_config, has_parent: bool, error_message: s
             2,
             id="send the max amount of files",
         ),
+        pytest.param(
+            create_model_config({"max_files_per_message": 2}),
+            False,
+            1,
+            id="send below the max amount of files",
+        ),
+        pytest.param(
+            create_model_config({"require_file_to_prompt": FileRequiredToPromptOption.NoRequirement}),
+            False,
+            0,
+            id="send no files when not required",
+        ),
     ],
 )
-def test_file_validation_passes(model_config, has_parent: bool, uploaded_file_count: int):  # noqa: FBT001
-    uploaded_files = [UploadedFile(cast(IO, StringIO("foo")))] * uploaded_file_count
+def test_file_validation_passes(model_config: MultiModalModel, has_parent: bool, uploaded_file_count: int):  # noqa: FBT001
+    uploaded_files = create_uploaded_files(uploaded_file_count)
+
     validate_message_files_from_config(uploaded_files, config=model_config, has_parent=has_parent)
+
+
+def test_file_validation_fails_if_a_file_is_sent_to_a_non_multi_modal_model() -> None:
+    uploaded_files = create_uploaded_files(1)
+    model_config = Model(
+        id="id",
+        host=ModelHost.Modal,
+        name="name",
+        description="description",
+        compute_source_id="compute_source_id",
+        model_type=ModelType.Chat,
+    )
+
+    with pytest.raises(ValidationError, match=""):
+        validate_message_files_from_config(request_files=uploaded_files, config=model_config, has_parent=False)

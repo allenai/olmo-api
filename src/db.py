@@ -4,7 +4,7 @@ from typing import Self
 
 from psycopg_pool import ConnectionPool
 
-from .config import get_config
+from .config.Config import Database
 from .dao import completion, datachip, label, message, template, user
 
 
@@ -22,7 +22,7 @@ class Client:
         self.pool.close()
 
     @classmethod
-    def from_config(cls, c: get_config.Database) -> Self:
+    def from_config(cls, c: Database) -> Self:
         logging.getLogger("psycopg.pool").setLevel(logging.INFO)
         logging.getLogger().debug(
             f"Creating connection pool for worker pid {os.getpid()} with min_size {c.min_size}, max_size {c.max_size}"

@@ -1,4 +1,5 @@
-from src.config import Model, cfg
+from src.config.Config import Model
+from src.config.get_config import cfg
 from src.config.ModelConfig import ModelHost
 
 

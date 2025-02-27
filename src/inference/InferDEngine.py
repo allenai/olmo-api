@@ -3,17 +3,9 @@ from dataclasses import asdict
 
 from inferd import Client as InferdClient
 
-<<<<<<< Updated upstream
-from src.config import Model, cfg
-from src.config.get_models_by_host import get_models_by_host
-||||||| Stash base
-from src.config import Model, cfg
-from src.config.get_models import get_models_by_host
-=======
-from src.config import Model
+from src.config.Config import Model
 from src.config.get_config import cfg
 from src.config.get_models import get_models_by_host
->>>>>>> Stashed changes
 from src.config.ModelConfig import ModelHost
 from src.inference.InferenceEngine import (
     InferenceEngine,

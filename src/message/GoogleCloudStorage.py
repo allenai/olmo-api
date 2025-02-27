@@ -3,14 +3,14 @@ from time import time_ns
 from flask import current_app
 from google.cloud.storage import Bucket, Client
 
-from src import config
+from src.config import get_config
 
 
 class GoogleCloudStorage:
     client: Client
     bucket: Bucket
 
-    def __init__(self, bucket_name=config.cfg.google_cloud_services.storage_bucket):
+    def __init__(self, bucket_name=get_config.cfg.google_cloud_services.storage_bucket):
         self.client = Client()
         self.bucket = self.client.bucket(bucket_name)
 

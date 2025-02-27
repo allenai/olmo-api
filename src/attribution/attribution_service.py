@@ -26,7 +26,7 @@ from src.attribution.infini_gram_api_client.models.available_infini_gram_index_i
 from src.attribution.infini_gram_api_client.models.http_validation_error import (
     HTTPValidationError,
 )
-from src.config import cfg
+from src.config.get_config import cfg
 from src.util.pii_regex import does_contain_pii
 
 from .flatten_spans import (
@@ -191,9 +191,7 @@ def get_attribution(
         )
     except UnexpectedStatus as e:
         msg = f"Something went wrong when calling the infini-gram API: {e.status_code} {e.content.decode()}"
-        raise exceptions.BadGateway(
-            msg
-        )
+        raise exceptions.BadGateway(msg)
 
     if isinstance(attribution_response, HTTPValidationError):
         # validation error handling

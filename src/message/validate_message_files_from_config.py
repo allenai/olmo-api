@@ -17,6 +17,7 @@ def get_file_size(file: UploadedFile):
     return file_size
 
 
+# Using a Pydantic model to validate lets us easily create a ValidationError
 class CreateMessageRequestFilesValidator(BaseModel):
     files: Sequence[UploadedFile] | None = Field(default=None)
     has_parent: bool

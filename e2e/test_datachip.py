@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 
+import pytest
 import requests
 
 from . import base
@@ -8,6 +9,7 @@ from . import base
 class TestDatachipEndpoints(base.IntegrationTest):
     chips: list[tuple[str, base.AuthenticatedClient]] = []
 
+    @pytest.mark.skip(reason="Datachips are deprecated")
     def runTest(self):
         # Deleted datachip refs can't be reused, which means we need to prefix names used in this test.
         prefix = f"{type(self).__name__}_{datetime.now(UTC).strftime('%s')}_"

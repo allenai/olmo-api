@@ -191,7 +191,9 @@ def get_attribution(
         )
     except UnexpectedStatus as e:
         msg = f"Something went wrong when calling the infini-gram API: {e.status_code} {e.content.decode()}"
-        raise exceptions.BadGateway(msg)
+        raise exceptions.BadGateway(
+            msg
+        )
 
     if isinstance(attribution_response, HTTPValidationError):
         # validation error handling

@@ -17,9 +17,9 @@ def test_parse_valid_timedelta():
         ("42s", timedelta(seconds=42)),
     ]
     for input, expected in tests:
-        assert parse.timedelta_from_str(input) == expected, (
-            f'Failed to parse timedelta parse.timedelta("{input}") != {expected}'
-        )
+        assert (
+            parse.timedelta_from_str(input) == expected
+        ), f'Failed to parse timedelta parse.timedelta("{input}") != {expected}'
 
 
 def test_parse_invalid_timedelta():
@@ -30,7 +30,7 @@ def test_parse_invalid_timedelta():
         "1 hour",
         "1 minute",
         "1 second",
-        "1 month1d30m",
+        "1 month" "1d30m",
         "-1d",
         "1.5d",
     ]

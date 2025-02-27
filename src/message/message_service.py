@@ -31,7 +31,9 @@ def delete_message(id: str, dbc: db.Client):
 
     if root_message.creator != agent.client:
         msg = "The current thread was not created by the current user. You do not have permission to delete the current thread."
-        raise exceptions.Forbidden(msg)
+        raise exceptions.Forbidden(
+            msg
+        )
 
     # prevent deletion if the current thread is out of the 30-day window
     if datetime.now(UTC) - root_message.created > timedelta(days=30):

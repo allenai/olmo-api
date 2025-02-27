@@ -11,7 +11,7 @@ from flask import (
 from werkzeug import exceptions
 
 from src import db, util
-from src.attribution import attribution_blueprint
+from src.attribution.attribution_blueprint import attribution_blueprint
 from src.auth.auth_service import authn
 from src.config import get_config
 from src.dao import datachip, label, message, paged

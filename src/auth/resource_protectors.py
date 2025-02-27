@@ -6,6 +6,7 @@ from src.config.get_config import cfg
 
 validator = Auth0JWTBearerTokenValidator(domain=cfg.auth.domain, audience=cfg.auth.audience)
 
+
 required_auth_protector = ResourceProtector()
 required_auth_protector.register_token_validator(validator)
 

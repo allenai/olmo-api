@@ -1,1 +1,0 @@
-from .attribution_blueprint import attribution_blueprint as attribution_blueprint  # noqa: PLC0414

@@ -4,8 +4,6 @@ from typing import cast
 
 from werkzeug.local import LocalProxy
 
-# we're re-exporting everything from config
-from src.config.Config import *  # noqa: F403
 from src.config.Config import DEFAULT_CONFIG_PATH, Config
 
 

@@ -4,7 +4,7 @@ from time import time_ns
 import modal
 from flask import current_app
 
-from src import config
+from src.config import get_config
 from src.message.SafetyChecker import (
     SafetyChecker,
     SafetyCheckRequest,
@@ -44,7 +44,7 @@ class WildGuard(SafetyChecker):
     client: modal.Client
 
     def __init__(self) -> None:
-        self.client = modal.Client.from_credentials(config.cfg.modal.token, config.cfg.modal.token_secret)
+        self.client = modal.Client.from_credentials(get_config.cfg.modal.token, get_config.cfg.modal.token_secret)
 
     def check_request(self, req: SafetyCheckRequest) -> SafetyCheckResponse:
         f = modal.Function.lookup("wildguard", "wildguard_api", client=self.client)

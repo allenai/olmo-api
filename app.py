@@ -5,7 +5,8 @@ import os
 from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from src import config, db, error, util, v3
+from src import db, error, util, v3
+from src.config import get_config
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.v4 import create_v4_blueprint
 
@@ -16,7 +17,7 @@ def create_app():
     # Use ISO formatted datetimes
     app.json = util.CustomJSONProvider(app)
 
-    cfg = config.Config.load(os.environ.get("FLASK_CONFIG_PATH", config.DEFAULT_CONFIG_PATH))
+    cfg = get_config.Config.load(os.environ.get("FLASK_CONFIG_PATH", get_config.DEFAULT_CONFIG_PATH))
 
     dbc = db.Client.from_config(cfg.db)
     atexit.register(dbc.close)

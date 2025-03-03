@@ -17,7 +17,7 @@ from werkzeug.datastructures import FileStorage
 from src import db, parse, util
 from src.auth.auth_service import authn
 from src.bot_detection.create_assessment import create_assessment
-from src.config import cfg
+from src.config.get_config import cfg
 from src.dao import completion, message
 from src.inference.InferDEngine import InferDEngine
 from src.inference.InferenceEngine import (

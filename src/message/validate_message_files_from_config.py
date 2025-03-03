@@ -99,7 +99,7 @@ def validate_message_files_from_config(
         CreateMessageRequestFilesValidator(files=request_files, our_model_config=config, has_parent=has_parent)
     else:
         CreateMessageRequestFilesValidator(
-            files=[],
+            files=request_files,
             our_model_config=MultiModalModel.model_construct(**config.model_dump()),
             has_parent=has_parent,
         )

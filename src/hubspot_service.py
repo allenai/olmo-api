@@ -4,7 +4,7 @@ import requests
 from flask import current_app
 
 from src.auth.auth_service import UserInfo, get_user_info
-from src.config import cfg
+from src.config.get_config import cfg
 
 HUBSPOT_URL = "https://api.hubapi.com"
 

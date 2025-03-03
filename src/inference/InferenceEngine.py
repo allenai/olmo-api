@@ -6,7 +6,7 @@ from typing import Protocol
 
 from werkzeug.datastructures import FileStorage
 
-from src import config
+from src.config.Model import Model
 
 
 class FinishReason(StrEnum):
@@ -68,7 +68,7 @@ class InferenceOptions:
 
 class InferenceEngine(Protocol):
     @abstractmethod
-    def get_model_details(self, model_id: str) -> config.Model | None:
+    def get_model_details(self, model_id: str) -> Model | None:
         raise NotImplementedError
 
     @abstractmethod

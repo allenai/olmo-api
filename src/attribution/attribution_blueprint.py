@@ -2,7 +2,7 @@ from flask import Blueprint, Response, jsonify
 from flask_pydantic_api.api_wrapper import pydantic_api
 
 from src.attribution.attribution_service import GetAttributionRequest, get_attribution
-from src.config import cfg
+from src.config.get_config import cfg
 
 from .infini_gram_api_client import Client
 

@@ -10,9 +10,10 @@ from flask import (
 )
 from werkzeug import exceptions
 
-from src import config, db, util
-from src.attribution import attribution_blueprint
+from src import db, util
+from src.attribution.attribution_blueprint import attribution_blueprint
 from src.auth.auth_service import authn
+from src.config import get_config
 from src.dao import datachip, label, message, paged
 from src.inference.inference_service import get_available_models
 from src.log import logging_blueprint
@@ -197,7 +198,7 @@ class Server(Blueprint):
         agent = authn()
         # TODO: OEUI-141 we need to use Auth0 permissions instead of checking this list
         # Only admins can view completions, since they might be related to private messages.
-        if agent.client not in config.cfg.server.admins:
+        if agent.client not in get_config.cfg.server.admins:
             raise exceptions.Forbidden
         c = self.dbc.completion.get(id)
         if c is None:

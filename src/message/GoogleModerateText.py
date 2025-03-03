@@ -8,7 +8,7 @@ from google.cloud.language_v2 import (
     ModerateTextResponse,
 )
 
-from src import config
+from src.config import get_config
 from src.message.SafetyChecker import (
     SafetyChecker,
     SafetyCheckRequest,
@@ -61,7 +61,7 @@ class GoogleModerateText(SafetyChecker):
     client: LanguageServiceClient
 
     def __init__(self):
-        self.client = LanguageServiceClient(client_options={"api_key": config.cfg.google_cloud_services.api_key})
+        self.client = LanguageServiceClient(client_options={"api_key": get_config.cfg.google_cloud_services.api_key})
 
     def check_request(self, req: SafetyCheckRequest) -> SafetyCheckResponse:
         request = ModerateTextRequest(document=Document(content=req.content, type=Document.Type.PLAIN_TEXT))

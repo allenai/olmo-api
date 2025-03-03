@@ -6,7 +6,7 @@ from flask import Request, current_app, request
 from werkzeug import exceptions
 
 from src.auth.resource_protectors import anonymous_auth_protector
-from src.config import cfg
+from src.config.get_config import cfg
 
 from .token import Token
 

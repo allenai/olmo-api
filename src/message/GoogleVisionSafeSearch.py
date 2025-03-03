@@ -2,7 +2,7 @@ import requests
 from flask import current_app
 from google.cloud.vision import Likelihood, SafeSearchAnnotation
 
-from src import config
+from src.config import get_config
 from src.message.SafetyChecker import (
     SafetyChecker,
     SafetyCheckRequest,
@@ -41,7 +41,7 @@ class GoogleVisionSafeSearch(SafetyChecker):
     def check_request(self, req: SafetyCheckRequest):
         headers = {
             "Content-Type": "application/json",
-            "X-goog-api-key": config.cfg.google_cloud_services.api_key,
+            "X-goog-api-key": get_config.cfg.google_cloud_services.api_key,
         }
 
         request = {

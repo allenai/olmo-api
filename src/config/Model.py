@@ -65,7 +65,7 @@ class MultiModalModel(Model):
 
 
 def map_model_from_config(model_config: ModelConfig | MultiModalModelConfig):
-    if model_config.get("accepted_file_types") is not None:
+    if model_config.get("accepts_files") is True:
         return MultiModalModel.model_validate(model_config)
 
     return Model.model_validate(model_config)

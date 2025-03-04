@@ -93,7 +93,7 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     host: str
     files: Sequence[UploadedFile] | None = Field(default=None)
     client: str
-    captchaToken: str | None = Field(default=None)
+    captchaToken: str | None = Field(default=None)  # noqa: N815
 
     model_config = ConfigDict(validate_assignment=True)
 

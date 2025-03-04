@@ -23,6 +23,7 @@ class Model(BaseModel):
     family_name: str | None = None
     available_time: AwareDatetime | None = Field(default=None, exclude=True)
     deprecation_time: AwareDatetime | None = Field(default=None, exclude=True)
+    accepts_files: bool = Field(default=False)
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -56,7 +57,6 @@ class Model(BaseModel):
 
 
 class MultiModalModel(Model):
-    accepts_files: bool = Field(default=False)
     accepted_file_types: list[str]
     max_files_per_message: int | None = Field(default=None)
     require_file_to_prompt: FileRequiredToPromptOption = Field(default=FileRequiredToPromptOption.NoRequirement)
@@ -65,7 +65,7 @@ class MultiModalModel(Model):
 
 
 def map_model_from_config(model_config: ModelConfig | MultiModalModelConfig):
-    if model_config.get("accepted_file_types") is not None:
+    if model_config.get("accepts_files") is True:
         return MultiModalModel.model_validate(model_config)
 
     return Model.model_validate(model_config)

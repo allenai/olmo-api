@@ -1,6 +1,8 @@
 import os
 
-from src.message.file_validation.check_is_file_in_allowed_file_types import check_is_file_in_allowed_file_types
+from src.message.file_validation.check_is_file_in_allowed_file_types import (
+    check_is_file_in_allowed_file_types,
+)
 
 
 def test_returns_true_when_passed_a_png():
@@ -8,8 +10,13 @@ def test_returns_true_when_passed_a_png():
         png_result = check_is_file_in_allowed_file_types(f, allowed_file_types=["image/png"])
         assert png_result is True
 
-        star_result = check_is_file_in_allowed_file_types(f, allowed_file_types=["image/*"])
+        star_result = check_is_file_in_allowed_file_types(file_stream=f, allowed_file_types=["image/*"])
         assert star_result is True
+
+        multi_result = check_is_file_in_allowed_file_types(
+            file_stream=f, allowed_file_types=["application.pdf", "image/png"]
+        )
+        assert multi_result is True
 
 
 def test_returns_false_when_passed_a_png():
@@ -28,6 +35,11 @@ def test_returns_true_when_passed_a_pdf():
 
         star_result = check_is_file_in_allowed_file_types(f, allowed_file_types=["application/*"])
         assert star_result is True
+
+        multi_result = check_is_file_in_allowed_file_types(
+            file_stream=f, allowed_file_types=["image/png", "application.pdf"]
+        )
+        assert multi_result is True
 
 
 def test_returns_false_when_passed_a_pdf():

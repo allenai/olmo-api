@@ -85,6 +85,13 @@ def create_uploaded_files(count: int) -> Sequence[UploadedFile]:
             3,
             id="too many files",
         ),
+        pytest.param(
+            create_model_config({"max_total_file_size": "2B"}),
+            False,
+            "This model has a max total file size of 2B",
+            1,
+            id="files too large",
+        ),
     ],
 )
 def test_file_validation_errors(model_config, has_parent: bool, error_message: str, uploaded_file_count: int):  # noqa: FBT001

@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from pydantic import AwareDatetime, BaseModel, Field, computed_field
+from pydantic import AwareDatetime, BaseModel, ByteSize, Field, computed_field
 
 from src.config.ModelConfig import (
     FileRequiredToPromptOption,
@@ -60,7 +60,7 @@ class MultiModalModel(Model):
     accepted_file_types: list[str]
     max_files_per_message: int | None = Field(default=None)
     require_file_to_prompt: FileRequiredToPromptOption = Field(default=FileRequiredToPromptOption.NoRequirement)
-    max_total_file_size: int | None = Field(default=None)
+    max_total_file_size: ByteSize | None = Field(default=None)
     allow_files_in_followups: bool = Field(default=False)
 
 

@@ -82,7 +82,9 @@ class CreateMessageRequestFilesValidator(BaseModel):
             total_file_size = sum(file_sizes)
 
             if total_file_size > max_total_file_size:
-                error_message = f"This model has a max total file size of {max_total_file_size}"
+                error_message = (
+                    f"This model has a max total file size of {max_total_file_size.human_readable(decimal=True)}"
+                )
                 raise ValueError(error_message)
 
         return self

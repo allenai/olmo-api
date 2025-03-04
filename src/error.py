@@ -8,7 +8,9 @@ from werkzeug.exceptions import HTTPException
 
 
 def handle_validation_error(e: ValidationError):
-    return make_error_response(400, {"message": str(e), "validation_errors": e.errors(include_context=False)})
+    return make_error_response(
+        400, {"message": str(e), "validation_errors": e.errors(include_context=False, include_input=False)}
+    )
 
 
 def make_error_response(code: int | None = None, message: str | dict | None = None) -> ResponseReturnValue:

@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from typing import Self
 
 from flask_pydantic_api.utils import UploadedFile
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from src.config.Model import Model, MultiModalModel
 from src.config.ModelConfig import FileRequiredToPromptOption
@@ -23,6 +23,8 @@ class CreateMessageRequestFilesValidator(BaseModel):
     has_parent: bool
     # named with our_ in front so it doesn't conflict with pydantic's model_config
     our_model_config: MultiModalModel
+
+    model_config = ConfigDict(hide_input_in_errors=True)
 
     @model_validator(mode="after")
     def validate_no_files_when_not_accepted(self) -> Self:

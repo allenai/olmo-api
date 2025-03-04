@@ -7,7 +7,7 @@ from werkzeug.datastructures import FileStorage
 
 from src.config.Config import Model
 from src.config.get_config import cfg
-from src.config.get_models_by_host import get_models_by_host
+from src.config.get_models import get_models_by_host
 from src.config.ModelConfig import ModelHost
 from src.dao.message import Role
 from src.inference.InferenceEngine import (

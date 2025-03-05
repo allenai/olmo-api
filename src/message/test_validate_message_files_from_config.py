@@ -1,3 +1,4 @@
+import os
 from collections.abc import Sequence
 from io import StringIO
 from typing import IO, Any, cast
@@ -172,3 +173,22 @@ def test_file_validation_fails_if_a_file_is_sent_to_a_non_multi_modal_model() ->
 
     with pytest.raises(ValidationError, match=""):
         validate_message_files_from_config(request_files=uploaded_files, config=model_config, has_parent=False)
+
+
+def test_file_validation_fails_if_a_file_type_is_not_allowed() -> None:
+    model_config = create_model_config({"accepted_file_types": ["application/pdf", "image/jpg"]})
+    with open(os.path.join(os.path.dirname(__file__), "file_validation", "test-small-png.png"), "rb") as f:
+        uploaded_file = UploadedFile(stream=f)
+
+        with pytest.raises(
+            ValidationError, match=r"This model only accepts files of types \['application/pdf', 'image/jpg'\]"
+        ):
+            validate_message_files_from_config(request_files=[uploaded_file], config=model_config, has_parent=False)
+
+
+def test_file_validation_passes_if_a_file_type_is_allowed() -> None:
+    model_config = create_model_config({"accepted_file_types": ["application/pdf", "image/png"]})
+    with open(os.path.join(os.path.dirname(__file__), "file_validation", "test-small-png.png"), "rb") as f:
+        uploaded_file = UploadedFile(stream=f)
+
+        validate_message_files_from_config(request_files=[uploaded_file], config=model_config, has_parent=False)

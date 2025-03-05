@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from src.config.Model import Model, MultiModalModel
 from src.config.ModelConfig import FileRequiredToPromptOption
+from src.message.file_validation.check_is_file_in_allowed_file_types import check_is_file_in_allowed_file_types
 
 
 def get_file_size(file: UploadedFile):
@@ -93,6 +94,17 @@ class CreateMessageRequestFilesValidator(BaseModel):
 
     @model_validator(mode="after")
     def validate_allowed_file_types(self) -> Self:
+        if self.files is None:
+            return self
+
+        do_files_match_allowed_file_types = all(
+            check_is_file_in_allowed_file_types(file.stream, self.our_model_config.accepted_file_types)
+            for file in self.files
+        )
+
+        if not do_files_match_allowed_file_types:
+            error_message = f"This model only accepts files of types {self.our_model_config.accepted_file_types}"
+            raise ValueError(error_message)
         return self
 
 

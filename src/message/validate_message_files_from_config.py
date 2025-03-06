@@ -40,9 +40,6 @@ class CreateMessageRequestFilesValidator(BaseModel):
         require_file_to_prompt = self.our_model_config.require_file_to_prompt
         are_files_present = self.files is not None and len(self.files) > 0
 
-        if require_file_to_prompt is FileRequiredToPromptOption.NoRequirement or are_files_present:
-            return self
-
         if require_file_to_prompt is FileRequiredToPromptOption.AllMessages and not are_files_present:
             error_message = "This model requires a file to be sent with all messages"
             raise ValueError(error_message)

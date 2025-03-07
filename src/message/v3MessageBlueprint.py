@@ -42,7 +42,7 @@ def create_v3_message_blueprint(dbc: db.Client, storage_client: GoogleCloudStora
 
     @v3_message_blueprint.delete("/<string:id>")
     def delete_message(id: str):
-        deleted_message = delete_message_service(id=id, dbc=dbc)
+        deleted_message = delete_message_service(id=id, dbc=dbc, storage_client=storage_client)
         return jsonify(deleted_message)
 
     return v3_message_blueprint

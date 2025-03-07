@@ -1,3 +1,4 @@
+import re
 from time import time_ns
 
 from flask import current_app
@@ -48,6 +49,10 @@ class GoogleCloudStorage:
             "filename": filename,
             "duration_ms": (end_ns - start_ns) / 1_000_000,
         })
+
+    def delete_multiple_files_by_url(self, file_urls: list[str]):
+        file_names = [re.sub(f"{self.client.api_endpoint}/{self.bucket.name}/", "", file_url) for file_url in file_urls]
+        self.bucket.delete_blobs(file_names)
 
     def get_file_link(self, filename: str):
         blob = self.bucket.get_blob(blob_name=filename)

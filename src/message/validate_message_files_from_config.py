@@ -52,6 +52,10 @@ class CreateMessageRequestFilesValidator(BaseModel):
             error_message = "This model requires a file to be sent with the first message"
             raise ValueError(error_message)
 
+        if require_file_to_prompt is FileRequiredToPromptOption.FirstMessage and are_files_present and self.has_parent:
+            error_message = "This model doesn't allow files to be sent in follow-up messages"
+            raise ValueError(error_message)
+
         return self
 
     @model_validator(mode="after")

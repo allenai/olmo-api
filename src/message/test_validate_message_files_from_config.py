@@ -66,6 +66,25 @@ def create_uploaded_files(count: int) -> Sequence[UploadedFile]:
             id="file required with first message",
         ),
         pytest.param(
+            create_model_config({
+                "require_file_to_prompt": FileRequiredToPromptOption.FirstMessage,
+            }),
+            True,
+            "This model doesn't allow files to be sent in follow-up messages",
+            1,
+            id="file should not be presented with second message",
+        ),
+        pytest.param(
+            create_model_config({
+                "require_file_to_prompt": FileRequiredToPromptOption.FirstMessage,
+                "allow_files_in_followups": True,
+            }),
+            True,
+            "This model doesn't allow files to be sent in follow-up messages",
+            1,
+            id="file should not be presented with second message when config is wrong",
+        ),
+        pytest.param(
             create_model_config({"require_file_to_prompt": FileRequiredToPromptOption.AllMessages}),
             False,
             "This model requires a file to be sent with all messages",

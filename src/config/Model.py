@@ -57,11 +57,25 @@ class Model(BaseModel):
 
 
 class MultiModalModel(Model):
-    accepted_file_types: list[str]
-    max_files_per_message: int | None = Field(default=None)
-    require_file_to_prompt: FileRequiredToPromptOption = Field(default=FileRequiredToPromptOption.NoRequirement)
-    max_total_file_size: ByteSize | None = Field(default=None)
-    allow_files_in_followups: bool = Field(default=False)
+    accepted_file_types: list[str] = Field(
+        description="A list of file type specifiers: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#unique_file_type_specifiers",
+        examples=[["image/*", "image/png", "image/jpg"], ["video/mp4"]],
+    )
+    max_files_per_message: int | None = Field(
+        default=None, description="The maximum number of files the user is allowed to send with a message"
+    )
+    require_file_to_prompt: FileRequiredToPromptOption = Field(
+        default=FileRequiredToPromptOption.NoRequirement,
+        description="Defines if a user is required to send files with messages. Not intended to prevent users from sending files with follow-up messages.",
+    )
+    max_total_file_size: ByteSize | None = Field(
+        default=None,
+        description="The maximum total file size a user is allowed to send. Adds up the size of every file.",
+    )
+    allow_files_in_followups: bool = Field(
+        default=False,
+        description="Defines if a user is allowed to send files with follow-up prompts. To require a file to prompt, use require_file_to_prompt",
+    )
 
 
 def map_model_from_config(model_config: ModelConfig | MultiModalModelConfig):

@@ -139,6 +139,15 @@ def test_file_validation_errors(model_config, has_parent: bool, error_message: s
             id="send a file with the first message when required",
         ),
         pytest.param(
+            create_model_config({
+                "require_file_to_prompt": FileRequiredToPromptOption.FirstMessage,
+                "allow_files_in_followups": True,
+            }),
+            True,
+            1,
+            id="send a file with the second message when allowed but not required",
+        ),
+        pytest.param(
             create_model_config({"require_file_to_prompt": FileRequiredToPromptOption.AllMessages}),
             False,
             1,

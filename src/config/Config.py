@@ -126,6 +126,8 @@ class Config:
                         "OLMoE-1B-7B-0924-Instruct": "olmoe",
                         "OLMo-2-1124-13B-Instruct": "olmo-2-1124-13b",
                         "olmoe-0125": "olmo-2-1124-13b",
+                        # TODO: point to the newest index once we add more training data
+                        "olmo-2-0325-32b-instruct": "olmo-2-1124-13b",
                     },
                     api_url="https://infinigram-api.allen.ai",
                     # api_url="http://host.docker.internal:8008",

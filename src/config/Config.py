@@ -120,14 +120,9 @@ class Config:
                 ),
                 infini_gram=InfiniGram(
                     model_index_map={
-                        "olmo-7b-base": "dolma-1_7",
-                        "olmo-7b-chat": "dolma-1_7",
-                        "OLMo-peteish-dpo-preview": "olmoe",
-                        "OLMoE-1B-7B-0924-Instruct": "olmoe",
                         "OLMo-2-1124-13B-Instruct": "olmo-2-1124-13b",
-                        "olmoe-0125": "olmo-2-1124-13b",
-                        # TODO: point to the newest index once we add more training data
-                        "olmo-2-0325-32b-instruct": "olmo-2-1124-13b",
+                        "olmoe-0125": "olmoe-0125-1b-7b",
+                        "olmo-2-0325-32b-instruct": "olmo-2-0325-32b",
                     },
                     api_url="https://infinigram-api.allen.ai",
                     # api_url="http://host.docker.internal:8008",

@@ -806,7 +806,7 @@ class Store:
         with self.pool.connection() as conn:
             q = """
                 UPDATE message
-                SET creator = %(new_user_id)s
+                SET creator = %(new_user_id)s, expiration_time = NULL
                 WHERE creator = %(previous_user_id)s
                 """
 

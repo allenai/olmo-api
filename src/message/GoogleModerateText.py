@@ -18,7 +18,8 @@ from src.message.SafetyChecker import (
 
 class GoogleModerateTextResponse(SafetyCheckResponse):
     result: ModerateTextResponse
-    threshold = 0.9
+    confidence_threshold = 0.5
+    severity_threshold = 0.5
     unsafe_violation_categories = [
         "Toxic",
         "Derogatory",
@@ -30,6 +31,7 @@ class GoogleModerateTextResponse(SafetyCheckResponse):
         "Firearms & Weapons",
         "Public Safety",
         "War & Conflict",
+        "Dangerous Content"
     ]
 
     def __init__(self, result: ModerateTextResponse):
@@ -44,15 +46,15 @@ class GoogleModerateTextResponse(SafetyCheckResponse):
         violations = []
 
         for category in self.result.moderation_categories:
-            if category.name in self.unsafe_violation_categories and category.confidence >= self.threshold:
-                violations.append(f"{category.name}: {category.confidence}")
+            if category.name in self.unsafe_violation_categories and category.confidence >= self.confidence_threshold and category.severity >= self.severity_threshold:
+                violations.append(f"<{category.name}> confidence: {category.confidence}; severity: {category.severity}")
 
         return violations
 
     def get_scores(self):
         scores = []
         for category in self.result.moderation_categories:
-            scores.append({"name": category.name, "confidence": category.confidence})
+            scores.append({"name": category.name, "confidence": category.confidence, "severity": category.severity})
 
         return scores
 
@@ -64,7 +66,7 @@ class GoogleModerateText(SafetyChecker):
         self.client = LanguageServiceClient(client_options={"api_key": get_config.cfg.google_cloud_services.api_key})
 
     def check_request(self, req: SafetyCheckRequest) -> SafetyCheckResponse:
-        request = ModerateTextRequest(document=Document(content=req.content, type=Document.Type.PLAIN_TEXT))
+        request = ModerateTextRequest(document=Document(content=req.content, type=Document.Type.PLAIN_TEXT), model_version="MODEL_VERSION_2")
 
         start_ns = time_ns()
         result = self.client.moderate_text(request)

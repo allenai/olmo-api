@@ -52,9 +52,34 @@ class GoogleCloudStorage:
         })
 
     def delete_multiple_files_by_url(self, file_urls: list[str]):
+        start_ns = time_ns()
+        
         file_names = [re.sub(f"{self.client.api_endpoint}/{self.bucket.name}/", "", file_url) for file_url in file_urls]
-        self.bucket.delete_blobs(file_names)
+        
+        found_blobs = []
+        for name in file_names:
+            blob = self.bucket.get_blob(blob_name=name)
+            if (blob is not None):
+                found_blobs.append(blob)
+        
+        blob_names = [blob.name for blob in found_blobs]
 
+        try:
+            self.bucket.delete_blobs(found_blobs)
+        except Exception as e:
+            current_app.logger.exception(
+                f"Failed to delete {','.join(blob_names)} from the bucket:{self.bucket.name} on GoogleCloudStorage",
+                repr(e),
+            )
+
+        end_ns = time_ns()
+
+        current_app.logger.info({
+            "service": "GoogleCloudStorage",
+            "action": "batch_delete",
+            "filename": ','.join(blob_names),
+            "duration_ms": (end_ns - start_ns) / 1_000_000,
+        })
 
     def move_file(self, old_name: str, new_name: str):
         start_ns = time_ns()
@@ -66,7 +91,7 @@ class GoogleCloudStorage:
                 )
 
                 raise Exception
-            
+
             new_blob = self.bucket.rename_blob(source_blob, new_name=new_name)
             new_blob.make_public()
 

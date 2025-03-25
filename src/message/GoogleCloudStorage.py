@@ -3,6 +3,7 @@ from time import time_ns
 
 from flask import current_app
 from google.cloud.storage import Bucket, Client
+from google.cloud.storage.blob import Blob
 
 from src.config import get_config
 
@@ -54,13 +55,35 @@ class GoogleCloudStorage:
         file_names = [re.sub(f"{self.client.api_endpoint}/{self.bucket.name}/", "", file_url) for file_url in file_urls]
         self.bucket.delete_blobs(file_names)
 
-    def get_file_link(self, filename: str):
-        blob = self.bucket.get_blob(blob_name=filename)
-        if blob is None:
-            current_app.logger.error(
-                f"Cannot find {filename} in the bucket:{self.bucket.name} on GoogleCloudStorage",
+
+    def move_file(self, old_name: str, new_name: str):
+        start_ns = time_ns()
+        try:
+            source_blob = self.bucket.get_blob(blob_name=old_name)
+            if source_blob is None:
+                current_app.logger.error(
+                    f"Cannot find {old_name} in the bucket:{self.bucket.name} on GoogleCloudStorage",
+                )
+
+                raise Exception
+            
+            new_blob = self.bucket.rename_blob(source_blob, new_name=new_name)
+            new_blob.make_public()
+
+        except Exception as e:
+            current_app.logger.exception(
+                f"Failed to move {old_name} to {new_name} in the bucket:{self.bucket.name} on GoogleCloudStorage",
+                repr(e),
             )
 
             return None
 
-        return blob.public_url
+        end_ns = time_ns()
+        current_app.logger.info({
+            "service": "GoogleCloudStorage",
+            "action": "move",
+            "filename": f"{old_name} ==> {new_name}",
+            "duration_ms": (end_ns - start_ns) / 1_000_000,
+        })
+
+        return new_blob.public_url

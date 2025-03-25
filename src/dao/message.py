@@ -525,13 +525,19 @@ class Store:
         finish_reason: str | None = None,
         harmful: bool | None = None,
         file_urls: list[str] | None = None,
+        expiration_time: datetime | int | None = None,
+        private: bool | None = None,
     ) -> Message | None:
         """
         Used to finalize a Message produced via a streaming response.
         """
         with self.pool.connection() as conn, conn.cursor() as cur:
             try:
-                q = """
+                expiration_time_stmt = ""
+                if (expiration_time is not None):
+                    expiration_time_stmt = "expiration_time = NULL," if type(expiration_time) is int else "expiration_time = COALESCE(%(expiration_time)s),"
+
+                q = f"""
                         UPDATE
                             message
                         SET
@@ -540,7 +546,9 @@ class Store:
                             completion = COALESCE(%(completion)s, completion),
                             finish_reason = COALESCE(%(finish_reason)s, finish_reason),
                             harmful = COALESCE(%(harmful)s, harmful),
-                            file_urls= COALESCE(%(file_urls)s, file_urls),
+                            file_urls = COALESCE(%(file_urls)s, file_urls),
+                            {expiration_time_stmt}
+                            private = COALESCE(%(private)s, private),
                             final = true
                         WHERE
                             id = %(id)s
@@ -586,6 +594,9 @@ class Store:
                         "finish_reason": finish_reason,
                         "harmful": harmful,
                         "file_urls": file_urls,
+                        # assign an integer to reset expiration time to Null
+                        "expiration_time": expiration_time,
+                        "private": private,
                         "id": id,
                     },
                 ).fetchone()
@@ -667,6 +678,55 @@ class Store:
                     WHERE id = ANY(%s)
                 """
             cursor.execute(q, (ids,))
+
+    def get_by_creator(self, creator: str) -> list[Message]:
+        with self.pool.connection() as conn, conn.cursor() as cur:
+            q = """
+                SELECT
+                    message.id,
+                    message.content,
+                    message.creator,
+                    message.role,
+                    message.opts,
+                    message.root,
+                    message.created,
+                    message.deleted,
+                    message.parent,
+                    message.template,
+                    message.logprobs,
+                    message.completion,
+                    message.final,
+                    message.original,
+                    message.private,
+                    message.model_type,
+                    message.finish_reason,
+                    message.harmful,
+                    message.model_id,
+                    message.model_host,
+                    message.expiration_time,
+                    message.file_urls,
+                    label.id,
+                    label.message,
+                    label.rating,
+                    label.creator,
+                    label.comment,
+                    label.created,
+                    label.deleted
+                FROM
+                    message
+                LEFT JOIN
+                    label
+                ON
+                    label.message = message.id
+                WHERE
+                    (message.creator = %(creator)s OR %(creator)s IS NULL)
+                """
+            
+            rows = cur.execute(q, { "creator": creator }).fetchall()
+
+            msg_list = list(map(Message.from_row, rows))
+
+            return msg_list
 
     # TODO: allow listing non-final messages
     def get_list(
@@ -781,7 +841,7 @@ class Store:
             args["agent"] = agent
 
             rows = cur.execute(q, args).fetchall()
-
+            
             # This should only happen in two circumstances:
             # 1. There's no messages
             # 2. The offset is greater than the number of root messages
@@ -803,18 +863,26 @@ class Store:
             )
 
     def migrate_messages_to_new_user(self, previous_user_id: str, new_user_id: str):
+
+        params = {
+            "new_user_id": new_user_id,
+            "previous_user_id": previous_user_id,
+        }
+
         with self.pool.connection() as conn:
-            q = """
+            ql = """
+                UPDATE label
+                SET creator = %(new_user_id)s
+                WHERE creator = %(previous_user_id)s
+                """
+            
+            qm = """
                 UPDATE message
                 SET creator = %(new_user_id)s
                 WHERE creator = %(previous_user_id)s
                 """
-
+            
             with conn.cursor() as cur:
-                return cur.execute(
-                    query=q,
-                    params={
-                        "new_user_id": new_user_id,
-                        "previous_user_id": previous_user_id,
-                    },
-                ).rowcount
+                cur.execute( query=ql, params=params )
+
+                return cur.execute( query=qm, params=params ).rowcount

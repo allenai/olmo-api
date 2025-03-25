@@ -11,14 +11,17 @@ from src.user.user_service import (
     migrate_user_from_anonymous_user,
     upsert_user,
 )
+from src.message.GoogleCloudStorage import GoogleCloudStorage
 
 
 class UserBlueprint(Blueprint):
     dbc: db.Client
+    storage_client: GoogleCloudStorage
 
-    def __init__(self, dbc: db.Client):
+    def __init__(self, dbc: db.Client, storage_client: GoogleCloudStorage):
         super().__init__("user", __name__)
         self.dbc = dbc
+        self.storage_client = storage_client
 
         self.get("/whoami")(self.whoami)
         self.put("/user")(self.upsert_user)
@@ -66,6 +69,7 @@ class UserBlueprint(Blueprint):
 
                 migration_result = migrate_user_from_anonymous_user(
                     dbc=self.dbc,
+                    storage_client=self.storage_client,
                     anonymous_user_id=migration_request.anonymous_user_id,
                     new_user_id=migration_request.new_user_id,
                 )

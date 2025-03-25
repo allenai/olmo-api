@@ -8,6 +8,7 @@ from src import db
 from src.api_interface import APIInterface
 from src.dao.user import User
 from src.hubspot_service import create_contact
+from src.message.GoogleCloudStorage import GoogleCloudStorage
 
 
 class UpsertUserRequest(APIInterface):
@@ -60,7 +61,7 @@ class MigrateFromAnonymousUserResponse(APIInterface):
     messages_updated_count: int = Field()
 
 
-def migrate_user_from_anonymous_user(dbc: db.Client, anonymous_user_id: str, new_user_id: str):
+def migrate_user_from_anonymous_user(dbc: db.Client, storage_client: GoogleCloudStorage, anonymous_user_id: str, new_user_id: str):
     # migrate tos
     previous_user = dbc.user.get_by_client(anonymous_user_id)
     new_user = dbc.user.get_by_client(new_user_id)
@@ -84,6 +85,32 @@ def migrate_user_from_anonymous_user(dbc: db.Client, anonymous_user_id: str, new
     elif previous_user is None and new_user is not None:
         updated_user = new_user
 
+    
+    msgs_to_be_migrated = dbc.message.get_by_creator(creator=anonymous_user_id)
+    print(anonymous_user_id)
+    print("msgs_to_be_migrated")
+    print(len(msgs_to_be_migrated))
+    for index, msg in enumerate(msgs_to_be_migrated):
+        print(msg)
+        new_urls = []
+
+        # 1. move files associated with anonymous user id to new spaces
+        for findex, url in enumerate(msg.file_urls or []):
+            filename = url.split('/')[-1]
+            new_path = f"{msg.root}/{filename}"
+            old_path = f"anonymous/{new_path}"
+
+            new_url = storage_client.move_file(old_name=old_path, new_name=new_path)
+            if new_url is not None:
+                new_urls.append(new_url)
+
+        # 2. remove expiration time, update file_urls with new urls, set private to false
+        dbc.message.finalize(msg.id, file_urls=new_urls if len(new_urls) > 0 else None, expiration_time=0, private=False)
+
+        print("new_urls")
+        print(new_urls)
+
+    # 3. update messages and labels with new user id
     updated_messages_count = dbc.message.migrate_messages_to_new_user(
         previous_user_id=anonymous_user_id, new_user_id=new_user_id
     )

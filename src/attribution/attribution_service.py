@@ -123,6 +123,7 @@ class GetAttributionRequest(APIInterface):
 @dataclass
 class ResponseAttributionSpan:
     text: str
+    start_index: int
     documents: list[int] = field(default_factory=list)
 
 
@@ -138,9 +139,11 @@ class TopLevelAttributionSpan(ResponseAttributionSpan):
                 ResponseAttributionSpan(
                     text=nested_span.text,
                     documents=[document.document_index for document in nested_span.documents],
+                    start_index=nested_span.left,
                 )
                 for nested_span in span.nested_spans
             ],
+            start_index=span.left,
         )
 
 
@@ -191,9 +194,7 @@ def get_attribution(
         )
     except UnexpectedStatus as e:
         msg = f"Something went wrong when calling the infini-gram API: {e.status_code} {e.content.decode()}"
-        raise exceptions.BadGateway(
-            msg
-        )
+        raise exceptions.BadGateway(msg) from e
 
     if isinstance(attribution_response, HTTPValidationError):
         # validation error handling
@@ -273,12 +274,14 @@ def get_attribution(
 
     return {
         "index": index,
+        # The UI uses this sort order to show the documents in desc relevance
         "documents": sorted(
             mapped_documents.values(),
             key=lambda document: document.relevance_score,
             reverse=True,
         ),
-        "spans": list(mapped_spans.values()),
+        # The UI uses this sort order to highlight spans in order
+        "spans": sorted(mapped_spans.values(), key=lambda span: span.start_index),
     }
 
 

@@ -4,10 +4,12 @@ from time import time_ns
 
 from flask import current_app
 from google.cloud.storage import Bucket, Client
-from google.cloud.storage.blob import Blob
 
 from src.config import get_config
 
+# GOOGLE CLOUD STORAGE doesn't accept extreme datetime values like 3000 AD as custom time
+# For whoever sees this code in 2100 AD, please update the value!!! 
+GCS_MAX_DATETIME_LIMIT = datetime(2100, 10, 31, tzinfo=UTC)
 
 class GoogleCloudStorage:
     client: Client
@@ -88,6 +90,12 @@ class GoogleCloudStorage:
         })
 
     def update_file_custom_time(self, filename: str, new_time: datetime):
+        if (new_time > GCS_MAX_DATETIME_LIMIT):
+            current_app.logger.info(
+                f"The new datetime for {filename} is over GoogleCloudStorage limit"
+            )
+            raise Exception
+
         start_ns = time_ns()
         try:
             blob = self.bucket.get_blob(blob_name=filename)
@@ -98,12 +106,8 @@ class GoogleCloudStorage:
 
                 raise Exception
             
-            metageneration = blob.metageneration
             blob.custom_time = new_time
-            new_blob = self.bucket.blob(blob_name=filename)
-            new_blob.custom_time = None
-            new_blob.rewrite(blob, if_metageneration_match=metageneration)
-            new_blob.make_public()
+            blob.patch()
 
         except Exception as e:
             current_app.logger.error(
@@ -159,4 +163,4 @@ class GoogleCloudStorage:
         current_app.logger.info(
             f"Migrating {filename} from anonymous to normal in the bucket:{self.bucket.name} on GoogleCloudStorage",
         )
-        self.update_file_custom_time(filename, datetime(3000, 1, 1, tzinfo=UTC))
+        self.update_file_custom_time(filename, GCS_MAX_DATETIME_LIMIT)

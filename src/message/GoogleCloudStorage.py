@@ -25,8 +25,8 @@ class GoogleCloudStorage:
         blob.make_public()
         if is_anonymous:
             blob.custom_time = datetime.now(UTC)
-        print("datetime.max")
-        print(datetime.max)
+            blob.patch()
+        
         end_ns = time_ns()
 
         current_app.logger.info({
@@ -87,7 +87,7 @@ class GoogleCloudStorage:
             "duration_ms": (end_ns - start_ns) / 1_000_000,
         })
 
-    def update_file_custom_time(self, filename: str, custom_time: datetime | None):
+    def update_file_custom_time(self, filename: str, new_time: datetime):
         start_ns = time_ns()
         try:
             blob = self.bucket.get_blob(blob_name=filename)
@@ -97,9 +97,13 @@ class GoogleCloudStorage:
                 )
 
                 raise Exception
-
-            if custom_time is not None:
-                blob.custom_time = custom_time
+            
+            metageneration = blob.metageneration
+            blob.custom_time = new_time
+            new_blob = self.bucket.blob(blob_name=filename)
+            new_blob.custom_time = None
+            new_blob.rewrite(blob, if_metageneration_match=metageneration)
+            new_blob.make_public()
 
         except Exception as e:
             current_app.logger.error(
@@ -155,4 +159,4 @@ class GoogleCloudStorage:
         current_app.logger.info(
             f"Migrating {filename} from anonymous to normal in the bucket:{self.bucket.name} on GoogleCloudStorage",
         )
-        self.update_file_custom_time(filename, datetime.max)
+        self.update_file_custom_time(filename, datetime(3000, 1, 1, tzinfo=UTC))

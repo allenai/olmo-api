@@ -90,15 +90,12 @@ def migrate_user_from_anonymous_user(dbc: db.Client, storage_client: GoogleCloud
 
     for index, msg in enumerate(msgs_to_be_migrated):
         # 1. migrate anonyous files on Google Cloud
-        for findex, url in enumerate(msg.file_urls or []):
+        for url in msg.file_urls or []:
             filename = url.split('/')[-1]
             whole_name = f"{msg.root}/{filename}"
             storage_client.migrate_anonymous_file(whole_name)
 
-        # 2. remove expiration time and set private to false
-        dbc.message.finalize(msg.id, expiration_time=0, private=False)
-
-    # 3. update messages and labels with new user id
+    # 2. Remove expiration time, set private to false, update messages and labels with new user id
     updated_messages_count = dbc.message.migrate_messages_to_new_user(
         previous_user_id=anonymous_user_id, new_user_id=new_user_id
     )

@@ -533,11 +533,7 @@ class Store:
         """
         with self.pool.connection() as conn, conn.cursor() as cur:
             try:
-                expiration_time_stmt = ""
-                if (expiration_time is not None):
-                    expiration_time_stmt = "expiration_time = NULL," if type(expiration_time) is int else "expiration_time = COALESCE(%(expiration_time)s),"
-
-                q = f"""
+                q = """
                         UPDATE
                             message
                         SET
@@ -546,9 +542,7 @@ class Store:
                             completion = COALESCE(%(completion)s, completion),
                             finish_reason = COALESCE(%(finish_reason)s, finish_reason),
                             harmful = COALESCE(%(harmful)s, harmful),
-                            file_urls = COALESCE(%(file_urls)s, file_urls),
-                            {expiration_time_stmt}
-                            private = COALESCE(%(private)s, private),
+                            file_urls= COALESCE(%(file_urls)s, file_urls),
                             final = true
                         WHERE
                             id = %(id)s
@@ -594,9 +588,6 @@ class Store:
                         "finish_reason": finish_reason,
                         "harmful": harmful,
                         "file_urls": file_urls,
-                        # assign an integer to reset expiration time to Null
-                        "expiration_time": expiration_time,
-                        "private": private,
                         "id": id,
                     },
                 ).fetchone()
@@ -878,7 +869,7 @@ class Store:
             
             qm = """
                 UPDATE message
-                SET creator = %(new_user_id)s
+                SET creator = %(new_user_id)s, expiration_time = NULL, private = false
                 WHERE creator = %(previous_user_id)s
                 """
             

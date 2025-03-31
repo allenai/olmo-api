@@ -25,6 +25,8 @@ class GoogleCloudStorage:
         blob = self.bucket.blob(filename)
         blob.upload_from_string(data=content, content_type=content_type)
         blob.make_public()
+
+        # We're using the file's custom time to have GCS automatically delete files associated with anonymous msgs
         if is_anonymous:
             blob.custom_time = datetime.now(UTC)
             blob.patch()
@@ -89,7 +91,7 @@ class GoogleCloudStorage:
             "duration_ms": (end_ns - start_ns) / 1_000_000,
         })
 
-    def update_file_custom_time(self, filename: str, new_time: datetime):
+    def update_file_deletion_time(self, filename: str, new_time: datetime):
         if (new_time > GCS_MAX_DATETIME_LIMIT):
             current_app.logger.info(
                 f"The new datetime for {filename} is over GoogleCloudStorage limit"
@@ -121,46 +123,15 @@ class GoogleCloudStorage:
 
         current_app.logger.info({
             "service": "GoogleCloudStorage",
-            "action": "update_file_custom_time",
+            "action": "update_file_deletion_time",
             "filename": filename,
             "duration_ms": (end_ns - start_ns) / 1_000_000,
         })
-
-    def move_file(self, old_name: str, new_name: str):
-        start_ns = time_ns()
-        try:
-            source_blob = self.bucket.get_blob(blob_name=old_name)
-            if source_blob is None:
-                current_app.logger.error(
-                    f"Cannot find {old_name} in the bucket:{self.bucket.name} on GoogleCloudStorage",
-                )
-
-                raise Exception
-
-            new_blob = self.bucket.rename_blob(source_blob, new_name=new_name)
-            new_blob.make_public()
-
-        except Exception as e:
-            current_app.logger.error(
-                f"Failed to move {old_name} to {new_name} in the bucket:{self.bucket.name} on GoogleCloudStorage",
-                repr(e),
-            )
-
-            return None
-
-        end_ns = time_ns()
-        current_app.logger.info({
-            "service": "GoogleCloudStorage",
-            "action": "move",
-            "filename": f"{old_name} ==> {new_name}",
-            "duration_ms": (end_ns - start_ns) / 1_000_000,
-        })
-
-        return new_blob.public_url
     
 
     def migrate_anonymous_file(self, filename: str):
         current_app.logger.info(
             f"Migrating {filename} from anonymous to normal in the bucket:{self.bucket.name} on GoogleCloudStorage",
         )
-        self.update_file_custom_time(filename, GCS_MAX_DATETIME_LIMIT)
+	    # GCS doesn't allow unsetting custom time, instead we're setting it to the furthest time possible
+        self.update_file_deletion_time(filename, GCS_MAX_DATETIME_LIMIT)

@@ -57,7 +57,7 @@ class Server(Blueprint):
             blueprint=create_v3_message_blueprint(dbc, storage_client=storage_client),
             url_prefix="/message",
         )
-        self.register_blueprint(blueprint=UserBlueprint(dbc=dbc))
+        self.register_blueprint(blueprint=UserBlueprint(dbc=dbc, storage_client=storage_client))
         self.register_blueprint(blueprint=attribution_blueprint, url_prefix="/attribution")
 
     def prompts(self):

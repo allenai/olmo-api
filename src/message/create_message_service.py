@@ -112,6 +112,7 @@ def upload_request_files(
     message_id: str,
     storage_client: GoogleCloudStorage,
     root_message_id: str,
+    is_anonymous: bool = False,
 ) -> list[str] | None:
     if files is None or len(files) == 0:
         return None
@@ -125,12 +126,13 @@ def upload_request_files(
         filename = f"{root_message_id}/{message_id}-{i}{file_extension}"
 
         if file.content_type is None:
-            file_url = storage_client.upload_content(filename=filename, content=file.stream.read())
+            file_url = storage_client.upload_content(filename=filename, content=file.stream.read(), is_anonymous=is_anonymous)
         else:
             file_url = storage_client.upload_content(
                 filename=filename,
                 content=file.stream.read(),
                 content_type=file.content_type,
+                is_anonymous=is_anonymous
             )
 
         # since we read from the file we need to rewind it so the next consumer can read it
@@ -201,7 +203,7 @@ def stream_new_message(
         if is_content_safe is False or is_image_safe is False:
             raise exceptions.BadRequest(description="inappropriate_prompt")
 
-    # We currently want anonymous users' messages to expire after 1 day
+    # We currently want anonymous users' messages to expire after 1 days
     message_expiration_time = datetime.now(UTC) + timedelta(days=1) if agent.is_anonymous_user else None
 
     is_msg_harmful = None if is_content_safe is None or is_image_safe is None else False
@@ -285,6 +287,7 @@ def stream_new_message(
         message_id=msg.id,
         storage_client=storage_client,
         root_message_id=message_chain[0].id,
+        is_anonymous=agent.is_anonymous_user
     )
 
     chain: list[InferenceEngineMessage] = [

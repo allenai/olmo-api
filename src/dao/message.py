@@ -668,6 +668,55 @@ class Store:
                 """
             cursor.execute(q, (ids,))
 
+    def get_by_creator(self, creator: str) -> list[Message]:
+        with self.pool.connection() as conn, conn.cursor() as cur:
+            q = """
+                SELECT
+                    message.id,
+                    message.content,
+                    message.creator,
+                    message.role,
+                    message.opts,
+                    message.root,
+                    message.created,
+                    message.deleted,
+                    message.parent,
+                    message.template,
+                    message.logprobs,
+                    message.completion,
+                    message.final,
+                    message.original,
+                    message.private,
+                    message.model_type,
+                    message.finish_reason,
+                    message.harmful,
+                    message.model_id,
+                    message.model_host,
+                    message.expiration_time,
+                    message.file_urls,
+                    label.id,
+                    label.message,
+                    label.rating,
+                    label.creator,
+                    label.comment,
+                    label.created,
+                    label.deleted
+                FROM
+                    message
+                LEFT JOIN
+                    label
+                ON
+                    label.message = message.id
+                WHERE
+                    (message.creator = %(creator)s OR %(creator)s IS NULL)
+                """
+            
+            rows = cur.execute(q, { "creator": creator }).fetchall()
+
+            msg_list = list(map(Message.from_row, rows))
+
+            return msg_list
+
     # TODO: allow listing non-final messages
     def get_list(
         self,
@@ -803,18 +852,26 @@ class Store:
             )
 
     def migrate_messages_to_new_user(self, previous_user_id: str, new_user_id: str):
+
+        params = {
+            "new_user_id": new_user_id,
+            "previous_user_id": previous_user_id,
+        }
+
         with self.pool.connection() as conn:
-            q = """
-                UPDATE message
+            ql = """
+                UPDATE label
                 SET creator = %(new_user_id)s
                 WHERE creator = %(previous_user_id)s
                 """
-
+            
+            qm = """
+                UPDATE message
+                SET creator = %(new_user_id)s, expiration_time = NULL, private = false
+                WHERE creator = %(previous_user_id)s
+                """
+            
             with conn.cursor() as cur:
-                return cur.execute(
-                    query=q,
-                    params={
-                        "new_user_id": new_user_id,
-                        "previous_user_id": previous_user_id,
-                    },
-                ).rowcount
+                cur.execute( query=ql, params=params )
+
+                return cur.execute( query=qm, params=params ).rowcount

@@ -8,6 +8,7 @@ from src import db
 from src.api_interface import APIInterface
 from src.dao.user import User
 from src.hubspot_service import create_contact
+from src.message.GoogleCloudStorage import GoogleCloudStorage
 
 
 class UpsertUserRequest(APIInterface):
@@ -60,7 +61,7 @@ class MigrateFromAnonymousUserResponse(APIInterface):
     messages_updated_count: int = Field()
 
 
-def migrate_user_from_anonymous_user(dbc: db.Client, anonymous_user_id: str, new_user_id: str):
+def migrate_user_from_anonymous_user(dbc: db.Client, storage_client: GoogleCloudStorage, anonymous_user_id: str, new_user_id: str):
     # migrate tos
     previous_user = dbc.user.get_by_client(anonymous_user_id)
     new_user = dbc.user.get_by_client(new_user_id)
@@ -84,6 +85,17 @@ def migrate_user_from_anonymous_user(dbc: db.Client, anonymous_user_id: str, new
     elif previous_user is None and new_user is not None:
         updated_user = new_user
 
+    
+    msgs_to_be_migrated = dbc.message.get_by_creator(creator=anonymous_user_id)
+
+    for index, msg in enumerate(msgs_to_be_migrated):
+        # 1. migrate anonyous files on Google Cloud
+        for url in msg.file_urls or []:
+            filename = url.split('/')[-1]
+            whole_name = f"{msg.root}/{filename}"
+            storage_client.migrate_anonymous_file(whole_name)
+
+    # 2. Remove expiration time, set private to false, update messages and labels with new user id
     updated_messages_count = dbc.message.migrate_messages_to_new_user(
         previous_user_id=anonymous_user_id, new_user_id=new_user_id
     )

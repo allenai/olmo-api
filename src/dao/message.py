@@ -525,8 +525,6 @@ class Store:
         finish_reason: str | None = None,
         harmful: bool | None = None,
         file_urls: list[str] | None = None,
-        expiration_time: datetime | int | None = None,
-        private: bool | None = None,
     ) -> Message | None:
         """
         Used to finalize a Message produced via a streaming response.
@@ -832,7 +830,7 @@ class Store:
             args["agent"] = agent
 
             rows = cur.execute(q, args).fetchall()
-            
+
             # This should only happen in two circumstances:
             # 1. There's no messages
             # 2. The offset is greater than the number of root messages

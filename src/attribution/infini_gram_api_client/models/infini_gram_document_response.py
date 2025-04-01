@@ -1,14 +1,12 @@
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from src.attribution.infini_gram_api_client.types import UNSET, Unset
+from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
-    from src.attribution.infini_gram_api_client.models.infini_gram_document_response_metadata import (
-        InfiniGramDocumentResponseMetadata,
-    )
+    from ..models.infini_gram_document_response_metadata import InfiniGramDocumentResponseMetadata
 
 
 T = TypeVar("T", bound="InfiniGramDocumentResponse")
@@ -37,7 +35,7 @@ class InfiniGramDocumentResponse:
     metadata: "InfiniGramDocumentResponseMetadata"
     token_ids: list[int]
     text: str
-    blocked: Unset | bool = False
+    blocked: Union[Unset, bool] = False
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -61,16 +59,18 @@ class InfiniGramDocumentResponse:
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
-        field_dict.update({
-            "index": index,
-            "documentIndex": document_index,
-            "documentLength": document_length,
-            "displayLength": display_length,
-            "needleOffset": needle_offset,
-            "metadata": metadata,
-            "tokenIds": token_ids,
-            "text": text,
-        })
+        field_dict.update(
+            {
+                "index": index,
+                "documentIndex": document_index,
+                "documentLength": document_length,
+                "displayLength": display_length,
+                "needleOffset": needle_offset,
+                "metadata": metadata,
+                "tokenIds": token_ids,
+                "text": text,
+            }
+        )
         if blocked is not UNSET:
             field_dict["blocked"] = blocked
 
@@ -78,9 +78,7 @@ class InfiniGramDocumentResponse:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from src.attribution.infini_gram_api_client.models.infini_gram_document_response_metadata import (
-            InfiniGramDocumentResponseMetadata,
-        )
+        from ..models.infini_gram_document_response_metadata import InfiniGramDocumentResponseMetadata
 
         d = src_dict.copy()
         index = d.pop("index")

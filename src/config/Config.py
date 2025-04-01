@@ -124,8 +124,7 @@ class Config:
                         "olmoe-0125": "olmoe-0125-1b-7b",
                         "olmo-2-0325-32b-instruct": "olmo-2-0325-32b",
                     },
-                    api_url="https://infinigram-api.allen.ai",
-                    # api_url="http://host.docker.internal:8008",
+                    api_url=data["infini_gram"].get("api_url", "https://infinigram-api.allen.ai"),
                 ),
                 hubspot=Hubspot(token=data["hubspot"]["token"]),
                 google_cloud_services=GoogleCloudServices(

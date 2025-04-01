@@ -1,10 +1,10 @@
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 if TYPE_CHECKING:
-    from src.attribution.infini_gram_api_client.models.attribution_span import AttributionSpan
+    from ..models.attribution_span import AttributionSpan
 
 
 T = TypeVar("T", bound="AttributionResponse")
@@ -21,7 +21,7 @@ class AttributionResponse:
 
     index: str
     spans: list["AttributionSpan"]
-    input_tokens: None | list[str]
+    input_tokens: Union[None, list[str]]
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -32,22 +32,28 @@ class AttributionResponse:
             spans_item = spans_item_data.to_dict()
             spans.append(spans_item)
 
-        input_tokens: None | list[str]
-        input_tokens = self.input_tokens if isinstance(self.input_tokens, list) else self.input_tokens
+        input_tokens: Union[None, list[str]]
+        if isinstance(self.input_tokens, list):
+            input_tokens = self.input_tokens
+
+        else:
+            input_tokens = self.input_tokens
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
-        field_dict.update({
-            "index": index,
-            "spans": spans,
-            "inputTokens": input_tokens,
-        })
+        field_dict.update(
+            {
+                "index": index,
+                "spans": spans,
+                "inputTokens": input_tokens,
+            }
+        )
 
         return field_dict
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from src.attribution.infini_gram_api_client.models.attribution_span import AttributionSpan
+        from ..models.attribution_span import AttributionSpan
 
         d = src_dict.copy()
         index = d.pop("index")
@@ -59,17 +65,18 @@ class AttributionResponse:
 
             spans.append(spans_item)
 
-        def _parse_input_tokens(data: object) -> None | list[str]:
+        def _parse_input_tokens(data: object) -> Union[None, list[str]]:
             if data is None:
                 return data
             try:
                 if not isinstance(data, list):
-                    raise TypeError
-                return cast(list[str], data)
+                    raise TypeError()
+                input_tokens_type_0 = cast(list[str], data)
 
+                return input_tokens_type_0
             except:  # noqa: E722
                 pass
-            return cast(None | list[str], data)
+            return cast(Union[None, list[str]], data)
 
         input_tokens = _parse_input_tokens(d.pop("inputTokens"))
 

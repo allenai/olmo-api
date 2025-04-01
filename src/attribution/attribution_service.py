@@ -2,6 +2,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Annotated, Self, cast
 
+from fastapi.logger import logger
 from pydantic import AfterValidator, Field
 from rank_bm25 import BM25Okapi  # type: ignore
 from werkzeug import exceptions
@@ -23,6 +24,7 @@ from src.attribution.infini_gram_api_client.models.attribution_span import (
 from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import (
     AvailableInfiniGramIndexId,
 )
+from src.attribution.infini_gram_api_client.models.problem import Problem
 from src.attribution.infini_gram_api_client.models.request_validation_error import RequestValidationError
 from src.config.get_config import cfg
 from src.util.pii_regex import does_contain_pii
@@ -195,9 +197,24 @@ def get_attribution(
         raise exceptions.BadGateway(msg) from e
 
     if isinstance(attribution_response, RequestValidationError):
+        logger.error(
+            "Validation error from infini-gram %s, errors %s",
+            attribution_response.title,
+            str(attribution_response.errors),
+        )
         # validation error handling
         raise exceptions.InternalServerError(
             description=f"infini-gram API reported a validation error: {attribution_response.title}\nThis is likely an error in olmo-api."
+        )
+
+    if isinstance(attribution_response, Problem):
+        logger.error(
+            "Problem from infini-gram %s, detail %s",
+            attribution_response.title,
+            str(attribution_response.detail),
+        )
+        raise exceptions.InternalServerError(
+            description=f"infini-gram API reported an error: {attribution_response.title}"
         )
 
     if attribution_response is None:

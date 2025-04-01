@@ -23,9 +23,7 @@ from src.attribution.infini_gram_api_client.models.attribution_span import (
 from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import (
     AvailableInfiniGramIndexId,
 )
-from src.attribution.infini_gram_api_client.models.http_validation_error import (
-    HTTPValidationError,
-)
+from src.attribution.infini_gram_api_client.models.request_validation_error import RequestValidationError
 from src.config.get_config import cfg
 from src.util.pii_regex import does_contain_pii
 
@@ -196,10 +194,10 @@ def get_attribution(
         msg = f"Something went wrong when calling the infini-gram API: {e.status_code} {e.content.decode()}"
         raise exceptions.BadGateway(msg) from e
 
-    if isinstance(attribution_response, HTTPValidationError):
+    if isinstance(attribution_response, RequestValidationError):
         # validation error handling
         raise exceptions.InternalServerError(
-            description=f"infini-gram API reported a validation error: {attribution_response.detail}\nThis is likely an error in olmo-api."
+            description=f"infini-gram API reported a validation error: {attribution_response.title}\nThis is likely an error in olmo-api."
         )
 
     if attribution_response is None:

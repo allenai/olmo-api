@@ -397,10 +397,19 @@ def stream_new_message(
             yield format_message(message.MessageStreamError(reply.id, err, "grpc inference failed"))
 
         except multiprocessing.TimeoutError:
-            finish_reason = FinishReason.ModelOverloaded
+            yield format_message(
+                message.MessageStreamError(
+                    message=reply.id,
+                    error="model overloaded",
+                    reason=FinishReason.ModelOverloaded,
+                )
+            )
 
-        gen = time_ns() - start_gen
-        gen //= 1000000
+        except ValueError as e:
+            yield format_message(message.MessageStreamError(reply.id, f"{e}", "Context length is too long"))
+
+        except Exception as e:
+            yield format_message(message.MessageStreamError(reply.id, f"{e}", "General exception"))
 
         match finish_reason:
             case FinishReason.UnclosedStream:
@@ -431,6 +440,10 @@ def stream_new_message(
         # The generation is complete. Store it.
         # TODO: InferD should store this so that we don't have to.
         # TODO: capture InferD request input instead of our manifestation of the prompt format
+
+        gen = time_ns() - start_gen
+        gen //= 1000000
+        
         prompt = create_prompt_from_engine_input(chain)
         output, logprobs = create_output_from_chunks(chunks)
 

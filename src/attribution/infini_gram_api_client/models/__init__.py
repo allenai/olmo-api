@@ -8,11 +8,12 @@ from .attribution_span import AttributionSpan
 from .available_infini_gram_index_id import AvailableInfiniGramIndexId
 from .document import Document
 from .document_metadata import DocumentMetadata
-from .http_validation_error import HTTPValidationError
 from .infini_gram_count_response import InfiniGramCountResponse
 from .infini_gram_document_response import InfiniGramDocumentResponse
 from .infini_gram_document_response_metadata import InfiniGramDocumentResponseMetadata
 from .infini_gram_documents_response import InfiniGramDocumentsResponse
+from .problem import Problem
+from .request_validation_error import RequestValidationError
 from .search_response import SearchResponse
 from .span_ranking_method import SpanRankingMethod
 from .validation_error import ValidationError
@@ -26,11 +27,12 @@ __all__ = (
     "AvailableInfiniGramIndexId",
     "Document",
     "DocumentMetadata",
-    "HTTPValidationError",
     "InfiniGramCountResponse",
     "InfiniGramDocumentResponse",
     "InfiniGramDocumentResponseMetadata",
     "InfiniGramDocumentsResponse",
+    "Problem",
+    "RequestValidationError",
     "SearchResponse",
     "SpanRankingMethod",
     "ValidationError",

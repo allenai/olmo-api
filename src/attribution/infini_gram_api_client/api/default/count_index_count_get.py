@@ -1,14 +1,14 @@
 from http import HTTPStatus
-from typing import Any
+from typing import Any, Optional, Union
 
 import httpx
 
-from src.attribution.infini_gram_api_client import errors
-from src.attribution.infini_gram_api_client.client import AuthenticatedClient, Client
-from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
-from src.attribution.infini_gram_api_client.models.http_validation_error import HTTPValidationError
-from src.attribution.infini_gram_api_client.models.infini_gram_count_response import InfiniGramCountResponse
-from src.attribution.infini_gram_api_client.types import UNSET, Response
+from ... import errors
+from ...client import AuthenticatedClient, Client
+from ...models.available_infini_gram_index_id import AvailableInfiniGramIndexId
+from ...models.infini_gram_count_response import InfiniGramCountResponse
+from ...models.request_validation_error import RequestValidationError
+from ...types import UNSET, Response
 
 
 def _get_kwargs(
@@ -32,22 +32,25 @@ def _get_kwargs(
 
 
 def _parse_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> HTTPValidationError | InfiniGramCountResponse | None:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Optional[Union[InfiniGramCountResponse, RequestValidationError]]:
     if response.status_code == 200:
-        return InfiniGramCountResponse.from_dict(response.json())
+        response_200 = InfiniGramCountResponse.from_dict(response.json())
 
+        return response_200
     if response.status_code == 422:
-        return HTTPValidationError.from_dict(response.json())
+        response_422 = RequestValidationError.from_dict(response.json())
 
+        return response_422
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
-    return None
+    else:
+        return None
 
 
 def _build_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Response[HTTPValidationError | InfiniGramCountResponse]:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Response[Union[InfiniGramCountResponse, RequestValidationError]]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -59,9 +62,9 @@ def _build_response(
 def sync_detailed(
     index: AvailableInfiniGramIndexId,
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     query: str,
-) -> Response[HTTPValidationError | InfiniGramCountResponse]:
+) -> Response[Union[InfiniGramCountResponse, RequestValidationError]]:
     """Count
 
     Args:
@@ -73,7 +76,7 @@ def sync_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Union[HTTPValidationError, InfiniGramCountResponse]]
+        Response[Union[InfiniGramCountResponse, RequestValidationError]]
     """
 
     kwargs = _get_kwargs(
@@ -91,9 +94,9 @@ def sync_detailed(
 def sync(
     index: AvailableInfiniGramIndexId,
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     query: str,
-) -> HTTPValidationError | InfiniGramCountResponse | None:
+) -> Optional[Union[InfiniGramCountResponse, RequestValidationError]]:
     """Count
 
     Args:
@@ -105,7 +108,7 @@ def sync(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Union[HTTPValidationError, InfiniGramCountResponse]
+        Union[InfiniGramCountResponse, RequestValidationError]
     """
 
     return sync_detailed(
@@ -118,9 +121,9 @@ def sync(
 async def asyncio_detailed(
     index: AvailableInfiniGramIndexId,
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     query: str,
-) -> Response[HTTPValidationError | InfiniGramCountResponse]:
+) -> Response[Union[InfiniGramCountResponse, RequestValidationError]]:
     """Count
 
     Args:
@@ -132,7 +135,7 @@ async def asyncio_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Union[HTTPValidationError, InfiniGramCountResponse]]
+        Response[Union[InfiniGramCountResponse, RequestValidationError]]
     """
 
     kwargs = _get_kwargs(
@@ -148,9 +151,9 @@ async def asyncio_detailed(
 async def asyncio(
     index: AvailableInfiniGramIndexId,
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     query: str,
-) -> HTTPValidationError | InfiniGramCountResponse | None:
+) -> Optional[Union[InfiniGramCountResponse, RequestValidationError]]:
     """Count
 
     Args:
@@ -162,7 +165,7 @@ async def asyncio(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Union[HTTPValidationError, InfiniGramCountResponse]
+        Union[InfiniGramCountResponse, RequestValidationError]
     """
 
     return (

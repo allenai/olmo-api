@@ -1,15 +1,16 @@
 from http import HTTPStatus
-from typing import Any
+from typing import Any, Optional, Union
 
 import httpx
 
-from src.attribution.infini_gram_api_client import errors
-from src.attribution.infini_gram_api_client.client import AuthenticatedClient, Client
-from src.attribution.infini_gram_api_client.models.attribution_request import AttributionRequest
-from src.attribution.infini_gram_api_client.models.attribution_response import AttributionResponse
-from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
-from src.attribution.infini_gram_api_client.models.http_validation_error import HTTPValidationError
-from src.attribution.infini_gram_api_client.types import Response
+from ... import errors
+from ...client import AuthenticatedClient, Client
+from ...models.attribution_request import AttributionRequest
+from ...models.attribution_response import AttributionResponse
+from ...models.available_infini_gram_index_id import AvailableInfiniGramIndexId
+from ...models.problem import Problem
+from ...models.request_validation_error import RequestValidationError
+from ...types import Response
 
 
 def _get_kwargs(
@@ -34,22 +35,29 @@ def _get_kwargs(
 
 
 def _parse_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> AttributionResponse | HTTPValidationError | None:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Optional[Union[AttributionResponse, Problem, RequestValidationError]]:
     if response.status_code == 200:
-        return AttributionResponse.from_dict(response.json())
+        response_200 = AttributionResponse.from_dict(response.json())
 
+        return response_200
+    if response.status_code == 503:
+        response_503 = Problem.from_dict(response.json())
+
+        return response_503
     if response.status_code == 422:
-        return HTTPValidationError.from_dict(response.json())
+        response_422 = RequestValidationError.from_dict(response.json())
 
+        return response_422
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
-    return None
+    else:
+        return None
 
 
 def _build_response(
-    *, client: AuthenticatedClient | Client, response: httpx.Response
-) -> Response[AttributionResponse | HTTPValidationError]:
+    *, client: Union[AuthenticatedClient, Client], response: httpx.Response
+) -> Response[Union[AttributionResponse, Problem, RequestValidationError]]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -61,9 +69,9 @@ def _build_response(
 def sync_detailed(
     index: AvailableInfiniGramIndexId,
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     body: AttributionRequest,
-) -> Response[AttributionResponse | HTTPValidationError]:
+) -> Response[Union[AttributionResponse, Problem, RequestValidationError]]:
     """Get Document Attributions
 
     Args:
@@ -75,7 +83,7 @@ def sync_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Union[AttributionResponse, HTTPValidationError]]
+        Response[Union[AttributionResponse, Problem, RequestValidationError]]
     """
 
     kwargs = _get_kwargs(
@@ -93,9 +101,9 @@ def sync_detailed(
 def sync(
     index: AvailableInfiniGramIndexId,
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     body: AttributionRequest,
-) -> AttributionResponse | HTTPValidationError | None:
+) -> Optional[Union[AttributionResponse, Problem, RequestValidationError]]:
     """Get Document Attributions
 
     Args:
@@ -107,7 +115,7 @@ def sync(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Union[AttributionResponse, HTTPValidationError]
+        Union[AttributionResponse, Problem, RequestValidationError]
     """
 
     return sync_detailed(
@@ -120,9 +128,9 @@ def sync(
 async def asyncio_detailed(
     index: AvailableInfiniGramIndexId,
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     body: AttributionRequest,
-) -> Response[AttributionResponse | HTTPValidationError]:
+) -> Response[Union[AttributionResponse, Problem, RequestValidationError]]:
     """Get Document Attributions
 
     Args:
@@ -134,7 +142,7 @@ async def asyncio_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Union[AttributionResponse, HTTPValidationError]]
+        Response[Union[AttributionResponse, Problem, RequestValidationError]]
     """
 
     kwargs = _get_kwargs(
@@ -150,9 +158,9 @@ async def asyncio_detailed(
 async def asyncio(
     index: AvailableInfiniGramIndexId,
     *,
-    client: AuthenticatedClient | Client,
+    client: Union[AuthenticatedClient, Client],
     body: AttributionRequest,
-) -> AttributionResponse | HTTPValidationError | None:
+) -> Optional[Union[AttributionResponse, Problem, RequestValidationError]]:
     """Get Document Attributions
 
     Args:
@@ -164,7 +172,7 @@ async def asyncio(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Union[AttributionResponse, HTTPValidationError]
+        Union[AttributionResponse, Problem, RequestValidationError]
     """
 
     return (

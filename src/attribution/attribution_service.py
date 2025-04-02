@@ -213,6 +213,12 @@ def get_attribution(
             attribution_response.title,
             str(attribution_response.detail),
         )
+
+        if attribution_response.type_ == "server-overloaded":
+            raise exceptions.ServiceUnavailable(
+                description="OLMoTrace is currently overloaded. Please try again later."
+            )
+
         raise exceptions.InternalServerError(
             description=f"infini-gram API reported an error: {attribution_response.title}"
         )

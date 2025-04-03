@@ -29,6 +29,14 @@ class FinishReason(StrEnum):
     # The model took longer than our timeout to return the first token
     ModelOverloaded = "model overloaded"
 
+    # Encountered RPC error from inferD
+    RpcError = "rpc error"
+
+    # Value error can be like when context length is too long
+    ValueError = "value error"
+
+    # General exceptions
+    Unknown = "unknown"
 
 @dataclass
 class InferenceEngineMessage:

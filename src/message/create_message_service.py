@@ -393,23 +393,21 @@ def stream_new_message(
                 yield map_chunk(chunk)
 
         except grpc.RpcError as e:
+            finish_reason = FinishReason.RpcError
             err = f"inference failed: {e}"
             yield format_message(message.MessageStreamError(reply.id, err, "grpc inference failed"))
 
         except multiprocessing.TimeoutError:
-            yield format_message(
-                message.MessageStreamError(
-                    message=reply.id,
-                    error="model overloaded",
-                    reason=FinishReason.ModelOverloaded,
-                )
-            )
+            finish_reason = FinishReason.ModelOverloaded
 
         except ValueError as e:
-            yield format_message(message.MessageStreamError(reply.id, f"{e}", "Context length is too long"))
+            finish_reason = FinishReason.ValueError
+            # value error can be like when context length is too long
+            yield format_message(message.MessageStreamError(reply.id, f"{e}", "value error from inference result"))
 
         except Exception as e:
-            yield format_message(message.MessageStreamError(reply.id, f"{e}", "General exception"))
+            finish_reason = FinishReason.Unknown
+            yield format_message(message.MessageStreamError(reply.id, f"{e}", "general exception"))
 
         match finish_reason:
             case FinishReason.UnclosedStream:

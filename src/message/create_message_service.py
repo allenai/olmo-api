@@ -393,7 +393,7 @@ def stream_new_message(
                 yield map_chunk(chunk)
 
         except grpc.RpcError as e:
-            finish_reason = FinishReason.RpcError
+            finish_reason = FinishReason.BadConnection
             err = f"inference failed: {e}"
             yield format_message(message.MessageStreamError(reply.id, err, "grpc inference failed"))
 

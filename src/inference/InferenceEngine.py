@@ -30,7 +30,7 @@ class FinishReason(StrEnum):
     ModelOverloaded = "model overloaded"
 
     # Encountered RPC error from inferD
-    RpcError = "rpc error"
+    BadConnection = "bad connection"
 
     # Value error can be like when context length is too long
     ValueError = "value error"

@@ -126,13 +126,12 @@ def upload_request_files(
         filename = f"{root_message_id}/{message_id}-{i}{file_extension}"
 
         if file.content_type is None:
-            file_url = storage_client.upload_content(filename=filename, content=file.stream.read(), is_anonymous=is_anonymous)
+            file_url = storage_client.upload_content(
+                filename=filename, content=file.stream.read(), is_anonymous=is_anonymous
+            )
         else:
             file_url = storage_client.upload_content(
-                filename=filename,
-                content=file.stream.read(),
-                content_type=file.content_type,
-                is_anonymous=is_anonymous
+                filename=filename, content=file.stream.read(), content_type=file.content_type, is_anonymous=is_anonymous
             )
 
         # since we read from the file we need to rewind it so the next consumer can read it
@@ -287,7 +286,7 @@ def stream_new_message(
         message_id=msg.id,
         storage_client=storage_client,
         root_message_id=message_chain[0].id,
-        is_anonymous=agent.is_anonymous_user
+        is_anonymous=agent.is_anonymous_user,
     )
 
     chain: list[InferenceEngineMessage] = [
@@ -386,7 +385,7 @@ def stream_new_message(
             results = pool.apply_async(lambda: next(message_generator))
 
             # We handle the first chunk differently since we want to timeout if it takes longer than 5 seconds
-            first_chunk = results.get(5.0)
+            first_chunk = results.get(15.0)
             yield map_chunk(first_chunk)
 
             for chunk in message_generator:

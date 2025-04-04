@@ -8,6 +8,7 @@ from flask_pydantic_api.utils import UploadedFile
 from pydantic import ValidationError
 
 from src import db
+from src.error import handle_validation_error
 from src.message.create_message_request import (
     CreateMessageRequestV4,
     CreateMessageRequestV4WithLists,

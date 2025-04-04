@@ -46,7 +46,7 @@ def create_v4_message_blueprint(dbc: db.Client, storage_client: GoogleCloudStora
                 return Response(stream_with_context(stream_response), mimetype="application/jsonl")
             return jsonify(stream_response)
 
-        except Exception as e:
-            return handle(e)
+        except ValidationError as e:
+            return handle_validation_error(e)
 
     return v4_message_blueprint

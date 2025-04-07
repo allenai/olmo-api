@@ -392,14 +392,21 @@ def stream_new_message(
                 yield map_chunk(chunk)
 
         except grpc.RpcError as e:
+            finish_reason = FinishReason.BadConnection
             err = f"inference failed: {e}"
             yield format_message(message.MessageStreamError(reply.id, err, "grpc inference failed"))
 
         except multiprocessing.TimeoutError:
             finish_reason = FinishReason.ModelOverloaded
 
-        gen = time_ns() - start_gen
-        gen //= 1000000
+        except ValueError as e:
+            finish_reason = FinishReason.ValueError
+            # value error can be like when context length is too long
+            yield format_message(message.MessageStreamError(reply.id, f"{e}", "value error from inference result"))
+
+        except Exception as e:
+            finish_reason = FinishReason.Unknown
+            yield format_message(message.MessageStreamError(reply.id, f"{e}", "general exception"))
 
         match finish_reason:
             case FinishReason.UnclosedStream:
@@ -430,6 +437,10 @@ def stream_new_message(
         # The generation is complete. Store it.
         # TODO: InferD should store this so that we don't have to.
         # TODO: capture InferD request input instead of our manifestation of the prompt format
+
+        gen = time_ns() - start_gen
+        gen //= 1000000
+        
         prompt = create_prompt_from_engine_input(chain)
         output, logprobs = create_output_from_chunks(chunks)
 

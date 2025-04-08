@@ -396,7 +396,13 @@ def stream_new_message(
             err = f"inference failed: {e}"
             logger.exception(
                 "GRPC inference failed",
-                extra={"message_id": reply.id, "model": model.id, "host": model.host, "finish_reason": finish_reason},
+                extra={
+                    "message_id": reply.id,
+                    "model": model.id,
+                    "host": model.host,
+                    "finish_reason": finish_reason,
+                    "event": "inference.stream-error",
+                },
             )
             yield format_message(message.MessageStreamError(reply.id, err, "grpc inference failed"))
 
@@ -407,7 +413,13 @@ def stream_new_message(
             finish_reason = FinishReason.ValueError
             logger.exception(
                 "Value Error from inference",
-                extra={"message_id": reply.id, "model": model.id, "host": model.host, "finish_reason": finish_reason},
+                extra={
+                    "message_id": reply.id,
+                    "model": model.id,
+                    "host": model.host,
+                    "finish_reason": finish_reason,
+                    "event": "inference.stream-error",
+                },
             )
             # value error can be like when context length is too long
             yield format_message(message.MessageStreamError(reply.id, f"{e}", "value error from inference result"))
@@ -416,7 +428,13 @@ def stream_new_message(
             finish_reason = FinishReason.Unknown
             logger.exception(
                 "Unexpected error during inference",
-                extra={"message_id": reply.id, "model": model.id, "host": model.host, "finish_reason": finish_reason},
+                extra={
+                    "message_id": reply.id,
+                    "model": model.id,
+                    "host": model.host,
+                    "finish_reason": finish_reason,
+                    "event": "inference.stream-error",
+                },
             )
             yield format_message(message.MessageStreamError(reply.id, f"{e}", "general exception"))
 
@@ -429,6 +447,7 @@ def stream_new_message(
                         "model": model.id,
                         "host": model.host,
                         "finish_reason": finish_reason,
+                        "event": "inference.stream-error",
                     },
                 )
                 err = "inference failed for an unknown reason: sometimes this happens when the prompt is too long"
@@ -443,6 +462,7 @@ def stream_new_message(
                         "host": model.host,
                         "finish_reason": finish_reason,
                         "prompt_length": len(request.content),
+                        "event": "inference.stream-error",
                     },
                 )
                 err = "the conversation is too large for the model to process, please shorten the conversation and try again"
@@ -456,6 +476,7 @@ def stream_new_message(
                         "model": model.id,
                         "host": model.host,
                         "finish_reason": finish_reason,
+                        "event": "inference.stream-error",
                     },
                 )
                 err = "inference aborted for an unknown reason"
@@ -469,6 +490,7 @@ def stream_new_message(
                         "model": model.id,
                         "host": model.host,
                         "finish_reason": finish_reason,
+                        "event": "inference.stream-error",
                     },
                 )
                 yield format_message(

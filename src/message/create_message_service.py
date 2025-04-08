@@ -498,7 +498,7 @@ def stream_new_message(
             final_message = finalSystemMessage
 
         end_all = time_ns()
-        if finish_reason is None or finish_reason == FinishReason.Stop:
+        if first_ns > 0:
             logger.info({
                 "event": "inference.timing",
                 "ttft_ms": (first_ns - start_all) // 1e6,
@@ -510,18 +510,6 @@ def stream_new_message(
                 "model": model.id,
                 "safety_check_id": checker_type,
             })
-        else:
-            logger.error({
-                "event": "inference.failure",
-                "total_ms": (end_all - start_all) // 1e6,
-                "input_tokens": input_token_count,
-                "output_tokens": output_token_count,
-                "sha": sha,
-                "model": model.id,
-                "safety_check_id": checker_type,
-                "finish_reason": finish_reason,
-            })
-            
 
         yield format_message(final_message)
 

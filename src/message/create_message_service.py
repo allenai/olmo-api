@@ -569,7 +569,7 @@ def stream_new_message(
             final_message = finalSystemMessage
 
         end_all = time_ns()
-        if first_ns > 0:
+        if first_ns > start_all:
             logger.info({
                 "event": "inference.timing",
                 "ttft_ms": (first_ns - start_all) // 1e6,

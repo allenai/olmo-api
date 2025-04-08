@@ -569,17 +569,18 @@ def stream_new_message(
             final_message = finalSystemMessage
 
         end_all = time_ns()
-        logger.info({
-            "event": "inference.timing",
-            "ttft_ms": (first_ns - start_all) // 1e6,
-            "total_ms": (end_all - start_all) // 1e6,
-            "safety_ms": safety_check_elapsed_time,
-            "input_tokens": input_token_count,
-            "output_tokens": output_token_count,
-            "sha": sha,
-            "model": model.id,
-            "safety_check_id": checker_type,
-        })
+        if first_ns > start_all:
+            logger.info({
+                "event": "inference.timing",
+                "ttft_ms": (first_ns - start_all) // 1e6,
+                "total_ms": (end_all - start_all) // 1e6,
+                "safety_ms": safety_check_elapsed_time,
+                "input_tokens": input_token_count,
+                "output_tokens": output_token_count,
+                "sha": sha,
+                "model": model.id,
+                "safety_check_id": checker_type,
+            })
 
         yield format_message(final_message)
 

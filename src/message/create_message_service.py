@@ -394,6 +394,16 @@ def stream_new_message(
         except grpc.RpcError as e:
             finish_reason = FinishReason.BadConnection
             err = f"inference failed: {e}"
+            logger.exception(
+                "GRPC inference failed",
+                extra={
+                    "message_id": reply.id,
+                    "model": model.id,
+                    "host": model.host,
+                    "finish_reason": finish_reason,
+                    "event": "inference.stream-error",
+                },
+            )
             yield format_message(message.MessageStreamError(reply.id, err, "grpc inference failed"))
 
         except multiprocessing.TimeoutError:
@@ -401,27 +411,88 @@ def stream_new_message(
 
         except ValueError as e:
             finish_reason = FinishReason.ValueError
+            logger.exception(
+                "Value Error from inference",
+                extra={
+                    "message_id": reply.id,
+                    "model": model.id,
+                    "host": model.host,
+                    "finish_reason": finish_reason,
+                    "event": "inference.stream-error",
+                },
+            )
             # value error can be like when context length is too long
             yield format_message(message.MessageStreamError(reply.id, f"{e}", "value error from inference result"))
 
         except Exception as e:
             finish_reason = FinishReason.Unknown
+            logger.exception(
+                "Unexpected error during inference",
+                extra={
+                    "message_id": reply.id,
+                    "model": model.id,
+                    "host": model.host,
+                    "finish_reason": finish_reason,
+                    "event": "inference.stream-error",
+                },
+            )
             yield format_message(message.MessageStreamError(reply.id, f"{e}", "general exception"))
 
         match finish_reason:
             case FinishReason.UnclosedStream:
+                logger.error(
+                    "Finished with reason UnclosedStream",
+                    extra={
+                        "message_id": reply.id,
+                        "model": model.id,
+                        "host": model.host,
+                        "finish_reason": finish_reason,
+                        "event": "inference.stream-error",
+                    },
+                )
                 err = "inference failed for an unknown reason: sometimes this happens when the prompt is too long"
                 yield format_message(message.MessageStreamError(reply.id, err, finish_reason))
 
             case FinishReason.Length:
+                logger.error(
+                    "Finished with reason Length",
+                    extra={
+                        "message_id": reply.id,
+                        "model": model.id,
+                        "host": model.host,
+                        "finish_reason": finish_reason,
+                        "prompt_length": len(request.content),
+                        "event": "inference.stream-error",
+                    },
+                )
                 err = "the conversation is too large for the model to process, please shorten the conversation and try again"
                 yield format_message(message.MessageStreamError(reply.id, err, finish_reason))
 
             case FinishReason.Aborted:
+                logger.error(
+                    "Finished with reason Aborted",
+                    extra={
+                        "message_id": reply.id,
+                        "model": model.id,
+                        "host": model.host,
+                        "finish_reason": finish_reason,
+                        "event": "inference.stream-error",
+                    },
+                )
                 err = "inference aborted for an unknown reason"
                 yield format_message(message.MessageStreamError(reply.id, err, finish_reason))
 
             case FinishReason.ModelOverloaded:
+                logger.error(
+                    "Finished with reason ModelOverloaded",
+                    extra={
+                        "message_id": reply.id,
+                        "model": model.id,
+                        "host": model.host,
+                        "finish_reason": finish_reason,
+                        "event": "inference.stream-error",
+                    },
+                )
                 yield format_message(
                     message.MessageStreamError(
                         message=reply.id,
@@ -440,7 +511,7 @@ def stream_new_message(
 
         gen = time_ns() - start_gen
         gen //= 1000000
-        
+
         prompt = create_prompt_from_engine_input(chain)
         output, logprobs = create_output_from_chunks(chunks)
 

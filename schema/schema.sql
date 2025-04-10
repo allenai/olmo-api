@@ -252,6 +252,7 @@ from message
   LEFT JOIN completion on completion.id = message.completion
 where message.private != TRUE
   and message.created <= NOW() - '30 days'::INTERVAL
+  AND message.model_id != 'mm-olmo-uber-model-v4-synthetic' -- We're waiting for legal to clear any issues with using user-submitted images for training
   AND olmo_user.terms_accepted_date IS NOT NULL
   AND (
     olmo_user.acceptance_revoked_date IS NULL

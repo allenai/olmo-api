@@ -580,6 +580,8 @@ def stream_new_message(
                 "sha": sha,
                 "model": model.id,
                 "safety_check_id": checker_type,
+                "message_id": msg.id,
+                "reply_id": reply.id,
             })
 
         yield format_message(final_message)

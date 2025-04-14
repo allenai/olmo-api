@@ -7,6 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src import db, error, util, v3
 from src.config import get_config
+from src.db.init_sqlalchemy import make_db_engine
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.v4 import create_v4_blueprint
 
@@ -18,6 +19,8 @@ def create_app():
     app.json = util.CustomJSONProvider(app)
 
     cfg = get_config.Config.load(os.environ.get("FLASK_CONFIG_PATH", get_config.DEFAULT_CONFIG_PATH))
+
+    db_engine = make_db_engine(cfg.db)
 
     dbc = db.Client.from_config(cfg.db)
     atexit.register(dbc.close)

@@ -157,11 +157,11 @@ def stream_new_message(
         error_message = f"model {request.model} is not available on {request.host}"
         raise exceptions.BadRequest(error_message)
 
-    if cfg.google_cloud_services.recaptcha_key is not None and request.captchaToken is not None:
+    if cfg.google_cloud_services.recaptcha_key is not None and request.captcha_token is not None:
         create_assessment(
             project_id="ai2-reviz",
             recaptcha_key=cfg.google_cloud_services.recaptcha_key,
-            token=request.captchaToken,
+            token=request.captcha_token,
             recaptcha_action="prompt_submission",
         )
 
@@ -637,7 +637,7 @@ def create_message_v3(
         model=request.model,
         host=request.host,
         client=agent.client,
-        captchaToken=request.captchaToken,
+        captcha_token=request.captcha_token,
     )
 
     return stream_new_message(mapped_request, dbc, storage_client=storage_client, checker_type=checker_type)
@@ -676,7 +676,7 @@ def create_message_v4(
         host=request.host,
         client=agent.client,
         files=request.files,
-        captchaToken=request.captchaToken,
+        captcha_token=request.captcha_token,
     )
 
     model_config = get_model_by_host_and_id(mapped_request.host, mapped_request.model)

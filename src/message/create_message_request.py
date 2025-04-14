@@ -28,7 +28,7 @@ class BaseCreateMessageRequest(APIInterface):
     template: str | None = Field(default=None)
     model: str
     host: str
-    captchaToken: str = Field()  # noqa: N815
+    captcha_token: str = Field()
 
     @model_validator(mode="after")
     def check_original_and_parent_are_different(self) -> Self:
@@ -93,7 +93,7 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     host: str
     files: Sequence[UploadedFile] | None = Field(default=None)
     client: str
-    captchaToken: str = Field()  # noqa: N815
+    captcha_token: str = Field()
 
     model_config = ConfigDict(validate_assignment=True)
 

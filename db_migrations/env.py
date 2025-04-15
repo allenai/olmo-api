@@ -3,6 +3,7 @@ from logging.config import fileConfig
 
 import alembic_postgresql_enum
 from alembic import context
+from dotenv import find_dotenv, load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 from src.config.get_config import get_config
@@ -29,6 +30,13 @@ target_metadata = Base.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
+# If we want to add more schemas we can see if this helps auto-generate them:
+# https://stackoverflow.com/a/70571077
+
+env_file = find_dotenv("../.env.test")
+load_dotenv(env_file)
+
 
 app_config = get_config()
 db_username = os.getenv("MIGRATION_USERNAME")

@@ -11,6 +11,7 @@ from typing import cast
 
 import grpc
 from flask import current_app
+from flask import request as flask_request
 from werkzeug import exceptions
 from werkzeug.datastructures import FileStorage
 
@@ -582,6 +583,7 @@ def stream_new_message(
                 "safety_check_id": checker_type,
                 "message_id": msg.id,
                 "reply_id": reply.id,
+                "remote_address": flask_request.remote_addr,
             })
 
         yield format_message(final_message)

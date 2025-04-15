@@ -2,7 +2,7 @@
 
 Revision ID: 67c7571bc5b8
 Revises:
-Create Date: 2025-04-15 17:21:58.254593
+Create Date: 2025-04-15 12:21:58.254593
 
 """
 
@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "67c7571bc5b8"
-down_revision: str | None = "4d6e17a0fdf6"
+down_revision: str | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

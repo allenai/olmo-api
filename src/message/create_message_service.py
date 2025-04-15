@@ -199,8 +199,11 @@ def stream_new_message(
                 output_tokens=-1,
             )
 
-        if is_content_safe is False or is_image_safe is False:
-            raise exceptions.BadRequest(description="inappropriate_prompt")
+        if is_content_safe is False:
+            raise exceptions.BadRequest(description="inappropriate_prompt_text")
+
+        if is_image_safe is False:
+            raise exceptions.BadRequest(description="inappropriate_prompt_file")
 
     # We currently want anonymous users' messages to expire after 1 days
     message_expiration_time = datetime.now(UTC) + timedelta(days=1) if agent.is_anonymous_user else None

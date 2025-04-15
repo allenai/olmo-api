@@ -1,7 +1,7 @@
 """create model config table
 
 Revision ID: bf9021f32c31
-Revises:
+Revises: 67c7571bc5b8
 Create Date: 2025-04-15 13:10:52.887862
 
 """

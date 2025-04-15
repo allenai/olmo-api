@@ -100,7 +100,10 @@ ADD CONSTRAINT message_original_fkey FOREIGN KEY (original) REFERENCES message(i
 
 -- Tokens can be used for different purposes. An 'auth' token is used for authenticating API clients.
 -- An 'invite' token is used to generate a single-use URL for creating a 'client' token.
-CREATE TYPE TOKEN_TYPE AS ENUM('auth', 'invite');
+DO $$ BEGIN IF to_regtype('TOKEN_TYPE') IS NULL THEN CREATE TYPE TOKEN_TYPE AS ENUM('auth', 'invite');
+END IF;
+END $$;
+
 ALTER TABLE client_token
 ADD COLUMN IF NOT EXISTS token_type TOKEN_TYPE NOT NULL DEFAULT 'auth',
   ADD COLUMN IF NOT EXISTS creator TEXT NULL,
@@ -127,15 +130,18 @@ ADD COLUMN IF NOT EXISTS private BOOLEAN NOT NULL DEFAULT false;
 
 -- A globally unique, human readable ID for referencing the datachip.
 ALTER TABLE datachip
-ADD COLUMN ref TEXT NOT NULL UNIQUE;
+ADD COLUMN IF NOT EXISTS ref TEXT NOT NULL UNIQUE;
 
 -- Add a column to track the type of model used.
-CREATE TYPE MODEL_TYPE AS ENUM('base', 'chat');
+DO $$ BEGIN IF to_regtype('MODEL_TYPE') IS NULL THEN CREATE TYPE MODEL_TYPE AS ENUM('base', 'chat');
+END IF;
+END $$;
+
 ALTER TABLE message
 ADD COLUMN IF NOT EXISTS model_type MODEL_TYPE NULL;
 
 ALTER TYPE MODEL_TYPE
-ADD VALUE 'image_prompt';
+ADD VALUE IF NOT EXISTS 'image_prompt';
 
 -- Add delete cascade to below foreign keys so that deleting any rows in parent tables will automatically remove related rows in child tables --
 ALTER TABLE message DROP CONSTRAINT IF EXISTS message_completion_fkey;

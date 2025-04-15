@@ -28,3 +28,4 @@ ruff==0.9.7
 puremagic==1.28.0
 sqlalchemy==2.0.40
 alembic==1.15.2
+alembic-postgresql-enum==1.7.0

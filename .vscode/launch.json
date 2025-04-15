@@ -20,7 +20,7 @@
             "justMyCode": true
         },
         {
-            "name": "Alembic upgrade head",
+            "name": "Alembic Auto-generate Debug Migration",
             "type": "debugpy",
             "request": "launch",
             "module": "alembic",

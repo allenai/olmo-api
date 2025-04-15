@@ -1,7 +1,6 @@
 from enum import StrEnum
 
 from sqlalchemy import Enum as SqlEnum
-from sqlalchemy import MetaData
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.dao.base import Base
@@ -14,9 +13,10 @@ class PromptType(StrEnum):
 
 class ModelConfig(Base):
     __tablename__ = "model_config"
+    __table_args__ = {"schema": "model_config"}  # noqa: RUF012
 
     id: Mapped[str] = mapped_column(primary_key=True)
-    prompt_type: Mapped[PromptType] = mapped_column(SqlEnum(PromptType, metadata=MetaData(schema="model_config")))
+    prompt_type: Mapped[PromptType] = mapped_column(SqlEnum(PromptType, inherit_schema=True))
 
     def __repr__(self) -> str:
         return f"TestModelConfig(id={self.id!r}, prompt_type={self.prompt_type!r})"

@@ -1,11 +1,13 @@
 import os
 from logging.config import fileConfig
 
+import alembic_postgresql_enum
+from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from alembic import context
 from src.config.get_config import get_config
 from src.dao.base import Base
+from src.dao.model_config.model_config import ModelConfig  # noqa: F401
 from src.db.connection_pool import make_psycopg3_url
 
 # this is the Alembic Config object, which provides
@@ -34,6 +36,13 @@ db_password = os.getenv("MIGRATION_PASSWORD")
 db_url = make_psycopg3_url(app_config.db.conninfo).set(username=db_username, password=db_password)
 
 
+def include_enum_name(name: str) -> bool:
+    return name not in {"token_type", "model_type"}
+
+
+alembic_postgresql_enum.set_configuration(alembic_postgresql_enum.Config(include_name=include_enum_name))
+
+
 def include_name(name, type_, parent_names):
     if type_ == "table":
         return name in target_metadata.tables
@@ -57,6 +66,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         include_name=include_name,
         literal_binds=True,
+        include_schemas=True,
         dialect_opts={"paramstyle": "named"},
     )
 
@@ -79,9 +89,7 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
-            include_name=include_name,
+            connection=connection, target_metadata=target_metadata, include_name=include_name, include_schemas=True
         )
 
         with context.begin_transaction():

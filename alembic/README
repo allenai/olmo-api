@@ -1,0 +1,5 @@
+Generic single-database configuration.
+
+To auto-generate migrations locally:
+FLASK_CONFIG_PATH="config.json" MIGRATION_USERNAME=postgres MIGRATION_PASSWORD=llmz alembic revision -m "<YOUR MESSAGE HERE>" --autogenerate
+

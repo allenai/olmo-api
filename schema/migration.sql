@@ -1,0 +1,358 @@
+BEGIN;
+
+CREATE TABLE alembic_version (
+    version_num VARCHAR(32) NOT NULL, 
+    CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num)
+);
+
+-- Running upgrade  -> 67c7571bc5b8
+
+-- For simplicity this application lacks automated database migrations. Instead
+-- the schema is expressed in a single file and migrations are manually executed
+-- by piping the content from stdin to the psql command.
+--
+-- See ./docs/db.md for more information about executing migrations.
+CREATE TABLE IF NOT EXISTS prompt_template (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  content TEXT NOT NULL,
+  author TEXT NOT NULL,
+  created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted TIMESTAMPTZ NULL
+);
+GRANT SELECT,
+  UPDATE,
+  INSERT ON TABLE prompt_template TO app;
+CREATE TABLE IF NOT EXISTS client_token (
+  token TEXT NOT NULL PRIMARY KEY,
+  client TEXT NOT NULL,
+  -- this might be an email, i.e "sams@allenai.org" or an identifier i.e. "system-x"
+  created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '1 day'
+);
+
+GRANT SELECT,
+  UPDATE,
+  INSERT ON TABLE client_token TO app;
+CREATE TABLE IF NOT EXISTS completion (
+  id TEXT NOT NULL PRIMARY KEY,
+  input TEXT NOT NULL,
+  outputs JSONB NOT NULL,
+  opts JSONB NOT NULL,
+  model TEXT NOT NULL,
+  sha TEXT NOT NULL,
+  created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  tokenize_ms INTEGER NOT NULL,
+  generation_ms INTEGER NOT NULL,
+  queue_ms INTEGER NOT NULL,
+  input_tokens INTEGER NOT NULL,
+  output_tokens INTEGER NOT NULL
+);
+GRANT SELECT,
+  UPDATE,
+  INSERT,
+  DELETE ON TABLE completion TO app;
+
+CREATE TABLE IF NOT EXISTS message (
+  id TEXT NOT NULL PRIMARY KEY,
+  content TEXT NOT NULL,
+  creator TEXT NOT NULL,
+  role TEXT NOT NULL,
+  opts JSONB NOT NULL,
+  root TEXT NOT NULL,
+  created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted TIMESTAMPTZ NULL,
+  parent TEXT NULL,
+  template TEXT NULL,
+  logprobs JSONB [] NULL,
+  completion TEXT NULL,
+  FOREIGN KEY (root) REFERENCES message(id),
+  FOREIGN KEY (parent) REFERENCES message(id),
+  FOREIGN KEY (template) REFERENCES prompt_template(id),
+  FOREIGN KEY (completion) REFERENCES completion(id)
+);
+GRANT SELECT,
+  UPDATE,
+  INSERT,
+  DELETE ON TABLE message TO app;
+
+CREATE TABLE IF NOT EXISTS label (
+  id TEXT NOT NULL PRIMARY KEY,
+  message TEXT NOT NULL,
+  rating INTEGER NOT NULL,
+  creator TEXT NOT NULL,
+  comment TEXT NULL,
+  created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted TIMESTAMPTZ NULL,
+  FOREIGN KEY (message) REFERENCES message(id)
+);
+GRANT SELECT,
+  UPDATE,
+  INSERT,
+  DELETE ON TABLE label TO app;
+-- Add the final column and immediately set it to true for all messages, since this
+-- will be released prior to streaming support.
+ALTER TABLE message
+ADD COLUMN IF NOT EXISTS final BOOLEAN NOT NULL DEFAULT false;
+UPDATE message
+SET final = true;
+
+-- Add the original column that's used to track edits.
+ALTER TABLE message
+ADD COLUMN IF NOT EXISTS original TEXT NULL;
+
+-- We always drop and re-add the constraint so that the effect is idempotent
+ALTER TABLE message DROP CONSTRAINT IF EXISTS message_original_fkey;
+ALTER TABLE message
+ADD CONSTRAINT message_original_fkey FOREIGN KEY (original) REFERENCES message(id);
+
+-- Tokens can be used for different purposes. An 'auth' token is used for authenticating API clients.
+-- An 'invite' token is used to generate a single-use URL for creating a 'client' token.
+DO $$ BEGIN IF to_regtype('TOKEN_TYPE') IS NULL THEN CREATE TYPE TOKEN_TYPE AS ENUM('auth', 'invite');
+END IF;
+END $$;
+
+ALTER TABLE client_token
+ADD COLUMN IF NOT EXISTS token_type TOKEN_TYPE NOT NULL DEFAULT 'auth',
+  ADD COLUMN IF NOT EXISTS creator TEXT NULL,
+  ADD COLUMN IF NOT EXISTS invite TEXT NULL REFERENCES client_token(token) UNIQUE;
+-- Make sure filtering by token type is fast
+CREATE INDEX IF NOT EXISTS token_type_idx ON client_token(token_type);
+
+CREATE TABLE IF NOT EXISTS datachip (
+  id TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
+  content TEXT NOT NULL,
+  creator TEXT NOT NULL,
+  created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted TIMESTAMPTZ NULL
+);
+
+GRANT SELECT,
+  UPDATE,
+  INSERT ON TABLE datachip TO app;
+
+ALTER TABLE message
+ADD COLUMN IF NOT EXISTS private BOOLEAN NOT NULL DEFAULT false;
+
+-- A globally unique, human readable ID for referencing the datachip.
+ALTER TABLE datachip
+ADD COLUMN IF NOT EXISTS ref TEXT NOT NULL UNIQUE;
+
+-- Add a column to track the type of model used.
+DO $$ BEGIN IF to_regtype('MODEL_TYPE') IS NULL THEN CREATE TYPE MODEL_TYPE AS ENUM('base', 'chat');
+END IF;
+END $$;
+
+ALTER TABLE message
+ADD COLUMN IF NOT EXISTS model_type MODEL_TYPE NULL;
+
+ALTER TYPE MODEL_TYPE
+ADD VALUE IF NOT EXISTS 'image_prompt';
+
+-- Add delete cascade to below foreign keys so that deleting any rows in parent tables will automatically remove related rows in child tables --
+ALTER TABLE message DROP CONSTRAINT IF EXISTS message_completion_fkey;
+ALTER TABLE message
+ADD CONSTRAINT message_completion_fkey FOREIGN KEY (completion) REFERENCES completion(id) ON DELETE CASCADE;
+
+ALTER TABLE message DROP CONSTRAINT IF EXISTS message_root_fkey;
+ALTER TABLE message
+ADD CONSTRAINT message_root_fkey FOREIGN KEY (root) REFERENCES message(id) ON DELETE CASCADE;
+
+ALTER TABLE message DROP CONSTRAINT IF EXISTS message_parent_fkey;
+ALTER TABLE message
+ADD CONSTRAINT message_parent_fkey FOREIGN KEY (parent) REFERENCES message(id) ON DELETE CASCADE;
+
+ALTER TABLE message DROP CONSTRAINT IF EXISTS message_original_fkey;
+ALTER TABLE message
+ADD CONSTRAINT message_original_fkey FOREIGN KEY (original) REFERENCES message(id) ON DELETE CASCADE;
+
+ALTER TABLE label DROP CONSTRAINT IF EXISTS label_message_fkey;
+ALTER TABLE label
+ADD CONSTRAINT label_message_fkey FOREIGN KEY (message) REFERENCES message(id) ON DELETE CASCADE;
+
+CREATE TABLE IF NOT EXISTS olmo_user (
+  id TEXT NOT NULL PRIMARY KEY,
+  -- this might be an email, i.e "sams@allenai.org" or an identifier i.e. "system-x". it may be an oauth ID in the future
+  client TEXT NOT NULL,
+  terms_accepted_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- GDPR requires that consent can be revoked. This field will allow us to track that while still keeping the user around. That may come in handy if we need to delete their data programmatically
+  acceptance_revoked_date TIMESTAMPTZ NULL
+);
+GRANT SELECT,
+  UPDATE,
+  INSERT ON TABLE olmo_user TO app;
+CREATE INDEX IF NOT EXISTS client_idx ON olmo_user(client);
+
+-- Avoid users from creating new prompts to chats that reach the max length limit
+ALTER TABLE message
+ADD COLUMN IF NOT EXISTS finish_reason TEXT NULL;
+
+-- Add harmful column for storing WildGuard results
+ALTER TABLE message
+ADD COLUMN IF NOT EXISTS harmful BOOLEAN NULL;
+
+ALTER TABLE message
+ADD COLUMN IF NOT EXISTS model_id TEXT NULL;
+
+ALTER TABLE message
+ADD COLUMN IF NOT EXISTS model_host TEXT NULL;
+
+UPDATE message
+SET model_id = 'unknown'
+WHERE model_id IS NULL;
+
+ALTER TABLE message
+ALTER COLUMN model_id
+SET NOT NULL;
+
+UPDATE message
+SET model_host = 'unknown'
+WHERE model_host IS NULL;
+
+ALTER TABLE message
+ALTER COLUMN model_host
+SET NOT NULL;
+
+ALTER TABLE message
+ADD COLUMN IF NOT EXISTS expiration_time TIMESTAMPTZ NULL;
+
+ALTER TABLE message
+ADD COLUMN IF NOT EXISTS file_urls TEXT ARRAY NULL;
+
+CREATE OR REPLACE VIEW playground_messages AS
+select message.id,
+  message.content,
+  message.creator,
+  message.role,
+  message.opts,
+  message.root,
+  message.created,
+  message.deleted,
+  message.parent,
+  message.template,
+  message.logprobs,
+  message.completion,
+  message.final,
+  message.original,
+  message.private,
+  -- BigQuery doesn't like enums so we cast it to text here
+  message.model_type::TEXT,
+  message.finish_reason,
+  message.harmful,
+  message.model_id,
+  message.model_host,
+  message.expiration_time,
+  message.file_urls,
+  label.rating as label_rating,
+  label.creator as label_creator,
+  label.comment as label_comment,
+  label.created as label_created,
+  label.deleted as label_deleted,
+  completion.input as completion_input,
+  completion.outputs as completion_outputs,
+  completion.opts as completion_opts,
+  completion.model as completion_model,
+  completion.sha as completion_sha,
+  completion.created as completion_created,
+  completion.tokenize_ms as completion_tokenize_ms,
+  completion.generation_ms as completion_generation_ms,
+  completion.input_tokens as completion_input_tokens,
+  completion.output_tokens as completion_output_tokens
+from message
+  JOIN olmo_user ON message.creator = olmo_user.client
+  LEFT JOIN label ON label.message = message.id
+  LEFT JOIN completion on completion.id = message.completion
+where message.private != TRUE
+  and message.created <= NOW() - '30 days'::INTERVAL
+  AND message.model_id != 'mm-olmo-uber-model-v4-synthetic' -- We're waiting for legal to clear any issues with using user-submitted images for training
+  AND olmo_user.terms_accepted_date IS NOT NULL
+  AND (
+    olmo_user.acceptance_revoked_date IS NULL
+    OR olmo_user.acceptance_revoked_date::date < olmo_user.terms_accepted_date::date
+  );
+
+
+GRANT SELECT ON TABLE playground_messages TO playground_messages_viewer;
+
+CREATE INDEX IF NOT EXISTS message_root_fkey_ix ON message (root);
+CREATE INDEX IF NOT EXISTS message_original_fkey_ix ON message (original);
+CREATE INDEX IF NOT EXISTS message_parent_fkey_ix ON message (parent);
+CREATE INDEX IF NOT EXISTS message_created_ix ON message (created)
+WHERE message.created != NULL;
+
+CREATE OR REPLACE VIEW playground_messages_internal_only AS
+select message.id,
+  message.content,
+  message.creator,
+  message.role,
+  message.opts,
+  message.root,
+  message.created,
+  message.deleted,
+  message.parent,
+  message.template,
+  message.logprobs,
+  message.completion,
+  message.final,
+  message.original,
+  message.private,
+  -- BigQuery doesn't like enums so we cast it to text here
+  message.model_type::TEXT,
+  message.finish_reason,
+  message.harmful,
+  message.model_id,
+  message.model_host,
+  message.expiration_time,
+  message.file_urls,
+  label.rating as label_rating,
+  label.creator as label_creator,
+  label.comment as label_comment,
+  label.created as label_created,
+  label.deleted as label_deleted,
+  completion.input as completion_input,
+  completion.outputs as completion_outputs,
+  completion.opts as completion_opts,
+  completion.model as completion_model,
+  completion.sha as completion_sha,
+  completion.created as completion_created,
+  completion.tokenize_ms as completion_tokenize_ms,
+  completion.generation_ms as completion_generation_ms,
+  completion.input_tokens as completion_input_tokens,
+  completion.output_tokens as completion_output_tokens
+from message
+  JOIN olmo_user ON message.creator = olmo_user.client
+  LEFT JOIN label ON label.message = message.id
+  LEFT JOIN completion on completion.id = message.completion
+where message.private != TRUE;
+
+GRANT SELECT ON TABLE playground_messages_internal_only TO playground_messages_viewer;;
+
+INSERT INTO alembic_version (version_num) VALUES ('67c7571bc5b8') RETURNING alembic_version.version_num;
+
+-- Running upgrade 67c7571bc5b8 -> bf9021f32c31
+
+CREATE SCHEMA model_config;
+
+CREATE TYPE model_config.prompttype AS ENUM ('text_only', 'multi_modal');
+
+CREATE TABLE model_config.model_config (
+    id VARCHAR NOT NULL, 
+    prompt_type model_config.prompttype NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+UPDATE alembic_version SET version_num='bf9021f32c31' WHERE alembic_version.version_num = '67c7571bc5b8';
+
+-- Running upgrade bf9021f32c31 -> 4d6e17a0fdf6
+
+GRANT USAGE ON SCHEMA model_config TO app;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE model_config.model_config TO app;
+
+UPDATE alembic_version SET version_num='4d6e17a0fdf6' WHERE alembic_version.version_num = 'bf9021f32c31';
+
+COMMIT;
+

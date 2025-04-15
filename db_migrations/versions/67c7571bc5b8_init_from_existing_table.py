@@ -19,7 +19,7 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    with open("./schema/schema.sql", encoding="utf-8") as schema_file:
+    with open("./db_migrations/schema.sql", encoding="utf-8") as schema_file:
         query = schema_file.read()
         op.execute(query)
 

@@ -159,12 +159,16 @@ def stream_new_message(
         raise exceptions.BadRequest(error_message)
 
     if cfg.google_cloud_services.recaptcha_key is not None and request.captcha_token is not None:
-        create_assessment(
+        captcha_assessment = create_assessment(
             project_id="ai2-reviz",
             recaptcha_key=cfg.google_cloud_services.recaptcha_key,
             token=request.captcha_token,
             recaptcha_action="prompt_submission",
         )
+
+        if captcha_assessment is None or not captcha_assessment.token_properties.valid:
+            failed_captcha_message = "failed_captcha"
+            raise exceptions.BadRequest(failed_captcha_message)
 
     is_content_safe = None
     is_image_safe = None

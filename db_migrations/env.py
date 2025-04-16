@@ -7,8 +7,7 @@ from dotenv import find_dotenv, load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 from src.config.get_config import get_config
-from src.dao.base import Base
-from src.dao.model_config.model_config import ModelConfig  # noqa: F401
+from src.dao.engine_models import Base
 from src.db.connection_pool import make_psycopg3_url
 
 # this is the Alembic Config object, which provides

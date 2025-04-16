@@ -156,7 +156,7 @@ def evaluate_prompt_submission_captcha(
             user_agent=user_agent,
         )
 
-        if not is_anonymous_user:
+        if not is_anonymous_user or not cfg.google_cloud_services.enable_recaptcha:
             return
 
         logger = current_app.logger

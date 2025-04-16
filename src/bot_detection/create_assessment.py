@@ -44,8 +44,4 @@ def create_assessment(
 
     response = client.create_assessment(request)
 
-    # Check if the token is valid.
-    if not response.token_properties.valid:
-        return None
-
     return response

@@ -168,7 +168,7 @@ def evaluate_prompt_submission_captcha(
 
         if (
             captcha_assessment.risk_analysis.score == 0.0
-            or captcha_assessment.token_properties is not prompt_submission_action
+            or captcha_assessment.token_properties.action != prompt_submission_action
         ):
             logger.info(
                 "rejecting message request due to failed captcha assessment", extra={"assessment": captcha_assessment}

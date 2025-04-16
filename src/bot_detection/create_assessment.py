@@ -3,7 +3,14 @@ from google.cloud.recaptchaenterprise_v1 import Assessment
 
 
 # Taken from Google's impl code https://console.cloud.google.com/security/recaptcha/6LeriH8qAAAAAMM4IDvYUaxqdg7d6yPVSc5ayQHy/integration?project=ai2-reviz
-def create_assessment(project_id: str, recaptcha_key: str, token: str, recaptcha_action: str) -> Assessment | None:
+def create_assessment(
+    project_id: str,
+    recaptcha_key: str,
+    token: str,
+    recaptcha_action: str,
+    user_ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> Assessment | None:
     """Create an assessment to analyze the risk of a UI action.
     Args:
         project_id: Your Google Cloud Project ID.
@@ -18,6 +25,12 @@ def create_assessment(project_id: str, recaptcha_key: str, token: str, recaptcha
     event = recaptchaenterprise_v1.Event()
     event.site_key = recaptcha_key
     event.token = token
+    event.expected_action = recaptcha_action
+
+    if user_ip_address is not None:
+        event.user_ip_address = user_ip_address
+    if user_agent is not None:
+        event.user_agent = user_agent
 
     assessment = recaptchaenterprise_v1.Assessment()
     assessment.event = event

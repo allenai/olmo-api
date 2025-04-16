@@ -36,7 +36,7 @@ def create_app():
     )
     app.register_error_handler(Exception, error.handle)
 
-    ProxyFix(
+    app = ProxyFix(
         app,
         x_for=cfg.server.num_proxies,
         x_proto=cfg.server.num_proxies,

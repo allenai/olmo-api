@@ -1,12 +1,3 @@
-BEGIN;
-
-CREATE TABLE alembic_version (
-    version_num VARCHAR(32) NOT NULL, 
-    CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num)
-);
-
--- Running upgrade  -> 67c7571bc5b8
-
 -- For simplicity this application lacks automated database migrations. Instead
 -- the schema is expressed in a single file and migrations are manually executed
 -- by piping the content from stdin to the psql command.
@@ -328,31 +319,4 @@ from message
   LEFT JOIN completion on completion.id = message.completion
 where message.private != TRUE;
 
-GRANT SELECT ON TABLE playground_messages_internal_only TO playground_messages_viewer;;
-
-INSERT INTO alembic_version (version_num) VALUES ('67c7571bc5b8') RETURNING alembic_version.version_num;
-
--- Running upgrade 67c7571bc5b8 -> bf9021f32c31
-
-CREATE SCHEMA model_config;
-
-CREATE TYPE model_config.prompttype AS ENUM ('text_only', 'multi_modal');
-
-CREATE TABLE model_config.model_config (
-    id VARCHAR NOT NULL, 
-    prompt_type model_config.prompttype NOT NULL, 
-    PRIMARY KEY (id)
-);
-
-UPDATE alembic_version SET version_num='bf9021f32c31' WHERE alembic_version.version_num = '67c7571bc5b8';
-
--- Running upgrade bf9021f32c31 -> 4d6e17a0fdf6
-
-GRANT USAGE ON SCHEMA model_config TO app;
-
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE model_config.model_config TO app;
-
-UPDATE alembic_version SET version_num='4d6e17a0fdf6' WHERE alembic_version.version_num = 'bf9021f32c31';
-
-COMMIT;
-
+GRANT SELECT ON TABLE playground_messages_internal_only TO playground_messages_viewer;

@@ -195,7 +195,12 @@ def stream_new_message(
         error_message = f"model {request.model} is not available on {request.host}"
         raise exceptions.BadRequest(error_message)
 
-    evaluate_prompt_submission_captcha(request.captcha_token, user_ip_address=user_ip_address, user_agent=user_agent)
+    evaluate_prompt_submission_captcha(
+        request.captcha_token,
+        user_ip_address=user_ip_address,
+        user_agent=user_agent,
+        is_anonymous_user=agent.is_anonymous_user,
+    )
 
     is_content_safe = None
     is_image_safe = None

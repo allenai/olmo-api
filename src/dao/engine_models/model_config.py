@@ -14,8 +14,10 @@ class PromptType(StrEnum):
 class ModelConfig(Base):
     __tablename__ = "model_config"
 
-    id: Mapped[str] = mapped_column(primary_key=True)
-    prompt_type: Mapped[PromptType] = mapped_column(SqlEnum(PromptType, inherit_schema=True))
+    id: Mapped[str] = mapped_column(primary_key=True, init=False)
+    prompt_type: Mapped[PromptType] = mapped_column(
+        SqlEnum(PromptType, inherit_schema=True)
+    )
 
     def __repr__(self) -> str:
         return f"TestModelConfig(id={self.id!r}, prompt_type={self.prompt_type!r})"

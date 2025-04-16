@@ -41,13 +41,15 @@ def create_app():
         h.setFormatter(util.StackdriverJsonFormatter())
         logging.basicConfig(level=cfg.server.log_level, handlers=[h])
 
-    return ProxyFix(
-        app,
+    app.wsgi_app = ProxyFix(
+        app.wsgi_app,
         x_for=cfg.server.num_proxies,
         x_proto=cfg.server.num_proxies,
         x_host=cfg.server.num_proxies,
         x_port=cfg.server.num_proxies,
     )
+
+    return app
 
 
 app = create_app()

@@ -142,26 +142,34 @@ def upload_request_files(
     return file_urls
 
 
-def evaluate_prompt_submission_captcha(captcha_token: str, user_ip_address: str | None, user_agent: str | None):
-    recaptcha_action = "prompt_submission"
+def evaluate_prompt_submission_captcha(
+    captcha_token: str, user_ip_address: str | None, user_agent: str | None, *, is_anonymous_user: bool
+):
+    prompt_submission_action = "prompt_submission"
     if cfg.google_cloud_services.recaptcha_key is not None and captcha_token is not None:
         captcha_assessment = create_assessment(
             project_id="ai2-reviz",
             recaptcha_key=cfg.google_cloud_services.recaptcha_key,
             token=captcha_token,
-            recaptcha_action=recaptcha_action,
+            recaptcha_action=prompt_submission_action,
             user_ip_address=user_ip_address,
             user_agent=user_agent,
         )
+
+        if not is_anonymous_user:
+            return
 
         logger = current_app.logger
 
         if captcha_assessment is None or not captcha_assessment.token_properties.valid:
             logger.info("rejecting message request due to invalid captcha", extra={"assessment": captcha_assessment})
-            invalid_captcha_message = "failed_captcha"
+            invalid_captcha_message = "invalid_captcha"
             raise exceptions.BadRequest(invalid_captcha_message)
 
-        if captcha_assessment.risk_analysis.score == 0.0 or captcha_assessment.token_properties is not recaptcha_action:
+        if (
+            captcha_assessment.risk_analysis.score == 0.0
+            or captcha_assessment.token_properties is not prompt_submission_action
+        ):
             logger.info(
                 "rejecting message request due to failed captcha assessment", extra={"assessment": captcha_assessment}
             )

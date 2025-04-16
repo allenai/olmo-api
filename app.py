@@ -36,11 +36,6 @@ def create_app():
     )
     app.register_error_handler(Exception, error.handle)
 
-    if not app.debug:
-        h = logging.StreamHandler()
-        h.setFormatter(util.StackdriverJsonFormatter())
-        logging.basicConfig(level=cfg.server.log_level, handlers=[h])
-
     app.wsgi_app = ProxyFix(
         app.wsgi_app,
         x_for=cfg.server.num_proxies,
@@ -48,6 +43,11 @@ def create_app():
         x_host=cfg.server.num_proxies,
         x_port=cfg.server.num_proxies,
     )
+
+    if not app.debug:
+        h = logging.StreamHandler()
+        h.setFormatter(util.StackdriverJsonFormatter())
+        logging.basicConfig(level=cfg.server.log_level, handlers=[h])
 
     return app
 

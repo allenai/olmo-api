@@ -8,7 +8,7 @@ from sqlalchemy import engine_from_config, pool
 
 from src.config.get_config import get_config
 from src.dao.engine_models import Base
-from src.db.connection_pool import make_psycopg3_url
+from src.db.init_sqlalchemy import make_psycopg3_url
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

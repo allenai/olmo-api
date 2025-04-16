@@ -3,11 +3,6 @@ import os
 from functools import lru_cache
 
 from psycopg_pool import ConnectionPool
-from sqlalchemy import URL, make_url
-
-
-def make_psycopg3_url(conninfo) -> URL:
-    return make_url(conninfo).set(drivername="postgresql+psycopg")
 
 
 @lru_cache

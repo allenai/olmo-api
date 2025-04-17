@@ -29,6 +29,7 @@ class ModelConfig(Base):
     family_name: Mapped[str | None]
     internal: Mapped[bool]
     prompt_type: Mapped[PromptType]
+    order: Mapped[int]
 
     available_time: Mapped[datetime | None]
     deprecation_time: Mapped[datetime | None]

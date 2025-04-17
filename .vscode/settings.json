@@ -9,6 +9,7 @@
         "olmo",
         "datachip",
         "getpid",
-        "drivername"
+        "drivername",
+        "sessionmaker"
     ]
 }

@@ -4,6 +4,11 @@
     "python.testing.pytestEnabled": true,
     "python.envFile": "${workspaceFolder}/.env.test",
     "cSpell.words": [
-        "puremagic"
+        "puremagic",
+        "conninfo",
+        "olmo",
+        "datachip",
+        "getpid",
+        "drivername"
     ]
 }

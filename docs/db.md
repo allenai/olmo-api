@@ -36,41 +36,5 @@ If you can't connect to the database or don't have access to the 1Password vault
 
 ## Schema Migrations
 
-For simplicity this application lacks automated database migrations. Instead the schema is expressed in a single file and migrations are manually executed by piping the content from stdin to the psql command.
-
-### Testing migration on Local
-
-If you change `schema.sql` and you wanna make your local DB that runs on old schema pick up new changes while it's running, besides restarting the DB, you can execute below command:
-```bash
-docker compose exec -T db psql --user=postgres llmx < schema/schema.sql
-```
-
-This pipes the content of `schema.sql` on your host to your local DB running in docker. 
-
-> [!NOTE]
-> If there are any changes like adding columns, dropping columns, or updating table constraints, please append at the end of `schema.sql` instead of modifying table attributes directly.
-
-
-### Running migration on Production
-
-> [!WARNING]
-> If you're executing migrations in production you could break the public API, so tread carefully.
-
-To run schema migrations:
-
-1. Connect to the database:
-
-    ```
-    gcloud beta sql connect llmx-api --project ai2-reviz --port 5555
-    ```
-
-   When prompted for a password don't enter one, but leave the program running (it opens a tunnel).
-
-2. Obtain the password for the `postgres` user from 1Password.
-
-3. In a new terminal, run the command below, replacing `$PASSWD` with the value from the previous step.
-
-    ```bash
-    psql "postgres://postgres:$PASSWD@localhost:5555/llmx?sslmode=disable" < schema/schema.sql
-    ```
+This repo is set up with `Alembic` to handle database migrations. See [the migrations readme](../db_migrations/README.md) for info on them.
 

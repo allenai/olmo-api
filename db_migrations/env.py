@@ -47,7 +47,9 @@ def include_enum_name(name: str) -> bool:
     return name not in {"token_type", "model_type"}
 
 
-alembic_postgresql_enum.set_configuration(alembic_postgresql_enum.Config(include_name=include_enum_name))
+alembic_postgresql_enum.set_configuration(
+    alembic_postgresql_enum.Config(include_name=include_enum_name, add_type_ignore=True)
+)
 
 
 def include_name(name, type_, parent_names):

@@ -143,7 +143,7 @@ def upload_request_files(
 
 
 def evaluate_prompt_submission_captcha(
-    captcha_token: str, user_ip_address: str | None, user_agent: str | None, *, is_anonymous_user: bool
+    captcha_token: str | None, user_ip_address: str | None, user_agent: str | None, *, is_anonymous_user: bool
 ):
     prompt_submission_action = "prompt_submission"
     if cfg.google_cloud_services.recaptcha_key is not None and captcha_token is not None:

@@ -1,11 +1,12 @@
 from collections.abc import Sequence
-from typing import Self
+from typing import Annotated, Self
 
 from flask_pydantic_api.utils import UploadedFile
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 from werkzeug import exceptions
 
 from src.api_interface import APIInterface
+from src.config.get_config import get_config
 from src.dao.message import (
     InferenceOpts,
     Message,
@@ -18,6 +19,14 @@ from src.dao.message import (
 )
 
 
+def captcha_token_required_if_captcha_enabled(value: str | None):
+    if get_config().google_cloud_services.enable_recaptcha and value is None:
+        msg = "Failed to evaluate captcha. Please reload the page and try again."
+        raise ValueError(msg)
+
+    return value
+
+
 class BaseCreateMessageRequest(APIInterface):
     # TODO: Validate that the parent role is different from this role and that it exists
     parent: str | None = Field(default=None)
@@ -28,7 +37,9 @@ class BaseCreateMessageRequest(APIInterface):
     template: str | None = Field(default=None)
     model: str
     host: str
-    captcha_token: str = Field()
+    captcha_token: Annotated[str | None, AfterValidator(captcha_token_required_if_captcha_enabled)] = Field(
+        default=None
+    )
 
     @model_validator(mode="after")
     def check_original_and_parent_are_different(self) -> Self:
@@ -93,7 +104,7 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     host: str
     files: Sequence[UploadedFile] | None = Field(default=None)
     client: str
-    captcha_token: str = Field()
+    captcha_token: str | None = Field()
 
     model_config = ConfigDict(validate_assignment=True)
 

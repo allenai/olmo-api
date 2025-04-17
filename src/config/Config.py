@@ -69,6 +69,7 @@ class GoogleCloudServices:
     api_key: str
     storage_bucket: str
     recaptcha_key: str
+    enable_recaptcha: bool
 
 
 DEFAULT_CONFIG_PATH = "/secret/cfg/config.json"
@@ -135,6 +136,7 @@ class Config:
                         "RECAPTCHA_KEY",
                         data["google_cloud_services"].get("recaptcha_key"),
                     ),
+                    enable_recaptcha=data["google_cloud_services"].get("enable_recaptcha", True),
                 ),
                 models=[map_model_from_config(model_config) for model_config in data["models"]],
             )

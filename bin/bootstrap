@@ -18,6 +18,9 @@ local=$(cat <<EOF
     "admins": [ "murphy@localhost" ],
     "origin": "http://localhost:8000",
     "ui_origin": "http://localhost:8080"
+  },
+  "google_cloud_services": {
+    "enable_recaptcha": false
   }
 }
 EOF

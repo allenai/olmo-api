@@ -142,11 +142,48 @@ def upload_request_files(
     return file_urls
 
 
+def evaluate_prompt_submission_captcha(
+    captcha_token: str | None, user_ip_address: str | None, user_agent: str | None, *, is_anonymous_user: bool
+):
+    prompt_submission_action = "prompt_submission"
+    if cfg.google_cloud_services.recaptcha_key is not None and captcha_token is not None:
+        captcha_assessment = create_assessment(
+            project_id="ai2-reviz",
+            recaptcha_key=cfg.google_cloud_services.recaptcha_key,
+            token=captcha_token,
+            recaptcha_action=prompt_submission_action,
+            user_ip_address=user_ip_address,
+            user_agent=user_agent,
+        )
+
+        if not is_anonymous_user or not cfg.google_cloud_services.enable_recaptcha:
+            return
+
+        logger = current_app.logger
+
+        if captcha_assessment is None or not captcha_assessment.token_properties.valid:
+            logger.info("rejecting message request due to invalid captcha", extra={"assessment": captcha_assessment})
+            invalid_captcha_message = "invalid_captcha"
+            raise exceptions.BadRequest(invalid_captcha_message)
+
+        if (
+            captcha_assessment.risk_analysis.score == 0.0
+            or captcha_assessment.token_properties.action != prompt_submission_action
+        ):
+            logger.info(
+                "rejecting message request due to failed captcha assessment", extra={"assessment": captcha_assessment}
+            )
+            failed_captcha_assessment_message = "failed_captcha_assessment"
+            raise exceptions.BadRequest(failed_captcha_assessment_message)
+
+
 def stream_new_message(
     request: CreateMessageRequestWithFullMessages,
     dbc: db.Client,
     storage_client: GoogleCloudStorage,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
+    user_ip_address: str | None = None,
+    user_agent: str | None = None,
 ) -> message.Message | Generator[str, None, None]:
     start_all = time_ns()
     agent = authn()
@@ -158,17 +195,12 @@ def stream_new_message(
         error_message = f"model {request.model} is not available on {request.host}"
         raise exceptions.BadRequest(error_message)
 
-    if cfg.google_cloud_services.recaptcha_key is not None and request.captcha_token is not None:
-        captcha_assessment = create_assessment(
-            project_id="ai2-reviz",
-            recaptcha_key=cfg.google_cloud_services.recaptcha_key,
-            token=request.captcha_token,
-            recaptcha_action="prompt_submission",
-        )
-
-        if captcha_assessment is None or not captcha_assessment.token_properties.valid:
-            failed_captcha_message = "failed_captcha"
-            raise exceptions.BadRequest(failed_captcha_message)
+    evaluate_prompt_submission_captcha(
+        request.captcha_token,
+        user_ip_address=user_ip_address,
+        user_agent=user_agent,
+        is_anonymous_user=agent.is_anonymous_user,
+    )
 
     is_content_safe = None
     is_image_safe = None
@@ -590,7 +622,7 @@ def stream_new_message(
                 "safety_check_id": checker_type,
                 "message_id": msg.id,
                 "reply_id": reply.id,
-                "remote_address": flask_request.remote_addr,
+                "remote_address": user_ip_address,
             })
 
         yield format_message(final_message)
@@ -651,7 +683,17 @@ def create_message_v3(
         captcha_token=request.captcha_token,
     )
 
-    return stream_new_message(mapped_request, dbc, storage_client=storage_client, checker_type=checker_type)
+    user_ip_address = flask_request.remote_addr
+    user_agent = flask_request.user_agent.string
+
+    return stream_new_message(
+        mapped_request,
+        dbc,
+        storage_client=storage_client,
+        checker_type=checker_type,
+        user_ip_address=user_ip_address,
+        user_agent=user_agent,
+    )
 
 
 def create_message_v4(
@@ -693,7 +735,17 @@ def create_message_v4(
     model_config = get_model_by_host_and_id(mapped_request.host, mapped_request.model)
     validate_message_files_from_config(request.files, config=model_config, has_parent=mapped_request.parent is not None)
 
-    return stream_new_message(mapped_request, dbc, storage_client=storage_client, checker_type=checker_type)
+    user_ip_address = flask_request.remote_addr
+    user_agent = flask_request.user_agent.string
+
+    return stream_new_message(
+        mapped_request,
+        dbc,
+        storage_client=storage_client,
+        checker_type=checker_type,
+        user_ip_address=user_ip_address,
+        user_agent=user_agent,
+    )
 
 
 def format_message(obj) -> str:

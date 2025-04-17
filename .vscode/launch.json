@@ -19,5 +19,13 @@
             "jinja": true,
             "justMyCode": true
         },
+        {
+            "name": "Alembic Auto-generate Debug Migration",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "alembic",
+            "args": ["revision", "-m", "\"debug\"", "--autogenerate"],
+            "envFile": "${workspaceFolder}/.env.local"
+          }
     ]
 }

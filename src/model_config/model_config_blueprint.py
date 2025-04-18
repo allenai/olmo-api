@@ -3,8 +3,7 @@ from flask_pydantic_api.api_wrapper import pydantic_api
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectin_polymorphic, sessionmaker
 
-from src.config import Model
-from src.config.ModelConfig import ModelHost, ModelType
+from src.config.ModelConfig import FileRequiredToPromptOption, ModelHost, ModelType
 from src.dao.engine_models.model_config import ModelConfig, MultiModalModelConfig, PromptType
 
 
@@ -16,7 +15,7 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
     def get_model_configs() -> Response:
         with session_maker.begin() as session:
             polymorphic_loader_opt = selectin_polymorphic(ModelConfig, [ModelConfig, MultiModalModelConfig])
-            stmt = select(Model).options(polymorphic_loader_opt)
+            stmt = select(ModelConfig).options(polymorphic_loader_opt)
             rows = session.scalars(stmt).all()
 
             return jsonify(rows)
@@ -53,9 +52,11 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
                     internal=False,
                     accepted_file_types=["image/*"],
                     max_files_per_message=1,
-                    require_file_to_prompt="first_message",
-                    allow_files_in_followups=false,
+                    require_file_to_prompt=FileRequiredToPromptOption.FirstMessage,
+                    allow_files_in_followups=False,
                 )
             )
+
+            return ("", 204)
 
     return model_config_blueprint

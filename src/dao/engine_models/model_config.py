@@ -35,13 +35,13 @@ class ModelConfig(Base, kw_only=True):
     deprecation_time: Mapped[datetime | None] = mapped_column(default=None)
 
     __mapper_args__ = {
-        "polymorphic_identity": "model_config",
+        "polymorphic_identity": PromptType.TEXT_ONLY,
         "polymorphic_on": "prompt_type",
     }
 
 
 class MultiModalModelConfig(ModelConfig, kw_only=True):
-    __tablename__ = "multi_model_model_config"
+    __tablename__ = "multi_modal_model_config"
 
     id: Mapped[str] = mapped_column(ForeignKey("model_config.id"), primary_key=True)
     accepted_file_types: Mapped[list[str]] = mapped_column(ARRAY(String))
@@ -50,4 +50,4 @@ class MultiModalModelConfig(ModelConfig, kw_only=True):
     max_total_file_size: Mapped[int | None] = mapped_column(default=None)
     allow_files_in_followups: Mapped[bool | None]
 
-    __mapper_args__ = {"polymorphic_identity": "multi_model_model_config"}
+    __mapper_args__ = {"polymorphic_identity": PromptType.MULTI_MODAL}

@@ -1,7 +1,7 @@
 """add dates to model config
 
 Revision ID: 03da13313751
-Revises: 636b1b8f1f03
+Revises: f996e9be1bb0
 Create Date: 2025-04-17 15:01:34.431525
 
 """
@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "03da13313751"
-down_revision: str | None = "636b1b8f1f03"
+down_revision: str | None = "f996e9be1bb0"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

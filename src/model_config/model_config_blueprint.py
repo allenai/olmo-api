@@ -20,6 +20,7 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
 
             return jsonify(rows)
 
+    # TODO: Delete this when we make the real model config creation endpoint
     @model_config_blueprint.post("/")
     def make_model_configs():
         with session_maker.begin() as session:

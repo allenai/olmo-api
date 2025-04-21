@@ -70,6 +70,7 @@ class GoogleCloudServices:
     storage_bucket: str
     recaptcha_key: str
     enable_recaptcha: bool
+    require_recaptcha: bool
 
 
 @dataclass
@@ -143,6 +144,7 @@ class Config:
                         data["google_cloud_services"].get("recaptcha_key"),
                     ),
                     enable_recaptcha=data["google_cloud_services"].get("enable_recaptcha", True),
+                    require_recaptcha=data["google_cloud_services"].get("require_recaptcha", True),
                 ),
                 feature_flags=FeatureFlags(
                     enable_dynamic_model_config=data.get("feature_flags", {}).get("enable_dynamic_model_config", False)

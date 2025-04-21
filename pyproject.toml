@@ -680,7 +680,9 @@ builtins-ignorelist = ["id"]
 
 [tool.ruff.lint.extend-per-file-ignores]
 "test_*.py" = ["PLC1901", "PLR2004", "PLR6301", "S", "TID252"]
-"__init__.py" = ["OLC0414"]
+"__init__.py" = ["PLC0414"]
+"src/dao/engine_models/*.py" = ["RUF012"]
+"db_migrations/*.py" = ["INP001"]
 
 [tool.ruff.lint.flake8-pytest-style]
 fixture-parentheses = false

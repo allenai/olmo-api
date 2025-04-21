@@ -21,6 +21,9 @@ local=$(cat <<EOF
   },
   "google_cloud_services": {
     "enable_recaptcha": false
+  },
+  "feature_flags": {
+    "enable_dynamic_model_config": true
   }
 }
 EOF

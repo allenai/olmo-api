@@ -3,6 +3,7 @@ import logging
 import os
 
 from flask import Flask
+from sqlalchemy.orm import sessionmaker
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src import db, error, util, v3
@@ -21,6 +22,7 @@ def create_app():
     cfg = get_config.Config.load(os.environ.get("FLASK_CONFIG_PATH", get_config.DEFAULT_CONFIG_PATH))
 
     db_engine = make_db_engine(cfg.db)
+    session_maker = sessionmaker(db_engine)
 
     dbc = db.Client.from_config(cfg.db)
     atexit.register(dbc.close)
@@ -33,7 +35,7 @@ def create_app():
 
     app.register_blueprint(v3.Server(dbc, storage_client), url_prefix="/v3", name="v3")
     app.register_blueprint(
-        create_v4_blueprint(dbc=dbc, storage_client=storage_client),
+        create_v4_blueprint(dbc=dbc, storage_client=storage_client, session_maker=session_maker),
         url_prefix="/v4",
         name="v4",
     )

@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import ARRAY, ForeignKey, String, func
+from sqlalchemy import ARRAY, ForeignKey, Integer, Sequence, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.config.ModelConfig import FileRequiredToPromptOption, ModelHost, ModelType
@@ -26,7 +26,11 @@ class ModelConfig(Base, kw_only=True):
     model_id_on_host: Mapped[str]
     internal: Mapped[bool]
     prompt_type: Mapped[PromptType]
-    order: Mapped[int]
+    order_seq = Sequence("model_config_order_seq", metadata=Base.metadata, start=1)
+    order: Mapped[int] = mapped_column(
+        Integer, order_seq, init=False, server_default=order_seq.next_value()
+    )
+
     default_system_prompt: Mapped[str | None] = mapped_column(default=None)
     family_id: Mapped[str | None] = mapped_column(default=None)
     family_name: Mapped[str | None] = mapped_column(default=None)
@@ -38,7 +42,7 @@ class ModelConfig(Base, kw_only=True):
         server_default=func.now(), init=False
     )
     updated_time: Mapped[datetime] = mapped_column(
-        server_onupdate=func.now(), init=False
+        server_default=func.now(), onupdate=func.now(), init=False
     )
 
     __mapper_args__ = {

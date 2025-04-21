@@ -1,8 +1,8 @@
 """add created and updated times to ModelConfig
 
-Revision ID: 6bda1c2ad675
+Revision ID: 724dff1a0068
 Revises: 9089586a14c3
-Create Date: 2025-04-21 14:58:54.368862
+Create Date: 2025-04-21 15:03:48.627023
 
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "6bda1c2ad675"
+revision: str = "724dff1a0068"
 down_revision: str | None = "9089586a14c3"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -25,7 +25,10 @@ def upgrade() -> None:
         "model_config",
         sa.Column("created_time", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
     )
-    op.add_column("model_config", sa.Column("updated_time", sa.TIMESTAMP(timezone=True), nullable=False))
+    op.add_column(
+        "model_config",
+        sa.Column("updated_time", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
+    )
     # ### end Alembic commands ###
 
 

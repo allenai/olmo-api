@@ -20,7 +20,8 @@ local=$(cat <<EOF
     "ui_origin": "http://localhost:8080"
   },
   "google_cloud_services": {
-    "enable_recaptcha": false
+    "enable_recaptcha": false,
+    "require_recaptcha": false
   },
   "feature_flags": {
     "enable_dynamic_model_config": true

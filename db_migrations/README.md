@@ -1,6 +1,14 @@
 # Migrations
 This uses Alembic to auto-generate migrations. The tutorial can be found here: https://alembic.sqlalchemy.org/en/latest/tutorial.html
 
+## Setup
+Make a `.env.local` in the API's root folder. Put these settings in it:
+```
+FLASK_CONFIG_PATH=./config.json
+MIGRATION_USERNAME=postgres
+MIGRATION_PASSWORD=llmz
+```
+
 ## Commands
 ### To auto-generate migrations locally:
 `alembic revision -m "<YOUR MESSAGE HERE>" --autogenerate`

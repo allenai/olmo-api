@@ -25,6 +25,9 @@ local=$(cat <<EOF
   },
   "feature_flags": {
     "enable_dynamic_model_config": true
+  },
+  "infini_gram": {
+    "api_url": "https://infinigram-api.allen.ai"
   }
 }
 EOF

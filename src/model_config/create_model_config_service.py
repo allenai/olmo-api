@@ -48,5 +48,6 @@ def create_model_config(
             else None,
         )
         session.add(new_model)
+        session.commit()
 
     return new_model

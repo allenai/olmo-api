@@ -133,6 +133,10 @@ function(apiImage, messageDeletionJobImage, cause, sha, env='prod', branch='', r
         'nginx.ingress.kubernetes.io/cors-allow-headers': 'DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,X-Anonymous-User-Id'
     };
 
+    local ingressDenyAnno = {
+            'nginx.ingress.kubernetes.io/server-snippet': 'deny 3.228.45.243/32; deny 52.0.57.178/32; deny 44.209.54.138/32; deny 34.203.68.42/32; deny 54.237.110.6/32; deny 185.220.101.0/24; deny 109.70.100.0/24;'
+    };
+
     local allenAITLS = util.getTLSConfig(fullyQualifiedName + '-allen-dot-ai', allenAIHosts);
     local allenAIIngress = {
         apiVersion: 'networking.k8s.io/v1',
@@ -144,7 +148,8 @@ function(apiImage, messageDeletionJobImage, cause, sha, env='prod', branch='', r
             annotations: annotations +
               allenAITLS.ingressAnnotations +
               defaultIngressAnno +
-              corsIngressAnno
+              corsIngressAnno +
+              ingressDenyAnno
         },
         spec: {
             tls: [ allenAITLS.spec + { hosts: allenAIHosts } ],
@@ -277,13 +282,6 @@ function(apiImage, messageDeletionJobImage, cause, sha, env='prod', branch='', r
                                 },
                                 periodSeconds: 10,
                                 failureThreshold: 3
-                            },
-                            livenessProbe: {
-                                httpGet: apiHealthCheck + {
-                                    path: '/health?check=rdy'
-                                },
-                                periodSeconds: 10,
-                                failureThreshold: 6,
                             },
                             startupProbe: {
                                 httpGet: apiHealthCheck + {

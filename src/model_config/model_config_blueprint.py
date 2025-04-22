@@ -3,7 +3,6 @@ from flask_pydantic_api.api_wrapper import pydantic_api
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectin_polymorphic, sessionmaker
 
-from src.auth.resource_protectors import required_auth_protector
 from src.dao.engine_models.model_config import ModelConfig, MultiModalModelConfig
 from src.model_config.create_model_config_service import (
     CreateModelConfigRequest,
@@ -12,6 +11,8 @@ from src.model_config.create_model_config_service import (
 
 
 def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Blueprint:
+    from src.auth.resource_protectors import required_auth_protector
+
     model_config_blueprint = Blueprint(name="model_config", import_name=__name__)
 
     @model_config_blueprint.get("/")
@@ -28,8 +29,8 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
 
             return jsonify(rows)
 
-    @required_auth_protector("write:model-config")
     @model_config_blueprint.post("/")
+    @required_auth_protector("write:model-config")
     @pydantic_api(name="Add a new model", tags=["v4", "models", "model configuration"])
     def add_model(request: CreateModelConfigRequest) -> Response:
         new_model = create_model_config(request, session_maker)

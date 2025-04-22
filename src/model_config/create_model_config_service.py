@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from src.api_interface import APIInterface
 from src.config.ModelConfig import ModelHost, ModelType
 from src.dao.engine_models.model_config import ModelConfig, PromptType
+from src.model_config.response_model import ResponseModel
 
 
 class CreateModelConfigRequest(APIInterface):
@@ -50,4 +51,4 @@ def create_model_config(
         session.add(new_model)
         session.flush()  # This populates the auto-generated things on the new_model
 
-    return new_model
+        return ResponseModel.model_validate(new_model)

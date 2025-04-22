@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, selectin_polymorphic, sessionmaker
 from src.dao.engine_models.model_config import ModelConfig, MultiModalModelConfig
 from src.model_config.create_model_config_service import (
     CreateModelConfigRequest,
+    ResponseModel,
     create_model_config,
 )
 
@@ -29,12 +30,16 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
 
             return jsonify(rows)
 
-    @model_config_blueprint.post("/")
+    @model_config_blueprint.post("/")  # type: ignore
     @required_auth_protector("write:model-config")
-    @pydantic_api(name="Add a new model", tags=["v4", "models", "model configuration"])
-    def add_model(request: CreateModelConfigRequest) -> Response:
+    @pydantic_api(
+        name="Add a new model",
+        tags=["v4", "models", "model configuration"],
+        model_dump_kwargs={"by_alias": True},
+    )
+    def add_model(request: CreateModelConfigRequest) -> ResponseModel:
         new_model = create_model_config(request, session_maker)
 
-        return jsonify(new_model)
+        return new_model
 
     return model_config_blueprint

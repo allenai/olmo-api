@@ -39,7 +39,7 @@ def downgrade() -> None:
     op.alter_column(
         "model_config",
         "order",
-        server_default=None,
+        server_default=None,  # type: ignore
     )
     op.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app")
     op.execute(

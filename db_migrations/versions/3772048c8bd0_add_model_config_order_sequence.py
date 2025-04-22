@@ -41,7 +41,7 @@ def downgrade() -> None:
         "order",
         server_default=None,  # type: ignore
     )
-    op.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app")
+    op.execute("REVOKE USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public FROM app")
     op.execute(
         sa.schema.DropSequence(
             sa.Sequence("model_config_order_seq", start=10, increment=10)

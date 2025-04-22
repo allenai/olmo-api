@@ -6,7 +6,6 @@ from alembic import context
 from dotenv import find_dotenv, load_dotenv
 from sqlalchemy import engine_from_config, pool
 
-from src.config.get_config import get_config
 from src.dao.engine_models import Base
 from src.db.init_sqlalchemy import make_psycopg3_url
 
@@ -37,10 +36,10 @@ env_file = find_dotenv("../.env.test")
 load_dotenv(env_file)
 
 
-app_config = get_config()
+conninfo = os.getenv("MIGRATION_CONNINFO")
 db_username = os.getenv("MIGRATION_USERNAME")
 db_password = os.getenv("MIGRATION_PASSWORD")
-db_url = make_psycopg3_url(app_config.db.conninfo).set(username=db_username, password=db_password)
+db_url = make_psycopg3_url(conninfo).set(username=db_username, password=db_password)
 
 
 def include_enum_name(name: str) -> bool:

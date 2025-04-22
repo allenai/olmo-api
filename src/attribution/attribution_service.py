@@ -52,9 +52,13 @@ class ResponseAttributionDocument:
     corresponding_span_texts: list[str]
     index: str
     source: str
+    usage: str
+    display_name: str
+    source_url: str
     relevance_score: float
     title: str | None = None
     url: str | None = None
+    secondary_name: str | None = None
 
     @classmethod
     def from_flattened_span_document(cls, document: FlattenedSpanDocument, span_index: int) -> Self:
@@ -78,6 +82,8 @@ class ResponseAttributionDocument:
         }:
             source = metadata.get("source", None)
 
+        source_detail = cfg.infini_gram.source_map[source]
+        
         return cls(
             text_long=document.text_long,
             snippets=[
@@ -90,9 +96,13 @@ class ResponseAttributionDocument:
             corresponding_span_texts=[document.span_text],
             index=str(document.document_index),
             source=source,
+            usage=source_detail.usage,
+            display_name=source_detail.display_name or "",
+            source_url=source_detail.url or "",
             relevance_score=document.relevance_score,
             title=document.metadata.additional_properties.get("metadata", {}).get("metadata", {}).get("title", None),
             url=url,
+            secondary_name=source_detail.secondary_name
         )
 
 

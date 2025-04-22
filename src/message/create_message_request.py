@@ -20,7 +20,7 @@ from src.dao.message import (
 
 
 def captcha_token_required_if_captcha_enabled(value: str | None):
-    if get_config().google_cloud_services.enable_recaptcha and value is None:
+    if get_config().google_cloud_services.require_recaptcha and value is None:
         msg = "Failed to evaluate captcha. Please reload the page and try again."
         raise ValueError(msg)
 

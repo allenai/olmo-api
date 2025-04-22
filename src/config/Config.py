@@ -70,6 +70,12 @@ class GoogleCloudServices:
     storage_bucket: str
     recaptcha_key: str
     enable_recaptcha: bool
+    require_recaptcha: bool
+
+
+@dataclass
+class FeatureFlags:
+    enable_dynamic_model_config: bool
 
 
 DEFAULT_CONFIG_PATH = "/secret/cfg/config.json"
@@ -87,6 +93,7 @@ class Config:
     hubspot: Hubspot
     google_cloud_services: GoogleCloudServices
     models: list[Model | MultiModalModel]
+    feature_flags: FeatureFlags
 
     @classmethod
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
@@ -139,6 +146,10 @@ class Config:
                         data["google_cloud_services"].get("recaptcha_key"),
                     ),
                     enable_recaptcha=data["google_cloud_services"].get("enable_recaptcha", True),
+                    require_recaptcha=data["google_cloud_services"].get("require_recaptcha", True),
+                ),
+                feature_flags=FeatureFlags(
+                    enable_dynamic_model_config=data.get("feature_flags", {}).get("enable_dynamic_model_config", False)
                 ),
                 models=[map_model_from_config(model_config) for model_config in data["models"]],
             )

@@ -1,4 +1,4 @@
-"""sequence test
+"""add model config order sequence
 
 Revision ID: 3772048c8bd0
 Revises: 724dff1a0068

@@ -48,6 +48,6 @@ def create_model_config(
             else None,
         )
         session.add(new_model)
-        session.commit()
+        session.flush()  # This populates the auto-generated things on the new_model
 
     return new_model

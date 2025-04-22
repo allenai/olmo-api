@@ -3,6 +3,7 @@ import os
 from dataclasses import dataclass
 from typing import Self
 
+from src.config.InfiniGramSource import InfiniGramSource, map_infinigram_sources
 from src.config.Model import Model, MultiModalModel, map_model_from_config
 
 
@@ -52,12 +53,11 @@ class Wildguard:
     token: str
     compute_source_id: str
 
-
 @dataclass
 class InfiniGram:
     api_url: str
     model_index_map: dict[str, str]
-
+    source_map: dict[str, InfiniGramSource]
 
 @dataclass
 class Hubspot:
@@ -99,6 +99,7 @@ class Config:
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
         with open(path, encoding="locale") as f:
             data = json.load(f)
+            
             return cls(
                 db=Database(**data["db"]),
                 inferd=InferD(
@@ -133,6 +134,7 @@ class Config:
                         "olmo-2-0325-32b-instruct": "olmo-2-0325-32b",
                     },
                     api_url=data["infini_gram"].get("api_url", "https://infinigram-api.allen.ai"),
+                    source_map=map_infinigram_sources(data["infini_gram"].get("sources"))
                 ),
                 hubspot=Hubspot(token=data["hubspot"]["token"]),
                 google_cloud_services=GoogleCloudServices(
@@ -151,3 +153,4 @@ class Config:
                 ),
                 models=[map_model_from_config(model_config) for model_config in data["models"]],
             )
+

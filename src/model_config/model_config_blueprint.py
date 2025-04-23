@@ -46,7 +46,9 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
 
     @model_config_blueprint.delete("/")  # type: ignore
     @required_auth_protector("write:model-config")
-    @pydantic_api(name="Delete a model", tags=["v4", "models", "model configuration"])
+    @pydantic_api(
+        name="Delete a model", 
+        tags=["v4", "models", "model configuration"])
     def delete_model(request: DeleteModelConfigRequest):
         try:
             delete_model_config(request, session_maker)

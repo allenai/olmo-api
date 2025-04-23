@@ -76,10 +76,7 @@ class TestV4ModelEndpoints(base.IntegrationTest):
             ), "The test model wasn't returned from the GET request"
 
         finally:
-            requests.delete(
-                f"{self.origin}/v4/models/{model_id}",
-                headers=self.auth(self.client),
-            )
+            self._delete_message(model_id)
 
     def shouldDeleteModel(self):
         model_id = "test-model"
@@ -172,9 +169,9 @@ class TestV4ModelEndpoints(base.IntegrationTest):
             for model_id in created_models:
                 self._delete_message(model_id)
 
-    def _delete_message(self, model_id: str):
+    def _delete_message(self, message_id: str):
         r = requests.delete(
-            f"{self.origin}/v4/models/{model_id}",
+            f"{self.origin}/v3/message/{message_id}",
             headers=self.auth(self.client)
         )
         r.raise_for_status()

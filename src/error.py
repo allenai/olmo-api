@@ -48,11 +48,14 @@ def make_error_response(
 
 def get_body_from_http_exception(e: HTTPException) -> dict | None:
     temp_body = e.get_body()
-    if temp_body is not None:
-        try:
-            return cast(dict, json.loads(temp_body))
-        except ValueError:
-            return None
+
+    if temp_body is None:
+        return temp_body
+
+    try:
+        return cast(dict, json.loads(temp_body))
+    except ValueError:
+        return None
 
 
 def handle(e: Exception) -> ResponseReturnValue:

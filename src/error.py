@@ -1,5 +1,6 @@
 import json
 from logging import getLogger
+from typing import cast
 
 from flask import jsonify, make_response, render_template, request
 from flask.typing import ResponseReturnValue
@@ -45,12 +46,19 @@ def make_error_response(
             )
 
 
+def get_body_from_http_exception(e: HTTPException) -> dict | None:
+    temp_body = e.get_body()
+    if temp_body is not None:
+        try:
+            return cast(dict, json.loads(temp_body))
+        except ValueError:
+            return None
+
+
 def handle(e: Exception) -> ResponseReturnValue:
     getLogger(__name__).exception(e)
     if isinstance(e, HTTPException):
-        temp_body = e.get_body()
-        body = json.loads(temp_body) if temp_body is not None else None
-
+        body = get_body_from_http_exception(e)
         return make_error_response(e.code, e.description, body=body)
     if isinstance(e, ValidationError):
         return handle_validation_error(e)

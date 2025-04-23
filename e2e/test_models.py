@@ -109,4 +109,7 @@ class TestV4ModelEndpoints(base.IntegrationTest):
 
         assert all(model["id"] != model_id for model in available_models), "Model wasn't deleted"
 
+        # TODO: clean up created models
+
+
 

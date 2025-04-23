@@ -34,6 +34,7 @@ class TestV4ModelEndpoints(base.IntegrationTest):
     def runTest(self):
         self.client = self.user()
         self.shouldAddAModel()
+        self.shouldDeleteModel()
 
     def shouldAddAModel(self):
         model_id = "test-model"
@@ -73,3 +74,39 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         ), "The test model wasn't returned from the GET request"
 
         # TODO: clean up created models
+
+    def shouldDeleteModel(self):
+        model_id = "test-model-2"
+        create_model_request = {
+            "id": model_id,
+            "name": "model made for testing",
+            "description": "This model is made for testing",
+            "modelIdOnHost": "test-model-id",
+            "modelType": "chat",
+            "host": "inferd",
+            "promptType": "text_only",
+        }
+        create_response = requests.post(
+            f"{self.origin}/v4/models/",
+            json=create_model_request,
+            headers=self.auth(self.client),
+        )
+        create_response.raise_for_status()
+
+        delete_response = requests.delete(
+            f"{self.origin}/v4/models/{model_id}", 
+            headers=self.auth(self.client),
+        )
+
+        delete_response.raise_for_status()
+
+        get_models_response = requests.get(
+            f"{self.origin}/v4/models/", headers=self.auth(self.client)
+        )
+        get_models_response.raise_for_status()
+
+        available_models = get_models_response.json()
+
+        assert all(model["id"] != model_id for model in available_models), "Model wasn't deleted"
+
+

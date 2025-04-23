@@ -1,8 +1,10 @@
 import atexit
 import logging
 import os
+from typing import Any
 
-from flask import Flask
+from flask import Flask, render_template
+from flask_pydantic_api.openapi import get_openapi_schema
 from sqlalchemy.orm import sessionmaker
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -45,6 +47,15 @@ def create_app():
         url_prefix="/v4",
         name="v4",
     )
+
+    @app.get("/openapi.json")
+    def get_openapi_spec() -> dict[str, Any]:
+        schema = get_openapi_schema()
+
+    @app.get("/docs")
+    def get_apidocs() -> str:
+        return render_template("rapidoc.html")
+
     app.register_error_handler(Exception, error.handle)
 
     app.wsgi_app = ProxyFix(

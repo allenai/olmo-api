@@ -13,6 +13,4 @@ def delete_model_config(request: DeleteModelConfigRequest, session_maker: sessio
         if not delete_model:
             raise ValueError("Model config not found!")
         session.delete(delete_model)
-        session.flush()
-
 

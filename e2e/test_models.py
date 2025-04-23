@@ -169,9 +169,9 @@ class TestV4ModelEndpoints(base.IntegrationTest):
             for model_id in created_models:
                 self._delete_message(model_id)
 
-    def _delete_message(self, message_id: str):
+    def _delete_message(self, model_id: str):
         r = requests.delete(
-            f"{self.origin}/v3/message/{message_id}",
+            f"{self.origin}/v4/models/{model_id}",
             headers=self.auth(self.client)
         )
         r.raise_for_status()

@@ -39,45 +39,50 @@ class TestV4ModelEndpoints(base.IntegrationTest):
 
     def shouldAddAModel(self):
         model_id = "test-model"
-        create_model_request = {
-            "id": model_id,
-            "name": "model made for testing",
-            "description": "This model is made for testing",
-            "modelIdOnHost": "test-model-id",
-            "modelType": "chat",
-            "host": "inferd",
-            "promptType": "text_only",
-        }
-        create_response = requests.post(
-            f"{self.origin}/v4/models/",
-            json=create_model_request,
-            headers=self.auth(self.client),
-        )
-        create_response.raise_for_status()
+        try:
+            create_model_request = {
+                "id": model_id,
+                "name": "model made for testing",
+                "description": "This model is made for testing",
+                "modelIdOnHost": "test-model-id",
+                "modelType": "chat",
+                "host": "inferd",
+                "promptType": "text_only",
+            }
+            create_response = requests.post(
+                f"{self.origin}/v4/models/",
+                json=create_model_request,
+                headers=self.auth(self.client),
+            )
+            create_response.raise_for_status()
 
-        created_model = create_response.json()
+            created_model = create_response.json()
 
-        assert created_model.get("createdTime") is not None
-        assert created_model.get("modelType") == "chat"
+            assert created_model.get("createdTime") is not None
+            assert created_model.get("modelType") == "chat"
 
-        get_models_response = requests.get(
-            f"{self.origin}/v4/models/", headers=self.auth(self.client)
-        )
-        get_models_response.raise_for_status()
+            get_models_response = requests.get(
+                f"{self.origin}/v4/models/", headers=self.auth(self.client)
+            )
+            get_models_response.raise_for_status()
 
-        available_models = get_models_response.json()
+            available_models = get_models_response.json()
 
-        test_model = next(
-            (model for model in available_models if model.get("id") == model_id), None
-        )
-        assert (
-            test_model is not None
-        ), "The test model wasn't returned from the GET request"
+            test_model = next(
+                (model for model in available_models if model.get("id") == model_id), None
+            )
+            assert (
+                test_model is not None
+            ), "The test model wasn't returned from the GET request"
 
-        # TODO: clean up created models
+        finally:
+            requests.delete(
+                f"{self.origin}/v4/models/{model_id}",
+                headers=self.auth(self.client),
+            )
 
     def shouldDeleteModel(self):
-        model_id = "test-model-2"
+        model_id = "test-model"
         create_model_request = {
             "id": model_id,
             "name": "model made for testing",

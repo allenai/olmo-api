@@ -35,6 +35,7 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         self.client = self.user()
         self.shouldAddAModel()
         self.shouldDeleteModel()
+        self.shouldReorderModels()
 
     def shouldAddAModel(self):
         model_id = "test-model"
@@ -110,3 +111,65 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         assert all(
             model["id"] != model_id for model in available_models
         ), "Model wasn't deleted"
+    def shouldReorderModels(self):
+        model_ids = ["model-a", "model-b", "model-c"]
+        created_models = []
+
+        try:
+            for model_id in model_ids:
+                create_model_request = {
+                    "id": model_id,
+                    "name": f"{model_id} name",
+                    "description": f"{model_id} desc",
+                    "modelIdOnHost": f"{model_id}-host",
+                    "modelType": "chat",
+                    "host": "inferd",
+                    "promptType": "text_only",
+                }
+                create_response = requests.post(
+                    f"{self.origin}/v4/models/",
+                    json=create_model_request,
+                    headers=self.auth(self.client),
+                )
+                create_response.raise_for_status()
+                created_models.append(model_id)
+
+            reordered = [
+                {"id": "model-c", "order": 1},
+                {"id": "model-b", "order": 2},
+                {"id": "model-a", "order": 3},
+            ]
+
+            reorder_response = requests.put(
+                f"{self.origin}/v4/models",
+                json={"ordered_models": reordered},
+                headers=self.auth(self.client),
+            )
+            reorder_response.raise_for_status()
+
+            get_response = requests.get(
+                f"{self.origin}/v4/models/",
+                headers=self.auth(self.client),
+            )
+            get_response.raise_for_status()
+            models = get_response.json()
+
+            test_models = sorted(
+                [m for m in models if m["id"] in model_ids],
+                key=lambda m: m["order"]
+            )
+
+            expected_order = ["model-c", "model-b", "model-a"]
+            actual_order = [m["id"] for m in test_models]
+            assert actual_order == expected_order, f"Expected order {expected_order}, got {actual_order}"
+
+        finally:
+            for model_id in created_models:
+                self._delete_message(model_id)
+
+    def _delete_message(self, model_id: str):
+        r = requests.delete(
+            f"{self.origin}/v4/models/{model_id}",
+            headers=self.auth(self.client)
+        )
+        r.raise_for_status()

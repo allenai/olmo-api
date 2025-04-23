@@ -133,7 +133,20 @@ function(apiImage, messageDeletionJobImage, cause, sha, env='prod', branch='', r
         'nginx.ingress.kubernetes.io/cors-allow-headers': 'DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,X-Anonymous-User-Id'
     };
 
-    local ipsToDeny = ['3.228.45.243/32', '52.0.57.178/32', '44.209.54.138/32', '34.203.68.42/32', '54.237.110.6/32', '52.4.151.236/32', '44.212.146.219/32', '35.175.72.198/32', '34.230.254.100/32', '34.96.52.86/32', '185.220.101.0/24', '109.70.100.0/24'];
+    local ipsToDeny = [
+        '3.228.45.243/32',
+        '52.0.57.178/32',
+        '44.209.54.138/32',
+        '34.203.68.42/32',
+        '54.237.110.6/32',
+        '52.4.151.236/32',
+        '44.212.146.219/32',
+        '35.175.72.198/32',
+        '34.230.254.100/32',
+        '34.96.52.86/32',
+        '185.220.101.0/24',
+        '109.70.100.0/24'
+    ];
 
     local ingressDenyAnno = {
             'nginx.ingress.kubernetes.io/server-snippet': ['deny %s' % ip for ip in ipsToDeny]

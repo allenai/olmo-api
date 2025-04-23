@@ -48,7 +48,10 @@ def make_error_response(
 def handle(e: Exception) -> ResponseReturnValue:
     getLogger(__name__).exception(e)
     if isinstance(e, HTTPException):
-        return make_error_response(e.code, e.description, body=json.loads(e.get_body()))
+        temp_body = e.get_body()
+        body = json.loads(temp_body) if temp_body is not None else None
+
+        return make_error_response(e.code, e.description, body=body)
     if isinstance(e, ValidationError):
         return handle_validation_error(e)
     if isinstance(e, ValueError):

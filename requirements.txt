@@ -15,7 +15,7 @@ gunicorn==23.0.0
 google-cloud-language==2.15.0
 google-cloud-storage==2.19.0
 google-cloud-vision==3.9.0
-flask-pydantic-api[serializer]==1.5.0
+flask-pydantic-api==1.5.0
 rank_bm25==0.2.2
 time-machine==2.16.0
 google-cloud-recaptcha-enterprise==1.27.0

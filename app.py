@@ -1,10 +1,8 @@
 import atexit
 import logging
 import os
-from typing import Any
 
-from flask import Flask, render_template
-from flask_pydantic_api.openapi import get_openapi_schema
+from flask import Flask
 from sqlalchemy.orm import sessionmaker
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -12,6 +10,7 @@ from src import db, error, util, v3
 from src.config import get_config
 from src.db.init_sqlalchemy import make_db_engine
 from src.message.GoogleCloudStorage import GoogleCloudStorage
+from src.openapi import openapi_blueprint
 from src.v4 import create_v4_blueprint
 
 
@@ -47,14 +46,7 @@ def create_app():
         url_prefix="/v4",
         name="v4",
     )
-
-    @app.get("/openapi.json")
-    def get_openapi_spec() -> dict[str, Any]:
-        schema = get_openapi_schema()
-
-    @app.get("/docs")
-    def get_apidocs() -> str:
-        return render_template("rapidoc.html")
+    app.register_blueprint(openapi_blueprint, name="openapi")
 
     app.register_error_handler(Exception, error.handle)
 

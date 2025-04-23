@@ -2,6 +2,7 @@ from flask import Blueprint, Response, jsonify
 from flask_pydantic_api.api_wrapper import pydantic_api
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectin_polymorphic, sessionmaker
+from werkzeug import exceptions
 
 from src.dao.engine_models.model_config import ModelConfig, MultiModalModelConfig
 from src.model_config.create_model_config_service import (
@@ -9,6 +10,7 @@ from src.model_config.create_model_config_service import (
     ResponseModel,
     create_model_config,
 )
+from src.model_config.delete_model_config_service import DeleteModelConfigRequest, delete_model_config
 
 
 def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Blueprint:
@@ -42,4 +44,13 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
 
         return new_model
 
+    @model_config_blueprint.delete("/")  # type: ignore
+    @required_auth_protector("write:model-config")
+    @pydantic_api(name="Delete a model", tags=["v4", "models", "model configuration"])
+    def delete_model(request: DeleteModelConfigRequest):
+        try:
+            delete_model_config(request, session_maker)
+            return
+        except ValueError as e:
+            raise  exceptions.NotFound
     return model_config_blueprint

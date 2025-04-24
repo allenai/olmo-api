@@ -47,13 +47,14 @@ class TestV4ModelEndpoints(base.IntegrationTest):
             "promptType": "text_only",
         }
 
+        self.created_model_ids.append(model_id)
+
         create_response = requests.post(
             f"{self.origin}/v4/models/",
             json=create_model_request,
             headers=self.auth(self.client),
         )
         create_response.raise_for_status()
-        self.created_model_ids.append(model_id)
 
         created_model = create_response.json()
         assert created_model.get("createdTime") is not None
@@ -109,6 +110,7 @@ class TestV4ModelEndpoints(base.IntegrationTest):
     def shouldReorderModels(self):
         model_ids = ["model-a", "model-b", "model-c"]
         for model_id in model_ids:
+            self.created_model_ids.append(model_id)
             create_model_request = {
                 "id": model_id,
                 "name": f"{model_id} name",
@@ -124,7 +126,6 @@ class TestV4ModelEndpoints(base.IntegrationTest):
                 headers=self.auth(self.client),
             )
             create_response.raise_for_status()
-            self.created_model_ids.append(model_id)
 
         reordered = [
             {"id": "model-c", "order": 1},
@@ -161,5 +162,4 @@ class TestV4ModelEndpoints(base.IntegrationTest):
                 f"{self.origin}/v4/models/{model_id}",
                 headers=self.auth(self.client),
             )
-            delete_response.raise_for_status()
             assert delete_response.status_code == 204

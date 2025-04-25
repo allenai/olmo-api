@@ -72,8 +72,8 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
         try:
             reorder_model_config(request, session_maker)
             return "", 204
-        except ValueError:
-            raise exceptions.NotFound
+        except ValueError as e:
+            raise  exceptions.NotFound from e
 
     @model_config_blueprint.put("/<model_id>")
     @required_auth_protector("write:model-config")

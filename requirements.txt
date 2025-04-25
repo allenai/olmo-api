@@ -15,7 +15,8 @@ gunicorn==23.0.0
 google-cloud-language==2.15.0
 google-cloud-storage==2.19.0
 google-cloud-vision==3.9.0
-flask-pydantic-api==1.6.0
+./vendor/flask_pydantic_api-1.6.1.tar.gz
+# flask-pydantic-api==1.6.0 # TODO: Put this back when the main package gets updated with the union PRs
 rank_bm25==0.2.2
 time-machine==2.16.0
 google-cloud-recaptcha-enterprise==1.27.0

@@ -46,14 +46,17 @@ def update_model_config(
     model_id: str,
     request: UpdateModelConfigRequest,
     session_maker: sessionmaker[Session],
-):
+) -> ResponseModel | None:
     with session_maker.begin() as session:
-        # try:
-        # model_to_update = session.get(ModelConfig, model_id)
-        # model_to_update
         updated_model = session.scalar(
-            update(ModelConfig).returning(ModelConfig),
-            {"id": model_id, **request.model_dump()},
+            update(ModelConfig)
+            .where(ModelConfig.id == model_id)
+            .values(request.model_dump())
+            .returning(ModelConfig),
         )
 
-        return ResponseModel.model_validate(updated_model)
+        return (
+            ResponseModel.model_validate(updated_model)
+            if updated_model is not None
+            else None
+        )

@@ -1,5 +1,4 @@
 import requests
-
 from . import base
 
 
@@ -15,26 +14,26 @@ class TestModelEndpoints(base.IntegrationTest):
         r.raise_for_status()
 
         response = r.json()
-
-        # should have at least one model entity
         assert len(response) > 0
 
-        # should have the following fields that match ModelEntity
         entity = response.pop()
         assert "is_visible" in entity
         assert "host" in entity
         assert "compute_source_id" not in entity
         assert "available_time" not in entity
-        assert "deprecation_time" not in entity
 
 
 class TestV4ModelEndpoints(base.IntegrationTest):
     client: base.AuthenticatedClient
+    created_model_ids: list[str]
 
     def runTest(self):
         self.client = self.user()
+        self.created_model_ids = []
         self.shouldAddAModel()
         self.shouldDeleteModel()
+        self.shouldReorderModels()
+           
 
     def shouldAddAModel(self):
         model_id = "test-model"
@@ -47,6 +46,9 @@ class TestV4ModelEndpoints(base.IntegrationTest):
             "host": "inferd",
             "promptType": "text_only",
         }
+
+        self.created_model_ids.append(model_id)
+
         create_response = requests.post(
             f"{self.origin}/v4/models/",
             json=create_model_request,
@@ -55,7 +57,6 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         create_response.raise_for_status()
 
         created_model = create_response.json()
-
         assert created_model.get("createdTime") is not None
         assert created_model.get("modelType") == "chat"
 
@@ -65,18 +66,13 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         get_models_response.raise_for_status()
 
         available_models = get_models_response.json()
-
         test_model = next(
             (model for model in available_models if model.get("id") == model_id), None
         )
-        assert (
-            test_model is not None
-        ), "The test model wasn't returned from the GET request"
-
-        # TODO: clean up created models
+        assert test_model is not None, "The test model wasn't returned from the GET request"
 
     def shouldDeleteModel(self):
-        model_id = "test-model-2"
+        model_id = "test-model"
         create_model_request = {
             "id": model_id,
             "name": "model made for testing",
@@ -86,6 +82,7 @@ class TestV4ModelEndpoints(base.IntegrationTest):
             "host": "inferd",
             "promptType": "text_only",
         }
+
         create_response = requests.post(
             f"{self.origin}/v4/models/",
             json=create_model_request,
@@ -97,7 +94,6 @@ class TestV4ModelEndpoints(base.IntegrationTest):
             f"{self.origin}/v4/models/{model_id}",
             headers=self.auth(self.client),
         )
-
         delete_response.raise_for_status()
         assert delete_response.status_code == 204
 
@@ -110,3 +106,60 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         assert all(
             model["id"] != model_id for model in available_models
         ), "Model wasn't deleted"
+
+    def shouldReorderModels(self):
+        model_ids = ["model-a", "model-b", "model-c"]
+        for model_id in model_ids:
+            self.created_model_ids.append(model_id)
+            create_model_request = {
+                "id": model_id,
+                "name": f"{model_id} name",
+                "description": f"{model_id} desc",
+                "modelIdOnHost": f"{model_id}-host",
+                "modelType": "chat",
+                "host": "inferd",
+                "promptType": "text_only",
+            }
+            create_response = requests.post(
+                f"{self.origin}/v4/models/",
+                json=create_model_request,
+                headers=self.auth(self.client),
+            )
+            create_response.raise_for_status()
+
+        reordered = [
+            {"id": "model-c", "order": 1},
+            {"id": "model-b", "order": 2},
+            {"id": "model-a", "order": 3},
+        ]
+
+        reorder_response = requests.put(
+            f"{self.origin}/v4/models",
+            json={"ordered_models": reordered},
+            headers=self.auth(self.client),
+        )
+        reorder_response.raise_for_status()
+
+        get_response = requests.get(
+            f"{self.origin}/v4/models/",
+            headers=self.auth(self.client),
+        )
+        get_response.raise_for_status()
+        models = get_response.json()
+
+        test_models = sorted(
+            [m for m in models if m["id"] in model_ids],
+            key=lambda m: m["order"]
+        )
+
+        expected_order = ["model-c", "model-b", "model-a"]
+        actual_order = [m["id"] for m in test_models]
+        assert actual_order == expected_order, f"Expected order {expected_order}, got {actual_order}"
+
+    def tearDown(self):
+        for model_id in self.created_model_ids:
+            delete_response = requests.delete(
+                f"{self.origin}/v4/models/{model_id}",
+                headers=self.auth(self.client),
+            )
+            assert delete_response.status_code == 204

@@ -43,7 +43,9 @@ from src.message.SafetyChecker import (
     SafetyCheckerType,
     SafetyCheckRequest,
 )
-from src.message.validate_message_files_from_config import validate_message_files_from_config
+from src.message.validate_message_files_from_config import (
+    validate_message_files_from_config,
+)
 from src.message.WildGuard import WildGuard
 
 
@@ -382,6 +384,7 @@ def stream_new_message(
 
         # Now yield each chunk as it's returned.
         finish_reason: FinishReason | None = None
+        start_message_generation_ns = time_ns()
         first_ns = 0
         chunk_count = 0
         input_token_count = -1
@@ -610,20 +613,22 @@ def stream_new_message(
 
         end_all = time_ns()
         if first_ns > start_all:
-            logger.info({
-                "event": "inference.timing",
-                "ttft_ms": (first_ns - start_all) // 1e6,
-                "total_ms": (end_all - start_all) // 1e6,
-                "safety_ms": safety_check_elapsed_time,
-                "input_tokens": input_token_count,
-                "output_tokens": output_token_count,
-                "sha": sha,
-                "model": model.id,
-                "safety_check_id": checker_type,
-                "message_id": msg.id,
-                "reply_id": reply.id,
-                "remote_address": user_ip_address,
-            })
+            logger.info(
+                {
+                    "event": "inference.timing",
+                    "ttft_ms": (first_ns - start_message_generation_ns) // 1e6,
+                    "total_ms": (end_all - start_all) // 1e6,
+                    "safety_ms": safety_check_elapsed_time,
+                    "input_tokens": input_token_count,
+                    "output_tokens": output_token_count,
+                    "sha": sha,
+                    "model": model.id,
+                    "safety_check_id": checker_type,
+                    "message_id": msg.id,
+                    "reply_id": reply.id,
+                    "remote_address": user_ip_address,
+                }
+            )
 
         yield format_message(final_message)
 

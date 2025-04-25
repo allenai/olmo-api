@@ -91,8 +91,8 @@ def get_model_config_admin(session_maker: sessionmaker[Session]) -> list[Model]:
                     system_prompt=m.default_system_prompt,
                     family_id=m.family_id,
                     family_name=m.family_name,
-                    available_time=None,
-                    deprecation_time=None,
+                    available_time=m.available_time,
+                    deprecation_time=m.deprecation_time,
                     accepted_file_types=m.accepted_file_types,
                     max_files_per_message=m.max_files_per_message,
                     require_file_to_prompt=m.require_file_to_prompt or FileRequiredToPromptOption.NoRequirement,
@@ -103,5 +103,3 @@ def get_model_config_admin(session_maker: sessionmaker[Session]) -> list[Model]:
             processed_results.append(item)
 
         return processed_results
-
-        return list(results)

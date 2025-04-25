@@ -94,19 +94,19 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         create_response.raise_for_status()
 
         delete_response = requests.delete(
-            f"{self.origin}/v4/models/{model_id}", 
+            f"{self.origin}/v4/models/{model_id}",
             headers=self.auth(self.client),
         )
 
         delete_response.raise_for_status()
+        assert delete_response.status_code == 204
 
         get_models_response = requests.get(
             f"{self.origin}/v4/models/", headers=self.auth(self.client)
         )
         get_models_response.raise_for_status()
-
         available_models = get_models_response.json()
 
-        assert all(model["id"] != model_id for model in available_models), "Model wasn't deleted"
-
-
+        assert all(
+            model["id"] != model_id for model in available_models
+        ), "Model wasn't deleted"

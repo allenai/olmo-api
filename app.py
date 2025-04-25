@@ -10,6 +10,7 @@ from src import db, error, util, v3
 from src.config import get_config
 from src.db.init_sqlalchemy import make_db_engine
 from src.message.GoogleCloudStorage import GoogleCloudStorage
+from src.openapi import openapi_blueprint
 from src.v4 import create_v4_blueprint
 
 
@@ -45,6 +46,8 @@ def create_app():
         url_prefix="/v4",
         name="v4",
     )
+    app.register_blueprint(openapi_blueprint, name="openapi")
+
     app.register_error_handler(Exception, error.handle)
 
     app.wsgi_app = ProxyFix(

@@ -1,4 +1,5 @@
 import requests
+
 from . import base
 
 
@@ -27,15 +28,19 @@ class TestV4ModelEndpoints(base.IntegrationTest):
     client: base.AuthenticatedClient
     created_model_ids: list[str]
 
-    def runTest(self):
+    def setUp(self):
         self.client = self.user()
         self.created_model_ids = []
-        self.shouldAddAModel()
-        self.shouldDeleteModel()
-        self.shouldReorderModels()
-           
 
-    def shouldAddAModel(self):
+    def tearDown(self):
+        for model_id in self.created_model_ids:
+            delete_response = requests.delete(
+                f"{self.origin}/v4/models/{model_id}",
+                headers=self.auth(self.client),
+            )
+            assert delete_response.status_code == 204
+
+    def test_should_create_a_model(self):
         model_id = "test-model"
         create_model_request = {
             "id": model_id,
@@ -69,9 +74,11 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         test_model = next(
             (model for model in available_models if model.get("id") == model_id), None
         )
-        assert test_model is not None, "The test model wasn't returned from the GET request"
+        assert (
+            test_model is not None
+        ), "The test model wasn't returned from the GET request"
 
-    def shouldDeleteModel(self):
+    def test_should_delete_a_model(self):
         model_id = "test-model"
         create_model_request = {
             "id": model_id,
@@ -107,7 +114,7 @@ class TestV4ModelEndpoints(base.IntegrationTest):
             model["id"] != model_id for model in available_models
         ), "Model wasn't deleted"
 
-    def shouldReorderModels(self):
+    def test_should_reorder_models(self):
         model_ids = ["model-a", "model-b", "model-c"]
         for model_id in model_ids:
             self.created_model_ids.append(model_id)
@@ -148,18 +155,62 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         models = get_response.json()
 
         test_models = sorted(
-            [m for m in models if m["id"] in model_ids],
-            key=lambda m: m["order"]
+            [m for m in models if m["id"] in model_ids], key=lambda m: m["order"]
         )
 
         expected_order = ["model-c", "model-b", "model-a"]
         actual_order = [m["id"] for m in test_models]
-        assert actual_order == expected_order, f"Expected order {expected_order}, got {actual_order}"
+        assert (
+            actual_order == expected_order
+        ), f"Expected order {expected_order}, got {actual_order}"
 
-    def tearDown(self):
-        for model_id in self.created_model_ids:
-            delete_response = requests.delete(
-                f"{self.origin}/v4/models/{model_id}",
-                headers=self.auth(self.client),
-            )
-            assert delete_response.status_code == 204
+    def test_should_update_a_text_only_model(self):
+        model_id = "test-model"
+        create_model_request = {
+            "id": model_id,
+            "name": "model made for testing",
+            "description": "This model is made for testing",
+            "modelIdOnHost": "test-model-id",
+            "modelType": "chat",
+            "host": "inferd",
+            "promptType": "text_only",
+        }
+
+        create_response = requests.post(
+            f"{self.origin}/v4/models/",
+            json=create_model_request,
+            headers=self.auth(self.client),
+        )
+        create_response.raise_for_status()
+        self.created_model_ids.append(model_id)
+
+        update_model_request = {
+            "name": "updated model made for testing",
+            "description": "This model is made for testing",
+            "modelIdOnHost": "test-model-id",
+            "modelType": "base",
+            "host": "modal",
+            "promptType": "text_only",
+        }
+        update_model_response = requests.put(
+            f"{self.origin}/v4/models/{model_id}",
+            headers=self.auth(self.client),
+            json=update_model_request,
+        )
+        update_model_response.raise_for_status()
+        assert update_model_response.status_code == 200
+
+        get_models_response = requests.get(
+            f"{self.origin}/v4/models/", headers=self.auth(self.client)
+        )
+        get_models_response.raise_for_status()
+        available_models = get_models_response.json()
+
+        updated_model = next(
+            filter(lambda model: model.get("id") == model_id, available_models)
+        )
+        assert (
+            updated_model is not None
+        ), "Updated model not returned from models endpoint"
+        assert updated_model.get("name") == "updated model made for testing"
+        assert updated_model.get("model_type") == "base"

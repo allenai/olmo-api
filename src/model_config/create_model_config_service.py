@@ -60,45 +60,14 @@ def create_model_config(
 ) -> ResponseModel:
     with session_maker.begin() as session:
         try:
-            # polymorphic_loader_opt = selectin_polymorphic(
-            #     ModelConfig, [ModelConfig, MultiModalModelConfig]
-            # )
-
-            # new_model = session.scalars(
-            #     insert(ModelConfig)
-            #     .returning(ModelConfig)
-            #     .returning(MultiModalModelConfig)
-            #     .options(polymorphic_loader_opt),
-            #     [request.model_dump()],
-            # ).one()
-
-            request_class = (
+            RequestClass = (
                 ModelConfig
                 if request.root.prompt_type is PromptType.TEXT_ONLY
                 else MultiModalModelConfig
             )
-            new_model = request_class(**request.model_dump())
-            # new_model = ModelConfig(
-            #     id=request.id,
-            #     name=request.name,
-            #     host=request.host,
-            #     description=request.description,
-            #     model_type=request.model_type,
-            #     model_id_on_host=request.model_id_on_host,
-            #     internal=request.internal,
-            #     prompt_type=request.prompt_type,
-            #     default_system_prompt=request.default_system_prompt,
-            #     family_id=request.family_id,
-            #     family_name=request.family_name,
-            #     available_time=request.available_time.astimezone(UTC)
-            #     if request.available_time is not None
-            #     else None,
-            #     deprecation_time=request.deprecation_time.astimezone(UTC)
-            #     if request.deprecation_time is not None
-            #     else None,
-            # )
-            # session.add(new_model)
-            # session.flush()  # This populates the auto-generated things on the new_model
+
+            new_model = RequestClass(**request.model_dump())
+            # TODO: There's a bug here where this request returns the available and deprecation times in the time zone that was submitted. It should return as UTC, which is what it gets saved as in the DB
             session.add(new_model)
             session.flush()
 

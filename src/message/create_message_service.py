@@ -617,6 +617,7 @@ def stream_new_message(
                 {
                     "event": "inference.timing",
                     "ttft_ms": (first_ns - start_message_generation_ns) // 1e6,
+                    "ttft_ms_including_checks": (first_ns - start_all) // 1e6,
                     "total_ms": (end_all - start_all) // 1e6,
                     "safety_ms": safety_check_elapsed_time,
                     "input_tokens": input_token_count,

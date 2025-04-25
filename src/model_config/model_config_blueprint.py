@@ -1,7 +1,6 @@
 from flask import Blueprint, Response, jsonify
 from flask_pydantic_api.api_wrapper import pydantic_api
 from sqlalchemy import select
-from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session, selectin_polymorphic, sessionmaker
 from werkzeug import exceptions
 
@@ -87,12 +86,11 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
         model_id: str,
         request: UpdateModelConfigRequest,
     ) -> ResponseModel:
-        try:
-            updated_model = update_model_config(model_id, request, session_maker)
+        updated_model = update_model_config(model_id, request, session_maker)
 
-        except NoResultFound as no_result_found_e:
+        if updated_model is None:
             not_found_message = f"No model found with ID {model_id}"
-            raise exceptions.NotFound(not_found_message) from no_result_found_e
+            raise exceptions.NotFound(not_found_message)
 
         if updated_model is None:
             not_found_message = f"No model found with ID {model_id}"

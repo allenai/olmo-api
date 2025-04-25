@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from src.api_interface import APIInterface
 from src.config.ModelConfig import FileRequiredToPromptOption, ModelHost, ModelType
 from src.dao.engine_models.model_config import ModelConfig, PromptType
+from src.model_config.model_config_utils import get_model_config_class
 from src.model_config.response_model import ResponseModel
 
 
@@ -50,8 +51,9 @@ def update_model_config(
     session_maker: sessionmaker[Session],
 ) -> ResponseModel | None:
     with session_maker.begin() as session:
+        RequestClass = get_model_config_class(request.root)
         updated_model = session.scalar(
-            update(ModelConfig)
+            update(RequestClass)
             .where(ModelConfig.id == model_id)
             .values(request.model_dump())
             .returning(ModelConfig),

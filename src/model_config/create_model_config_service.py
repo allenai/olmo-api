@@ -13,10 +13,9 @@ from src.config.ModelConfig import (
     ModelType,
 )
 from src.dao.engine_models.model_config import (
-    ModelConfig,
-    MultiModalModelConfig,
     PromptType,
 )
+from src.model_config.model_config_utils import get_model_config_class
 from src.model_config.response_model import ResponseModel
 
 
@@ -60,11 +59,7 @@ def create_model_config(
 ) -> ResponseModel:
     with session_maker.begin() as session:
         try:
-            RequestClass = (
-                ModelConfig
-                if request.root.prompt_type is PromptType.TEXT_ONLY
-                else MultiModalModelConfig
-            )
+            RequestClass = get_model_config_class(request.root)
 
             new_model = RequestClass(**request.model_dump())
             # TODO: There's a bug here where this request returns the available and deprecation times in the time zone that was submitted. It should return as UTC, which is what it gets saved as in the DB

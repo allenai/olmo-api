@@ -1,4 +1,4 @@
-from typing import Literal, Union
+from typing import Literal
 
 from pydantic import AwareDatetime, Field
 from sqlalchemy import update
@@ -37,10 +37,9 @@ class UpdateMultiModalModelConfigRequest(BaseUpdateModelConfigRequest):
     allow_files_in_followups: bool | None = Field(default=None)
 
 
-# This is intentionally a union, flask-pydantic-api doesn't generate models if we use the | syntax
-UpdateModelConfigRequest = Union[
-    UpdateTextOnlyModelConfigRequest, UpdateMultiModalModelConfigRequest
-]
+UpdateModelConfigRequest = (
+    UpdateTextOnlyModelConfigRequest | UpdateMultiModalModelConfigRequest
+)
 
 
 def update_model_config(
@@ -52,7 +51,7 @@ def update_model_config(
         # try:
         # model_to_update = session.get(ModelConfig, model_id)
         # model_to_update
-        updated_model = session.execute(
+        updated_model = session.scalar(
             update(ModelConfig).returning(ModelConfig),
             {"id": model_id, **request.model_dump()},
         )

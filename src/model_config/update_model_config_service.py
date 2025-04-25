@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import AwareDatetime, Field
+from pydantic import AwareDatetime, Field, RootModel
 from sqlalchemy import update
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -37,14 +37,16 @@ class UpdateMultiModalModelConfigRequest(BaseUpdateModelConfigRequest):
     allow_files_in_followups: bool | None = Field(default=None)
 
 
-UpdateModelConfigRequest = (
-    UpdateTextOnlyModelConfigRequest | UpdateMultiModalModelConfigRequest
-)
+# We can't make a discriminated union at the top level so we need to use a RootModel
+class RootUpdateModelConfigRequest(RootModel):
+    root: UpdateTextOnlyModelConfigRequest | UpdateMultiModalModelConfigRequest = Field(
+        discriminator="prompt_type"
+    )
 
 
 def update_model_config(
     model_id: str,
-    request: UpdateModelConfigRequest,
+    request: RootUpdateModelConfigRequest,
     session_maker: sessionmaker[Session],
 ) -> ResponseModel | None:
     with session_maker.begin() as session:

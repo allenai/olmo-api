@@ -1,8 +1,7 @@
-from typing import Annotated, Literal
+from typing import Literal
 
 from psycopg.errors import UniqueViolation
 from pydantic import AwareDatetime, Field, RootModel
-from sqlalchemy import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
@@ -13,7 +12,11 @@ from src.config.ModelConfig import (
     ModelHost,
     ModelType,
 )
-from src.dao.engine_models.model_config import ModelConfig, PromptType
+from src.dao.engine_models.model_config import (
+    ModelConfig,
+    MultiModalModelConfig,
+    PromptType,
+)
 from src.model_config.response_model import ResponseModel
 
 
@@ -45,22 +48,36 @@ class CreateMultiModalModelConfigRequest(BaseCreateModelConfigRequest):
     allow_files_in_followups: bool | None = Field(default=None)
 
 
-CreateModelConfigRequest = RootModel[
-    Annotated[
-        CreateTextOnlyModelConfigRequest | CreateMultiModalModelConfigRequest,
-        Field(discriminator="prompt_type"),
-    ]
-]
+# We can't make a discriminated union at the top level so we need to use a RootModel
+class RootCreateModelConfigRequest(RootModel):
+    root: CreateTextOnlyModelConfigRequest | CreateMultiModalModelConfigRequest = Field(
+        discriminator="prompt_type"
+    )
 
 
 def create_model_config(
-    request: CreateModelConfigRequest, session_maker: sessionmaker[Session]
+    request: RootCreateModelConfigRequest, session_maker: sessionmaker[Session]
 ) -> ResponseModel:
     with session_maker.begin() as session:
         try:
-            new_model = session.scalar(
-                insert(ModelConfig).values(request.model_dump()).returning(ModelConfig)
+            # polymorphic_loader_opt = selectin_polymorphic(
+            #     ModelConfig, [ModelConfig, MultiModalModelConfig]
+            # )
+
+            # new_model = session.scalars(
+            #     insert(ModelConfig)
+            #     .returning(ModelConfig)
+            #     .returning(MultiModalModelConfig)
+            #     .options(polymorphic_loader_opt),
+            #     [request.model_dump()],
+            # ).one()
+
+            request_class = (
+                ModelConfig
+                if request.root.prompt_type is PromptType.TEXT_ONLY
+                else MultiModalModelConfig
             )
+            new_model = request_class(**request.model_dump())
             # new_model = ModelConfig(
             #     id=request.id,
             #     name=request.name,
@@ -82,12 +99,14 @@ def create_model_config(
             # )
             # session.add(new_model)
             # session.flush()  # This populates the auto-generated things on the new_model
+            session.add(new_model)
+            session.flush()
 
             return ResponseModel.model_validate(new_model)
 
         except IntegrityError as e:
             if isinstance(e.orig, UniqueViolation):
-                conflict_message = f"{request.id} already exists"
+                conflict_message = f"{request.root.id} already exists"
                 raise exceptions.Conflict(conflict_message) from e
 
             raise

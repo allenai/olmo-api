@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from pydantic import AwareDatetime, BaseModel, ByteSize, Field, computed_field
+from pydantic import AwareDatetime, BaseModel, Field, computed_field
 
 from src.config.ModelConfig import (
     FileRequiredToPromptOption,
@@ -68,7 +68,7 @@ class MultiModalModel(Model):
         default=FileRequiredToPromptOption.NoRequirement,
         description="Defines if a user is required to send files with messages. Not intended to prevent users from sending files with follow-up messages.",
     )
-    max_total_file_size: ByteSize | None = Field(
+    max_total_file_size: int | None = Field(
         default=None,
         description="The maximum total file size a user is allowed to send. Adds up the size of every file.",
     )

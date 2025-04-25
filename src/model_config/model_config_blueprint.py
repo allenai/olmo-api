@@ -14,10 +14,13 @@ from src.model_config.create_model_config_service import (
 from src.model_config.delete_model_config_service import (
     delete_model_config,
 )
+from src.model_config.reorder_model_config_service import (
+    ReorderModelConfigRequest,
+    reorder_model_config,
+)
 from src.model_config.update_model_config_service import (
     UpdateModelConfigRequest,
     update_model_config,
-    reorder_model_config
 )
 
 
@@ -73,7 +76,7 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
         try:
             reorder_model_config(request, session_maker)
             return "", 204
-        except ValueError as e:
+        except ValueError:
             raise  exceptions.NotFound
 
     @model_config_blueprint.put("/<model_id>")

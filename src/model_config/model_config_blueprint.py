@@ -13,6 +13,7 @@ from src.model_config.delete_model_config_service import (
     delete_model_config,
 )
 from src.model_config.get_model_config_service import get_model_config, get_model_config_admin
+from src.model_config.reorder_model_config_service import ReorderModelConfigRequest, reorder_model_config
 
 
 def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Blueprint:
@@ -52,6 +53,16 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
     def delete_model(model_id: str):
         try:
             delete_model_config(model_id, session_maker)
+            return "", 204
+        except ValueError:
+            raise exceptions.NotFound
+
+    @model_config_blueprint.put("/")  # type: ignore
+    @required_auth_protector("write:model-config")
+    @pydantic_api(name="Reorder model", tags=["v4", "models", "model configuration"])
+    def reorder_model(request: ReorderModelConfigRequest):
+        try:
+            reorder_model_config(request, session_maker)
             return "", 204
         except ValueError:
             raise exceptions.NotFound

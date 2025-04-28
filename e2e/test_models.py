@@ -1,5 +1,15 @@
 import requests
 
+from src.config.ModelConfig import ModelHost, ModelType
+from src.dao.engine_models.model_config import PromptType
+from src.model_config.create_model_config_service import (
+    CreateMultiModalModelConfigRequest,
+)
+from src.model_config.response_model import MultiModalResponseModel, ResponseModel
+from src.model_config.update_model_config_service import (
+    UpdateMultiModalModelConfigRequest,
+)
+
 from . import base
 
 
@@ -77,6 +87,48 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         assert (
             test_model is not None
         ), "The test model wasn't returned from the GET request"
+
+    def test_should_create_a_multi_modal_model(self):
+        model_id = "test-mm-model"
+        create_model_request = CreateMultiModalModelConfigRequest(
+            id=model_id,
+            name="multi-modal model made for testing",
+            description="This model is made for testing",
+            model_id_on_host="test-mm-model-id",
+            model_type=ModelType.Chat,
+            host=ModelHost.InferD,
+            prompt_type=PromptType.MULTI_MODAL,
+            accepted_file_types=["image/*"],
+            max_files_per_message=1,
+            allow_files_in_followups=False,
+        )
+
+        self.created_model_ids.append(model_id)
+
+        create_response = requests.post(
+            f"{self.origin}/v4/models/",
+            json=create_model_request.model_dump(),
+            headers=self.auth(self.client),
+        )
+        create_response.raise_for_status()
+
+        created_model = create_response.json()
+        assert created_model.get("createdTime") is not None
+        assert created_model.get("modelType") == "chat"
+
+        get_models_response = requests.get(
+            f"{self.origin}/v4/models/", headers=self.auth(self.client)
+        )
+        get_models_response.raise_for_status()
+
+        available_models = get_models_response.json()
+        test_model = next(
+            (model for model in available_models if model.get("id") == model_id), None
+        )
+        assert (
+            test_model is not None
+        ), "The test model wasn't returned from the GET request"
+        assert "image/*" in test_model.get("accepted_file_types")
 
     def test_should_delete_a_model(self):
         model_id = "test-model"
@@ -214,3 +266,68 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         ), "Updated model not returned from models endpoint"
         assert updated_model.get("name") == "updated model made for testing"
         assert updated_model.get("model_type") == "base"
+
+    def test_should_update_a_multi_modal_model(self):
+        model_id = "test-model"
+        create_model_request = CreateMultiModalModelConfigRequest(
+            id=model_id,
+            name="multi-modal model made for testing",
+            description="This model is made for testing",
+            model_id_on_host="test-mm-model-id",
+            model_type=ModelType.Chat,
+            host=ModelHost.InferD,
+            prompt_type=PromptType.MULTI_MODAL,
+            accepted_file_types=["image/*"],
+            max_files_per_message=1,
+            allow_files_in_followups=False,
+        )
+
+        create_response = requests.post(
+            f"{self.origin}/v4/models/",
+            json=create_model_request.model_dump(),
+            headers=self.auth(self.client),
+        )
+        create_response.raise_for_status()
+        self.created_model_ids.append(model_id)
+
+        update_model_request = UpdateMultiModalModelConfigRequest(
+            name="multi-modal model made for testing",
+            description="updated",
+            model_id_on_host="test-mm-model-id",
+            model_type=ModelType.Chat,
+            host=ModelHost.InferD,
+            prompt_type=PromptType.MULTI_MODAL,
+            accepted_file_types=["image/*", "application/pdf"],
+            max_files_per_message=1,
+            allow_files_in_followups=True,
+        )
+
+        update_model_response = requests.put(
+            f"{self.origin}/v4/models/{model_id}",
+            headers=self.auth(self.client),
+            json=update_model_request.model_dump(),
+        )
+        update_model_response.raise_for_status()
+        assert update_model_response.status_code == 200
+
+        get_models_response = requests.get(
+            f"{self.origin}/v4/models/", headers=self.auth(self.client)
+        )
+        get_models_response.raise_for_status()
+        available_models = get_models_response.json()
+
+        updated_model = next(
+            filter(lambda model: model.get("id") == model_id, available_models)
+        )
+        assert (
+            updated_model is not None
+        ), "Updated model not returned from models endpoint"
+
+        parsed_updated_model = ResponseModel.model_validate(updated_model)
+        assert isinstance(parsed_updated_model.root, MultiModalResponseModel)
+        assert parsed_updated_model.root.description == "updated"
+        assert parsed_updated_model.root.allow_files_in_followups is True
+        assert parsed_updated_model.root.accepted_file_types == [
+            "image/*",
+            "application/pdf",
+        ]

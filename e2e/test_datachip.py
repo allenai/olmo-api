@@ -186,7 +186,7 @@ class TestDatachipEndpoints(base.IntegrationTest):
             json={"name": dc1["name"], "content": "Sam Skjønsberg"},
         )
         assert r.status_code == 400
-        assert r.json()["error"]["message"] == f"datachip \"{dc1['ref']}\" already exists"
+        assert r.json()["error"]["message"] == f'datachip "{dc1["ref"]}" already exists'
 
         # Make sure deleted things aren't listed by default
         r = requests.get(f"{self.origin}/v3/datachips", headers=self.auth(u1))

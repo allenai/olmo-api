@@ -29,13 +29,11 @@ class InfiniGramCountResponse:
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
-        field_dict.update(
-            {
-                "index": index,
-                "approx": approx,
-                "count": count,
-            }
-        )
+        field_dict.update({
+            "index": index,
+            "approx": approx,
+            "count": count,
+        })
 
         return field_dict
 

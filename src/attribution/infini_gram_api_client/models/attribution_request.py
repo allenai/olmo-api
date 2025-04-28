@@ -74,11 +74,9 @@ class AttributionRequest:
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
-        field_dict.update(
-            {
-                "response": response,
-            }
-        )
+        field_dict.update({
+            "response": response,
+        })
         if delimiters is not UNSET:
             field_dict["delimiters"] = delimiters
         if allow_spans_with_partial_words is not UNSET:

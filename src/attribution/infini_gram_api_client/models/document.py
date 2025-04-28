@@ -55,17 +55,15 @@ class Document:
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
-        field_dict.update(
-            {
-                "documentIndex": document_index,
-                "documentLength": document_length,
-                "displayLength": display_length,
-                "needleOffset": needle_offset,
-                "metadata": metadata,
-                "tokenIds": token_ids,
-                "text": text,
-            }
-        )
+        field_dict.update({
+            "documentIndex": document_index,
+            "documentLength": document_length,
+            "displayLength": display_length,
+            "needleOffset": needle_offset,
+            "metadata": metadata,
+            "tokenIds": token_ids,
+            "text": text,
+        })
         if blocked is not UNSET:
             field_dict["blocked"] = blocked
 

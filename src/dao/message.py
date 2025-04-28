@@ -710,8 +710,8 @@ class Store:
                 WHERE
                     (message.creator = %(creator)s OR %(creator)s IS NULL)
                 """
-            
-            rows = cur.execute(q, { "creator": creator }).fetchall()
+
+            rows = cur.execute(q, {"creator": creator}).fetchall()
 
             msg_list = list(map(Message.from_row, rows))
 
@@ -852,7 +852,6 @@ class Store:
             )
 
     def migrate_messages_to_new_user(self, previous_user_id: str, new_user_id: str):
-
         params = {
             "new_user_id": new_user_id,
             "previous_user_id": previous_user_id,
@@ -864,14 +863,14 @@ class Store:
                 SET creator = %(new_user_id)s
                 WHERE creator = %(previous_user_id)s
                 """
-            
+
             qm = """
                 UPDATE message
                 SET creator = %(new_user_id)s, expiration_time = NULL, private = false
                 WHERE creator = %(previous_user_id)s
                 """
-            
-            with conn.cursor() as cur:
-                cur.execute( query=ql, params=params )
 
-                return cur.execute( query=qm, params=params ).rowcount
+            with conn.cursor() as cur:
+                cur.execute(query=ql, params=params)
+
+                return cur.execute(query=qm, params=params).rowcount

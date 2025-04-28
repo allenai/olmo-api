@@ -79,23 +79,21 @@ class AttributionDocument:
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
-        field_dict.update(
-            {
-                "documentIndex": document_index,
-                "documentLength": document_length,
-                "displayLength": display_length,
-                "needleOffset": needle_offset,
-                "metadata": metadata,
-                "tokenIds": token_ids,
-                "text": text,
-                "displayLengthLong": display_length_long,
-                "needleOffsetLong": needle_offset_long,
-                "textLong": text_long,
-                "displayOffsetSnippet": display_offset_snippet,
-                "needleOffsetSnippet": needle_offset_snippet,
-                "textSnippet": text_snippet,
-            }
-        )
+        field_dict.update({
+            "documentIndex": document_index,
+            "documentLength": document_length,
+            "displayLength": display_length,
+            "needleOffset": needle_offset,
+            "metadata": metadata,
+            "tokenIds": token_ids,
+            "text": text,
+            "displayLengthLong": display_length_long,
+            "needleOffsetLong": needle_offset_long,
+            "textLong": text_long,
+            "displayOffsetSnippet": display_offset_snippet,
+            "needleOffsetSnippet": needle_offset_snippet,
+            "textSnippet": text_snippet,
+        })
         if blocked is not UNSET:
             field_dict["blocked"] = blocked
 

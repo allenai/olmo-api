@@ -34,35 +34,26 @@ class BaseCreateModelConfigRequest(APIInterface):
     deprecation_time: AwareDatetime | None = Field(default=None)
 
 
-class CreateTextOnlyModelConfigRequest(BaseCreateModelConfigRequest):
-    prompt_type: Literal[PromptType.TEXT_ONLY]
-
-
-class CreateMultiModalModelConfigRequest(BaseCreateModelConfigRequest):
-    prompt_type: Literal[PromptType.MULTI_MODAL]
-    accepted_file_types: list[str]
-    max_files_per_message: int | None = Field(default=None)
-    require_file_to_prompt: FileRequiredToPromptOption | None = Field(default=None)
-    max_total_file_size: int | None = Field(default=None)
-    allow_files_in_followups: bool | None = Field(default=None)
-
-
-# We can't make a discriminated union at the top level so we need to use a RootModel
-class RootCreateModelConfigRequest(RootModel):
-    root: CreateTextOnlyModelConfigRequest | CreateMultiModalModelConfigRequest = Field(
-        discriminator="prompt_type"
-    )
-
-
-def create_model_config(
-    request: RootCreateModelConfigRequest, session_maker: sessionmaker[Session]
-) -> ResponseModel:
+def create_model_config(request: CreateModelConfigRequest, session_maker: sessionmaker[Session]) -> ResponseModel:
     with session_maker.begin() as session:
         try:
-            RequestClass = get_model_config_class(request.root)
-
-            new_model = RequestClass(**request.model_dump())
-            # TODO: There's a bug here where this request returns the available and deprecation times in the time zone that was submitted. It should return as UTC, which is what it gets saved as in the DB
+            new_model = ModelConfig(
+                id=request.id,
+                name=request.name,
+                host=request.host,
+                description=request.description,
+                model_type=request.model_type,
+                model_id_on_host=request.model_id_on_host,
+                internal=request.internal,
+                prompt_type=request.prompt_type,
+                default_system_prompt=request.default_system_prompt,
+                family_id=request.family_id,
+                family_name=request.family_name,
+                available_time=request.available_time.astimezone(UTC) if request.available_time is not None else None,
+                deprecation_time=request.deprecation_time.astimezone(UTC)
+                if request.deprecation_time is not None
+                else None,
+            )
             session.add(new_model)
             session.flush()
 

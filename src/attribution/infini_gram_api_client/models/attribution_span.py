@@ -56,18 +56,16 @@ class AttributionSpan:
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
-        field_dict.update(
-            {
-                "left": left,
-                "right": right,
-                "length": length,
-                "count": count,
-                "unigramLogprobSum": unigram_logprob_sum,
-                "text": text,
-                "tokenIds": token_ids,
-                "documents": documents,
-            }
-        )
+        field_dict.update({
+            "left": left,
+            "right": right,
+            "length": length,
+            "count": count,
+            "unigramLogprobSum": unigram_logprob_sum,
+            "text": text,
+            "tokenIds": token_ids,
+            "documents": documents,
+        })
 
         return field_dict
 

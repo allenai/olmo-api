@@ -41,13 +41,11 @@ class AttributionResponse:
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
-        field_dict.update(
-            {
-                "index": index,
-                "spans": spans,
-                "inputTokens": input_tokens,
-            }
-        )
+        field_dict.update({
+            "index": index,
+            "spans": spans,
+            "inputTokens": input_tokens,
+        })
 
         return field_dict
 

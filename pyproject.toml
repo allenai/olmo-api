@@ -1,5 +1,9 @@
+
 [tool.pyright]
-pythonVersion = "3.11.3"
+pythonVersion = "3.11"
+
+[tool.mypy]
+plugins = ['pydantic.mypy']
 
 [[tool.mypy.overrides]]
 module = ["authlib.*"]

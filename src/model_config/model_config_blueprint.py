@@ -13,7 +13,15 @@ from src.model_config.create_model_config_service import (
 from src.model_config.delete_model_config_service import (
     delete_model_config,
 )
-from src.model_config.reorder_model_config_service import ReorderModelConfigRequest, reorder_model_config
+from src.model_config.reorder_model_config_service import (
+    ReorderModelConfigRequest,
+    reorder_model_config,
+)
+from src.model_config.update_model_config_service import (
+    UpdateModelConfigRequest,
+    update_model_config,
+)
+
 
 def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Blueprint:
     from src.auth.resource_protectors import required_auth_protector
@@ -34,7 +42,7 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
 
             return jsonify(rows)
 
-    @model_config_blueprint.post("/")  # type: ignore
+    @model_config_blueprint.post("/")
     @required_auth_protector("write:model-config")
     @pydantic_api(
         name="Add a new model",
@@ -54,18 +62,36 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
             delete_model_config(model_id, session_maker)
             return "", 204
         except ValueError:
-            raise exceptions.NotFound
-        
-    
-    @model_config_blueprint.put("/")  # type: ignore
+            not_found_message = f"No model found with ID {model_id}"
+            raise exceptions.NotFound(not_found_message)
+
+    @model_config_blueprint.put("/")
     @required_auth_protector("write:model-config")
-    @pydantic_api(
-        name="Reorder model", 
-        tags=["v4", "models", "model configuration"])
+    @pydantic_api(name="Reorder models", tags=["v4", "models", "model configuration"])
     def reorder_model(request: ReorderModelConfigRequest):
         try:
             reorder_model_config(request, session_maker)
             return "", 204
-        except ValueError as e:
-            raise  exceptions.NotFound
+        except ValueError:
+            raise exceptions.NotFound
+
+    @model_config_blueprint.put("/<model_id>")
+    @required_auth_protector("write:model-config")
+    @pydantic_api(
+        name="Update a model",
+        tags=["v4", "models", "model configuration"],
+        model_dump_kwargs={"by_alias": True},
+    )
+    def update_model(
+        model_id: str,
+        request: UpdateModelConfigRequest,
+    ) -> ResponseModel:
+        updated_model = update_model_config(model_id, request, session_maker)
+
+        if updated_model is None:
+            not_found_message = f"No model found with ID {model_id}"
+            raise exceptions.NotFound(not_found_message)
+
+        return updated_model
+
     return model_config_blueprint

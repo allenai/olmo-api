@@ -8,6 +8,7 @@ from src.dao.engine_models.model_config import PromptType
 class ResponseModel(APIInterface):
     id: str
     host: str
+    name: str
     description: str
     model_type: ModelType
     model_id_on_host: str

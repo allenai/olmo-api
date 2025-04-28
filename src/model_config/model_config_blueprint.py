@@ -61,9 +61,9 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
         try:
             delete_model_config(model_id, session_maker)
             return "", 204
-        except ValueError:
+        except ValueError as e:
             not_found_message = f"No model found with ID {model_id}"
-            raise exceptions.NotFound(not_found_message)
+            raise exceptions.NotFound(not_found_message) from e
 
     @model_config_blueprint.put("/")
     @required_auth_protector("write:model-config")
@@ -73,7 +73,7 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
             reorder_model_config(request, session_maker)
             return "", 204
         except ValueError as e:
-            raise  exceptions.NotFound from e
+            raise exceptions.NotFound from e
 
     @model_config_blueprint.put("/<model_id>")
     @required_auth_protector("write:model-config")
@@ -88,8 +88,6 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
     ) -> ResponseModel:
         updated_model = update_model_config(model_id, request, session_maker)
 
-        with required_auth_protector.acquire_token() as token:
-            
         if updated_model is None:
             not_found_message = f"No model found with ID {model_id}"
             raise exceptions.NotFound(not_found_message)

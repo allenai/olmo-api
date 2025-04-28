@@ -1,3 +1,4 @@
+from pydantic import ByteSize
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectin_polymorphic, sessionmaker
 
@@ -48,7 +49,7 @@ def get_model_config(session_maker: sessionmaker[Session]) -> list[Model]:
                     accepted_file_types=m.accepted_file_types,
                     max_files_per_message=m.max_files_per_message,
                     require_file_to_prompt=m.require_file_to_prompt or FileRequiredToPromptOption.NoRequirement,
-                    max_total_file_size=m.max_total_file_size,
+                    max_total_file_size=ByteSize(m.max_total_file_size) if m.max_total_file_size is not None else None,
                     allow_files_in_followups=m.allow_files_in_followups or False,
                 )
 
@@ -96,7 +97,7 @@ def get_model_config_admin(session_maker: sessionmaker[Session]) -> list[Model]:
                     accepted_file_types=m.accepted_file_types,
                     max_files_per_message=m.max_files_per_message,
                     require_file_to_prompt=m.require_file_to_prompt or FileRequiredToPromptOption.NoRequirement,
-                    max_total_file_size=m.max_total_file_size,
+                    max_total_file_size=ByteSize(m.max_total_file_size) if m.max_total_file_size is not None else None,
                     allow_files_in_followups=m.allow_files_in_followups or False,
                 )
 

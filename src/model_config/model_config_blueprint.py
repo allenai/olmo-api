@@ -88,6 +88,8 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
     ) -> ResponseModel:
         updated_model = update_model_config(model_id, request, session_maker)
 
+        with required_auth_protector.acquire_token() as token:
+            
         if updated_model is None:
             not_found_message = f"No model found with ID {model_id}"
             raise exceptions.NotFound(not_found_message)

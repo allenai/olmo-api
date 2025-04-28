@@ -87,9 +87,9 @@ def create_uploaded_files(count: int) -> Sequence[UploadedFile]:
             id="too many files",
         ),
         pytest.param(
-            create_model_config({"max_total_file_size": "2B"}),
+            create_model_config({"max_total_file_size": 2_000_000_000}),
             False,
-            "This model has a max total file size of 2B",
+            "This model has a max total file size of 2_000_000_000 bytes",
             1,
             id="files too large",
         ),

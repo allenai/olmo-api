@@ -33,8 +33,26 @@ class TestV4ModelEndpoints(base.IntegrationTest):
 
     def runTest(self):
         self.client = self.user()
+        self.shouldGetAListOfModels()
         self.shouldAddAModel()
         self.shouldDeleteModel()
+
+    def shouldGetAListOfModels(self):
+        r = requests.get(f"{self.origin}/v4/models", headers=self.auth(self.client))
+        r.raise_for_status()
+
+        response = r.json()
+
+        # should have at least one model entity
+        assert len(response) > 0
+
+        # should have the following fields that match ModelEntity
+        entity = response.pop()
+        assert "is_visible" in entity
+        assert "host" in entity
+        assert "compute_source_id" not in entity
+        assert "available_time" not in entity
+        assert "deprecation_time" not in entity
 
     def shouldAddAModel(self):
         model_id = "test-model"
@@ -59,19 +77,13 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         assert created_model.get("createdTime") is not None
         assert created_model.get("modelType") == "chat"
 
-        get_models_response = requests.get(
-            f"{self.origin}/v4/models/", headers=self.auth(self.client)
-        )
+        get_models_response = requests.get(f"{self.origin}/v4/models/", headers=self.auth(self.client))
         get_models_response.raise_for_status()
 
         available_models = get_models_response.json()
 
-        test_model = next(
-            (model for model in available_models if model.get("id") == model_id), None
-        )
-        assert (
-            test_model is not None
-        ), "The test model wasn't returned from the GET request"
+        test_model = next((model for model in available_models if model.get("id") == model_id), None)
+        assert test_model is not None, "The test model wasn't returned from the GET request"
 
         # TODO: clean up created models
 
@@ -101,12 +113,8 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         delete_response.raise_for_status()
         assert delete_response.status_code == 204
 
-        get_models_response = requests.get(
-            f"{self.origin}/v4/models/", headers=self.auth(self.client)
-        )
+        get_models_response = requests.get(f"{self.origin}/v4/models/", headers=self.auth(self.client))
         get_models_response.raise_for_status()
         available_models = get_models_response.json()
 
-        assert all(
-            model["id"] != model_id for model in available_models
-        ), "Model wasn't deleted"
+        assert all(model["id"] != model_id for model in available_models), "Model wasn't deleted"

@@ -1,10 +1,9 @@
-from authlib.integrations.flask_oauth2 import current_token
 from flask import Blueprint, Response, jsonify, request
 from flask_pydantic_api.api_wrapper import pydantic_api
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
 
-from src.auth.resource_protectors import required_auth_protector
+from src.auth.resource_protectors import anonymous_auth_protector, required_auth_protector
 from src.model_config.create_model_config_service import (
     CreateModelConfigRequest,
     ResponseModel,
@@ -22,11 +21,13 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
     @model_config_blueprint.get("/")
     @pydantic_api(name="Get available models and their configuration", tags=["v4", "models"])
     def get_model_configs() -> Response:
+        token = anonymous_auth_protector.get_token()
         has_admin_arg = request.args.get("admin")
         is_admin = has_admin_arg == "true" or (
-            current_token != None
-            and "permissions" in current_token
-            and "read:internal-models" in current_token["permissions"]
+            token is not None
+            and not isinstance(token, str)
+            and "permissions" in token
+            and "read:internal-models" in token["permissions"]
         )
 
         models = get_model_config_admin(session_maker) if is_admin else get_model_config(session_maker)

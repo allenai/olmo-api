@@ -34,12 +34,11 @@ class TestModelEndpoints(base.IntegrationTest):
         assert "available_time" not in entity
 
 
-class TestV4ModelEndpoints(base.IntegrationTest):
+class BaseTestV4ModelEndpoints(base.IntegrationTest):
     client: base.AuthenticatedClient
     created_model_ids: list[str]
 
     def setUp(self):
-        self.client = self.user()
         self.created_model_ids = []
 
     def tearDown(self):
@@ -50,7 +49,16 @@ class TestV4ModelEndpoints(base.IntegrationTest):
             )
             assert delete_response.status_code == 204
 
-    def should_get_a_list_of_models(self):
+
+class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
+    client: base.AuthenticatedClient
+    created_model_ids: list[str]
+
+    def setUp(self):
+        self.client = self.user()
+        self.created_model_ids = []
+
+    def test_get_a_list_of_models(self):
         r = requests.get(f"{self.origin}/v4/models", headers=self.auth(self.client))
         r.raise_for_status()
 
@@ -66,6 +74,30 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         assert "compute_source_id" not in entity
         assert "available_time" not in entity
         assert "deprecation_time" not in entity
+
+    def test_get_admin_models(self):
+        r = requests.get(
+            f"{self.origin}/v4/models",
+            headers=self.auth(self.client),
+            params={"admin": True},
+        )
+        r.raise_for_status()
+
+        response = r.json()
+
+        if isinstance(response, list):
+            # should have at least one model entity
+            assert len(response) > 0
+
+            # should have the following fields that match ModelEntity
+            entity = response[0]
+            assert "is_visible" not in entity
+            assert "host" in entity
+            assert "model_id_on_host" in entity
+            assert "available_time" in entity
+            assert "deprecation_time" in entity
+        else:
+            raise ValueError("Response returned from GET /v4/models was not a list")
 
     def test_should_create_a_model(self):
         model_id = "test-model"
@@ -204,6 +236,7 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         get_response = requests.get(
             f"{self.origin}/v4/models/",
             headers=self.auth(self.client),
+            params={"admin": True},
         )
         get_response.raise_for_status()
         models = get_response.json()
@@ -250,7 +283,11 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         update_model_response.raise_for_status()
         assert update_model_response.status_code == 200
 
-        get_models_response = requests.get(f"{self.origin}/v4/models/", headers=self.auth(self.client))
+        get_models_response = requests.get(
+            f"{self.origin}/v4/models/",
+            headers=self.auth(self.client),
+            params={"admin": True},
+        )
         get_models_response.raise_for_status()
         available_models = get_models_response.json()
 
@@ -297,12 +334,16 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         update_model_response = requests.put(
             f"{self.origin}/v4/models/{model_id}",
             headers=self.auth(self.client),
-            json=update_model_request.model_dump(),
+            json=update_model_request.model_dump(by_alias=True),
         )
         update_model_response.raise_for_status()
         assert update_model_response.status_code == 200
 
-        get_models_response = requests.get(f"{self.origin}/v4/models/", headers=self.auth(self.client))
+        get_models_response = requests.get(
+            f"{self.origin}/v4/models/",
+            headers=self.auth(self.client),
+            params={"admin": True},
+        )
         get_models_response.raise_for_status()
         available_models = get_models_response.json()
 
@@ -317,3 +358,18 @@ class TestV4ModelEndpoints(base.IntegrationTest):
             "image/*",
             "application/pdf",
         ]
+
+
+class TestV4ModelEndpointsAnonymous(BaseTestV4ModelEndpoints):
+    def setUp(self):
+        super().setUp()
+        self.client = self.user(anonymous=True)
+
+    def test_get_admin_models_should_be_forbidden(self):
+        r = requests.get(
+            f"{self.origin}/v4/models",
+            headers=self.auth(self.client),
+            params={"admin": True},
+        )
+
+        self.assertEqual(r.status_code, 401)

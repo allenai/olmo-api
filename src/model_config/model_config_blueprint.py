@@ -1,4 +1,4 @@
-from flask import Blueprint, Response, jsonify, request
+from flask import Blueprint, request
 from flask_pydantic_api.api_wrapper import pydantic_api
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
@@ -16,6 +16,7 @@ from src.model_config.delete_model_config_service import (
     delete_model_config,
 )
 from src.model_config.get_model_config_service import (
+    RootModelResponse,
     get_model_config,
     get_model_config_admin,
 )
@@ -33,8 +34,14 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
     model_config_blueprint = Blueprint(name="model_config", import_name=__name__)
 
     @model_config_blueprint.get("/")
+    @required_auth_protector(optional=True)
     @pydantic_api(name="Get available models and their configuration", tags=["v4", "models"])
-    def get_model_configs() -> Response:
+    def get_model_configs() -> RootModelResponse:
+        is_admin_request = request.args.get("admin", "false").lower() == "true"
+        if is_admin_request:
+            with required_auth_protector.acquire("write:model-config"):
+                return get_model_config_admin(session_maker)
+
         config = get_config()
         if not config.feature_flags.enable_dynamic_model_config:
             return jsonify(get_available_models())
@@ -43,9 +50,10 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
         has_admin_arg = request.args.get("admin")
         is_admin = has_admin_arg == "true" or user_has_permission(token, "read:internal-models")
 
-        models = get_model_config_admin(session_maker) if is_admin else get_model_config(session_maker)
-
-        return jsonify(models)
+        return get_model_config(
+            session_maker=session_maker,
+            include_internal_models=should_include_internal_models,
+        )
 
     @model_config_blueprint.post("/")
     @required_auth_protector("write:model-config")

@@ -40,6 +40,23 @@ class TestV4ModelEndpoints(base.IntegrationTest):
             )
             assert delete_response.status_code == 204
 
+    def should_get_a_list_of_models(self):
+        r = requests.get(f"{self.origin}/v4/models", headers=self.auth(self.client))
+        r.raise_for_status()
+
+        response = r.json()
+
+        # should have at least one model entity
+        assert len(response) > 0
+
+        # should have the following fields that match ModelEntity
+        entity = response.pop()
+        assert "is_visible" in entity
+        assert "host" in entity
+        assert "compute_source_id" not in entity
+        assert "available_time" not in entity
+        assert "deprecation_time" not in entity
+
     def test_should_create_a_model(self):
         model_id = "test-model"
         create_model_request = {
@@ -65,18 +82,13 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         assert created_model.get("createdTime") is not None
         assert created_model.get("modelType") == "chat"
 
-        get_models_response = requests.get(
-            f"{self.origin}/v4/models/", headers=self.auth(self.client)
-        )
+        get_models_response = requests.get(f"{self.origin}/v4/models/", headers=self.auth(self.client))
         get_models_response.raise_for_status()
 
         available_models = get_models_response.json()
-        test_model = next(
-            (model for model in available_models if model.get("id") == model_id), None
-        )
-        assert (
-            test_model is not None
-        ), "The test model wasn't returned from the GET request"
+
+        test_model = next((model for model in available_models if model.get("id") == model_id), None)
+        assert test_model is not None, "The test model wasn't returned from the GET request"
 
     def test_should_delete_a_model(self):
         model_id = "test-model"
@@ -104,15 +116,11 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         delete_response.raise_for_status()
         assert delete_response.status_code == 204
 
-        get_models_response = requests.get(
-            f"{self.origin}/v4/models/", headers=self.auth(self.client)
-        )
+        get_models_response = requests.get(f"{self.origin}/v4/models/", headers=self.auth(self.client))
         get_models_response.raise_for_status()
         available_models = get_models_response.json()
 
-        assert all(
-            model["id"] != model_id for model in available_models
-        ), "Model wasn't deleted"
+        assert all(model["id"] != model_id for model in available_models), "Model wasn't deleted"
 
     def test_should_reorder_models(self):
         model_ids = ["model-a", "model-b", "model-c"]
@@ -154,15 +162,11 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         get_response.raise_for_status()
         models = get_response.json()
 
-        test_models = sorted(
-            [m for m in models if m["id"] in model_ids], key=lambda m: m["order"]
-        )
+        test_models = sorted([m for m in models if m["id"] in model_ids], key=lambda m: m["order"])
 
         expected_order = ["model-c", "model-b", "model-a"]
         actual_order = [m["id"] for m in test_models]
-        assert (
-            actual_order == expected_order
-        ), f"Expected order {expected_order}, got {actual_order}"
+        assert actual_order == expected_order, f"Expected order {expected_order}, got {actual_order}"
 
     def test_should_update_a_text_only_model(self):
         model_id = "test-model"
@@ -200,17 +204,11 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         update_model_response.raise_for_status()
         assert update_model_response.status_code == 200
 
-        get_models_response = requests.get(
-            f"{self.origin}/v4/models/", headers=self.auth(self.client)
-        )
+        get_models_response = requests.get(f"{self.origin}/v4/models/", headers=self.auth(self.client))
         get_models_response.raise_for_status()
         available_models = get_models_response.json()
 
-        updated_model = next(
-            filter(lambda model: model.get("id") == model_id, available_models)
-        )
-        assert (
-            updated_model is not None
-        ), "Updated model not returned from models endpoint"
+        updated_model = next(filter(lambda model: model.get("id") == model_id, available_models))
+        assert updated_model is not None, "Updated model not returned from models endpoint"
         assert updated_model.get("name") == "updated model made for testing"
         assert updated_model.get("model_type") == "base"

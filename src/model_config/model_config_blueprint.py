@@ -1,10 +1,9 @@
-from flask import Blueprint, Response, jsonify
+from flask import Blueprint, Response, jsonify, request
 from flask_pydantic_api.api_wrapper import pydantic_api
-from sqlalchemy import select
-from sqlalchemy.orm import Session, selectin_polymorphic, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
 
-from src.dao.engine_models.model_config import ModelConfig, MultiModalModelConfig
+from src.auth.resource_protectors import anonymous_auth_protector, required_auth_protector
 from src.model_config.create_model_config_service import (
     CreateModelConfigRequest,
     ResponseModel,
@@ -13,6 +12,7 @@ from src.model_config.create_model_config_service import (
 from src.model_config.delete_model_config_service import (
     delete_model_config,
 )
+from src.model_config.get_model_config_service import get_model_config, get_model_config_admin
 from src.model_config.reorder_model_config_service import (
     ReorderModelConfigRequest,
     reorder_model_config,
@@ -24,23 +24,23 @@ from src.model_config.update_model_config_service import (
 
 
 def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Blueprint:
-    from src.auth.resource_protectors import required_auth_protector
-
     model_config_blueprint = Blueprint(name="model_config", import_name=__name__)
 
     @model_config_blueprint.get("/")
-    @pydantic_api(
-        name="Get available models and their configuration", tags=["v4", "models"]
-    )
+    @pydantic_api(name="Get available models and their configuration", tags=["v4", "models"])
     def get_model_configs() -> Response:
-        with session_maker.begin() as session:
-            polymorphic_loader_opt = selectin_polymorphic(
-                ModelConfig, [ModelConfig, MultiModalModelConfig]
-            )
-            stmt = select(ModelConfig).options(polymorphic_loader_opt)
-            rows = session.scalars(stmt).all()
+        token = anonymous_auth_protector.get_token()
+        has_admin_arg = request.args.get("admin")
+        is_admin = has_admin_arg == "true" or (
+            token is not None
+            and not isinstance(token, str)
+            and "permissions" in token
+            and "read:internal-models" in token["permissions"]
+        )
 
-            return jsonify(rows)
+        models = get_model_config_admin(session_maker) if is_admin else get_model_config(session_maker)
+
+        return jsonify(models)
 
     @model_config_blueprint.post("/")
     @required_auth_protector("write:model-config")

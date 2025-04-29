@@ -92,10 +92,6 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
             not_found_message = f"No model found with ID {model_id}"
             raise exceptions.NotFound(not_found_message)
 
-        if updated_model is None:
-            not_found_message = f"No model found with ID {model_id}"
-            raise exceptions.NotFound(not_found_message)
-
         return updated_model
 
     return model_config_blueprint

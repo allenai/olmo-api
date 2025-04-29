@@ -149,7 +149,7 @@ function(apiImage, messageDeletionJobImage, cause, sha, env='prod', branch='', r
     ];
 
     local ingressDenyAnno = {
-            'nginx.ingress.kubernetes.io/server-snippet': ['deny %s' % ip for ip in ipsToDeny]
+            'nginx.ingress.kubernetes.io/server-snippet': std.join('; ', ['deny %s' % ip for ip in ipsToDeny]) + ';'
     };
 
     local allenAITLS = util.getTLSConfig(fullyQualifiedName + '-allen-dot-ai', allenAIHosts);

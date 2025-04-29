@@ -365,6 +365,18 @@ class TestV4ModelEndpointsAnonymous(BaseTestV4ModelEndpoints):
         super().setUp()
         self.client = self.user(anonymous=True)
 
+    def test_get_public_models(self):
+        r = requests.get(
+            f"{self.origin}/v4/models",
+            headers=self.auth(self.client),
+        )
+        r.raise_for_status()
+        response = r.json()
+
+        # should have at least one model entity
+        self.assertGreater(len(response), 0)
+        self.assertEqual(len([model for model in response if model.get("internal") is True]), 0)
+
     def test_get_admin_models_should_be_forbidden(self):
         r = requests.get(
             f"{self.origin}/v4/models",

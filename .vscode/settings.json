@@ -11,5 +11,8 @@
         "getpid",
         "drivername",
         "sessionmaker"
-    ]
+    ],
+    "ruff.configurationPreference": "filesystemFirst",
+    "ruff.format.preview": true,
+    "ruff.lint.preview": true,
 }

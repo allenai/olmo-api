@@ -5,8 +5,8 @@ from werkzeug import exceptions
 
 from src.auth.resource_protectors import anonymous_auth_protector, required_auth_protector
 from src.model_config.create_model_config_service import (
-    CreateModelConfigRequest,
     ResponseModel,
+    RootCreateModelConfigRequest,
     create_model_config,
 )
 from src.model_config.delete_model_config_service import (
@@ -18,7 +18,7 @@ from src.model_config.reorder_model_config_service import (
     reorder_model_config,
 )
 from src.model_config.update_model_config_service import (
-    UpdateModelConfigRequest,
+    RootUpdateModelConfigRequest,
     update_model_config,
 )
 
@@ -49,7 +49,7 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
         tags=["v4", "models", "model configuration"],
         model_dump_kwargs={"by_alias": True},
     )
-    def add_model(request: CreateModelConfigRequest) -> ResponseModel:
+    def add_model(request: RootCreateModelConfigRequest) -> ResponseModel:
         new_model = create_model_config(request, session_maker)
 
         return new_model
@@ -61,9 +61,9 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
         try:
             delete_model_config(model_id, session_maker)
             return "", 204
-        except ValueError:
+        except ValueError as e:
             not_found_message = f"No model found with ID {model_id}"
-            raise exceptions.NotFound(not_found_message)
+            raise exceptions.NotFound(not_found_message) from e
 
     @model_config_blueprint.put("/")
     @required_auth_protector("write:model-config")
@@ -72,8 +72,8 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
         try:
             reorder_model_config(request, session_maker)
             return "", 204
-        except ValueError:
-            raise exceptions.NotFound
+        except ValueError as e:
+            raise exceptions.NotFound from e
 
     @model_config_blueprint.put("/<model_id>")
     @required_auth_protector("write:model-config")
@@ -84,7 +84,7 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
     )
     def update_model(
         model_id: str,
-        request: UpdateModelConfigRequest,
+        request: RootUpdateModelConfigRequest,
     ) -> ResponseModel:
         updated_model = update_model_config(model_id, request, session_maker)
 

@@ -26,7 +26,7 @@ class ModelConfig(Base, kw_only=True):
     model_id_on_host: Mapped[str]
     internal: Mapped[bool]
     prompt_type: Mapped[PromptType]
-    # Alembic won't automatically handle changes to this, be careful when changing it!
+    # Alembic won't automatically handle changes to order_seq, be careful when changing it!
     order_seq = Sequence(
         "model_config_order_seq", metadata=Base.metadata, start=10, increment=10
     )

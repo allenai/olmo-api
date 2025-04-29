@@ -20,9 +20,7 @@ def create_app():
     # Use ISO formatted datetimes
     app.json = util.CustomJSONProvider(app)
 
-    cfg = get_config.Config.load(
-        os.environ.get("FLASK_CONFIG_PATH", get_config.DEFAULT_CONFIG_PATH)
-    )
+    cfg = get_config.Config.load(os.environ.get("FLASK_CONFIG_PATH", get_config.DEFAULT_CONFIG_PATH))
 
     db_engine = make_db_engine(cfg.db)
     session_maker = sessionmaker(db_engine, expire_on_commit=False, autoflush=True)
@@ -34,15 +32,11 @@ def create_app():
     def health():
         return "", 204
 
-    storage_client = GoogleCloudStorage(
-        bucket_name=cfg.google_cloud_services.storage_bucket
-    )
+    storage_client = GoogleCloudStorage(bucket_name=cfg.google_cloud_services.storage_bucket)
 
     app.register_blueprint(v3.Server(dbc, storage_client), url_prefix="/v3", name="v3")
     app.register_blueprint(
-        create_v4_blueprint(
-            dbc=dbc, storage_client=storage_client, session_maker=session_maker
-        ),
+        create_v4_blueprint(dbc=dbc, storage_client=storage_client, session_maker=session_maker),
         url_prefix="/v4",
         name="v4",
     )

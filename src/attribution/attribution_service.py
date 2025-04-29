@@ -83,7 +83,7 @@ class ResponseAttributionDocument:
             source = metadata.get("source", None)
 
         source_detail = cfg.infini_gram.source_map[source]
-        
+
         return cls(
             text_long=document.text_long,
             snippets=[
@@ -102,7 +102,7 @@ class ResponseAttributionDocument:
             relevance_score=document.relevance_score,
             title=document.metadata.additional_properties.get("metadata", {}).get("metadata", {}).get("title", None),
             url=url,
-            secondary_name=source_detail.secondary_name
+            secondary_name=source_detail.secondary_name,
         )
 
 

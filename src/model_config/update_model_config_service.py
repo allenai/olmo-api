@@ -39,9 +39,7 @@ class UpdateMultiModalModelConfigRequest(BaseUpdateModelConfigRequest):
 
 # We can't make a discriminated union at the top level so we need to use a RootModel
 class RootUpdateModelConfigRequest(RootModel):
-    root: UpdateTextOnlyModelConfigRequest | UpdateMultiModalModelConfigRequest = Field(
-        discriminator="prompt_type"
-    )
+    root: UpdateTextOnlyModelConfigRequest | UpdateMultiModalModelConfigRequest = Field(discriminator="prompt_type")
 
 
 def update_model_config(
@@ -72,20 +70,10 @@ def update_model_config(
         if isinstance(model_to_update, MultiModalModelConfig):
             multi_modal_request = cast(UpdateMultiModalModelConfigRequest, request.root)
 
-            model_to_update.accepted_file_types = (
-                multi_modal_request.accepted_file_types
-            )
-            model_to_update.max_files_per_message = (
-                multi_modal_request.max_files_per_message
-            )
-            model_to_update.require_file_to_prompt = (
-                multi_modal_request.require_file_to_prompt
-            )
-            model_to_update.max_total_file_size = (
-                multi_modal_request.max_total_file_size
-            )
-            model_to_update.allow_files_in_followups = (
-                multi_modal_request.allow_files_in_followups
-            )
+            model_to_update.accepted_file_types = multi_modal_request.accepted_file_types
+            model_to_update.max_files_per_message = multi_modal_request.max_files_per_message
+            model_to_update.require_file_to_prompt = multi_modal_request.require_file_to_prompt
+            model_to_update.max_total_file_size = multi_modal_request.max_total_file_size
+            model_to_update.allow_files_in_followups = multi_modal_request.allow_files_in_followups
 
         return ResponseModel.model_validate(model_to_update)

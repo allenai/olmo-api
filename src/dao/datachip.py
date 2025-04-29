@@ -119,9 +119,7 @@ class Store:
     def create(self, name: str, content: str, creator: str) -> Datachip:
         if not is_valid_datachip_name(name):
             msg = f'invalid datachip name: "{name}", only alphanumeric characters and `_` or `-` are allowed'
-            raise ValueError(
-                msg
-            )
+            raise ValueError(msg)
         with self.pool.connection() as conn, conn.cursor() as cur:
             ref = make_datachip_ref(creator, name)
             try:

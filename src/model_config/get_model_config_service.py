@@ -19,15 +19,9 @@ def get_model_config(
     session_maker: sessionmaker[Session], *, include_internal_models: bool = False
 ) -> RootModelResponse:
     with session_maker.begin() as session:
-        polymorphic_loader_opt = selectin_polymorphic(
-            DAOModelConfig, [DAOModelConfig, DAOMultiModalModelConfig]
-        )
+        polymorphic_loader_opt = selectin_polymorphic(DAOModelConfig, [DAOModelConfig, DAOMultiModalModelConfig])
 
-        stmt = (
-            select(DAOModelConfig)
-            .options(polymorphic_loader_opt)
-            .order_by(DAOModelConfig.order.asc())
-        )
+        stmt = select(DAOModelConfig).options(polymorphic_loader_opt).order_by(DAOModelConfig.order.asc())
 
         if not include_internal_models:
             stmt = stmt.filter_by(internal=False)
@@ -64,11 +58,8 @@ def get_model_config(
                     deprecation_time=m.deprecation_time,
                     accepted_file_types=m.accepted_file_types,
                     max_files_per_message=m.max_files_per_message,
-                    require_file_to_prompt=m.require_file_to_prompt
-                    or FileRequiredToPromptOption.NoRequirement,
-                    max_total_file_size=ByteSize(m.max_total_file_size)
-                    if m.max_total_file_size is not None
-                    else None,
+                    require_file_to_prompt=m.require_file_to_prompt or FileRequiredToPromptOption.NoRequirement,
+                    max_total_file_size=ByteSize(m.max_total_file_size) if m.max_total_file_size is not None else None,
                     allow_files_in_followups=m.allow_files_in_followups or False,
                 )
 
@@ -79,15 +70,9 @@ def get_model_config(
 
 def get_model_config_admin(session_maker: sessionmaker[Session]) -> RootModelResponse:
     with session_maker.begin() as session:
-        polymorphic_loader_opt = selectin_polymorphic(
-            DAOModelConfig, [DAOModelConfig, DAOMultiModalModelConfig]
-        )
+        polymorphic_loader_opt = selectin_polymorphic(DAOModelConfig, [DAOModelConfig, DAOMultiModalModelConfig])
 
-        stmt = (
-            select(DAOModelConfig)
-            .options(polymorphic_loader_opt)
-            .order_by(DAOModelConfig.order.asc())
-        )
+        stmt = select(DAOModelConfig).options(polymorphic_loader_opt).order_by(DAOModelConfig.order.asc())
         results = session.scalars(stmt).all()
 
         processed_results = [ResponseModel.model_validate(model) for model in results]

@@ -11,5 +11,11 @@
         "getpid",
         "drivername",
         "sessionmaker"
+    ],
+    "ruff.configurationPreference": "filesystemFirst",
+    "ruff.format.preview": true,
+    "ruff.lint.preview": true,
+    "gitlens.advanced.blame.customArguments": [
+        "--ignore-revs-file .git-blame-ignore-revs"
     ]
 }

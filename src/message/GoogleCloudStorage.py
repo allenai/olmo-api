@@ -8,8 +8,9 @@ from google.cloud.storage import Bucket, Client
 from src.config import get_config
 
 # GOOGLE CLOUD STORAGE doesn't accept extreme datetime values like 3000 AD as custom time
-# For whoever sees this code in 2100 AD, please update the value!!! 
+# For whoever sees this code in 2100 AD, please update the value!!!
 GCS_MAX_DATETIME_LIMIT = datetime(2100, 10, 31, tzinfo=UTC)
+
 
 class GoogleCloudStorage:
     client: Client
@@ -19,9 +20,11 @@ class GoogleCloudStorage:
         self.client = Client()
         self.bucket = self.client.bucket(bucket_name)
 
-    def upload_content(self, filename: str, content: bytes | str, content_type: str = "text/plain", is_anonymous: bool = False):
+    def upload_content(
+        self, filename: str, content: bytes | str, content_type: str = "text/plain", is_anonymous: bool = False
+    ):
         start_ns = time_ns()
-        
+
         blob = self.bucket.blob(filename)
         blob.upload_from_string(data=content, content_type=content_type)
         blob.make_public()
@@ -30,7 +33,7 @@ class GoogleCloudStorage:
         if is_anonymous:
             blob.custom_time = datetime.now(UTC)
             blob.patch()
-        
+
         end_ns = time_ns()
 
         current_app.logger.info({
@@ -63,15 +66,15 @@ class GoogleCloudStorage:
 
     def delete_multiple_files_by_url(self, file_urls: list[str]):
         start_ns = time_ns()
-        
+
         file_names = [re.sub(f"{self.client.api_endpoint}/{self.bucket.name}/", "", file_url) for file_url in file_urls]
-        
+
         found_blobs = []
         for name in file_names:
             blob = self.bucket.get_blob(blob_name=name)
-            if (blob is not None):
+            if blob is not None:
                 found_blobs.append(blob)
-        
+
         blob_names = [blob.name for blob in found_blobs]
 
         try:
@@ -87,15 +90,13 @@ class GoogleCloudStorage:
         current_app.logger.info({
             "service": "GoogleCloudStorage",
             "action": "batch_delete",
-            "filename": ','.join(blob_names),
+            "filename": ",".join(blob_names),
             "duration_ms": (end_ns - start_ns) / 1_000_000,
         })
 
     def update_file_deletion_time(self, filename: str, new_time: datetime):
-        if (new_time > GCS_MAX_DATETIME_LIMIT):
-            current_app.logger.info(
-                f"The new datetime for {filename} is over GoogleCloudStorage limit"
-            )
+        if new_time > GCS_MAX_DATETIME_LIMIT:
+            current_app.logger.info(f"The new datetime for {filename} is over GoogleCloudStorage limit")
             raise Exception
 
         start_ns = time_ns()
@@ -107,7 +108,7 @@ class GoogleCloudStorage:
                 )
 
                 raise Exception
-            
+
             blob.custom_time = new_time
             blob.patch()
 
@@ -127,11 +128,10 @@ class GoogleCloudStorage:
             "filename": filename,
             "duration_ms": (end_ns - start_ns) / 1_000_000,
         })
-    
 
     def migrate_anonymous_file(self, filename: str):
         current_app.logger.info(
             f"Migrating {filename} from anonymous to normal in the bucket:{self.bucket.name} on GoogleCloudStorage",
         )
-	    # GCS doesn't allow unsetting custom time, instead we're setting it to the furthest time possible
+        # GCS doesn't allow unsetting custom time, instead we're setting it to the furthest time possible
         self.update_file_deletion_time(filename, GCS_MAX_DATETIME_LIMIT)

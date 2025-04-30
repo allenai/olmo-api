@@ -128,18 +128,12 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         assert created_model.get("createdTime") is not None
         assert created_model.get("modelType") == "chat"
 
-        get_models_response = requests.get(
-            f"{self.origin}/v4/models/", headers=self.auth(self.client)
-        )
+        get_models_response = requests.get(f"{self.origin}/v4/models/", headers=self.auth(self.client))
         get_models_response.raise_for_status()
 
         available_models = get_models_response.json()
-        test_model = next(
-            (model for model in available_models if model.get("id") == model_id), None
-        )
-        assert (
-            test_model is not None
-        ), "The test model wasn't returned from the GET request"
+        test_model = next((model for model in available_models if model.get("id") == model_id), None)
+        assert test_model is not None, "The test model wasn't returned from the GET request"
         assert "image/*" in test_model.get("accepted_file_types")
 
     def test_should_delete_a_model(self):
@@ -308,18 +302,12 @@ class TestV4ModelEndpoints(base.IntegrationTest):
         update_model_response.raise_for_status()
         assert update_model_response.status_code == 200
 
-        get_models_response = requests.get(
-            f"{self.origin}/v4/models/", headers=self.auth(self.client)
-        )
+        get_models_response = requests.get(f"{self.origin}/v4/models/", headers=self.auth(self.client))
         get_models_response.raise_for_status()
         available_models = get_models_response.json()
 
-        updated_model = next(
-            filter(lambda model: model.get("id") == model_id, available_models)
-        )
-        assert (
-            updated_model is not None
-        ), "Updated model not returned from models endpoint"
+        updated_model = next(filter(lambda model: model.get("id") == model_id, available_models))
+        assert updated_model is not None, "Updated model not returned from models endpoint"
 
         parsed_updated_model = ResponseModel.model_validate(updated_model)
         assert isinstance(parsed_updated_model.root, MultiModalResponseModel)

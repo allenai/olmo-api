@@ -32,12 +32,10 @@ class InfiniGramDocumentsResponse:
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
-        field_dict.update(
-            {
-                "index": index,
-                "documents": documents,
-            }
-        )
+        field_dict.update({
+            "index": index,
+            "documents": documents,
+        })
 
         return field_dict
 

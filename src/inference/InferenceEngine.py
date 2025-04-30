@@ -38,6 +38,7 @@ class FinishReason(StrEnum):
     # General exceptions
     Unknown = "unknown"
 
+
 @dataclass
 class InferenceEngineMessage:
     role: str

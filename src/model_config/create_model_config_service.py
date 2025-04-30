@@ -49,14 +49,10 @@ class CreateMultiModalModelConfigRequest(BaseCreateModelConfigRequest):
 
 # We can't make a discriminated union at the top level so we need to use a RootModel
 class RootCreateModelConfigRequest(RootModel):
-    root: CreateTextOnlyModelConfigRequest | CreateMultiModalModelConfigRequest = Field(
-        discriminator="prompt_type"
-    )
+    root: CreateTextOnlyModelConfigRequest | CreateMultiModalModelConfigRequest = Field(discriminator="prompt_type")
 
 
-def create_model_config(
-    request: RootCreateModelConfigRequest, session_maker: sessionmaker[Session]
-) -> ResponseModel:
+def create_model_config(request: RootCreateModelConfigRequest, session_maker: sessionmaker[Session]) -> ResponseModel:
     with session_maker.begin() as session:
         try:
             RequestClass = get_model_config_class(request.root)

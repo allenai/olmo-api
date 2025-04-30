@@ -38,12 +38,8 @@ def make_error_response(
             )
         case _:
             if isinstance(message, str):
-                return make_response(
-                    jsonify({"error": {"code": code, "message": message, **body}}), code
-                )
-            return make_response(
-                jsonify({"error": {"code": code, **message, **body}}), code
-            )
+                return make_response(jsonify({"error": {"code": code, "message": message, **body}}), code)
+            return make_response(jsonify({"error": {"code": code, **message, **body}}), code)
 
 
 def get_body_from_http_exception(e: HTTPException) -> dict | None:

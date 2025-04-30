@@ -35,7 +35,20 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
 
     @model_config_blueprint.get("/")
     @required_auth_protector(optional=True)
-    @pydantic_api(name="Get available models and their configuration", tags=["v4", "models"])
+    @pydantic_api(
+        name="Get available models and their configuration",
+        tags=["v4", "models"],
+        openapi_schema_extra={
+            "parameters": [
+                {
+                    "in": "query",
+                    "name": "admin",
+                    "schema": {"type": "boolean"},
+                    "description": "Get the internal models for modification",
+                },
+            ]
+        },
+    )
     def get_model_configs() -> RootModelResponse:
         is_admin_request = request.args.get("admin", "false").lower() == "true"
         if is_admin_request:

@@ -48,6 +48,7 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
                 },
             ]
         },
+        model_dump_kwargs={"by_alias": True},
     )
     def get_model_configs() -> RootModelResponse:
         is_admin_request = request.args.get("admin", "false").lower() == "true"
@@ -82,7 +83,11 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
 
     @model_config_blueprint.delete("/<model_id>")
     @required_auth_protector("write:model-config")
-    @pydantic_api(name="Delete a model", tags=["v4", "models", "model configuration"])
+    @pydantic_api(
+        name="Delete a model",
+        tags=["v4", "models", "model configuration"],
+        model_dump_kwargs={"by_alias": True},
+    )
     def delete_model(model_id: str):
         try:
             delete_model_config(model_id, session_maker)
@@ -93,7 +98,11 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
 
     @model_config_blueprint.put("/")
     @required_auth_protector("write:model-config")
-    @pydantic_api(name="Reorder models", tags=["v4", "models", "model configuration"])
+    @pydantic_api(
+        name="Reorder models",
+        tags=["v4", "models", "model configuration"],
+        model_dump_kwargs={"by_alias": True},
+    )
     def reorder_model(request: ReorderModelConfigRequest):
         try:
             reorder_model_config(request, session_maker)

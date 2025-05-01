@@ -37,7 +37,7 @@ class UserBlueprint(Blueprint):
         tags=["v3", "user"],
         model_dump_kwargs={"by_alias": True},
     )
-    def whoami(self):
+    def whoami(self) -> AuthenticatedClient:
         agent = request_agent()
         if agent is None or agent.expired():
             raise exceptions.Unauthorized

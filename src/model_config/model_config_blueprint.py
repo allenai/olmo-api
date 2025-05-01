@@ -3,11 +3,8 @@ from flask_pydantic_api.api_wrapper import pydantic_api
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
 
-from src.auth.auth_utils import user_has_permission
-from src.auth.resource_protectors import (
-    anonymous_auth_protector,
-    required_auth_protector,
-)
+from src.auth.resource_protectors import anonymous_auth_protector, required_auth_protector
+from src.inference.inference_service import get_available_models
 from src.model_config.create_model_config_service import (
     ResponseModel,
     RootCreateModelConfigRequest,
@@ -36,6 +33,10 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
     @model_config_blueprint.get("/")
     @pydantic_api(name="Get available models and their configuration", tags=["v4", "models"])
     def get_model_configs() -> Response:
+        from_db = request.args.get("from_db", "false").lower()
+        if from_db != "true":
+            return jsonify(get_available_models())
+
         token = anonymous_auth_protector.get_token()
         has_admin_arg = request.args.get("admin")
         is_admin = has_admin_arg == "true" or user_has_permission(token, "read:internal-models")

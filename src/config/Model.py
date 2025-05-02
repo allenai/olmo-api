@@ -47,11 +47,12 @@ class Model(BaseModel):
 
     def __init__(self, **kwargs):
         available_time = kwargs.get("available_time")
-        kwargs["available_time"] = (
-            datetime.fromisoformat(available_time).astimezone(UTC)
-            if available_time is not None
-            else datetime.min.replace(tzinfo=UTC)
-        )
+        if isinstance(available_time, str):
+            kwargs["available_time"] = (
+                datetime.fromisoformat(available_time).astimezone(UTC)
+                if available_time is not None
+                else datetime.min.replace(tzinfo=UTC)
+            )
 
         super().__init__(**kwargs)
 
@@ -62,7 +63,8 @@ class MultiModalModel(Model):
         examples=[["image/*", "image/png", "image/jpg"], ["video/mp4"]],
     )
     max_files_per_message: int | None = Field(
-        default=None, description="The maximum number of files the user is allowed to send with a message"
+        default=None,
+        description="The maximum number of files the user is allowed to send with a message",
     )
     require_file_to_prompt: FileRequiredToPromptOption = Field(
         default=FileRequiredToPromptOption.NoRequirement,

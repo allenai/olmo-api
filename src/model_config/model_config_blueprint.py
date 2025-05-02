@@ -3,7 +3,11 @@ from flask_pydantic_api.api_wrapper import pydantic_api
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
 
-from src.auth.resource_protectors import anonymous_auth_protector, required_auth_protector
+from src.auth.auth_utils import user_has_permission
+from src.auth.resource_protectors import (
+    anonymous_auth_protector,
+    required_auth_protector,
+)
 from src.model_config.create_model_config_service import (
     ResponseModel,
     RootCreateModelConfigRequest,
@@ -12,7 +16,10 @@ from src.model_config.create_model_config_service import (
 from src.model_config.delete_model_config_service import (
     delete_model_config,
 )
-from src.model_config.get_model_config_service import get_model_config, get_model_config_admin
+from src.model_config.get_model_config_service import (
+    get_model_config,
+    get_model_config_admin,
+)
 from src.model_config.reorder_model_config_service import (
     ReorderModelConfigRequest,
     reorder_model_config,
@@ -31,12 +38,7 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
     def get_model_configs() -> Response:
         token = anonymous_auth_protector.get_token()
         has_admin_arg = request.args.get("admin")
-        is_admin = has_admin_arg == "true" or (
-            token is not None
-            and not isinstance(token, str)
-            and "permissions" in token
-            and "read:internal-models" in token["permissions"]
-        )
+        is_admin = has_admin_arg == "true" or user_has_permission(token, "read:internal-models")
 
         models = get_model_config_admin(session_maker) if is_admin else get_model_config(session_maker)
 

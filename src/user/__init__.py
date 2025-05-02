@@ -1,17 +1,22 @@
 from flask import Blueprint, jsonify, request
+from flask_pydantic_api.api_wrapper import pydantic_api
 from pydantic import ValidationError
 from werkzeug import exceptions
 
 from src import db
 from src.auth.auth_service import authn, request_agent
+from src.auth.auth_utils import get_permissions
 from src.auth.authenticated_client import AuthenticatedClient
+from src.auth.resource_protectors import (
+    anonymous_auth_protector as anonymous_auth_protector,
+)
 from src.auth.resource_protectors import required_auth_protector
+from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.user.user_service import (
     MigrateFromAnonymousUserRequest,
     migrate_user_from_anonymous_user,
     upsert_user,
 )
-from src.message.GoogleCloudStorage import GoogleCloudStorage
 
 
 class UserBlueprint(Blueprint):
@@ -27,7 +32,12 @@ class UserBlueprint(Blueprint):
         self.put("/user")(self.upsert_user)
         self.put(rule="/migrate-user")(self.migrate_from_anonymous_user)
 
-    def whoami(self):
+    @pydantic_api(
+        name="Get info for the current user",
+        tags=["v3", "user"],
+        model_dump_kwargs={"by_alias": True},
+    )
+    def whoami(self) -> AuthenticatedClient:
         agent = request_agent()
         if agent is None or agent.expired():
             raise exceptions.Unauthorized
@@ -39,12 +49,11 @@ class UserBlueprint(Blueprint):
             and (user.acceptance_revoked_date is None or user.acceptance_revoked_date < user.terms_accepted_date)
         )
 
-        return jsonify(
-            AuthenticatedClient(
-                id=user.id if user is not None else None,
-                client=agent.client,
-                has_accepted_terms_and_conditions=has_accepted_terms_and_conditions,
-            ).model_dump(by_alias=True)
+        return AuthenticatedClient(
+            id=user.id if user is not None else None,
+            client=agent.client,
+            has_accepted_terms_and_conditions=has_accepted_terms_and_conditions,
+            permissions=get_permissions(agent.token),
         )
 
     def upsert_user(self):

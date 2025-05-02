@@ -62,7 +62,7 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
 
         token = anonymous_auth_protector.get_token()
         has_admin_arg = request.args.get("admin")
-        is_admin = has_admin_arg == "true" or user_has_permission(token, "read:internal-models")
+        should_include_internal_models = has_admin_arg == "true" or user_has_permission(token, "read:internal-models")
 
         return get_model_config(
             session_maker=session_maker,

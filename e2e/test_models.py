@@ -93,11 +93,12 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
             entity = response[0]
             assert "is_visible" not in entity
             assert "host" in entity
-            assert "model_id_on_host" in entity
-            assert "available_time" in entity
-            assert "deprecation_time" in entity
+            assert "modelIdOnHost" in entity
+            assert "availableTime" in entity
+            assert "deprecationTime" in entity
         else:
-            raise ValueError("Response returned from GET /v4/models was not a list")
+            msg = "Response returned from GET /v4/models was not a list"
+            raise TypeError(msg)
 
     def test_should_create_a_model(self):
         model_id = "test-model"
@@ -294,7 +295,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         updated_model = next(filter(lambda model: model.get("id") == model_id, available_models))
         assert updated_model is not None, "Updated model not returned from models endpoint"
         assert updated_model.get("name") == "updated model made for testing"
-        assert updated_model.get("model_type") == "base"
+        assert updated_model.get("modelType") == "base"
 
     def test_should_update_a_multi_modal_model(self):
         model_id = "test-model"

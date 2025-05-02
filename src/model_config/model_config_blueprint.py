@@ -58,7 +58,7 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
 
         config = get_config()
         if not config.feature_flags.enable_dynamic_model_config:
-            return jsonify(get_available_models())
+            return RootModelResponse.model_validate(get_available_models())
 
         token = anonymous_auth_protector.get_token()
         has_admin_arg = request.args.get("admin")

@@ -36,7 +36,7 @@ def request_agent() -> Token | None:
     if token is not None:
         # This will happen if we get an anonymous user, this is supposed to be the anonymous user id we get from the req
         if isinstance(token, str):
-            return Token(client=token, is_anonymous_user=True)
+            return Token(client=token, is_anonymous_user=True, token=token)
         # User is logged in through Auth0
         return Token(
             client=token.sub,
@@ -44,6 +44,7 @@ def request_agent() -> Token | None:
             created=datetime.fromtimestamp(token.iat, tz=UTC),
             expires=datetime.fromtimestamp(token.exp, tz=UTC),
             creator=token.iss,
+            token=token,
         )
     return None
 

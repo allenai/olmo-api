@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
 
 from src.auth.resource_protectors import anonymous_auth_protector, required_auth_protector
+from src.config.get_config import get_config
 from src.inference.inference_service import get_available_models
 from src.model_config.create_model_config_service import (
     ResponseModel,
@@ -33,8 +34,8 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
     @model_config_blueprint.get("/")
     @pydantic_api(name="Get available models and their configuration", tags=["v4", "models"])
     def get_model_configs() -> Response:
-        from_db = request.args.get("from_db", "false").lower()
-        if from_db != "true":
+        config = get_config()
+        if not config.feature_flags.enable_dynamic_model_config:
             return jsonify(get_available_models())
 
         token = anonymous_auth_protector.get_token()

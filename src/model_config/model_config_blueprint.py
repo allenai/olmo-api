@@ -51,8 +51,8 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
         model_dump_kwargs={"by_alias": True},
     )
     def get_model_configs() -> RootModelResponse:
-        is_admin_request = request.args.get("admin", "false").lower() == "true"
-        if is_admin_request:
+        is_requesting_admin_models = request.args.get("admin", "false").lower() == "true"
+        if is_requesting_admin_models:
             with required_auth_protector.acquire("write:model-config"):
                 return get_model_config_admin(session_maker)
 

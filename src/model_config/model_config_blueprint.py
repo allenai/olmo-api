@@ -1,4 +1,6 @@
-from flask import Blueprint, request
+from datetime import UTC, datetime
+
+from flask import Blueprint, current_app, request
 from flask_pydantic_api.api_wrapper import pydantic_api
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
@@ -78,6 +80,13 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
     )
     def add_model(request: RootCreateModelConfigRequest) -> ResponseModel:
         new_model = create_model_config(request, session_maker)
+        token = required_auth_protector.acquire_token()
+        current_app.logger.info({
+            "event": "model_config.create",
+            "user": token.sub,
+            "request": request.model_dump(),
+            "date": datetime.now(UTC),
+        })
 
         return new_model
 
@@ -121,11 +130,19 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
         model_id: str,
         request: RootUpdateModelConfigRequest,
     ) -> ResponseModel:
+        token = required_auth_protector.acquire_token()
         updated_model = update_model_config(model_id, request, session_maker)
 
         if updated_model is None:
             not_found_message = f"No model found with ID {model_id}"
             raise exceptions.NotFound(not_found_message)
+
+        current_app.logger.info({
+            "event": "model_config.update",
+            "user": token.sub,
+            "request": request.model_dump(),
+            "date": datetime.now(UTC),
+        })
 
         return updated_model
 

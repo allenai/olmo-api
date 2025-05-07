@@ -98,8 +98,15 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
         model_dump_kwargs={"by_alias": True},
     )
     def delete_model(model_id: str):
+        token = required_auth_protector.acquire_token()
         try:
             delete_model_config(model_id, session_maker)
+            current_app.logger.info({
+                "event": "model_config.delete",
+                "user": token.sub,
+                "model_id": model_id,
+                "date": datetime.now(UTC),
+            })
             return "", 204
         except ValueError as e:
             not_found_message = f"No model found with ID {model_id}"
@@ -113,8 +120,15 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
         model_dump_kwargs={"by_alias": True},
     )
     def reorder_model(request: ReorderModelConfigRequest):
+        token = required_auth_protector.acquire_token()
         try:
             reorder_model_config(request, session_maker)
+            current_app.logger.info({
+                "event": "model_config.reorder",
+                "user": token.sub,
+                "request": request.model_dump(),
+                "date": datetime.now(UTC),
+            })
             return "", 204
         except ValueError as e:
             raise exceptions.NotFound from e
@@ -140,7 +154,7 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
         current_app.logger.info({
             "event": "model_config.update",
             "user": token.sub,
-            "request": request.model_dump(),
+            "request": {**request.model_dump(), "model_id": model_id},
             "date": datetime.now(UTC),
         })
 

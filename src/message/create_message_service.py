@@ -12,6 +12,7 @@ from typing import cast
 import grpc
 from flask import current_app
 from flask import request as flask_request
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
 from werkzeug.datastructures import FileStorage
 
@@ -21,6 +22,7 @@ from src.bot_detection.create_assessment import create_assessment
 from src.config.get_config import cfg
 from src.config.get_models import get_model_by_host_and_id
 from src.dao import completion, message
+from src.dao.engine_models.model_config import ModelConfig
 from src.inference.InferDEngine import InferDEngine
 from src.inference.InferenceEngine import (
     FinishReason,
@@ -31,7 +33,6 @@ from src.inference.InferenceEngine import (
 )
 from src.inference.ModalEngine import ModalEngine
 from src.message.create_message_request import (
-    CreateMessageRequestV3,
     CreateMessageRequestV4WithLists,
     CreateMessageRequestWithFullMessages,
 )
@@ -183,6 +184,7 @@ def stream_new_message(
     request: CreateMessageRequestWithFullMessages,
     dbc: db.Client,
     storage_client: GoogleCloudStorage,
+    model: ModelConfig,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     user_ip_address: str | None = None,
     user_agent: str | None = None,
@@ -191,11 +193,6 @@ def stream_new_message(
     agent = authn()
 
     inference_engine = get_engine(request.host)
-
-    model = inference_engine.get_model_details(request.model)
-    if not model:
-        error_message = f"model {request.model} is not available on {request.host}"
-        raise exceptions.BadRequest(error_message)
 
     evaluate_prompt_submission_captcha(
         request.captcha_token,
@@ -254,9 +251,9 @@ def stream_new_message(
     # if the request message is the first message in a thread
     if request.parent is None:
         # create a system prompt message if the current model is specified with a system prompt
-        if model.system_prompt is not None:
+        if model.default_system_prompt is not None:
             system_msg = dbc.message.create(
-                content=model.system_prompt,
+                content=model.default_system_prompt,
                 creator=agent.client,
                 role=message.Role.System,
                 opts=request.opts,
@@ -418,7 +415,7 @@ def stream_new_message(
 
         try:
             message_generator = inference_engine.create_streamed_message(
-                model=model.compute_source_id,
+                model=model.model_id_on_host,
                 messages=chain,
                 inference_options=InferenceOptions(**reply.opts.model_dump()),
             )
@@ -564,7 +561,7 @@ def stream_new_message(
                 prompt,
                 [completion.CompletionOutput(output, str(finish_reason), logprobs)],
                 msg.opts,
-                model.compute_source_id,
+                model.model_id_on_host,
                 sha,
                 tokenize_ms=-1,
                 generation_ms=gen,
@@ -659,51 +656,11 @@ def get_parent_and_root_messages_and_private(
     return parent_message, root_message, private
 
 
-def create_message_v3(
-    request: CreateMessageRequestV3,
-    dbc: db.Client,
-    storage_client: GoogleCloudStorage,
-    checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
-) -> message.Message | Generator[str, None, None]:
-    agent = authn()
-
-    parent_message, root_message, private = get_parent_and_root_messages_and_private(
-        request.parent, dbc, request.private, is_anonymous_user=agent.is_anonymous_user
-    )
-
-    mapped_request = CreateMessageRequestWithFullMessages(
-        parent_id=request.parent,
-        parent=parent_message,
-        opts=request.opts,
-        content=request.content,
-        role=cast(message.Role, request.role),
-        original=request.original,
-        private=private,
-        root=root_message,
-        template=request.template,
-        model=request.model,
-        host=request.host,
-        client=agent.client,
-        captcha_token=request.captcha_token,
-    )
-
-    user_ip_address = flask_request.remote_addr
-    user_agent = flask_request.user_agent.string
-
-    return stream_new_message(
-        mapped_request,
-        dbc,
-        storage_client=storage_client,
-        checker_type=checker_type,
-        user_ip_address=user_ip_address,
-        user_agent=user_agent,
-    )
-
-
 def create_message_v4(
     request: CreateMessageRequestV4WithLists,
     dbc: db.Client,
     storage_client: GoogleCloudStorage,
+    session_maker: sessionmaker[Session],
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
 ) -> message.Message | Generator[str, None, None]:
     agent = authn()
@@ -736,7 +693,7 @@ def create_message_v4(
         captcha_token=request.captcha_token,
     )
 
-    model_config = get_model_by_host_and_id(mapped_request.host, mapped_request.model)
+    model_config = get_model_by_host_and_id(mapped_request.host, mapped_request.model, session_maker=session_maker)
     validate_message_files_from_config(request.files, config=model_config, has_parent=mapped_request.parent is not None)
 
     user_ip_address = flask_request.remote_addr
@@ -745,6 +702,7 @@ def create_message_v4(
     return stream_new_message(
         mapped_request,
         dbc,
+        model=model_config,
         storage_client=storage_client,
         checker_type=checker_type,
         user_ip_address=user_ip_address,

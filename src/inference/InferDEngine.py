@@ -24,9 +24,6 @@ class InferDEngine(InferenceEngine):
         self.inferDClient = InferdClient(cfg.inferd.address, cfg.inferd.token)
         self.available_models = get_models_by_host(ModelHost.InferD)
 
-    def get_model_details(self, model_id: str) -> Model | None:
-        return next((m for m in self.available_models if m.id == model_id), None)
-
     def create_streamed_message(
         self,
         model: str,

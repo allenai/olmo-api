@@ -1,12 +1,14 @@
 import os
 from collections.abc import Sequence
+from dataclasses import asdict
 from typing import Self
 
 from flask_pydantic_api.utils import UploadedFile
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from src.config.Model import Model, MultiModalModel
+from src.config.Model import MultiModalModel
 from src.config.ModelConfig import FileRequiredToPromptOption
+from src.dao.engine_models.model_config import ModelConfig
 from src.message.file_validation.check_is_file_in_allowed_file_types import check_is_file_in_allowed_file_types
 
 
@@ -109,13 +111,13 @@ class CreateMessageRequestFilesValidator(BaseModel):
 
 
 def validate_message_files_from_config(
-    request_files: Sequence[UploadedFile] | None, config: Model, *, has_parent: bool
+    request_files: Sequence[UploadedFile] | None, config: ModelConfig, *, has_parent: bool
 ):
     if isinstance(config, MultiModalModel):
         CreateMessageRequestFilesValidator(files=request_files, our_model_config=config, has_parent=has_parent)
     else:
         CreateMessageRequestFilesValidator(
             files=request_files,
-            our_model_config=MultiModalModel.model_construct(**config.model_dump()),
+            our_model_config=MultiModalModel.model_construct(**asdict(config)),
             has_parent=has_parent,
         )

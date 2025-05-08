@@ -15,7 +15,7 @@ class RootModelResponse(RootModel):
     root: list[Model | MultiModalModel] | list[ResponseModel]
 
 
-def get_model_config(
+def get_model_configs(
     session_maker: sessionmaker[Session], *, include_internal_models: bool = False
 ) -> RootModelResponse:
     with session_maker.begin() as session:
@@ -68,7 +68,7 @@ def get_model_config(
         return RootModelResponse.model_validate(processed_results)
 
 
-def get_model_config_admin(session_maker: sessionmaker[Session]) -> RootModelResponse:
+def get_model_configs_admin(session_maker: sessionmaker[Session]) -> RootModelResponse:
     with session_maker.begin() as session:
         polymorphic_loader_opt = selectin_polymorphic(DAOModelConfig, [DAOModelConfig, DAOMultiModalModelConfig])
 
@@ -78,3 +78,13 @@ def get_model_config_admin(session_maker: sessionmaker[Session]) -> RootModelRes
         processed_results = [ResponseModel.model_validate(model) for model in results]
 
         return RootModelResponse.model_validate(processed_results)
+
+
+def get_single_model_config_admin(
+    session_maker: sessionmaker[Session], model_id: str
+) -> DAOModelConfig | DAOMultiModalModelConfig | None:
+    with session_maker.begin() as session:
+        polymorphic_loader_opt = selectin_polymorphic(DAOModelConfig, [DAOModelConfig, DAOMultiModalModelConfig])
+        stmt = select(DAOModelConfig).options(polymorphic_loader_opt).where(DAOModelConfig.id == model_id)
+
+        return session.scalars(stmt).one_or_none()

@@ -8,6 +8,7 @@ from flask import (
     request,
     send_file,
 )
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
 
 from src import db, util
@@ -18,12 +19,11 @@ from src.dao import datachip, label, message, paged
 from src.inference.inference_service import get_available_models
 from src.log import logging_blueprint
 from src.message.GoogleCloudStorage import GoogleCloudStorage
-from src.message.v3MessageBlueprint import create_v3_message_blueprint
 from src.user import UserBlueprint
 
 
 class Server(Blueprint):
-    def __init__(self, dbc: db.Client, storage_client: GoogleCloudStorage):
+    def __init__(self, dbc: db.Client, storage_client: GoogleCloudStorage, session_maker: sessionmaker[Session]):
         super().__init__("v3", __name__)
 
         self.dbc = dbc
@@ -53,10 +53,6 @@ class Server(Blueprint):
         self.get("/datachips")(self.datachips)
 
         self.register_blueprint(logging_blueprint, url_prefix="/log")
-        self.register_blueprint(
-            blueprint=create_v3_message_blueprint(dbc, storage_client=storage_client),
-            url_prefix="/message",
-        )
         self.register_blueprint(blueprint=UserBlueprint(dbc=dbc, storage_client=storage_client))
         self.register_blueprint(blueprint=attribution_blueprint, url_prefix="/attribution")
 

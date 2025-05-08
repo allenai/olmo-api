@@ -13,7 +13,7 @@ def create_v4_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage, sess
     config = get_config()
 
     v4_blueprint.register_blueprint(
-        blueprint=create_v4_message_blueprint(dbc, storage_client=storage_client),
+        blueprint=create_v4_message_blueprint(dbc, storage_client=storage_client, session_maker=session_maker),
         url_prefix="/message",
         name="message",
     )

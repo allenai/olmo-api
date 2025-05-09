@@ -1,10 +1,18 @@
+from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import AwareDatetime, Field, RootModel
+from pydantic import AwareDatetime, Field, RootModel, computed_field
 
 from src.api_interface import APIInterface
-from src.config.ModelConfig import FileRequiredToPromptOption, ModelType
+from src.config.ModelConfig import FileRequiredToPromptOption, ModelHost, ModelType
 from src.dao.engine_models.model_config import PromptType
+
+
+class ModelAvailability(StrEnum):
+    PUBLIC = "public"
+    INTERNAL = "internal"
+    PRERELEASE = "prerelease"
 
 
 class BaseResponseModel(APIInterface):
@@ -17,6 +25,17 @@ class BaseResponseModel(APIInterface):
     internal: bool
     order: int
     default_system_prompt: str | None = Field(default=None)
+
+    @computed_field  # type:ignore
+    @property
+    def availability(self) -> ModelAvailability:
+        if self.internal:
+            return ModelAvailability.INTERNAL
+
+        if self.available_time is not None and self.available_time > datetime.now(tz=UTC):
+            return ModelAvailability.PRERELEASE
+
+        return ModelAvailability.PUBLIC
 
     family_id: str | None = Field(default=None)
     family_name: str | None = Field(default=None)

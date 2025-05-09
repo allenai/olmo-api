@@ -12,7 +12,7 @@ This uses Alembic to auto-generate migrations. The tutorial can be found here: h
 `alembic downgrade base`
 
 ### To generate migration sql for prod:
-`alembic upgrade head --sql > schema/schema.sql`
+`alembic upgrade head --sql > schema/02-schema.sql`
 
 ## Gotchas
 If you make a new table you'll need to grant access to it in a second migration. See [this `model_config` migration](./versions/4d6e17a0fdf6_grant_access_to_model_config_table.py) for an example.

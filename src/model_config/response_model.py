@@ -3,13 +3,13 @@ from typing import Annotated, Literal
 from pydantic import AwareDatetime, Field, RootModel
 
 from src.api_interface import APIInterface
-from src.config.ModelConfig import FileRequiredToPromptOption, ModelType
+from src.config.ModelConfig import FileRequiredToPromptOption, ModelHost, ModelType
 from src.dao.engine_models.model_config import PromptType
 
 
 class BaseResponseModel(APIInterface):
     id: str
-    host: str
+    host: ModelHost
     name: str
     description: str
     model_type: ModelType

@@ -350,5 +350,134 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE model_config TO app;
 
 UPDATE alembic_version SET version_num='4d6e17a0fdf6' WHERE alembic_version.version_num = 'befde9e1de64';
 
+-- Running upgrade 4d6e17a0fdf6 -> ea686b7953cb
+
+CREATE TYPE modeltype AS ENUM ('Base', 'Chat');
+
+CREATE TYPE modelhost AS ENUM ('InferD', 'Modal');
+
+ALTER TABLE model_config ADD COLUMN host modelhost NOT NULL;
+
+ALTER TABLE model_config ADD COLUMN name VARCHAR NOT NULL;
+
+ALTER TABLE model_config ADD COLUMN description VARCHAR NOT NULL;
+
+ALTER TABLE model_config ADD COLUMN model_type modeltype NOT NULL;
+
+ALTER TABLE model_config ADD COLUMN model_id_on_host VARCHAR NOT NULL;
+
+ALTER TABLE model_config ADD COLUMN default_system_prompt VARCHAR;
+
+ALTER TABLE model_config ADD COLUMN family_id VARCHAR;
+
+ALTER TABLE model_config ADD COLUMN family_name VARCHAR;
+
+ALTER TABLE model_config ADD COLUMN internal BOOLEAN NOT NULL;
+
+UPDATE alembic_version SET version_num='ea686b7953cb' WHERE alembic_version.version_num = '4d6e17a0fdf6';
+
+-- Running upgrade ea686b7953cb -> 636b1b8f1f03
+
+CREATE TYPE filerequiredtopromptoption AS ENUM ('FirstMessage', 'AllMessages', 'NoRequirement');
+
+CREATE TABLE multi_modal_model_config (
+    id VARCHAR NOT NULL, 
+    accepted_file_types VARCHAR[] NOT NULL, 
+    max_files_per_message INTEGER, 
+    require_file_to_prompt filerequiredtopromptoption, 
+    max_total_file_size INTEGER, 
+    allow_files_in_followups BOOLEAN, 
+    PRIMARY KEY (id), 
+    FOREIGN KEY(id) REFERENCES model_config (id)
+);
+
+UPDATE alembic_version SET version_num='636b1b8f1f03' WHERE alembic_version.version_num = 'ea686b7953cb';
+
+-- Running upgrade 636b1b8f1f03 -> f996e9be1bb0
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE multi_modal_model_config TO app;
+
+UPDATE alembic_version SET version_num='f996e9be1bb0' WHERE alembic_version.version_num = '636b1b8f1f03';
+
+-- Running upgrade f996e9be1bb0 -> 03da13313751
+
+ALTER TABLE model_config ADD COLUMN available_time TIMESTAMP WITH TIME ZONE;
+
+ALTER TABLE model_config ADD COLUMN deprecation_time TIMESTAMP WITH TIME ZONE;
+
+UPDATE alembic_version SET version_num='03da13313751' WHERE alembic_version.version_num = 'f996e9be1bb0';
+
+-- Running upgrade 03da13313751 -> c97651b81c1a
+
+ALTER TABLE model_config ADD COLUMN "order" INTEGER NOT NULL;
+
+UPDATE alembic_version SET version_num='c97651b81c1a' WHERE alembic_version.version_num = '03da13313751';
+
+-- Running upgrade c97651b81c1a -> 9089586a14c3
+
+ALTER TYPE "public"."prompttype" RENAME TO prompttype_old;
+
+CREATE TYPE "public"."prompttype" AS ENUM('TEXT_ONLY', 'MULTI_MODAL');
+
+CREATE FUNCTION new_old_not_equals(
+                new_enum_val "public"."prompttype", old_enum_val "public"."prompttype_old"
+            )
+            RETURNS boolean AS $$
+                SELECT new_enum_val::text != old_enum_val::text;
+            $$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OPERATOR != (
+            leftarg = "public"."prompttype",
+            rightarg = "public"."prompttype_old",
+            procedure = new_old_not_equals
+        );
+
+CREATE FUNCTION new_old_equals(
+                new_enum_val "public"."prompttype", old_enum_val "public"."prompttype_old"
+            )
+            RETURNS boolean AS $$
+                SELECT new_enum_val::text = old_enum_val::text;
+            $$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OPERATOR = (
+            leftarg = "public"."prompttype",
+            rightarg = "public"."prompttype_old",
+            procedure = new_old_equals
+        );
+
+ALTER TABLE "public"."model_config" 
+                ALTER COLUMN "prompt_type" TYPE "public"."prompttype" 
+                USING "prompt_type"::text::"public"."prompttype";
+
+DROP FUNCTION new_old_not_equals(
+            new_enum_val "public"."prompttype", old_enum_val "public"."prompttype_old"
+        ) CASCADE;
+
+DROP FUNCTION new_old_equals(
+            new_enum_val "public"."prompttype", old_enum_val "public"."prompttype_old"
+        ) CASCADE;
+
+DROP TYPE "public"."prompttype_old";
+
+UPDATE alembic_version SET version_num='9089586a14c3' WHERE alembic_version.version_num = 'c97651b81c1a';
+
+-- Running upgrade 9089586a14c3 -> 724dff1a0068
+
+ALTER TABLE model_config ADD COLUMN created_time TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL;
+
+ALTER TABLE model_config ADD COLUMN updated_time TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL;
+
+UPDATE alembic_version SET version_num='724dff1a0068' WHERE alembic_version.version_num = '9089586a14c3';
+
+-- Running upgrade 724dff1a0068 -> 3772048c8bd0
+
+CREATE SEQUENCE model_config_order_seq INCREMENT BY 10 START WITH 10 OWNED BY model_config.order;
+
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app;
+
+ALTER TABLE model_config ALTER COLUMN "order" SET DEFAULT nextval('model_config_order_seq');
+
+UPDATE alembic_version SET version_num='3772048c8bd0' WHERE alembic_version.version_num = '724dff1a0068';
+
 COMMIT;
 

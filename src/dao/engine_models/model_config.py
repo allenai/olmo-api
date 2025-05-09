@@ -15,6 +15,7 @@ class ModelType(StrEnum):
 class ModelHost(StrEnum):
     InferD = "inferd"
     Modal = "modal"
+    BeakerQueues = "beaker_queues"
 
 
 class FileRequiredToPromptOption(StrEnum):

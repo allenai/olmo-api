@@ -56,6 +56,7 @@ def get_model_configs(
                     family_name=m.family_name,
                     available_time=m.available_time,
                     deprecation_time=m.deprecation_time,
+                    accepts_files=True,
                     accepted_file_types=m.accepted_file_types,
                     max_files_per_message=m.max_files_per_message,
                     require_file_to_prompt=m.require_file_to_prompt or FileRequiredToPromptOption.NoRequirement,

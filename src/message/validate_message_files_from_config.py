@@ -1,15 +1,13 @@
 import os
 from collections.abc import Sequence
-from typing import Self, cast
+from typing import Self
 
 from flask_pydantic_api.utils import UploadedFile
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from src.config.Model import Model, MultiModalModel
+from src.config.Model import MultiModalModel
 from src.config.ModelConfig import FileRequiredToPromptOption
-from src.dao.engine_models.model_config import ModelConfig as DAOModelConfig
-from src.dao.engine_models.model_config import MultiModalModelConfig as DAOMultiModalModelConfig
-from src.dao.engine_models.model_config import PromptType
+from src.dao.engine_models.model_config import ModelConfig, MultiModalModelConfig, PromptType
 from src.message.file_validation.check_is_file_in_allowed_file_types import check_is_file_in_allowed_file_types
 from src.model_config.response_model import MultiModalResponseModel, ResponseModel, TextOnlyResponseModel
 
@@ -36,10 +34,8 @@ class CreateMessageRequestFilesValidator(BaseModel):
         error_message = "This model doesn't accept files"
         value_error = ValueError(error_message)
 
-        if isinstance(self.our_model_config, MultiModalModel) and self.files is not None and len(self.files) > 0:
-            raise value_error
         if (
-            isinstance(self.our_model_config, DAOModelConfig)
+            isinstance(self.our_model_config, MultiModalResponseModel)
             and self.our_model_config.prompt_type == PromptType.TEXT_ONLY
             and self.files is not None
             and len(self.files) > 0
@@ -50,7 +46,7 @@ class CreateMessageRequestFilesValidator(BaseModel):
 
     @model_validator(mode="after")
     def validate_file_passed_when_required(self) -> Self:
-        if not isinstance(self.our_model_config, (MultiModalResponseModel, MultiModalModel)):
+        if not isinstance(self.our_model_config, MultiModalResponseModel):
             return self
 
         require_file_to_prompt = self.our_model_config.require_file_to_prompt
@@ -75,7 +71,7 @@ class CreateMessageRequestFilesValidator(BaseModel):
 
     @model_validator(mode="after")
     def validate_files_allowed_in_followups(self) -> Self:
-        if not isinstance(self.our_model_config, (MultiModalResponseModel, MultiModalModel)):
+        if not isinstance(self.our_model_config, MultiModalResponseModel):
             return self
 
         are_files_present = self.files is not None and len(self.files) > 0
@@ -88,7 +84,7 @@ class CreateMessageRequestFilesValidator(BaseModel):
 
     @model_validator(mode="after")
     def validate_files_dont_exceed_maximum(self) -> Self:
-        if not isinstance(self.our_model_config, (MultiModalResponseModel, MultiModalModel)):
+        if not isinstance(self.our_model_config, MultiModalResponseModel):
             return self
 
         max_files_per_message = self.our_model_config.max_files_per_message
@@ -100,7 +96,7 @@ class CreateMessageRequestFilesValidator(BaseModel):
 
     @model_validator(mode="after")
     def validate_max_total_file_size(self) -> Self:
-        if not isinstance(self.our_model_config, (MultiModalResponseModel, MultiModalModel)):
+        if not isinstance(self.our_model_config, MultiModalResponseModel):
             return self
 
         max_total_file_size = self.our_model_config.max_total_file_size
@@ -119,7 +115,7 @@ class CreateMessageRequestFilesValidator(BaseModel):
 
     @model_validator(mode="after")
     def validate_allowed_file_types(self) -> Self:
-        if not isinstance(self.our_model_config, (MultiModalResponseModel, MultiModalModel)):
+        if not isinstance(self.our_model_config, MultiModalResponseModel):
             return self
 
         if self.files is None:
@@ -138,21 +134,15 @@ class CreateMessageRequestFilesValidator(BaseModel):
 
 def validate_message_files_from_config(
     request_files: Sequence[UploadedFile] | None,
-    config: DAOModelConfig | DAOMultiModalModelConfig | Model | MultiModalModel,
+    config: ModelConfig | MultiModalModelConfig,
     *,
     has_parent: bool,
 ):
-    if isinstance(config, (DAOMultiModalModelConfig, DAOModelConfig)):
-        response_model = ResponseModel.model_validate(config)
-        CreateMessageRequestFilesValidator(
-            files=request_files,
-            our_model_config=response_model.root,
-            has_parent=has_parent,
-        )
+    # ResponseModel has all the nice Pydantic validations we want so we use that here instead of the DAO object
+    response_model = ResponseModel.model_validate(config)
 
-    if isinstance(config, (MultiModalModel, Model)):
-        CreateMessageRequestFilesValidator(
-            files=request_files,
-            our_model_config=cast(MultiModalModel, config),
-            has_parent=has_parent,
-        )
+    CreateMessageRequestFilesValidator(
+        files=request_files,
+        our_model_config=response_model.root,
+        has_parent=has_parent,
+    )

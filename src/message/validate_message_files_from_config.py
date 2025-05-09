@@ -1,14 +1,17 @@
 import os
 from collections.abc import Sequence
-from dataclasses import asdict
-from typing import Self
+from typing import Self, cast
 
 from flask_pydantic_api.utils import UploadedFile
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from src.config.Model import Model, MultiModalModel
 from src.config.ModelConfig import FileRequiredToPromptOption
-from src.dao.engine_models.model_config import ModelConfig, MultiModalModelConfig, PromptType
+from src.dao.engine_models.model_config import ModelConfig as DAOModelConfig
+from src.dao.engine_models.model_config import MultiModalModelConfig as DAOMultiModalModelConfig
+from src.dao.engine_models.model_config import PromptType
 from src.message.file_validation.check_is_file_in_allowed_file_types import check_is_file_in_allowed_file_types
+from src.model_config.response_model import MultiModalResponseModel, ResponseModel, TextOnlyResponseModel
 
 
 def get_file_size(file: UploadedFile):
@@ -24,20 +27,32 @@ class CreateMessageRequestFilesValidator(BaseModel):
     files: Sequence[UploadedFile] | None = Field(default=None)
     has_parent: bool
     # named with our_ in front so it doesn't conflict with pydantic's model_config
-    our_model_config: MultiModalModelConfig
+    our_model_config: TextOnlyResponseModel | MultiModalResponseModel | MultiModalModel
 
     model_config = ConfigDict(hide_input_in_errors=True)
 
     @model_validator(mode="after")
     def validate_no_files_when_not_accepted(self) -> Self:
-        if self.our_model_config.prompt_type == PromptType.TEXT_ONLY and self.files is not None and len(self.files) > 0:
-            error_message = "This model doesn't accept files"
-            raise ValueError(error_message)
+        error_message = "This model doesn't accept files"
+        value_error = ValueError(error_message)
+
+        if isinstance(self.our_model_config, MultiModalModel) and self.files is not None and len(self.files) > 0:
+            raise value_error
+        if (
+            isinstance(self.our_model_config, DAOModelConfig)
+            and self.our_model_config.prompt_type == PromptType.TEXT_ONLY
+            and self.files is not None
+            and len(self.files) > 0
+        ):
+            raise value_error
 
         return self
 
     @model_validator(mode="after")
     def validate_file_passed_when_required(self) -> Self:
+        if not isinstance(self.our_model_config, (MultiModalResponseModel, MultiModalModel)):
+            return self
+
         require_file_to_prompt = self.our_model_config.require_file_to_prompt
         are_files_present = self.files is not None and len(self.files) > 0
 
@@ -60,6 +75,9 @@ class CreateMessageRequestFilesValidator(BaseModel):
 
     @model_validator(mode="after")
     def validate_files_allowed_in_followups(self) -> Self:
+        if not isinstance(self.our_model_config, (MultiModalResponseModel, MultiModalModel)):
+            return self
+
         are_files_present = self.files is not None and len(self.files) > 0
 
         if not self.our_model_config.allow_files_in_followups and self.has_parent and are_files_present:
@@ -70,6 +88,9 @@ class CreateMessageRequestFilesValidator(BaseModel):
 
     @model_validator(mode="after")
     def validate_files_dont_exceed_maximum(self) -> Self:
+        if not isinstance(self.our_model_config, (MultiModalResponseModel, MultiModalModel)):
+            return self
+
         max_files_per_message = self.our_model_config.max_files_per_message
         if max_files_per_message is not None and len(self.files or []) > max_files_per_message:
             error_message = f"This model only allows {max_files_per_message} files per message"
@@ -79,6 +100,9 @@ class CreateMessageRequestFilesValidator(BaseModel):
 
     @model_validator(mode="after")
     def validate_max_total_file_size(self) -> Self:
+        if not isinstance(self.our_model_config, (MultiModalResponseModel, MultiModalModel)):
+            return self
+
         max_total_file_size = self.our_model_config.max_total_file_size
 
         if max_total_file_size is not None and self.files is not None:
@@ -95,6 +119,9 @@ class CreateMessageRequestFilesValidator(BaseModel):
 
     @model_validator(mode="after")
     def validate_allowed_file_types(self) -> Self:
+        if not isinstance(self.our_model_config, (MultiModalResponseModel, MultiModalModel)):
+            return self
+
         if self.files is None:
             return self
 
@@ -110,13 +137,22 @@ class CreateMessageRequestFilesValidator(BaseModel):
 
 
 def validate_message_files_from_config(
-    request_files: Sequence[UploadedFile] | None, config: ModelConfig, *, has_parent: bool
+    request_files: Sequence[UploadedFile] | None,
+    config: DAOModelConfig | DAOMultiModalModelConfig | Model | MultiModalModel,
+    *,
+    has_parent: bool,
 ):
-    if isinstance(config, MultiModalModel):
-        CreateMessageRequestFilesValidator(files=request_files, our_model_config=config, has_parent=has_parent)
-    else:
+    if isinstance(config, (DAOMultiModalModelConfig, DAOModelConfig)):
+        response_model = ResponseModel.model_validate(config)
         CreateMessageRequestFilesValidator(
             files=request_files,
-            our_model_config=MultiModalModel.model_construct(**asdict(config)),
+            our_model_config=response_model.root,
+            has_parent=has_parent,
+        )
+
+    if isinstance(config, (MultiModalModel, Model)):
+        CreateMessageRequestFilesValidator(
+            files=request_files,
+            our_model_config=cast(MultiModalModel, config),
             has_parent=has_parent,
         )

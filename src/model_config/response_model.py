@@ -17,7 +17,7 @@ class ModelAvailability(StrEnum):
 
 class BaseResponseModel(APIInterface):
     id: str
-    host: str
+    host: ModelHost
     name: str
     description: str
     model_type: ModelType

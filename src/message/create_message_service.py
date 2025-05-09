@@ -693,8 +693,8 @@ def create_message_v4(
         captcha_token=request.captcha_token,
     )
 
-    model_config = get_model_by_host_and_id(mapped_request.host, mapped_request.model, session_maker=session_maker)
-    validate_message_files_from_config(request.files, config=model_config, has_parent=mapped_request.parent is not None)
+    model = get_model_by_host_and_id(mapped_request.host, mapped_request.model, session_maker=session_maker)
+    validate_message_files_from_config(request.files, config=model, has_parent=mapped_request.parent is not None)
 
     user_ip_address = flask_request.remote_addr
     user_agent = flask_request.user_agent.string
@@ -702,7 +702,7 @@ def create_message_v4(
     return stream_new_message(
         mapped_request,
         dbc,
-        model=model_config,
+        model=model,
         storage_client=storage_client,
         checker_type=checker_type,
         user_ip_address=user_ip_address,

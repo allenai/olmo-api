@@ -7,34 +7,35 @@ import pytest
 from flask_pydantic_api.utils import UploadedFile
 from pydantic import ValidationError
 
-from src.config.Model import Model, MultiModalModel, map_model_from_config
-from src.config.ModelConfig import FileRequiredToPromptOption, ModelHost, ModelType, MultiModalModelConfig
+from src.config.ModelConfig import FileRequiredToPromptOption, ModelHost, ModelType
+from src.dao.engine_models.model_config import ModelConfig, MultiModalModelConfig, PromptType
 from src.message.validate_message_files_from_config import validate_message_files_from_config
 
 
 def create_model_config(
     # Allowing dict[str, Any] keeps autocomplete but gets the typing to stop yelling at us if we don't have the entire dict
     partial_config: MultiModalModelConfig | dict[str, Any] | None = None,
-) -> Model | MultiModalModel:
-    config: MultiModalModelConfig = {
-        "id": "id",
-        "name": "name",
-        "host": ModelHost.InferD,
-        "description": "description",
-        "compute_source_id": "compute_source_id",
-        "model_type": ModelType.Chat,
-        "system_prompt": None,
-        "family_id": None,
-        "family_name": None,
-        "available_time": None,
-        "deprecation_time": None,
-        "accepts_files": True,
-        "accepted_file_types": [],
-        "max_files_per_message": None,
-        "require_file_to_prompt": FileRequiredToPromptOption.NoRequirement,
-        "max_total_file_size": None,
-        "allow_files_in_followups": False,
-    }
+) -> ModelConfig | MultiModalModelConfig:
+    config = MultiModalModelConfig(
+        id="id",
+        name="name",
+        host=ModelHost.InferD,
+        description="description",
+        model_id_on_host="compute_source_id",
+        model_type=ModelType.Chat,
+        internal=False,
+        default_system_prompt=None,
+        family_id=None,
+        family_name=None,
+        available_time=None,
+        deprecation_time=None,
+        prompt_type=PromptType.MULTI_MODAL,
+        accepted_file_types=[],
+        max_files_per_message=None,
+        require_file_to_prompt=FileRequiredToPromptOption.NoRequirement,
+        max_total_file_size=None,
+        allow_files_in_followups=False,
+    )
 
     if partial_config is not None:
         config.update(cast(MultiModalModelConfig, partial_config))
@@ -51,7 +52,7 @@ def create_uploaded_files(count: int) -> Sequence[UploadedFile]:
     [
         pytest.param(
             create_model_config({
-                "allow_files_in_followups": False,
+                allow_files_in_followups=False,
             }),
             True,
             "This model doesn't allow files to be sent in follow-up messages",
@@ -59,35 +60,35 @@ def create_uploaded_files(count: int) -> Sequence[UploadedFile]:
             id="no follow-up files allowed",
         ),
         pytest.param(
-            create_model_config({"require_file_to_prompt": FileRequiredToPromptOption.FirstMessage}),
+            create_model_config({require_file_to_prompt=FileRequiredToPromptOption.FirstMessage}),
             False,
             "This model requires a file to be sent with the first message",
             0,
             id="file required with first message",
         ),
         pytest.param(
-            create_model_config({"require_file_to_prompt": FileRequiredToPromptOption.AllMessages}),
+            create_model_config({require_file_to_prompt=FileRequiredToPromptOption.AllMessages}),
             False,
             "This model requires a file to be sent with all messages",
             0,
             id="file required with first message when required in all messages",
         ),
         pytest.param(
-            create_model_config({"require_file_to_prompt": FileRequiredToPromptOption.AllMessages}),
+            create_model_config({require_file_to_prompt=FileRequiredToPromptOption.AllMessages}),
             True,
             "This model requires a file to be sent with all messages",
             0,
             id="file required with first message when required in all messages",
         ),
         pytest.param(
-            create_model_config({"max_files_per_message": 2}),
+            create_model_config({max_files_per_message=2}),
             False,
             "This model only allows 2 files per message",
             3,
             id="too many files",
         ),
         pytest.param(
-            create_model_config({"max_total_file_size": "2B"}),
+            create_model_config({max_total_file_size="2B"}),
             False,
             "This model has a max total file size of 2B",
             1,
@@ -107,47 +108,47 @@ def test_file_validation_errors(model_config, has_parent: bool, error_message: s
     [
         pytest.param(
             create_model_config({
-                "allow_files_in_followups": False,
+                allow_files_in_followups=False,
             }),
             True,
             0,
             id="not sending a follow-up file when not allowed",
         ),
         pytest.param(
-            create_model_config({"require_file_to_prompt": FileRequiredToPromptOption.FirstMessage}),
+            create_model_config({require_file_to_prompt=FileRequiredToPromptOption.FirstMessage}),
             False,
             1,
             id="send a file with the first message when required",
         ),
         pytest.param(
-            create_model_config({"require_file_to_prompt": FileRequiredToPromptOption.AllMessages}),
+            create_model_config({require_file_to_prompt=FileRequiredToPromptOption.AllMessages}),
             False,
             1,
             id="send a file when required on all messages",
         ),
         pytest.param(
             create_model_config({
-                "require_file_to_prompt": FileRequiredToPromptOption.AllMessages,
-                "allow_files_in_followups": True,
+                require_file_to_prompt=FileRequiredToPromptOption.AllMessages,
+                allow_files_in_followups=True,
             }),
             True,
             1,
             id="send a file with a child message when required on all messages",
         ),
         pytest.param(
-            create_model_config({"max_files_per_message": 2}),
+            create_model_config({max_files_per_message=2}),
             False,
             2,
             id="send the max amount of files",
         ),
         pytest.param(
-            create_model_config({"max_files_per_message": 2}),
+            create_model_config({max_files_per_message=2}),
             False,
             1,
             id="send below the max amount of files",
         ),
         pytest.param(
-            create_model_config({"require_file_to_prompt": FileRequiredToPromptOption.NoRequirement}),
+            create_model_config({require_file_to_prompt=FileRequiredToPromptOption.NoRequirement}),
             False,
             0,
             id="send no files when not required",
@@ -176,7 +177,7 @@ def test_file_validation_fails_if_a_file_is_sent_to_a_non_multi_modal_model() ->
 
 
 def test_file_validation_fails_if_a_file_type_is_not_allowed() -> None:
-    model_config = create_model_config({"accepted_file_types": ["application/pdf", "image/jpg"]})
+    model_config = create_model_config({accepted_file_types=["application/pdf", "image/jpg"]})
     with open(os.path.join(os.path.dirname(__file__), "file_validation", "test-small-png.png"), "rb") as f:
         uploaded_file = UploadedFile(stream=f)
 
@@ -187,7 +188,7 @@ def test_file_validation_fails_if_a_file_type_is_not_allowed() -> None:
 
 
 def test_file_validation_passes_if_a_file_type_is_allowed() -> None:
-    model_config = create_model_config({"accepted_file_types": ["application/pdf", "image/png"]})
+    model_config = create_model_config({accepted_file_types=["application/pdf", "image/png"]})
     with open(os.path.join(os.path.dirname(__file__), "file_validation", "test-small-png.png"), "rb") as f:
         uploaded_file = UploadedFile(stream=f)
 

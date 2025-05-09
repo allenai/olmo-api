@@ -8,7 +8,6 @@ from flask import (
     request,
     send_file,
 )
-from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
 
 from src import db, util
@@ -23,7 +22,7 @@ from src.user import UserBlueprint
 
 
 class Server(Blueprint):
-    def __init__(self, dbc: db.Client, storage_client: GoogleCloudStorage, session_maker: sessionmaker[Session]):
+    def __init__(self, dbc: db.Client, storage_client: GoogleCloudStorage):
         super().__init__("v3", __name__)
 
         self.dbc = dbc

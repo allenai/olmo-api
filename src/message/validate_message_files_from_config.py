@@ -6,9 +6,8 @@ from typing import Self
 from flask_pydantic_api.utils import UploadedFile
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from src.config.Model import MultiModalModel
 from src.config.ModelConfig import FileRequiredToPromptOption
-from src.dao.engine_models.model_config import ModelConfig
+from src.dao.engine_models.model_config import ModelConfig, MultiModalModelConfig, PromptType
 from src.message.file_validation.check_is_file_in_allowed_file_types import check_is_file_in_allowed_file_types
 
 
@@ -25,13 +24,13 @@ class CreateMessageRequestFilesValidator(BaseModel):
     files: Sequence[UploadedFile] | None = Field(default=None)
     has_parent: bool
     # named with our_ in front so it doesn't conflict with pydantic's model_config
-    our_model_config: MultiModalModel
+    our_model_config: MultiModalModelConfig
 
     model_config = ConfigDict(hide_input_in_errors=True)
 
     @model_validator(mode="after")
     def validate_no_files_when_not_accepted(self) -> Self:
-        if self.our_model_config.accepts_files is not True and self.files is not None and len(self.files) > 0:
+        if self.our_model_config.prompt_type == PromptType.TEXT_ONLY and self.files is not None and len(self.files) > 0:
             error_message = "This model doesn't accept files"
             raise ValueError(error_message)
 

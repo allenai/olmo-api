@@ -34,7 +34,7 @@ def create_app():
 
     storage_client = GoogleCloudStorage(bucket_name=cfg.google_cloud_services.storage_bucket)
 
-    app.register_blueprint(v3.Server(dbc, storage_client, session_maker=session_maker), url_prefix="/v3", name="v3")
+    app.register_blueprint(v3.Server(dbc, storage_client), url_prefix="/v3", name="v3")
     app.register_blueprint(
         create_v4_blueprint(dbc=dbc, storage_client=storage_client, session_maker=session_maker),
         url_prefix="/v4",

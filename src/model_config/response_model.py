@@ -9,7 +9,7 @@ from src.dao.engine_models.model_config import PromptType
 
 class BaseResponseModel(APIInterface):
     id: str
-    host: str
+    host: ModelHost
     name: str
     description: str
     model_type: ModelType

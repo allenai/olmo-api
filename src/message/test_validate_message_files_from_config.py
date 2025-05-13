@@ -1,5 +1,6 @@
 import os
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from io import StringIO
 from typing import IO, Any, cast
 
@@ -7,28 +8,28 @@ import pytest
 from flask_pydantic_api.utils import UploadedFile
 from pydantic import ValidationError
 
-from src.config.Model import Model, MultiModalModel, map_model_from_config
-from src.config.ModelConfig import FileRequiredToPromptOption, ModelHost, ModelType, MultiModalModelConfig
+from src.config.ModelConfig import FileRequiredToPromptOption, ModelHost, ModelType
+from src.dao.engine_models.model_config import ModelConfig, MultiModalModelConfig, PromptType
 from src.message.validate_message_files_from_config import validate_message_files_from_config
 
 
 def create_model_config(
-    # Allowing dict[str, Any] keeps autocomplete but gets the typing to stop yelling at us if we don't have the entire dict
-    partial_config: MultiModalModelConfig | dict[str, Any] | None = None,
-) -> Model | MultiModalModel:
-    config: MultiModalModelConfig = {
+    partial_config: dict[str, Any] | None = None,
+) -> ModelConfig | MultiModalModelConfig:
+    values = {
         "id": "id",
         "name": "name",
         "host": ModelHost.InferD,
         "description": "description",
-        "compute_source_id": "compute_source_id",
+        "model_id_on_host": "compute_source_id",
         "model_type": ModelType.Chat,
-        "system_prompt": None,
+        "internal": False,
+        "default_system_prompt": None,
         "family_id": None,
         "family_name": None,
         "available_time": None,
         "deprecation_time": None,
-        "accepts_files": True,
+        "prompt_type": PromptType.MULTI_MODAL,
         "accepted_file_types": [],
         "max_files_per_message": None,
         "require_file_to_prompt": FileRequiredToPromptOption.NoRequirement,
@@ -37,9 +38,14 @@ def create_model_config(
     }
 
     if partial_config is not None:
-        config.update(cast(MultiModalModelConfig, partial_config))
+        values.update(partial_config)
 
-    return map_model_from_config(config)
+    model_config = MultiModalModelConfig(**values)  # type: ignore
+    model_config.order = 0
+    model_config.created_time = datetime.now(UTC)
+    model_config.updated_time = datetime.now(UTC)
+
+    return model_config
 
 
 def create_uploaded_files(count: int) -> Sequence[UploadedFile]:
@@ -154,7 +160,7 @@ def test_file_validation_errors(model_config, has_parent: bool, error_message: s
         ),
     ],
 )
-def test_file_validation_passes(model_config: MultiModalModel, has_parent: bool, uploaded_file_count: int):  # noqa: FBT001
+def test_file_validation_passes(model_config: MultiModalModelConfig, has_parent: bool, uploaded_file_count: int):  # noqa: FBT001
     uploaded_files = create_uploaded_files(uploaded_file_count)
 
     validate_message_files_from_config(uploaded_files, config=model_config, has_parent=has_parent)
@@ -162,13 +168,15 @@ def test_file_validation_passes(model_config: MultiModalModel, has_parent: bool,
 
 def test_file_validation_fails_if_a_file_is_sent_to_a_non_multi_modal_model() -> None:
     uploaded_files = create_uploaded_files(1)
-    model_config = Model(
+    model_config = ModelConfig(
         id="id",
         host=ModelHost.Modal,
         name="name",
         description="description",
-        compute_source_id="compute_source_id",
+        model_id_on_host="compute_source_id",
         model_type=ModelType.Chat,
+        prompt_type=PromptType.TEXT_ONLY,
+        internal=False,
     )
 
     with pytest.raises(ValidationError, match=""):

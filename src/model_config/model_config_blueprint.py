@@ -19,8 +19,8 @@ from src.model_config.delete_model_config_service import (
 )
 from src.model_config.get_model_config_service import (
     RootModelResponse,
-    get_model_config,
-    get_model_config_admin,
+    get_model_configs,
+    get_model_configs_admin,
 )
 from src.model_config.reorder_model_config_service import (
     ReorderModelConfigRequest,
@@ -52,11 +52,11 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
         },
         model_dump_kwargs={"by_alias": True},
     )
-    def get_model_configs() -> RootModelResponse:
+    def get_models() -> RootModelResponse:
         is_requesting_admin_models = request.args.get("admin", "false").lower() == "true"
         if is_requesting_admin_models:
             with required_auth_protector.acquire("write:model-config"):
-                return get_model_config_admin(session_maker)
+                return get_model_configs_admin(session_maker)
 
         config = get_config()
         if not config.feature_flags.enable_dynamic_model_config:
@@ -66,7 +66,7 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
         has_admin_arg = request.args.get("admin")
         should_include_internal_models = has_admin_arg == "true" or user_has_permission(token, "read:internal-models")
 
-        return get_model_config(
+        return get_model_configs(
             session_maker=session_maker,
             include_internal_models=should_include_internal_models,
         )

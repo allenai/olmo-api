@@ -6,8 +6,6 @@ from typing import Protocol
 
 from werkzeug.datastructures import FileStorage
 
-from src.config.Model import Model
-
 
 class FinishReason(StrEnum):
     # Something caused the generation to be left incomplete. The only scenario where this happens
@@ -76,10 +74,6 @@ class InferenceOptions:
 
 
 class InferenceEngine(Protocol):
-    @abstractmethod
-    def get_model_details(self, model_id: str) -> Model | None:
-        raise NotImplementedError
-
     @abstractmethod
     def create_streamed_message(
         self,

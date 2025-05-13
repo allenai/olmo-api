@@ -5,10 +5,7 @@ from dataclasses import asdict
 import modal
 from werkzeug.datastructures import FileStorage
 
-from src.config.Config import Model
 from src.config.get_config import cfg
-from src.config.get_models import get_models_by_host
-from src.config.ModelConfig import ModelHost
 from src.dao.message import Role
 from src.inference.InferenceEngine import (
     InferenceEngine,
@@ -20,15 +17,10 @@ from src.inference.InferenceEngine import (
 
 
 class ModalEngine(InferenceEngine):
-    available_models: Sequence[Model]
     client: modal.Client
 
     def __init__(self) -> None:
-        self.available_models = get_models_by_host(ModelHost.Modal)
         self.client = modal.Client.from_credentials(cfg.modal.token, cfg.modal.token_secret)
-
-    def get_model_details(self, model_id: str) -> Model | None:
-        return next((m for m in self.available_models if m.id == model_id), None)
 
     def __get_args_for_model(
         self,

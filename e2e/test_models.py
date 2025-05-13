@@ -168,6 +168,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         test_model = next((model for model in available_models if model.get("id") == model_id), None)
         assert test_model is not None, "The test model wasn't returned from the GET request"
         assert "image/*" in test_model.get("accepted_file_types")
+        assert test_model.get("accepts_files") is True
 
     def test_should_delete_a_model(self):
         model_id = "test-model"

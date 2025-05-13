@@ -3,10 +3,7 @@ from dataclasses import asdict
 
 from inferd import Client as InferdClient
 
-from src.config.Config import Model
 from src.config.get_config import cfg
-from src.config.get_models import get_models_by_host
-from src.config.ModelConfig import ModelHost
 from src.inference.InferenceEngine import (
     InferenceEngine,
     InferenceEngineChunk,
@@ -18,14 +15,9 @@ from src.inference.InferenceEngine import (
 
 class InferDEngine(InferenceEngine):
     inferDClient: InferdClient
-    available_models: Sequence[Model]
 
     def __init__(self) -> None:
         self.inferDClient = InferdClient(cfg.inferd.address, cfg.inferd.token)
-        self.available_models = get_models_by_host(ModelHost.InferD)
-
-    def get_model_details(self, model_id: str) -> Model | None:
-        return next((m for m in self.available_models if m.id == model_id), None)
 
     def create_streamed_message(
         self,

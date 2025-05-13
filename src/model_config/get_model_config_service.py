@@ -4,9 +4,9 @@ from sqlalchemy.orm import Session, selectin_polymorphic, sessionmaker
 
 from src.config.Model import Model, MultiModalModel
 from src.config.ModelConfig import FileRequiredToPromptOption
-from src.dao.engine_models.model_config import ModelConfig as DAOModelConfig
+from src.dao.engine_models.model_config import ModelConfig as ModelConfig
 from src.dao.engine_models.model_config import (
-    MultiModalModelConfig as DAOMultiModalModelConfig,
+    MultiModalModelConfig as MultiModalModelConfig,
 )
 from src.model_config.response_model import ResponseModel
 
@@ -15,13 +15,13 @@ class RootModelResponse(RootModel):
     root: list[Model | MultiModalModel] | list[ResponseModel]
 
 
-def get_model_config(
+def get_model_configs(
     session_maker: sessionmaker[Session], *, include_internal_models: bool = False
 ) -> RootModelResponse:
     with session_maker.begin() as session:
-        polymorphic_loader_opt = selectin_polymorphic(DAOModelConfig, [DAOModelConfig, DAOMultiModalModelConfig])
+        polymorphic_loader_opt = selectin_polymorphic(ModelConfig, [ModelConfig, MultiModalModelConfig])
 
-        stmt = select(DAOModelConfig).options(polymorphic_loader_opt).order_by(DAOModelConfig.order.asc())
+        stmt = select(ModelConfig).options(polymorphic_loader_opt).order_by(ModelConfig.order.asc())
 
         if not include_internal_models:
             stmt = stmt.filter_by(internal=False)
@@ -43,7 +43,7 @@ def get_model_config(
                 available_time=m.available_time,
                 deprecation_time=m.deprecation_time,
             )
-            if isinstance(m, DAOMultiModalModelConfig):
+            if isinstance(m, MultiModalModelConfig):
                 item = MultiModalModel(
                     id=m.id,
                     name=m.name,
@@ -56,6 +56,7 @@ def get_model_config(
                     family_name=m.family_name,
                     available_time=m.available_time,
                     deprecation_time=m.deprecation_time,
+                    accepts_files=True,
                     accepted_file_types=m.accepted_file_types,
                     max_files_per_message=m.max_files_per_message,
                     require_file_to_prompt=m.require_file_to_prompt or FileRequiredToPromptOption.NoRequirement,
@@ -68,13 +69,23 @@ def get_model_config(
         return RootModelResponse.model_validate(processed_results)
 
 
-def get_model_config_admin(session_maker: sessionmaker[Session]) -> RootModelResponse:
+def get_model_configs_admin(session_maker: sessionmaker[Session]) -> RootModelResponse:
     with session_maker.begin() as session:
-        polymorphic_loader_opt = selectin_polymorphic(DAOModelConfig, [DAOModelConfig, DAOMultiModalModelConfig])
+        polymorphic_loader_opt = selectin_polymorphic(ModelConfig, [ModelConfig, MultiModalModelConfig])
 
-        stmt = select(DAOModelConfig).options(polymorphic_loader_opt).order_by(DAOModelConfig.order.asc())
+        stmt = select(ModelConfig).options(polymorphic_loader_opt).order_by(ModelConfig.order.asc())
         results = session.scalars(stmt).all()
 
         processed_results = [ResponseModel.model_validate(model) for model in results]
 
         return RootModelResponse.model_validate(processed_results)
+
+
+def get_single_model_config_admin(
+    session_maker: sessionmaker[Session], model_id: str
+) -> ModelConfig | MultiModalModelConfig | None:
+    with session_maker.begin() as session:
+        polymorphic_loader_opt = selectin_polymorphic(ModelConfig, [ModelConfig, MultiModalModelConfig])
+        stmt = select(ModelConfig).options(polymorphic_loader_opt).where(ModelConfig.id == model_id)
+
+        return session.scalars(stmt).one_or_none()

@@ -6,6 +6,7 @@ from flask.typing import ResponseReturnValue
 from flask_pydantic_api.api_wrapper import pydantic_api
 from flask_pydantic_api.utils import UploadedFile
 from pydantic import ValidationError
+from sqlalchemy.orm import Session, sessionmaker
 
 from src import db
 from src.error import handle_validation_error
@@ -19,7 +20,9 @@ from src.message.create_message_service import (
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 
 
-def create_v4_message_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage) -> Blueprint:
+def create_v4_message_blueprint(
+    dbc: db.Client, storage_client: GoogleCloudStorage, session_maker: sessionmaker[Session]
+) -> Blueprint:
     v4_message_blueprint = Blueprint("message", __name__)
 
     @v4_message_blueprint.post("/stream")
@@ -41,7 +44,9 @@ def create_v4_message_blueprint(dbc: db.Client, storage_client: GoogleCloudStora
                 **create_message_request.model_dump(), files=files, stop=stop_words
             )
 
-            stream_response = create_message_v4(create_message_request_with_lists, dbc, storage_client=storage_client)
+            stream_response = create_message_v4(
+                create_message_request_with_lists, dbc, storage_client=storage_client, session_maker=session_maker
+            )
             if isinstance(stream_response, Generator):
                 return Response(stream_with_context(stream_response), mimetype="application/jsonl")
             return jsonify(stream_response)

@@ -20,12 +20,12 @@ from src.model_config.response_model import ResponseModel
 
 
 class BaseCreateModelConfigRequest(APIInterface):
-    id: str
-    name: str
+    id: str = Field(min_length=1)
+    name: str = Field(min_length=1)
     host: ModelHost
-    description: str
+    description: str = Field(min_length=1)
     model_type: ModelType
-    model_id_on_host: str
+    model_id_on_host: str = Field(min_length=1)
     internal: bool = Field(default=True)
     default_system_prompt: str | None = Field(default=None)
     family_id: str | None = Field(default=None)

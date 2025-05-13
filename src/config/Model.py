@@ -18,6 +18,7 @@ class Model(BaseModel):
     description: str
     compute_source_id: str = Field(exclude=True)
     model_type: ModelType
+    internal: bool
     system_prompt: str | None = None
     family_id: str | None = None
     family_name: str | None = None
@@ -81,6 +82,9 @@ class MultiModalModel(Model):
 
 
 def map_model_from_config(model_config: ModelConfig | MultiModalModelConfig):
+    if model_config.get("internal") is None:
+        model_config["internal"] = False
+
     if model_config.get("accepts_files") is True:
         return MultiModalModel.model_validate(model_config)
 

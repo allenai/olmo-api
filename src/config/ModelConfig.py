@@ -19,6 +19,7 @@ class ModelConfig(TypedDict):
     description: str
     compute_source_id: str
     model_type: ModelType
+    internal: bool | None
     system_prompt: str | None
     family_id: str | None
     family_name: str | None

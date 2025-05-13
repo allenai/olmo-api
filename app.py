@@ -22,10 +22,10 @@ def create_app():
 
     cfg = get_config.Config.load(os.environ.get("FLASK_CONFIG_PATH", get_config.DEFAULT_CONFIG_PATH))
 
-    db_engine = make_db_engine(cfg.db)
+    dbc = db.Client.from_config(cfg.db)
+    db_engine = make_db_engine(cfg.db, pool=dbc.pool)
     session_maker = sessionmaker(db_engine, expire_on_commit=False, autoflush=True)
 
-    dbc = db.Client.from_config(cfg.db)
     atexit.register(dbc.close)
 
     @app.get("/health")

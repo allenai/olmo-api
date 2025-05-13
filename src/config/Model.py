@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ByteSize, Field, computed_field
 
@@ -9,7 +10,7 @@ from src.config.ModelConfig import (
 from src.dao.engine_models.model_config import FileRequiredToPromptOption, ModelHost, ModelType, PromptType
 
 
-class Model(BaseModel):
+class ModelBase(BaseModel):
     id: str
     host: ModelHost
     name: str
@@ -23,7 +24,6 @@ class Model(BaseModel):
     available_time: AwareDatetime | None = Field(default=None, exclude=True)
     deprecation_time: AwareDatetime | None = Field(default=None, exclude=True)
     accepts_files: bool = Field(default=False)
-    prompt_type: PromptType
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -57,7 +57,13 @@ class Model(BaseModel):
         super().__init__(**kwargs)
 
 
-class MultiModalModel(Model):
+class Model(ModelBase):
+    prompt_type: Literal[PromptType.TEXT_ONLY]
+
+
+class MultiModalModel(ModelBase):
+    prompt_type: Literal[PromptType.MULTI_MODAL]
+
     accepted_file_types: list[str] = Field(
         description="A list of file type specifiers: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#unique_file_type_specifiers",
         examples=[["image/*", "image/png", "image/jpg"], ["video/mp4"]],

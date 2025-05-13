@@ -4,9 +4,9 @@ from sqlalchemy.orm import Session, selectin_polymorphic, sessionmaker
 
 from src.config.Model import Model, MultiModalModel
 from src.config.ModelConfig import FileRequiredToPromptOption
-from src.dao.engine_models.model_config import ModelConfig as ModelConfig
 from src.dao.engine_models.model_config import (
-    MultiModalModelConfig as MultiModalModelConfig,
+    ModelConfig,
+    MultiModalModelConfig,
 )
 from src.model_config.response_model import ResponseModel
 
@@ -43,6 +43,7 @@ def get_model_configs(
                 available_time=m.available_time,
                 deprecation_time=m.deprecation_time,
                 internal=m.internal,
+                prompt_type=m.prompt_type,
             )
             if isinstance(m, MultiModalModelConfig):
                 item = MultiModalModel(
@@ -64,6 +65,7 @@ def get_model_configs(
                     max_total_file_size=ByteSize(m.max_total_file_size) if m.max_total_file_size is not None else None,
                     allow_files_in_followups=m.allow_files_in_followups or False,
                     internal=m.internal,
+                    prompt_type=m.prompt_type,
                 )
 
             processed_results.append(item)

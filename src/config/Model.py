@@ -3,12 +3,10 @@ from datetime import UTC, datetime
 from pydantic import AwareDatetime, BaseModel, ByteSize, Field, computed_field
 
 from src.config.ModelConfig import (
-    FileRequiredToPromptOption,
     ModelConfig,
-    ModelHost,
-    ModelType,
     MultiModalModelConfig,
 )
+from src.dao.engine_models.model_config import FileRequiredToPromptOption, ModelHost, ModelType, PromptType
 
 
 class Model(BaseModel):
@@ -25,6 +23,7 @@ class Model(BaseModel):
     available_time: AwareDatetime | None = Field(default=None, exclude=True)
     deprecation_time: AwareDatetime | None = Field(default=None, exclude=True)
     accepts_files: bool = Field(default=False)
+    prompt_type: PromptType
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -84,6 +83,10 @@ class MultiModalModel(Model):
 def map_model_from_config(model_config: ModelConfig | MultiModalModelConfig):
     if model_config.get("internal") is None:
         model_config["internal"] = False
+
+    if model_config.get("prompt_type") is None:
+        accepts_files = model_config.get("accepts_files", False)
+        model_config["prompt_type"] = PromptType.MULTI_MODAL if accepts_files else PromptType.TEXT_ONLY
 
     if model_config.get("accepts_files") is True:
         return MultiModalModel.model_validate(model_config)

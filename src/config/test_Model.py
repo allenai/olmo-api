@@ -1,9 +1,13 @@
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 import time_machine
 
 from src.config.Model import map_model_from_config
-from src.config.ModelConfig import ModelConfig, ModelHost, ModelType
+from src.dao.engine_models.model_config import ModelHost, ModelType, PromptType
+
+if TYPE_CHECKING:
+    from src.config.ModelConfig import ModelConfig
 
 
 @time_machine.travel(datetime(2025, 1, 1, tzinfo=UTC))
@@ -21,6 +25,7 @@ def test_is_not_visible_when_not_available_yet() -> None:
         "family_name": None,
         "deprecation_time": None,
         "internal": False,
+        "prompt_type": PromptType.TEXT_ONLY,
     }
 
     model = map_model_from_config(test_model_config)
@@ -44,6 +49,7 @@ def test_is_not_visible_when_past_deprecated_time() -> None:
         "family_name": None,
         "deprecation_time": datetime(2024, 1, 1).astimezone(UTC).isoformat(),
         "internal": False,
+        "prompt_type": PromptType.TEXT_ONLY,
     }
 
     model = map_model_from_config(test_model_config)
@@ -67,6 +73,7 @@ def test_is_not_visible_when_past_deprecated_time_and_available_time() -> None:
         "family_name": None,
         "deprecation_time": datetime(2024, 1, 1).astimezone(UTC).isoformat(),
         "internal": False,
+        "prompt_type": PromptType.TEXT_ONLY,
     }
 
     model = map_model_from_config(test_model_config)
@@ -90,6 +97,7 @@ def test_is_visible_when_past_available_time() -> None:
         "family_name": None,
         "deprecation_time": None,
         "internal": False,
+        "prompt_type": PromptType.TEXT_ONLY,
     }
 
     model = map_model_from_config(test_model_config)
@@ -113,6 +121,7 @@ def test_is_visible_when_no_available_time() -> None:
         "family_name": None,
         "deprecation_time": None,
         "internal": False,
+        "prompt_type": PromptType.TEXT_ONLY,
     }
 
     model = map_model_from_config(test_model_config)
@@ -136,6 +145,7 @@ def test_is_visible_when_deprecation_time_is_in_the_future() -> None:
         "family_name": None,
         "deprecation_time": datetime(2026, 1, 1).astimezone(UTC).isoformat(),
         "internal": False,
+        "prompt_type": PromptType.TEXT_ONLY,
     }
 
     model = map_model_from_config(test_model_config)

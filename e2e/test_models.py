@@ -1,7 +1,6 @@
 import requests
 
-from src.config.ModelConfig import ModelHost, ModelType
-from src.dao.engine_models.model_config import PromptType
+from src.dao.engine_models.model_config import ModelHost, ModelType, PromptType
 from src.model_config.create_model_config_service import (
     CreateMultiModalModelConfigRequest,
 )

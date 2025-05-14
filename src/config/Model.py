@@ -58,11 +58,11 @@ class ModelBase(BaseModel):
 
 
 class Model(ModelBase):
-    prompt_type: Literal[PromptType.TEXT_ONLY]
+    prompt_type: Literal[PromptType.TEXT_ONLY] = PromptType.TEXT_ONLY
 
 
 class MultiModalModel(ModelBase):
-    prompt_type: Literal[PromptType.MULTI_MODAL]
+    prompt_type: Literal[PromptType.MULTI_MODAL] = PromptType.MULTI_MODAL
 
     accepted_file_types: list[str] = Field(
         description="A list of file type specifiers: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#unique_file_type_specifiers",

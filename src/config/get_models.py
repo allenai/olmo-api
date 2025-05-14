@@ -41,13 +41,12 @@ def get_model_by_host_and_id(
 
             if isinstance(model_from_config, MultiModalModel):
                 model = MultiModalModelConfig(
-                    prompt_type=PromptType.MULTI_MODAL,
                     accepted_file_types=model_from_config.accepted_file_types,
                     max_files_per_message=model_from_config.max_files_per_message,
                     require_file_to_prompt=model_from_config.require_file_to_prompt,
                     max_total_file_size=model_from_config.max_total_file_size,
                     allow_files_in_followups=model_from_config.allow_files_in_followups,
-                    **asdict(model),
+                    **{**asdict(model), "prompt_type": PromptType.MULTI_MODAL},
                 )
 
             # HACK: This gets around the Pydantic validations we do to validate files

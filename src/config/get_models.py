@@ -1,5 +1,4 @@
 import logging
-from dataclasses import asdict
 from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -41,12 +40,24 @@ def get_model_by_host_and_id(
 
             if isinstance(model_from_config, MultiModalModel):
                 model = MultiModalModelConfig(
+                    id=model_from_config.id,
+                    host=model_from_config.host,
+                    name=model_from_config.name,
+                    description=model_from_config.description,
+                    model_type=model_from_config.model_type,
+                    model_id_on_host=model_from_config.compute_source_id,
+                    internal=False,
+                    prompt_type=PromptType.MULTI_MODAL,
+                    default_system_prompt=model_from_config.system_prompt,
+                    family_id=model_from_config.family_id,
+                    family_name=model_from_config.family_name,
+                    available_time=model_from_config.available_time,
+                    deprecation_time=model_from_config.deprecation_time,
                     accepted_file_types=model_from_config.accepted_file_types,
                     max_files_per_message=model_from_config.max_files_per_message,
                     require_file_to_prompt=model_from_config.require_file_to_prompt,
                     max_total_file_size=model_from_config.max_total_file_size,
                     allow_files_in_followups=model_from_config.allow_files_in_followups,
-                    **{**asdict(model), "prompt_type": PromptType.MULTI_MODAL},
                 )
 
             # HACK: This gets around the Pydantic validations we do to validate files

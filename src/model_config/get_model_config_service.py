@@ -1,18 +1,20 @@
-from pydantic import ByteSize, RootModel
+from typing import Annotated
+
+from pydantic import ByteSize, Field, RootModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectin_polymorphic, sessionmaker
 
 from src.config.Model import Model, MultiModalModel
 from src.config.ModelConfig import FileRequiredToPromptOption
-from src.dao.engine_models.model_config import ModelConfig as ModelConfig
 from src.dao.engine_models.model_config import (
-    MultiModalModelConfig as MultiModalModelConfig,
+    ModelConfig,
+    MultiModalModelConfig,
 )
 from src.model_config.response_model import ResponseModel
 
 
 class RootModelResponse(RootModel):
-    root: list[Model | MultiModalModel] | list[ResponseModel]
+    root: list[Annotated[(Model | MultiModalModel), Field(discriminator="prompt_type")]] | list[ResponseModel]
 
 
 def get_model_configs(
@@ -30,7 +32,7 @@ def get_model_configs(
 
         processed_results = []
         for m in results:
-            item = Model(
+            item: Model | MultiModalModel = Model(
                 id=m.id,
                 name=m.name,
                 host=m.host,
@@ -42,7 +44,9 @@ def get_model_configs(
                 family_name=m.family_name,
                 available_time=m.available_time,
                 deprecation_time=m.deprecation_time,
+                internal=m.internal,
             )
+
             if isinstance(m, MultiModalModelConfig):
                 item = MultiModalModel(
                     id=m.id,
@@ -62,6 +66,7 @@ def get_model_configs(
                     require_file_to_prompt=m.require_file_to_prompt or FileRequiredToPromptOption.NoRequirement,
                     max_total_file_size=ByteSize(m.max_total_file_size) if m.max_total_file_size is not None else None,
                     allow_files_in_followups=m.allow_files_in_followups or False,
+                    internal=m.internal,
                 )
 
             processed_results.append(item)

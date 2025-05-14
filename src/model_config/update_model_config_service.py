@@ -1,6 +1,6 @@
 from typing import Literal, cast
 
-from pydantic import AwareDatetime, Field, RootModel
+from pydantic import AwareDatetime, ByteSize, Field, RootModel
 from sqlalchemy.orm import Session, sessionmaker
 
 from src.api_interface import APIInterface
@@ -33,7 +33,7 @@ class UpdateMultiModalModelConfigRequest(BaseUpdateModelConfigRequest):
     accepted_file_types: list[str]
     max_files_per_message: int | None = Field(default=None)
     require_file_to_prompt: FileRequiredToPromptOption | None = Field(default=None)
-    max_total_file_size: int | None = Field(default=None)
+    max_total_file_size: ByteSize | None = Field(default=None)
     allow_files_in_followups: bool | None = Field(default=None)
 
 

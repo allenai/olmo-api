@@ -1,23 +1,23 @@
 from datetime import UTC, datetime
+from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ByteSize, Field, computed_field
 
 from src.config.ModelConfig import (
-    FileRequiredToPromptOption,
     ModelConfig,
-    ModelHost,
-    ModelType,
     MultiModalModelConfig,
 )
+from src.dao.engine_models.model_config import FileRequiredToPromptOption, ModelHost, ModelType, PromptType
 
 
-class Model(BaseModel):
+class ModelBase(BaseModel):
     id: str
     host: ModelHost
     name: str
     description: str
     compute_source_id: str = Field(exclude=True)
     model_type: ModelType
+    internal: bool
     system_prompt: str | None = None
     family_id: str | None = None
     family_name: str | None = None
@@ -57,7 +57,13 @@ class Model(BaseModel):
         super().__init__(**kwargs)
 
 
-class MultiModalModel(Model):
+class Model(ModelBase):
+    prompt_type: Literal[PromptType.TEXT_ONLY] = PromptType.TEXT_ONLY
+
+
+class MultiModalModel(ModelBase):
+    prompt_type: Literal[PromptType.MULTI_MODAL] = PromptType.MULTI_MODAL
+
     accepted_file_types: list[str] = Field(
         description="A list of file type specifiers: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#unique_file_type_specifiers",
         examples=[["image/*", "image/png", "image/jpg"], ["video/mp4"]],
@@ -81,6 +87,13 @@ class MultiModalModel(Model):
 
 
 def map_model_from_config(model_config: ModelConfig | MultiModalModelConfig):
+    if model_config.get("internal") is None:
+        model_config["internal"] = False
+
+    if model_config.get("prompt_type") is None:
+        accepts_files = model_config.get("accepts_files", False)
+        model_config["prompt_type"] = PromptType.MULTI_MODAL if accepts_files else PromptType.TEXT_ONLY
+
     if model_config.get("accepts_files") is True:
         return MultiModalModel.model_validate(model_config)
 

@@ -4,9 +4,23 @@ from enum import StrEnum
 from sqlalchemy import ARRAY, ForeignKey, Integer, Sequence, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.config.ModelConfig import FileRequiredToPromptOption, ModelHost, ModelType
-
 from .base import Base
+
+
+class ModelType(StrEnum):
+    Base = "base"  # base models, that behave like autocomplete
+    Chat = "chat"  # chat models, that have been fine-tuned for conversation
+
+
+class ModelHost(StrEnum):
+    InferD = "inferd"
+    Modal = "modal"
+
+
+class FileRequiredToPromptOption(StrEnum):
+    FirstMessage = "first_message"
+    AllMessages = "all_messages"
+    NoRequirement = "no_requirement"
 
 
 class PromptType(StrEnum):

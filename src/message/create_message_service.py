@@ -22,7 +22,8 @@ from src.bot_detection.create_assessment import create_assessment
 from src.config.get_config import cfg
 from src.config.get_models import get_model_by_host_and_id
 from src.dao import completion, message
-from src.dao.engine_models.model_config import ModelConfig
+from src.dao.engine_models.model_config import ModelConfig, ModelHost
+from src.inference.BeakerQueuesEngine import BeakerQueuesEngine
 from src.inference.InferDEngine import InferDEngine
 from src.inference.InferenceEngine import (
     FinishReason,
@@ -103,11 +104,13 @@ class ParsedMessage:
     role: message.Role
 
 
-def get_engine(host: str) -> InferenceEngine:
+def get_engine(host: ModelHost) -> InferenceEngine:
     match host:
-        case "inferd":
+        case ModelHost.InferD:
             return InferDEngine()
-        case "modal" | _:
+        case ModelHost.BeakerQueues:
+            return BeakerQueuesEngine()
+        case ModelHost.Modal | _:
             return ModalEngine()
 
 
@@ -192,7 +195,7 @@ def stream_new_message(
     start_all = time_ns()
     agent = authn()
 
-    inference_engine = get_engine(request.host)
+    inference_engine = get_engine(model.host)
 
     evaluate_prompt_submission_captcha(
         request.captcha_token,

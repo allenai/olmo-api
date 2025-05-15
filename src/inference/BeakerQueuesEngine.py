@@ -27,13 +27,14 @@ class BeakerQueuesEngine(InferenceEngine):
         self, model: str, messages: Sequence[InferenceEngineMessage], inference_options: InferenceOptions
     ) -> Generator[InferenceEngineChunk, None, None]:
         q = self.beaker_client.queue.get(model)
-        input = {
+        queue_input = {
             "model": q.id,
             "messages": [asdict(message) for message in messages],
             "stream": True,
             "opts": asdict(inference_options),
         }
-        for m in self.beaker_client.queue.create_entry(q, input=input, expires_in_sec=EXPIRES_IN):
+
+        for m in self.beaker_client.queue.create_entry(q, input=queue_input, expires_in_sec=EXPIRES_IN):
             if m.HasField("pending_entry"):
                 pass
             if m.HasField("result"):

@@ -479,5 +479,53 @@ ALTER TABLE model_config ALTER COLUMN "order" SET DEFAULT nextval('model_config_
 
 UPDATE alembic_version SET version_num='3772048c8bd0' WHERE alembic_version.version_num = '724dff1a0068';
 
+-- Running upgrade 3772048c8bd0 -> c26ec1a12f09
+
+ALTER TYPE "public"."modelhost" RENAME TO modelhost_old;
+
+CREATE TYPE "public"."modelhost" AS ENUM('InferD', 'Modal', 'BeakerQueue');
+
+CREATE FUNCTION new_old_not_equals(
+                new_enum_val "public"."modelhost", old_enum_val "public"."modelhost_old"
+            )
+            RETURNS boolean AS $$
+                SELECT new_enum_val::text != old_enum_val::text;
+            $$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OPERATOR != (
+            leftarg = "public"."modelhost",
+            rightarg = "public"."modelhost_old",
+            procedure = new_old_not_equals
+        );
+
+CREATE FUNCTION new_old_equals(
+                new_enum_val "public"."modelhost", old_enum_val "public"."modelhost_old"
+            )
+            RETURNS boolean AS $$
+                SELECT new_enum_val::text = old_enum_val::text;
+            $$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OPERATOR = (
+            leftarg = "public"."modelhost",
+            rightarg = "public"."modelhost_old",
+            procedure = new_old_equals
+        );
+
+ALTER TABLE "public"."model_config" 
+                ALTER COLUMN "host" TYPE "public"."modelhost" 
+                USING "host"::text::"public"."modelhost";
+
+DROP FUNCTION new_old_not_equals(
+            new_enum_val "public"."modelhost", old_enum_val "public"."modelhost_old"
+        ) CASCADE;
+
+DROP FUNCTION new_old_equals(
+            new_enum_val "public"."modelhost", old_enum_val "public"."modelhost_old"
+        ) CASCADE;
+
+DROP TYPE "public"."modelhost_old";
+
+UPDATE alembic_version SET version_num='c26ec1a12f09' WHERE alembic_version.version_num = '3772048c8bd0';
+
 COMMIT;
 

@@ -80,6 +80,12 @@ class FeatureFlags:
     enable_dynamic_model_config: bool
 
 
+@dataclass
+class Beaker:
+    address: str
+    user_token: str
+
+
 DEFAULT_CONFIG_PATH = "/secret/cfg/config.json"
 
 
@@ -96,6 +102,7 @@ class Config:
     google_cloud_services: GoogleCloudServices
     models: list[Model | MultiModalModel]
     feature_flags: FeatureFlags
+    beaker: Beaker
 
     @classmethod
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
@@ -154,4 +161,8 @@ class Config:
                     enable_dynamic_model_config=data.get("feature_flags", {}).get("enable_dynamic_model_config", False)
                 ),
                 models=[map_model_from_config(model_config) for model_config in data["models"]],
+                beaker=Beaker(
+                    address=data.get("beaker", {}).get("address"),
+                    user_token=data.get("beaker", {}).get("user_token"),
+                ),
             )

@@ -82,6 +82,7 @@ class FeatureFlags:
 
 @dataclass
 class Beaker:
+    address: str
     user_token: str
 
 
@@ -160,5 +161,8 @@ class Config:
                     enable_dynamic_model_config=data.get("feature_flags", {}).get("enable_dynamic_model_config", False)
                 ),
                 models=[map_model_from_config(model_config) for model_config in data["models"]],
-                beaker=Beaker(user_token=data.get("beaker", {}).get("user_token")),
+                beaker=Beaker(
+                    address=data.get("beaker", {}).get("address"),
+                    user_token=data.get("beaker", {}).get("user_token"),
+                ),
             )

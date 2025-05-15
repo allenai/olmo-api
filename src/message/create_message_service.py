@@ -10,6 +10,7 @@ from time import time_ns
 from typing import cast
 
 import grpc
+import beaker
 from flask import current_app
 from flask import request as flask_request
 from sqlalchemy.orm import Session, sessionmaker
@@ -448,6 +449,21 @@ def stream_new_message(
                 },
             )
             yield format_message(message.MessageStreamError(reply.id, err, "grpc inference failed"))
+
+        except beaker.exceptions.BeakerQueueNotFound as e:
+            finish_reason = FinishReason.Unknown
+            err = f"inference failed: {e}"
+            logger.exception(
+                "model queue not found",
+                extra={
+                    "message_id": reply.id,
+                    "model": model.id,
+                    "host": model.host,
+                    "finish_reason": finish_reason,
+                    "event": "inference.stream-error",
+                },
+            )
+            yield format_message(message.MessageStreamError(reply.id, err, "model queue not found"))
 
         except multiprocessing.TimeoutError:
             finish_reason = FinishReason.ModelOverloaded

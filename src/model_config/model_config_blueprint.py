@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from flask import Blueprint, current_app, request
+from flask import Blueprint, current_app
 from flask_pydantic_api.api_wrapper import pydantic_api
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
@@ -18,9 +18,8 @@ from src.model_config.delete_model_config_service import (
     delete_model_config,
 )
 from src.model_config.get_model_config_service import (
-    RootModelResponse,
+    ModelResponse,
     get_model_configs,
-    get_model_configs_admin,
 )
 from src.model_config.reorder_model_config_service import (
     ReorderModelConfigRequest,
@@ -36,31 +35,15 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
     model_config_blueprint = Blueprint(name="model_config", import_name=__name__)
 
     @model_config_blueprint.get("/")
-    @required_auth_protector(optional=True)
     @pydantic_api(
-        name="Get available models and their configuration",
+        name="Get available models",
         tags=["v4", "models"],
-        openapi_schema_extra={
-            "parameters": [
-                {
-                    "in": "query",
-                    "name": "admin",
-                    "schema": {"type": "boolean"},
-                    "description": "Get the internal models for modification",
-                },
-            ]
-        },
         model_dump_kwargs={"by_alias": True},
     )
-    def get_models() -> RootModelResponse:
-        is_requesting_admin_models = request.args.get("admin", "false").lower() == "true"
-        if is_requesting_admin_models:
-            with required_auth_protector.acquire("write:model-config"):
-                return get_model_configs_admin(session_maker)
-
+    def get_models() -> ModelResponse:
         config = get_config()
         if not config.feature_flags.enable_dynamic_model_config:
-            return RootModelResponse.model_validate(get_available_models())
+            return ModelResponse.model_validate(get_available_models())
 
         token = anonymous_auth_protector.get_token()
         should_include_internal_models = user_has_permission(token, "read:internal-models")

@@ -9,7 +9,7 @@ from e2e import util
 
 from . import base
 
-default_model_options = {"host": (None, "modal"), "model": (None, "OLMoE-1B-7B-0924-Instruct"), "files": (None, None)}
+default_model_options = {"host": (None, "modal"), "model": (None, "olmo-2-0325-32b-instruct"), "files": (None, None)}
 
 
 default_options: list[tuple[str, Any]] = [
@@ -120,7 +120,8 @@ class TestMessageEndpoints(base.IntegrationTest):
         # Verify GET /v3/message/:id
         r = requests.get(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
         msgs.append(r.json())
-        for m in msgs:
+        non_system_messages = (msg for msg in msgs if msg.get("role") != "system")
+        for m in non_system_messages:
             assert m["id"] is not None
             assert m["content"] == "I'm a magical labrador named Murphy, who are you? "
             assert m["creator"] == u1.client
@@ -140,7 +141,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         c1 = r.json()
         assert c1["id"] == m1["children"][0]["id"]
         assert c1["parent"] == m1["id"]
-        assert c1["children"] is None
+        assert c1["children"][0]["children"] is None
 
         # Make sure that creating messages with parents works as expected
         r = requests.post(
@@ -148,7 +149,7 @@ class TestMessageEndpoints(base.IntegrationTest):
             headers=self.auth(u1),
             files={
                 "content": (None, "Complete this thought: I like "),
-                "parent": (None, c1["id"]),
+                "parent": (None, c1["children"][0]["id"]),
                 **default_model_options,
             },
         )
@@ -161,7 +162,7 @@ class TestMessageEndpoints(base.IntegrationTest):
             c_tup = (c["id"], u1)
             self.messages.append(c_tup)
             self.child_msgs.append(c_tup)
-        assert c2["parent"] == c1["id"]
+        assert c2["parent"] == c1["children"][0]["id"]
         assert c2["content"] == "Complete this thought: I like "
         assert len(c2["children"]) == 1
 

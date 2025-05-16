@@ -76,9 +76,8 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
 
     def test_get_admin_models(self):
         r = requests.get(
-            f"{self.origin}/v4/models",
+            f"{self.origin}/v4/admin-models",
             headers=self.auth(self.client),
-            params={"admin": True},
         )
         r.raise_for_status()
 
@@ -235,9 +234,8 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         reorder_response.raise_for_status()
 
         get_response = requests.get(
-            f"{self.origin}/v4/models/",
+            f"{self.origin}/v4/admin-models/",
             headers=self.auth(self.client),
-            params={"admin": True},
         )
         get_response.raise_for_status()
         models = get_response.json()
@@ -285,9 +283,8 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert update_model_response.status_code == 200
 
         get_models_response = requests.get(
-            f"{self.origin}/v4/models/",
+            f"{self.origin}/v4/admin-models/",
             headers=self.auth(self.client),
-            params={"admin": True},
         )
         get_models_response.raise_for_status()
         available_models = get_models_response.json()
@@ -341,9 +338,8 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert update_model_response.status_code == 200
 
         get_models_response = requests.get(
-            f"{self.origin}/v4/models/",
+            f"{self.origin}/v4/admin-models/",
             headers=self.auth(self.client),
-            params={"admin": True},
         )
         get_models_response.raise_for_status()
         available_models = get_models_response.json()
@@ -380,9 +376,8 @@ class TestV4ModelEndpointsAnonymous(BaseTestV4ModelEndpoints):
 
     def test_get_admin_models_should_be_forbidden(self):
         r = requests.get(
-            f"{self.origin}/v4/models",
+            f"{self.origin}/v4/admin-models",
             headers=self.auth(self.client),
-            params={"admin": True},
         )
 
         self.assertEqual(r.status_code, 401)

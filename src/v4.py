@@ -2,9 +2,9 @@ from flask import Blueprint
 from sqlalchemy.orm import Session, sessionmaker
 
 from src import db
+from src.admin.admin_blueprint import create_admin_blueprint
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.v4MessageBlueprint import create_v4_message_blueprint
-from src.model_config.model_config_admin_blueprint import create_model_config_admin_blueprint
 from src.model_config.model_config_blueprint import create_model_config_blueprint
 
 
@@ -19,7 +19,9 @@ def create_v4_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage, sess
 
     v4_blueprint.register_blueprint(create_model_config_blueprint(session_maker), url_prefix="/models", name="models")
     v4_blueprint.register_blueprint(
-        create_model_config_admin_blueprint(session_maker), url_prefix="/admin-models", name="admin-models"
+        create_admin_blueprint(session_maker),
+        url_prefix="/admin/models",
+        name="admin/models",
     )
 
     return v4_blueprint

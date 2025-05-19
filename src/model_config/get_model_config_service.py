@@ -13,13 +13,50 @@ from src.dao.engine_models.model_config import (
 from src.model_config.response_model import ResponseModel
 
 
-class RootModelResponse(RootModel):
-    root: list[Annotated[(Model | MultiModalModel), Field(discriminator="prompt_type")]] | list[ResponseModel]
+class ModelResponse(RootModel):
+    root: list[Annotated[(Model | MultiModalModel), Field(discriminator="prompt_type")]]
 
 
-def get_model_configs(
-    session_maker: sessionmaker[Session], *, include_internal_models: bool = False
-) -> RootModelResponse:
+def map_model(model: ModelConfig) -> MultiModalModel | Model:
+    if isinstance(model, MultiModalModelConfig):
+        return MultiModalModel(
+            id=model.id,
+            name=model.name,
+            host=model.host,
+            description=model.description,
+            compute_source_id=model.model_id_on_host,
+            model_type=model.model_type,
+            system_prompt=model.default_system_prompt,
+            family_id=model.family_id,
+            family_name=model.family_name,
+            available_time=model.available_time,
+            deprecation_time=model.deprecation_time,
+            accepts_files=True,
+            accepted_file_types=model.accepted_file_types,
+            max_files_per_message=model.max_files_per_message,
+            require_file_to_prompt=model.require_file_to_prompt or FileRequiredToPromptOption.NoRequirement,
+            max_total_file_size=ByteSize(model.max_total_file_size) if model.max_total_file_size is not None else None,
+            allow_files_in_followups=model.allow_files_in_followups or False,
+            internal=model.internal,
+        )
+
+    return Model(
+        id=model.id,
+        name=model.name,
+        host=model.host,
+        description=model.description,
+        compute_source_id=model.model_id_on_host,
+        model_type=model.model_type,
+        system_prompt=model.default_system_prompt,
+        family_id=model.family_id,
+        family_name=model.family_name,
+        available_time=model.available_time,
+        deprecation_time=model.deprecation_time,
+        internal=model.internal,
+    )
+
+
+def get_model_configs(session_maker: sessionmaker[Session], *, include_internal_models: bool = False) -> ModelResponse:
     with session_maker.begin() as session:
         polymorphic_loader_opt = selectin_polymorphic(ModelConfig, [ModelConfig, MultiModalModelConfig])
 
@@ -30,51 +67,14 @@ def get_model_configs(
 
         results = session.scalars(stmt).all()
 
-        processed_results = []
-        for m in results:
-            item: Model | MultiModalModel = Model(
-                id=m.id,
-                name=m.name,
-                host=m.host,
-                description=m.description,
-                compute_source_id=m.model_id_on_host,
-                model_type=m.model_type,
-                system_prompt=m.default_system_prompt,
-                family_id=m.family_id,
-                family_name=m.family_name,
-                available_time=m.available_time,
-                deprecation_time=m.deprecation_time,
-                internal=m.internal,
-            )
-
-            if isinstance(m, MultiModalModelConfig):
-                item = MultiModalModel(
-                    id=m.id,
-                    name=m.name,
-                    host=m.host,
-                    description=m.description,
-                    compute_source_id=m.model_id_on_host,
-                    model_type=m.model_type,
-                    system_prompt=m.default_system_prompt,
-                    family_id=m.family_id,
-                    family_name=m.family_name,
-                    available_time=m.available_time,
-                    deprecation_time=m.deprecation_time,
-                    accepts_files=True,
-                    accepted_file_types=m.accepted_file_types,
-                    max_files_per_message=m.max_files_per_message,
-                    require_file_to_prompt=m.require_file_to_prompt or FileRequiredToPromptOption.NoRequirement,
-                    max_total_file_size=ByteSize(m.max_total_file_size) if m.max_total_file_size is not None else None,
-                    allow_files_in_followups=m.allow_files_in_followups or False,
-                    internal=m.internal,
-                )
-
-            processed_results.append(item)
-
-        return RootModelResponse.model_validate(processed_results)
+        return ModelResponse.model_validate([map_model(model) for model in results])
 
 
-def get_model_configs_admin(session_maker: sessionmaker[Session]) -> RootModelResponse:
+class AdminModelResponse(RootModel):
+    root: list[ResponseModel]
+
+
+def get_model_configs_admin(session_maker: sessionmaker[Session]) -> AdminModelResponse:
     with session_maker.begin() as session:
         polymorphic_loader_opt = selectin_polymorphic(ModelConfig, [ModelConfig, MultiModalModelConfig])
 
@@ -83,7 +83,7 @@ def get_model_configs_admin(session_maker: sessionmaker[Session]) -> RootModelRe
 
         processed_results = [ResponseModel.model_validate(model) for model in results]
 
-        return RootModelResponse.model_validate(processed_results)
+        return AdminModelResponse.model_validate(processed_results)
 
 
 def get_single_model_config_admin(

@@ -6,6 +6,7 @@ from src.admin.admin_blueprint import create_admin_blueprint
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.v4_message_blueprint import create_v4_message_blueprint
 from src.model_config.model_config_blueprint import create_model_config_blueprint
+from src.thread.threads_blueprint import create_threads_blueprint
 
 
 def create_v4_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage, session_maker: sessionmaker[Session]):
@@ -22,6 +23,12 @@ def create_v4_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage, sess
         create_admin_blueprint(session_maker),
         url_prefix="/admin/models",
         name="admin/models",
+    )
+
+    v4_blueprint.register_blueprint(
+        blueprint=create_threads_blueprint(dbc=dbc, storage_client=storage_client, session_maker=session_maker),
+        url_prefix="/threads",
+        name="threads",
     )
 
     return v4_blueprint

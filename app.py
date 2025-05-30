@@ -12,7 +12,6 @@ from src.db.init_sqlalchemy import make_db_engine
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.openapi import openapi_blueprint
 from src.v4 import create_v4_blueprint
-from src.v5 import create_v5_blueprint
 
 
 def create_app():
@@ -40,11 +39,6 @@ def create_app():
         create_v4_blueprint(dbc=dbc, storage_client=storage_client, session_maker=session_maker),
         url_prefix="/v4",
         name="v4",
-    )
-    app.register_blueprint(
-        create_v5_blueprint(dbc=dbc, storage_client=storage_client, session_maker=session_maker),
-        url_prefix="/v5",
-        name="v5",
     )
     app.register_blueprint(openapi_blueprint, name="openapi")
 

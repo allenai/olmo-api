@@ -7,7 +7,7 @@ from src.api_interface import APIInterface
 from src.dao import message
 from src.dao.engine_models.model_config import ModelType
 from src.dao.label import Rating
-from src.dao.message import InferenceOpts, Role
+from src.dao.message import InferenceOpts, Message, Role
 from src.inference.InferenceEngine import FinishReason
 
 
@@ -81,3 +81,12 @@ class FlatMessage(APIInterface):
 class MessageChunkResponse(APIInterface):
     message: str
     content: str
+
+
+class Thread(APIInterface):
+    id: str
+    messages: list[FlatMessage]
+
+    @staticmethod
+    def from_message(message: Message):
+        return Thread(id=message.id, messages=FlatMessage.from_message(message))

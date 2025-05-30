@@ -20,9 +20,10 @@ from src.message.create_message_service import (
     create_message_v4,
     format_message,
 )
-from src.message.get_messages_service import GetMessagesRequest, GetMessagesResponse, get_messages
 from src.message.GoogleCloudStorage import GoogleCloudStorage
-from src.message.message_response_models import FlatMessage
+from src.message.message_service import get_message
+from src.thread.get_threads_service import GetThreadsRequest, GetThreadsResponse, get_threads
+from src.thread.thread_models import Thread
 
 
 def format_messages(
@@ -31,25 +32,29 @@ def format_messages(
     for stream_message in stream_generator:
         match stream_message:
             case message.Message():
-                flat_messages = FlatMessage.from_message(stream_message)
+                flat_messages = Thread.from_message(stream_message)
 
                 yield format_message(flat_messages)
             case APIInterface():
                 yield format_message(stream_message)
 
 
-def create_v5_messages_blueprint(
+def create_threads_blueprint(
     dbc: db.Client, storage_client: GoogleCloudStorage, session_maker: sessionmaker[Session]
 ) -> Blueprint:
-    v5_messages_blueprint = Blueprint("messages", __name__)
+    threads_blueprint = Blueprint("messages", __name__)
 
-    @v5_messages_blueprint.get("/")
+    @threads_blueprint.get("/")
     @pydantic_api(name="Get messages", tags=["v5", "messages"])
-    def list_messages(request: GetMessagesRequest) -> GetMessagesResponse:
-        return get_messages(dbc, request)
+    def list_threads(request: GetThreadsRequest) -> GetThreadsResponse:
+        return get_threads(dbc, request)
 
-    # If you need to add new types to this response they're manually added in src/openapi/openapi_blueprint
-    @v5_messages_blueprint.post("/")
+    @threads_blueprint.get("/<string:id>")
+    @pydantic_api(name="Get message", tags=["v5", "messages"])
+    def get_single_thread(id: str) -> Thread:
+        return Thread.from_message(get_message(id, dbc))
+
+    @threads_blueprint.post("/")
     @pydantic_api(name="Stream a prompt response", tags=["v5", "messages"])
     def create_message(
         create_message_request: CreateMessageRequest,
@@ -78,4 +83,4 @@ def create_v5_messages_blueprint(
         except ValidationError as e:
             return handle_validation_error(e)
 
-    return v5_messages_blueprint
+    return threads_blueprint

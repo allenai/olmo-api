@@ -1,0 +1,81 @@
+from collections.abc import Generator
+from typing import Any, cast
+
+from flask import Blueprint, Response, jsonify, request, stream_with_context
+from flask.typing import ResponseReturnValue
+from flask_pydantic_api.api_wrapper import pydantic_api
+from flask_pydantic_api.utils import UploadedFile
+from pydantic import ValidationError
+from sqlalchemy.orm import Session, sessionmaker
+
+from src import db
+from src.api_interface import APIInterface
+from src.dao import message
+from src.error import handle_validation_error
+from src.message.create_message_request import (
+    CreateMessageRequest,
+    CreateMessageRequestWithLists,
+)
+from src.message.create_message_service import (
+    create_message_v4,
+    format_message,
+)
+from src.message.get_messages_service import GetMessagesRequest, get_messages
+from src.message.GoogleCloudStorage import GoogleCloudStorage
+from src.message.message_response_models import FlatMessage
+
+
+def format_messages(
+    stream_generator: Generator[message.Message | message.MessageChunk | message.MessageStreamError, Any, None],
+) -> Generator[str, Any, None]:
+    for stream_message in stream_generator:
+        match stream_message:
+            case message.Message():
+                flat_messages = FlatMessage.from_message(stream_message)
+
+                yield format_message(flat_messages)
+            case APIInterface():
+                yield format_message(stream_message)
+
+
+def create_v5_messages_blueprint(
+    dbc: db.Client, storage_client: GoogleCloudStorage, session_maker: sessionmaker[Session]
+) -> Blueprint:
+    v5_messages_blueprint = Blueprint("messages", __name__)
+
+    @v5_messages_blueprint.get("/")
+    @pydantic_api(name="Get messages", tags=["v5", "messages"])
+    def list_messages(request: GetMessagesRequest):
+        return get_messages(dbc, request)
+
+    # If you need to add new types to this response they're manually added in src/openapi/openapi_blueprint
+    @v5_messages_blueprint.post("/")
+    @pydantic_api(name="Stream a prompt response", tags=["v5", "messages"])
+    def create_message(
+        create_message_request: CreateMessageRequest,
+    ) -> ResponseReturnValue:
+        request_files = request.files.getlist("files")
+        # Defaulting to an empty list can cause problems with Modal
+        # This isn't happening from the UI but it is happening through e2e tests, so better safe than sorry!
+        files = cast(list[UploadedFile], request_files) if len(request_files) > 0 else None
+
+        stop_words = request.form.getlist("stop")
+
+        try:
+            # HACK: flask-pydantic-api has poor support for lists in form data
+            # Making a separate class that handles lists works for now
+            create_message_request_with_lists = CreateMessageRequestWithLists(
+                **create_message_request.model_dump(), files=files, stop=stop_words
+            )
+
+            stream_response = create_message_v4(
+                create_message_request_with_lists, dbc, storage_client=storage_client, session_maker=session_maker
+            )
+            if isinstance(stream_response, Generator):
+                return Response(stream_with_context(format_messages(stream_response)), mimetype="application/jsonl")
+            return jsonify(stream_response)
+
+        except ValidationError as e:
+            return handle_validation_error(e)
+
+    return v5_messages_blueprint

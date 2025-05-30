@@ -2,12 +2,21 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from flask import Request
+from pydantic import BaseModel, Field
 from werkzeug import exceptions
 
 
 class SortDirection(StrEnum):
     ASC = "ASC"
     DESC = "DESC"
+
+
+class SortOptions(BaseModel):
+    offset: int | None = Field(default=None, ge=0)
+    # TODO: Implement a customizable max_limit if we use this everywhere
+    limit: int | None = Field(default=None, ge=0)
+    field: str | None = Field(default=None, validation_alias="sort")
+    order: SortDirection = Field(default=SortDirection.DESC)
 
 
 @dataclass
@@ -34,6 +43,16 @@ class Opts:
     offset: int | None = None
     limit: int | None = None
     sort: Sort | None = None
+
+    @staticmethod
+    def from_sort_options(sort_options: SortOptions) -> "Opts":
+        sort = Sort(field=sort_options.field, direction=sort_options.order) if sort_options.field is not None else None
+
+        return Opts(
+            offset=sort_options.offset,
+            limit=sort_options.limit,
+            sort=sort,
+        )
 
 
 def parse_opts_from_querystring(request: Request, max_limit: int = 100) -> Opts:

@@ -5,7 +5,7 @@ from flask_pydantic_api.openapi import get_openapi_schema
 from pydantic.json_schema import GenerateJsonSchema
 
 from src.dao.message import MessageStreamError
-from src.message.v5_message_blueprint import FlatMessage, MessageChunkResponse
+from src.message.message_response_models import FlatMessage, MessageChunkResponse
 
 openapi_blueprint = Blueprint("openapi", __name__, template_folder="templates")
 

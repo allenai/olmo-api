@@ -20,7 +20,7 @@ from src.message.create_message_service import (
     create_message_v4,
     format_message,
 )
-from src.message.get_messages_service import GetMessagesRequest, get_messages
+from src.message.get_messages_service import GetMessagesRequest, GetMessagesResponse, get_messages
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.message_response_models import FlatMessage
 
@@ -45,7 +45,7 @@ def create_v5_messages_blueprint(
 
     @v5_messages_blueprint.get("/")
     @pydantic_api(name="Get messages", tags=["v5", "messages"])
-    def list_messages(request: GetMessagesRequest):
+    def list_messages(request: GetMessagesRequest) -> GetMessagesResponse:
         return get_messages(dbc, request)
 
     # If you need to add new types to this response they're manually added in src/openapi/openapi_blueprint

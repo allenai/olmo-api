@@ -58,7 +58,7 @@ class BaseCreateMessageRequest(APIInterface):
         return self
 
 
-class CreateMessageRequestV4(BaseCreateMessageRequest):
+class CreateMessageRequest(BaseCreateMessageRequest):
     max_tokens: int = Field(
         default=max_tokens.default,
         ge=max_tokens.min,
@@ -81,13 +81,9 @@ class CreateMessageRequestV4(BaseCreateMessageRequest):
     )
 
 
-class CreateMessageRequestV4WithLists(CreateMessageRequestV4):
+class CreateMessageRequestWithLists(CreateMessageRequest):
     stop: list[str] | None = Field(default=None)
     files: list[UploadedFile] | None = Field(default=None)
-
-
-class CreateMessageRequestV3(BaseCreateMessageRequest):
-    opts: InferenceOpts = Field(default_factory=InferenceOpts)
 
 
 class CreateMessageRequestWithFullMessages(BaseModel):

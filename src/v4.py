@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from src import db
 from src.admin.admin_blueprint import create_admin_blueprint
 from src.message.GoogleCloudStorage import GoogleCloudStorage
-from src.message.v4MessageBlueprint import create_v4_message_blueprint
+from src.message.v4_message_blueprint import create_v4_message_blueprint
 from src.model_config.model_config_blueprint import create_model_config_blueprint
 
 

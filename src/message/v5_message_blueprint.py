@@ -119,6 +119,7 @@ def create_v5_message_blueprint(
 ) -> Blueprint:
     v5_message_blueprint = Blueprint("message", __name__)
 
+    # If you need to add new types to this response they're manually added in src/openapi/openapi_blueprint
     @v5_message_blueprint.post("/stream")
     @pydantic_api(name="Stream a prompt response", tags=["v4", "message"])
     def create_message(

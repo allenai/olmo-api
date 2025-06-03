@@ -6,6 +6,9 @@ class AvailableInfiniGramIndexId(str, Enum):
     OLMO_2_0325_32B = "olmo-2-0325-32b"
     OLMO_2_1124_13B = "olmo-2-1124-13b"
     PILEVAL_LLAMA = "pileval-llama"
+    TULU_3_8B = "tulu-3-8b"
+    TULU_3_70B = "tulu-3-70b"
+    TULU_3_405B = "tulu-3-405b"
 
     def __str__(self) -> str:
         return str(self.value)

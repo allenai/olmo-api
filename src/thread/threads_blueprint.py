@@ -45,17 +45,17 @@ def create_threads_blueprint(
     threads_blueprint = Blueprint("messages", __name__)
 
     @threads_blueprint.get("/")
-    @pydantic_api(name="Get messages", tags=["v5", "messages"])
+    @pydantic_api(name="Get messages", tags=["v4", "threads"])
     def list_threads(request: GetThreadsRequest) -> GetThreadsResponse:
         return get_threads(dbc, request)
 
-    @threads_blueprint.get("/<string:id>")
-    @pydantic_api(name="Get message", tags=["v5", "messages"])
-    def get_single_thread(id: str) -> Thread:
-        return Thread.from_message(get_message(id, dbc))
+    @threads_blueprint.get("/<thread_id>")
+    @pydantic_api(name="Get message", tags=["v4", "threads"])
+    def get_single_thread(thread_id: str) -> Thread:
+        return Thread.from_message(get_message(thread_id, dbc))
 
     @threads_blueprint.post("/")
-    @pydantic_api(name="Stream a prompt response", tags=["v5", "messages"])
+    @pydantic_api(name="Stream a prompt response", tags=["v4", "threads"])
     def create_message(
         create_message_request: CreateMessageRequest,
     ) -> ResponseReturnValue:

@@ -9,8 +9,9 @@ openapi_blueprint = Blueprint("openapi", __name__, template_folder="templates")
 
 @openapi_blueprint.get("/openapi.json")
 def get_openapi_spec() -> dict[str, Any]:
-    schema = get_openapi_schema(schema_generator=GenerateJsonSchema)
-    return schema
+    return get_openapi_schema(
+        schema_generator=GenerateJsonSchema,
+    )
 
 
 @openapi_blueprint.get("/docs")

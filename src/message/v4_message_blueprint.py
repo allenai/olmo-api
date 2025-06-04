@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import cast
+from typing import Any, cast
 
 from flask import Blueprint, Response, jsonify, request, stream_with_context
 from flask.typing import ResponseReturnValue
@@ -11,13 +11,16 @@ from sqlalchemy.orm import Session, sessionmaker
 from src import db
 from src.error import handle_validation_error
 from src.message.create_message_request import (
-    CreateMessageRequestV4,
-    CreateMessageRequestV4WithLists,
+    CreateMessageRequest,
+    CreateMessageRequestWithLists,
 )
-from src.message.create_message_service import (
-    create_message_v4,
-)
+from src.message.create_message_service import create_message_v4, format_message
 from src.message.GoogleCloudStorage import GoogleCloudStorage
+
+
+def format_messages(stream_generator: Generator) -> Generator[str, Any, None]:
+    for message in stream_generator:
+        yield format_message(message)
 
 
 def create_v4_message_blueprint(
@@ -28,7 +31,7 @@ def create_v4_message_blueprint(
     @v4_message_blueprint.post("/stream")
     @pydantic_api(name="Stream a prompt response", tags=["v4", "message"])
     def create_message(
-        create_message_request: CreateMessageRequestV4,
+        create_message_request: CreateMessageRequest,
     ) -> ResponseReturnValue:
         request_files = request.files.getlist("files")
         # Defaulting to an empty list can cause problems with Modal
@@ -40,7 +43,7 @@ def create_v4_message_blueprint(
         try:
             # HACK: flask-pydantic-api has poor support for lists in form data
             # Making a separate class that handles lists works for now
-            create_message_request_with_lists = CreateMessageRequestV4WithLists(
+            create_message_request_with_lists = CreateMessageRequestWithLists(
                 **create_message_request.model_dump(), files=files, stop=stop_words
             )
 
@@ -48,7 +51,7 @@ def create_v4_message_blueprint(
                 create_message_request_with_lists, dbc, storage_client=storage_client, session_maker=session_maker
             )
             if isinstance(stream_response, Generator):
-                return Response(stream_with_context(stream_response), mimetype="application/jsonl")
+                return Response(stream_with_context(format_messages(stream_response)), mimetype="application/jsonl")
             return jsonify(stream_response)
 
         except ValidationError as e:

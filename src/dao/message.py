@@ -13,6 +13,7 @@ from pydantic import Field as PydanticField
 from werkzeug import exceptions
 
 from src import obj
+from src.api_interface import APIInterface
 from src.config.Model import ModelType
 
 from . import label, paged
@@ -137,15 +138,13 @@ MessageRow = tuple[
 MessagesByID = dict[str, "Message"]
 
 
-@dataclass
-class MessageChunk:
+class MessageChunk(APIInterface):
     message: obj.ID
     content: str
     logprobs: list[list[TokenLogProbs]] | None = None
 
 
-@dataclass
-class MessageStreamError:
+class MessageStreamError(APIInterface):
     message: obj.ID
     error: str
     reason: str
@@ -195,6 +194,7 @@ class Message:
     def flatten(self) -> list["Message"]:
         if self.children is None:
             return [self]
+
         flat: list[Message] = [self]
         for c in self.children:
             flat += c.flatten()

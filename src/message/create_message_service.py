@@ -7,10 +7,10 @@ import os
 from collections.abc import Generator, Sequence
 from datetime import UTC, datetime, timedelta
 from time import time_ns
-from typing import cast
+from typing import Any, cast
 
-import grpc
 import beaker
+import grpc
 from flask import current_app
 from flask import request as flask_request
 from sqlalchemy.orm import Session, sessionmaker
@@ -35,8 +35,8 @@ from src.inference.InferenceEngine import (
 )
 from src.inference.ModalEngine import ModalEngine
 from src.message.create_message_request import (
-    CreateMessageRequestV4WithLists,
     CreateMessageRequestWithFullMessages,
+    CreateMessageRequestWithLists,
 )
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.GoogleModerateText import GoogleModerateText
@@ -192,7 +192,7 @@ def stream_new_message(
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     user_ip_address: str | None = None,
     user_agent: str | None = None,
-) -> message.Message | Generator[str, None, None]:
+) -> message.Message | Generator[message.Message | message.MessageChunk | message.MessageStreamError, Any, None]:
     start_all = time_ns()
     agent = authn()
 
@@ -369,7 +369,7 @@ def stream_new_message(
     if system_msg is not None:
         system_msg = dataclasses.replace(system_msg, children=[msg])
 
-    def stream() -> Generator[str, None, None]:
+    def stream() -> Generator[message.Message | message.MessageChunk | message.MessageStreamError, Any, None]:
         # We keep track of each chunk and the timing information per-chunk
         # so that we can manifest a completion at the end. This will go
         # away when InferD stores this I/O.
@@ -378,10 +378,10 @@ def stream_new_message(
 
         # Yield the system prompt message if there is any
         if system_msg is not None:
-            yield format_message(system_msg)
+            yield system_msg
         # Yield the new user message
         else:
-            yield format_message(msg)
+            yield msg
 
         # Now yield each chunk as it's returned.
         finish_reason: FinishReason | None = None
@@ -415,7 +415,7 @@ def stream_new_message(
             chunk_count += 1
             first_ns = time_ns() if first_ns == 0 else first_ns
 
-            return format_message(new_chunk)
+            return new_chunk
 
         try:
             message_generator = inference_engine.create_streamed_message(
@@ -448,7 +448,7 @@ def stream_new_message(
                     "event": "inference.stream-error",
                 },
             )
-            yield format_message(message.MessageStreamError(reply.id, err, "grpc inference failed"))
+            yield message.MessageStreamError(message=reply.id, error=err, reason="grpc inference failed")
 
         except beaker.exceptions.BeakerQueueNotFound as e:
             finish_reason = FinishReason.Unknown
@@ -463,7 +463,7 @@ def stream_new_message(
                     "event": "inference.stream-error",
                 },
             )
-            yield format_message(message.MessageStreamError(reply.id, err, "model queue not found"))
+            yield message.MessageStreamError(message=reply.id, error=err, reason="model queue not found")
 
         except multiprocessing.TimeoutError:
             finish_reason = FinishReason.ModelOverloaded
@@ -481,7 +481,7 @@ def stream_new_message(
                 },
             )
             # value error can be like when context length is too long
-            yield format_message(message.MessageStreamError(reply.id, f"{e}", "value error from inference result"))
+            yield message.MessageStreamError(message=reply.id, error=f"{e}", reason="value error from inference result")
 
         except Exception as e:
             finish_reason = FinishReason.Unknown
@@ -495,7 +495,7 @@ def stream_new_message(
                     "event": "inference.stream-error",
                 },
             )
-            yield format_message(message.MessageStreamError(reply.id, f"{e}", "general exception"))
+            yield message.MessageStreamError(message=reply.id, error=f"{e}", reason="general exception")
 
         match finish_reason:
             case FinishReason.UnclosedStream:
@@ -510,7 +510,7 @@ def stream_new_message(
                     },
                 )
                 err = "inference failed for an unknown reason: sometimes this happens when the prompt is too long"
-                yield format_message(message.MessageStreamError(reply.id, err, finish_reason))
+                yield message.MessageStreamError(message=reply.id, error=err, reason=finish_reason)
 
             case FinishReason.Length:
                 logger.error(
@@ -525,7 +525,7 @@ def stream_new_message(
                     },
                 )
                 err = "the conversation is too large for the model to process, please shorten the conversation and try again"
-                yield format_message(message.MessageStreamError(reply.id, err, finish_reason))
+                yield message.MessageStreamError(message=reply.id, error=err, reason=finish_reason)
 
             case FinishReason.Aborted:
                 logger.error(
@@ -539,7 +539,7 @@ def stream_new_message(
                     },
                 )
                 err = "inference aborted for an unknown reason"
-                yield format_message(message.MessageStreamError(reply.id, err, finish_reason))
+                yield message.MessageStreamError(message=reply.id, error=err, reason=finish_reason)
 
             case FinishReason.ModelOverloaded:
                 logger.error(
@@ -552,12 +552,10 @@ def stream_new_message(
                         "event": "inference.stream-error",
                     },
                 )
-                yield format_message(
-                    message.MessageStreamError(
-                        message=reply.id,
-                        error="model overloaded",
-                        reason=FinishReason.ModelOverloaded,
-                    )
+                yield message.MessageStreamError(
+                    message=reply.id,
+                    error="model overloaded",
+                    reason=FinishReason.ModelOverloaded,
                 )
 
             case FinishReason.Stop:
@@ -593,7 +591,9 @@ def stream_new_message(
         final_message = dbc.message.finalize(msg.id, file_urls=file_urls)
         if final_message is None:
             final_message_error = RuntimeError(f"failed to finalize message {msg.id}")
-            yield format_message(message.MessageStreamError(msg.id, str(final_message_error), "finalization failure"))
+            yield message.MessageStreamError(
+                message=msg.id, error=str(final_message_error), reason="finalization failure"
+            )
             raise final_message_error
 
         final_reply = dbc.message.finalize(
@@ -605,7 +605,9 @@ def stream_new_message(
         )
         if final_reply is None:
             final_reply_error = RuntimeError(f"failed to finalize message {reply.id}")
-            yield format_message(message.MessageStreamError(reply.id, str(final_reply_error), "finalization failure"))
+            yield message.MessageStreamError(
+                message=reply.id, error=str(final_reply_error), reason="finalization failure"
+            )
             raise final_reply_error
 
         final_message = dataclasses.replace(final_message, children=[final_reply])
@@ -615,12 +617,10 @@ def stream_new_message(
 
             if finalSystemMessage is None:
                 final_system_message_error = RuntimeError(f"failed to finalize message {system_msg.id}")
-                yield format_message(
-                    message.MessageStreamError(
-                        system_msg.id,
-                        str(final_system_message_error),
-                        "finalization failure",
-                    )
+                yield message.MessageStreamError(
+                    message=system_msg.id,
+                    error=str(final_system_message_error),
+                    reason="finalization failure",
                 )
                 raise final_system_message_error
 
@@ -645,7 +645,7 @@ def stream_new_message(
                 "remote_address": user_ip_address,
             })
 
-        yield format_message(final_message)
+        yield final_message
 
     return stream()
 
@@ -676,12 +676,12 @@ def get_parent_and_root_messages_and_private(
 
 
 def create_message_v4(
-    request: CreateMessageRequestV4WithLists,
+    request: CreateMessageRequestWithLists,
     dbc: db.Client,
     storage_client: GoogleCloudStorage,
     session_maker: sessionmaker[Session],
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
-) -> message.Message | Generator[str, None, None]:
+):
     agent = authn()
 
     parent_message, root_message, private = get_parent_and_root_messages_and_private(

@@ -428,7 +428,7 @@ def stream_new_message(
             pool = multiprocessing.pool.ThreadPool(processes=1)
             results = pool.apply_async(lambda: next(message_generator))
 
-            # We handle the first chunk differently since we want to timeout if it takes longer than ?? seconds
+            # We handle the first chunk differently since we want to timeout if it takes longer than 30 seconds
             first_chunk = results.get(30.0)
             yield map_chunk(first_chunk)
 

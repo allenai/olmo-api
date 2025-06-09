@@ -45,7 +45,9 @@ class ModalEngine(InferenceEngine):
                 {
                     "prompt": modal_msgs,
                     "image": image,
-                    "opts": asdict(inference_options),
+                    # TEMP HACK: Force molmo to always use a temperature of 0
+                    # TODO: remove this hack – see https://github.com/allenai/playground-issues-repo/issues/419
+                    "opts": {**asdict(inference_options), "temperature": 0},
                 }
             ]
 

@@ -38,7 +38,7 @@ from src.message.SafetyChecker import (
     SafetyCheckerType,
     SafetyCheckRequest,
 )
-from src.message.stream_message import stream_message_chunks
+from src.message.stream_message import StreamMetrics, stream_message_chunks
 from src.message.validate_message_files_from_config import (
     validate_message_files_from_config,
 )
@@ -369,46 +369,31 @@ def stream_new_message(
         # Now yield each chunk as it's returned.
         finish_reason: FinishReason | None = None
         start_message_generation_ns = time_ns()
-        first_ns = 0
-        chunk_count = 0
-        input_token_count = -1
-        output_token_count = -1
+        first_ns: int = 0
+        input_token_count: int = -1
+        output_token_count: int = -1
+        total_generation_ns: int = 0
 
-        def map_chunk(chunk: InferenceEngineChunk) -> message.MessageChunk:
-            # This tells python that we're referencing the variables from the closure and not making new ones
-            nonlocal finish_reason, input_token_count, output_token_count, chunk_count, first_ns
+        try:
+            for chunk in stream_message_chunks(
+                reply_id=reply.id, model=model, messages=chain, opts=request.opts, inference_engine=inference_engine
+            ):
+                if isinstance(chunk, InferenceEngineChunk):
+                    mapped_chunk = map_chunk(chunk, message_id=reply.id)
+                    yield mapped_chunk
+                    finish_reason = chunk.finish_reason
+                    chunks.append(mapped_chunk)
+                else:
+                    yield chunk
 
-            finish_reason = chunk.finish_reason
+        except StopIteration as stop_iteration_ex:
+            stream_metrics: StreamMetrics = stop_iteration_ex.value
+            first_ns = stream_metrics.first_chunk_ns or 0
+            input_token_count = stream_metrics.input_token_count or -1
+            output_token_count = stream_metrics.output_token_count or -1
+            total_generation_ns = stream_metrics.total_generation_ns or 0
 
-            chunk_logprobs = chunk.logprobs if chunk.logprobs is not None else []
-            mapped_logprobs = [
-                [message.TokenLogProbs(token_id=lp.token_id, text=lp.text, logprob=lp.logprob) for lp in lp_list]
-                for lp_list in chunk_logprobs
-            ]
-
-            new_chunk = message.MessageChunk(
-                message=reply.id,
-                content=chunk.content,
-                logprobs=mapped_logprobs,
-            )
-            chunks.append(new_chunk)
-
-            input_token_count = chunk.input_token_count
-            output_token_count = chunk.output_token_count
-            chunk_count += 1
-            first_ns = time_ns() if first_ns == 0 else first_ns
-
-            return new_chunk
-
-        for chunk in stream_message_chunks(
-            reply_id=reply.id, model=model, messages=chain, opts=request.opts, inference_engine=inference_engine
-        ):
-            if isinstance(chunk, InferenceEngineChunk):
-                yield map_chunk(chunk)
-            else:
-                yield chunk
-
-        gen = time_ns() - start_gen
+        gen = total_generation_ns
         gen //= 1000000
 
         prompt = create_prompt_from_engine_input(chain)
@@ -490,6 +475,22 @@ def stream_new_message(
         yield final_message
 
     return stream()
+
+
+def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> message.MessageChunk:
+    chunk_logprobs = chunk.logprobs if chunk.logprobs is not None else []
+    mapped_logprobs = [
+        [message.TokenLogProbs(token_id=lp.token_id, text=lp.text, logprob=lp.logprob) for lp in lp_list]
+        for lp_list in chunk_logprobs
+    ]
+
+    new_chunk = message.MessageChunk(
+        message=message_id,
+        content=chunk.content,
+        logprobs=mapped_logprobs,
+    )
+
+    return new_chunk
 
 
 def get_parent_and_root_messages_and_private(

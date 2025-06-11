@@ -1,16 +1,12 @@
 import base64
 import dataclasses
 import json
-import multiprocessing
-import multiprocessing.pool
 import os
 from collections.abc import Generator, Sequence
 from datetime import UTC, datetime, timedelta
 from time import time_ns
 from typing import Any, cast
 
-import beaker
-import grpc
 from flask import current_app
 from flask import request as flask_request
 from sqlalchemy.orm import Session, sessionmaker
@@ -23,17 +19,13 @@ from src.bot_detection.create_assessment import create_assessment
 from src.config.get_config import cfg
 from src.config.get_models import get_model_by_host_and_id
 from src.dao import completion, message
-from src.dao.engine_models.model_config import ModelConfig, ModelHost
-from src.inference.BeakerQueuesEngine import BeakerQueuesEngine
-from src.inference.InferDEngine import InferDEngine
+from src.dao.engine_models.model_config import ModelConfig
+from src.inference.inference_service import get_engine
 from src.inference.InferenceEngine import (
     FinishReason,
-    InferenceEngine,
     InferenceEngineChunk,
     InferenceEngineMessage,
-    InferenceOptions,
 )
-from src.inference.ModalEngine import ModalEngine
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
     CreateMessageRequestWithLists,
@@ -46,6 +38,7 @@ from src.message.SafetyChecker import (
     SafetyCheckerType,
     SafetyCheckRequest,
 )
+from src.message.stream_message import stream_message_chunks
 from src.message.validate_message_files_from_config import (
     validate_message_files_from_config,
 )
@@ -103,16 +96,6 @@ def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
 class ParsedMessage:
     content: parse.MessageContent
     role: message.Role
-
-
-def get_engine(host: ModelHost) -> InferenceEngine:
-    match host:
-        case ModelHost.InferD:
-            return InferDEngine()
-        case ModelHost.BeakerQueues:
-            return BeakerQueuesEngine()
-        case ModelHost.Modal | _:
-            return ModalEngine()
 
 
 def upload_request_files(
@@ -391,7 +374,7 @@ def stream_new_message(
         input_token_count = -1
         output_token_count = -1
 
-        def map_chunk(chunk: InferenceEngineChunk):
+        def map_chunk(chunk: InferenceEngineChunk) -> message.MessageChunk:
             # This tells python that we're referencing the variables from the closure and not making new ones
             nonlocal finish_reason, input_token_count, output_token_count, chunk_count, first_ns
 
@@ -417,154 +400,13 @@ def stream_new_message(
 
             return new_chunk
 
-        try:
-            message_generator = inference_engine.create_streamed_message(
-                model=model.model_id_on_host,
-                messages=chain,
-                inference_options=InferenceOptions(**reply.opts.model_dump()),
-            )
-
-            # Adapted from https://anonbadger.wordpress.com/2018/12/15/python-signal-handlers-and-exceptions/
-            pool = multiprocessing.pool.ThreadPool(processes=1)
-            results = pool.apply_async(lambda: next(message_generator))
-
-            # We handle the first chunk differently since we want to timeout if it takes longer than 30 seconds
-            first_chunk = results.get(30.0)
-            yield map_chunk(first_chunk)
-
-            for chunk in message_generator:
+        for chunk in stream_message_chunks(
+            reply_id=reply.id, model=model, messages=chain, opts=request.opts, inference_engine=inference_engine
+        ):
+            if isinstance(chunk, InferenceEngineChunk):
                 yield map_chunk(chunk)
-
-        except grpc.RpcError as e:
-            finish_reason = FinishReason.BadConnection
-            err = f"inference failed: {e}"
-            logger.exception(
-                "GRPC inference failed",
-                extra={
-                    "message_id": reply.id,
-                    "model": model.id,
-                    "host": model.host,
-                    "finish_reason": finish_reason,
-                    "event": "inference.stream-error",
-                },
-            )
-            yield message.MessageStreamError(message=reply.id, error=err, reason="grpc inference failed")
-
-        except beaker.exceptions.BeakerQueueNotFound as e:
-            finish_reason = FinishReason.Unknown
-            err = f"inference failed: {e}"
-            logger.exception(
-                "model queue not found",
-                extra={
-                    "message_id": reply.id,
-                    "model": model.id,
-                    "host": model.host,
-                    "finish_reason": finish_reason,
-                    "event": "inference.stream-error",
-                },
-            )
-            yield message.MessageStreamError(message=reply.id, error=err, reason="model queue not found")
-
-        except multiprocessing.TimeoutError:
-            finish_reason = FinishReason.ModelOverloaded
-
-        except ValueError as e:
-            finish_reason = FinishReason.ValueError
-            logger.exception(
-                "Value Error from inference",
-                extra={
-                    "message_id": reply.id,
-                    "model": model.id,
-                    "host": model.host,
-                    "finish_reason": finish_reason,
-                    "event": "inference.stream-error",
-                },
-            )
-            # value error can be like when context length is too long
-            yield message.MessageStreamError(message=reply.id, error=f"{e}", reason="value error from inference result")
-
-        except Exception as e:
-            finish_reason = FinishReason.Unknown
-            logger.exception(
-                "Unexpected error during inference",
-                extra={
-                    "message_id": reply.id,
-                    "model": model.id,
-                    "host": model.host,
-                    "finish_reason": finish_reason,
-                    "event": "inference.stream-error",
-                },
-            )
-            yield message.MessageStreamError(message=reply.id, error=f"{e}", reason="general exception")
-
-        match finish_reason:
-            case FinishReason.UnclosedStream:
-                logger.error(
-                    "Finished with reason UnclosedStream",
-                    extra={
-                        "message_id": reply.id,
-                        "model": model.id,
-                        "host": model.host,
-                        "finish_reason": finish_reason,
-                        "event": "inference.stream-error",
-                    },
-                )
-                err = "inference failed for an unknown reason: sometimes this happens when the prompt is too long"
-                yield message.MessageStreamError(message=reply.id, error=err, reason=finish_reason)
-
-            case FinishReason.Length:
-                logger.error(
-                    "Finished with reason Length",
-                    extra={
-                        "message_id": reply.id,
-                        "model": model.id,
-                        "host": model.host,
-                        "finish_reason": finish_reason,
-                        "prompt_length": len(request.content),
-                        "event": "inference.stream-error",
-                    },
-                )
-                err = "the conversation is too large for the model to process, please shorten the conversation and try again"
-                yield message.MessageStreamError(message=reply.id, error=err, reason=finish_reason)
-
-            case FinishReason.Aborted:
-                logger.error(
-                    "Finished with reason Aborted",
-                    extra={
-                        "message_id": reply.id,
-                        "model": model.id,
-                        "host": model.host,
-                        "finish_reason": finish_reason,
-                        "event": "inference.stream-error",
-                    },
-                )
-                err = "inference aborted for an unknown reason"
-                yield message.MessageStreamError(message=reply.id, error=err, reason=finish_reason)
-
-            case FinishReason.ModelOverloaded:
-                logger.error(
-                    "Finished with reason ModelOverloaded",
-                    extra={
-                        "message_id": reply.id,
-                        "model": model.id,
-                        "host": model.host,
-                        "finish_reason": finish_reason,
-                        "event": "inference.stream-error",
-                    },
-                )
-                yield message.MessageStreamError(
-                    message=reply.id,
-                    error="model overloaded",
-                    reason=FinishReason.ModelOverloaded,
-                )
-
-            case FinishReason.Stop:
-                # This isn't an error
-                pass
-
-        # The generation is complete. Store it.
-        # TODO: InferD should store this so that we don't have to.
-        # TODO: capture InferD request input instead of our manifestation of the prompt format
+            else:
+                yield chunk
 
         gen = time_ns() - start_gen
         gen //= 1000000

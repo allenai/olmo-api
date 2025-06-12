@@ -44,3 +44,10 @@ To run schema migrations:
     psql "postgres://postgres:$PASSWD@localhost:5555/llmx?sslmode=disable" < schema/schema.sql
     ```
 
+### Reverting a migration on Production
+If you know which revision caused the problem, run 
+```
+alembic downgrade head:<bad-revision> --sql > downgrade.sql
+```
+
+Then run the downgrade SQL on prod.

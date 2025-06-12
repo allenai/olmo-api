@@ -68,7 +68,14 @@ def get_model_by_host_and_id(
     if model is None or model.host != host:
         logging.getLogger().error("Couldn't find model/host combination %s/%s", id, host)
 
-        error_message = f"Invalid model/host combination {id}/{host}"
-        raise exceptions.BadRequest(error_message)
+        invalid_model_and_host_message = f"Invalid model/host combination {id}/{host}"
+        raise exceptions.BadRequest(invalid_model_and_host_message)
+
+    if model.prompt_type == PromptType.FILES_ONLY and not cfg.feature_flags.allow_files_only_model_in_thread:
+        logging.getLogger().error("Tried to use a files only model in a normal thread stream %s/%s", id, model)
+
+        # HACK: I want OLMoASR to be set up like a normal model but don't want people to stream to it yet
+        model_not_available_message = "This model isn't available yet"
+        raise exceptions.BadRequest(model_not_available_message)
 
     return model

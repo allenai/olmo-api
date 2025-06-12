@@ -575,5 +575,53 @@ DROP TYPE "public"."modelhost_old";
 
 UPDATE alembic_version SET version_num='fae16d8f38d0' WHERE alembic_version.version_num = 'c26ec1a12f09';
 
+-- Running upgrade fae16d8f38d0 -> 93d6e3c1967d
+
+ALTER TYPE "public"."prompttype" RENAME TO prompttype_old;
+
+CREATE TYPE "public"."prompttype" AS ENUM('TEXT_ONLY', 'MULTI_MODAL', 'FILES_ONLY');
+
+CREATE FUNCTION new_old_not_equals(
+                new_enum_val "public"."prompttype", old_enum_val "public"."prompttype_old"
+            )
+            RETURNS boolean AS $$
+                SELECT new_enum_val::text != old_enum_val::text;
+            $$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OPERATOR != (
+            leftarg = "public"."prompttype",
+            rightarg = "public"."prompttype_old",
+            procedure = new_old_not_equals
+        );
+
+CREATE FUNCTION new_old_equals(
+                new_enum_val "public"."prompttype", old_enum_val "public"."prompttype_old"
+            )
+            RETURNS boolean AS $$
+                SELECT new_enum_val::text = old_enum_val::text;
+            $$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OPERATOR = (
+            leftarg = "public"."prompttype",
+            rightarg = "public"."prompttype_old",
+            procedure = new_old_equals
+        );
+
+ALTER TABLE "public"."model_config" 
+                ALTER COLUMN "prompt_type" TYPE "public"."prompttype" 
+                USING "prompt_type"::text::"public"."prompttype";
+
+DROP FUNCTION new_old_not_equals(
+            new_enum_val "public"."prompttype", old_enum_val "public"."prompttype_old"
+        ) CASCADE;
+
+DROP FUNCTION new_old_equals(
+            new_enum_val "public"."prompttype", old_enum_val "public"."prompttype_old"
+        ) CASCADE;
+
+DROP TYPE "public"."prompttype_old";
+
+UPDATE alembic_version SET version_num='93d6e3c1967d' WHERE alembic_version.version_num = 'fae16d8f38d0';
+
 COMMIT;
 

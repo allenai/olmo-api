@@ -27,6 +27,7 @@ class FileRequiredToPromptOption(StrEnum):
 class PromptType(StrEnum):
     TEXT_ONLY = "text_only"
     MULTI_MODAL = "multi_modal"
+    FILES_ONLY = "files_only"
 
 
 class ModelConfig(Base, kw_only=True):
@@ -72,3 +73,8 @@ class MultiModalModelConfig(ModelConfig, kw_only=True):
     allow_files_in_followups: Mapped[bool | None]
 
     __mapper_args__ = {"polymorphic_identity": PromptType.MULTI_MODAL}
+
+
+class FilesOnlyModelConfig(MultiModalModelConfig, kw_only=True):
+    # HACK: I think the recommended way to do this is to use polymorphic_on but I couldn't get that working
+    __mapper_args__ = {"polymorphic_identity": PromptType.FILES_ONLY}

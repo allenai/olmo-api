@@ -62,7 +62,7 @@ class ModalEngine(InferenceEngine):
         messages: Sequence[InferenceEngineMessage],
         inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
-        f = modal.Function.lookup(model, "vllm_api", client=self.client)
+        f = modal.Function.from_name(model, "vllm_api").hydrate(client=self.client)
         args = self.__get_args_for_model(model=model, messages=messages, inference_options=inference_options)
 
         for chunk in f.remote_gen(*args):

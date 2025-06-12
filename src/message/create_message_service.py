@@ -19,7 +19,7 @@ from src.bot_detection.create_assessment import create_assessment
 from src.config.get_config import cfg
 from src.config.get_models import get_model_by_host_and_id
 from src.dao import completion, message
-from src.dao.engine_models.model_config import ModelConfig
+from src.dao.engine_models.model_config import ModelConfig, PromptType
 from src.inference.inference_service import get_engine
 from src.inference.InferenceEngine import (
     FinishReason,
@@ -558,6 +558,12 @@ def create_message_v4(
     )
 
     model = get_model_by_host_and_id(mapped_request.host, mapped_request.model, session_maker=session_maker)
+    if model.prompt_type == PromptType.FILES_ONLY and not cfg.feature_flags.allow_files_only_model_in_thread:
+        current_app.logger.error("Tried to use a files only model in a normal thread stream %s/%s", id, model)
+
+        # HACK: I want OLMoASR to be set up like a normal model but don't want people to stream to it yet
+        model_not_available_message = "This model isn't available yet"
+        raise exceptions.BadRequest(model_not_available_message)
     validate_message_files_from_config(request.files, config=model, has_parent=mapped_request.parent is not None)
 
     user_ip_address = flask_request.remote_addr

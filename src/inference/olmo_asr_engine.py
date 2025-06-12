@@ -10,7 +10,6 @@ from src.inference.InferenceEngine import (
     InferenceEngineMessage,
     InferenceOptions,
 )
-from src.inference.ModalEngine import get_modal_function
 
 
 class OlmoAsrModalEngine(InferenceEngine):
@@ -26,7 +25,7 @@ class OlmoAsrModalEngine(InferenceEngine):
         messages: Sequence[InferenceEngineMessage],
         inference_options: InferenceOptions,  # noqa: ARG002
     ) -> Generator[InferenceEngineChunk, None, None]:
-        modal_function = get_modal_function(model, "transcribe", self.client)
+        modal_class = modal.Cls.from_name(model, "Model").hydrate(client=self.client)()
 
         files = next(message.files for message in messages)
 
@@ -41,6 +40,6 @@ class OlmoAsrModalEngine(InferenceEngine):
             no_saved_file_message = "Tried to transcribe a message that had a previously uploaded file"
             raise BadRequest(no_saved_file_message)
 
-        transcription_result = modal_function.remote(audio=audio.read())
+        transcription_result = modal_class.transcribe.remote(audio=audio.read())
 
-        yield InferenceEngineChunk(content=transcription_result, model=model)
+        yield InferenceEngineChunk(content=transcription_result.get("text"), model=model)

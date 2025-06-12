@@ -43,6 +43,7 @@ from src.message.validate_message_files_from_config import (
     validate_message_files_from_config,
 )
 from src.message.WildGuard import WildGuard
+from src.util.generator_with_return_value import GeneratorWithReturnValue
 
 
 def check_message_safety(
@@ -357,7 +358,6 @@ def stream_new_message(
         # so that we can manifest a completion at the end. This will go
         # away when InferD stores this I/O.
         chunks: list[message.MessageChunk] = []
-        start_gen = time_ns()
 
         # Yield the system prompt message if there is any
         if system_msg is not None:
@@ -374,24 +374,31 @@ def stream_new_message(
         output_token_count: int = -1
         total_generation_ns: int = 0
 
-        try:
-            for chunk in stream_message_chunks(
+        message_chunks_generator = GeneratorWithReturnValue(
+            stream_message_chunks(
                 reply_id=reply.id, model=model, messages=chain, opts=request.opts, inference_engine=inference_engine
-            ):
-                if isinstance(chunk, InferenceEngineChunk):
-                    mapped_chunk = map_chunk(chunk, message_id=reply.id)
-                    yield mapped_chunk
-                    finish_reason = chunk.finish_reason
-                    chunks.append(mapped_chunk)
-                else:
-                    yield chunk
+            )
+        )
 
-        except StopIteration as stop_iteration_ex:
-            stream_metrics: StreamMetrics = stop_iteration_ex.value
-            first_ns = stream_metrics.first_chunk_ns or 0
-            input_token_count = stream_metrics.input_token_count or -1
-            output_token_count = stream_metrics.output_token_count or -1
-            total_generation_ns = stream_metrics.total_generation_ns or 0
+        for chunk in message_chunks_generator:
+            if isinstance(chunk, InferenceEngineChunk):
+                mapped_chunk = map_chunk(chunk, message_id=reply.id)
+                yield mapped_chunk
+                finish_reason = chunk.finish_reason
+                chunks.append(mapped_chunk)
+            elif isinstance(chunk, StreamMetrics):
+                first_ns = chunk.first_chunk_ns or 0
+                input_token_count = chunk.input_token_count or -1
+                output_token_count = chunk.output_token_count or -1
+                total_generation_ns = chunk.total_generation_ns or 0
+            else:
+                yield chunk
+
+        stream_metrics: StreamMetrics = message_chunks_generator.value
+        first_ns = stream_metrics.first_chunk_ns or 0
+        input_token_count = stream_metrics.input_token_count or -1
+        output_token_count = stream_metrics.output_token_count or -1
+        total_generation_ns = stream_metrics.total_generation_ns or 0
 
         gen = total_generation_ns
         gen //= 1000000

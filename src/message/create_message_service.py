@@ -386,11 +386,6 @@ def stream_new_message(
                 yield mapped_chunk
                 finish_reason = chunk.finish_reason
                 chunks.append(mapped_chunk)
-            elif isinstance(chunk, StreamMetrics):
-                first_ns = chunk.first_chunk_ns or 0
-                input_token_count = chunk.input_token_count or -1
-                output_token_count = chunk.output_token_count or -1
-                total_generation_ns = chunk.total_generation_ns or 0
             else:
                 yield chunk
 

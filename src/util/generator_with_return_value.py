@@ -1,3 +1,4 @@
+# TODO: This doesn't return the type correctly
 # https://stackoverflow.com/a/34073559
 class GeneratorWithReturnValue:
     def __init__(self, gen):

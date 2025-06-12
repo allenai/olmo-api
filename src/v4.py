@@ -33,9 +33,7 @@ def create_v4_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage, sess
     )
 
     v4_blueprint.register_blueprint(
-        blueprint=create_transcription_blueprint(),
-        url_prefix="/transcribe",
-        name="transcribe"
+        blueprint=create_transcription_blueprint(session_maker), url_prefix="/transcribe", name="transcribe"
     )
 
     return v4_blueprint

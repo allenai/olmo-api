@@ -16,6 +16,10 @@ from src.inference.InferenceEngine import (
 )
 
 
+def get_modal_function(model: str, function_name: str, client: modal.Client):
+    return modal.Function.from_name(model, function_name).hydrate(client=client)
+
+
 class ModalEngine(InferenceEngine):
     client: modal.Client
 
@@ -62,7 +66,7 @@ class ModalEngine(InferenceEngine):
         messages: Sequence[InferenceEngineMessage],
         inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
-        f = modal.Function.from_name(model, "vllm_api").hydrate(client=self.client)
+        f = get_modal_function(model, "vllm_api", self.client)
         args = self.__get_args_for_model(model=model, messages=messages, inference_options=inference_options)
 
         for chunk in f.remote_gen(*args):
@@ -70,13 +74,13 @@ class ModalEngine(InferenceEngine):
 
             logprobs: Sequence[Sequence[Logprob]] = []
 
-            inputTokenCount = chunk.get("result", {}).get("inputTokenCount", -1)
-            outputTokenCount = chunk.get("result", {}).get("outputTokenCount", -1)
+            input_token_count = chunk.get("result", {}).get("inputTokenCount", -1)
+            output_token_count = chunk.get("result", {}).get("outputTokenCount", -1)
 
             yield InferenceEngineChunk(
                 content=content,
                 model=model,
                 logprobs=logprobs,
-                input_token_count=inputTokenCount,
-                output_token_count=outputTokenCount,
+                input_token_count=input_token_count,
+                output_token_count=output_token_count,
             )

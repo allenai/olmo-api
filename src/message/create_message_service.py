@@ -1,16 +1,12 @@
 import base64
 import dataclasses
 import json
-import multiprocessing
-import multiprocessing.pool
 import os
 from collections.abc import Generator, Sequence
 from datetime import UTC, datetime, timedelta
 from time import time_ns
 from typing import Any, cast
 
-import beaker
-import grpc
 from flask import current_app
 from flask import request as flask_request
 from sqlalchemy.orm import Session, sessionmaker
@@ -23,17 +19,13 @@ from src.bot_detection.create_assessment import create_assessment
 from src.config.get_config import cfg
 from src.config.get_models import get_model_by_host_and_id
 from src.dao import completion, message
-from src.dao.engine_models.model_config import ModelConfig, ModelHost
-from src.inference.BeakerQueuesEngine import BeakerQueuesEngine
-from src.inference.InferDEngine import InferDEngine
+from src.dao.engine_models.model_config import ModelConfig
+from src.inference.inference_service import get_engine
 from src.inference.InferenceEngine import (
     FinishReason,
-    InferenceEngine,
     InferenceEngineChunk,
     InferenceEngineMessage,
-    InferenceOptions,
 )
-from src.inference.ModalEngine import ModalEngine
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
     CreateMessageRequestWithLists,
@@ -46,10 +38,12 @@ from src.message.SafetyChecker import (
     SafetyCheckerType,
     SafetyCheckRequest,
 )
+from src.message.stream_message import StreamMetrics, stream_message_chunks
 from src.message.validate_message_files_from_config import (
     validate_message_files_from_config,
 )
 from src.message.WildGuard import WildGuard
+from src.util.generator_with_return_value import GeneratorWithReturnValue
 
 
 def check_message_safety(
@@ -103,16 +97,6 @@ def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
 class ParsedMessage:
     content: parse.MessageContent
     role: message.Role
-
-
-def get_engine(host: ModelHost) -> InferenceEngine:
-    match host:
-        case ModelHost.InferD:
-            return InferDEngine()
-        case ModelHost.BeakerQueues:
-            return BeakerQueuesEngine()
-        case ModelHost.Modal | _:
-            return ModalEngine()
 
 
 def upload_request_files(
@@ -374,7 +358,6 @@ def stream_new_message(
         # so that we can manifest a completion at the end. This will go
         # away when InferD stores this I/O.
         chunks: list[message.MessageChunk] = []
-        start_gen = time_ns()
 
         # Yield the system prompt message if there is any
         if system_msg is not None:
@@ -386,187 +369,33 @@ def stream_new_message(
         # Now yield each chunk as it's returned.
         finish_reason: FinishReason | None = None
         start_message_generation_ns = time_ns()
-        first_ns = 0
-        chunk_count = 0
-        input_token_count = -1
-        output_token_count = -1
+        first_ns: int = 0
+        input_token_count: int = -1
+        output_token_count: int = -1
+        total_generation_ns: int = 0
 
-        def map_chunk(chunk: InferenceEngineChunk):
-            # This tells python that we're referencing the variables from the closure and not making new ones
-            nonlocal finish_reason, input_token_count, output_token_count, chunk_count, first_ns
-
-            finish_reason = chunk.finish_reason
-
-            chunk_logprobs = chunk.logprobs if chunk.logprobs is not None else []
-            mapped_logprobs = [
-                [message.TokenLogProbs(token_id=lp.token_id, text=lp.text, logprob=lp.logprob) for lp in lp_list]
-                for lp_list in chunk_logprobs
-            ]
-
-            new_chunk = message.MessageChunk(
-                message=reply.id,
-                content=chunk.content,
-                logprobs=mapped_logprobs,
+        message_chunks_generator = GeneratorWithReturnValue(
+            stream_message_chunks(
+                reply_id=reply.id, model=model, messages=chain, opts=request.opts, inference_engine=inference_engine
             )
-            chunks.append(new_chunk)
+        )
 
-            input_token_count = chunk.input_token_count
-            output_token_count = chunk.output_token_count
-            chunk_count += 1
-            first_ns = time_ns() if first_ns == 0 else first_ns
+        for chunk in message_chunks_generator:
+            if isinstance(chunk, InferenceEngineChunk):
+                mapped_chunk = map_chunk(chunk, message_id=reply.id)
+                yield mapped_chunk
+                finish_reason = chunk.finish_reason
+                chunks.append(mapped_chunk)
+            else:
+                yield chunk
 
-            return new_chunk
+        stream_metrics: StreamMetrics = message_chunks_generator.value
+        first_ns = stream_metrics.first_chunk_ns or 0
+        input_token_count = stream_metrics.input_token_count or -1
+        output_token_count = stream_metrics.output_token_count or -1
+        total_generation_ns = stream_metrics.total_generation_ns or 0
 
-        try:
-            message_generator = inference_engine.create_streamed_message(
-                model=model.model_id_on_host,
-                messages=chain,
-                inference_options=InferenceOptions(**reply.opts.model_dump()),
-            )
-
-            # Adapted from https://anonbadger.wordpress.com/2018/12/15/python-signal-handlers-and-exceptions/
-            pool = multiprocessing.pool.ThreadPool(processes=1)
-            results = pool.apply_async(lambda: next(message_generator))
-
-            # We handle the first chunk differently since we want to timeout if it takes longer than 30 seconds
-            first_chunk = results.get(30.0)
-            yield map_chunk(first_chunk)
-
-            for chunk in message_generator:
-                yield map_chunk(chunk)
-
-        except grpc.RpcError as e:
-            finish_reason = FinishReason.BadConnection
-            err = f"inference failed: {e}"
-            logger.exception(
-                "GRPC inference failed",
-                extra={
-                    "message_id": reply.id,
-                    "model": model.id,
-                    "host": model.host,
-                    "finish_reason": finish_reason,
-                    "event": "inference.stream-error",
-                },
-            )
-            yield message.MessageStreamError(message=reply.id, error=err, reason="grpc inference failed")
-
-        except beaker.exceptions.BeakerQueueNotFound as e:
-            finish_reason = FinishReason.Unknown
-            err = f"inference failed: {e}"
-            logger.exception(
-                "model queue not found",
-                extra={
-                    "message_id": reply.id,
-                    "model": model.id,
-                    "host": model.host,
-                    "finish_reason": finish_reason,
-                    "event": "inference.stream-error",
-                },
-            )
-            yield message.MessageStreamError(message=reply.id, error=err, reason="model queue not found")
-
-        except multiprocessing.TimeoutError:
-            finish_reason = FinishReason.ModelOverloaded
-
-        except ValueError as e:
-            finish_reason = FinishReason.ValueError
-            logger.exception(
-                "Value Error from inference",
-                extra={
-                    "message_id": reply.id,
-                    "model": model.id,
-                    "host": model.host,
-                    "finish_reason": finish_reason,
-                    "event": "inference.stream-error",
-                },
-            )
-            # value error can be like when context length is too long
-            yield message.MessageStreamError(message=reply.id, error=f"{e}", reason="value error from inference result")
-
-        except Exception as e:
-            finish_reason = FinishReason.Unknown
-            logger.exception(
-                "Unexpected error during inference",
-                extra={
-                    "message_id": reply.id,
-                    "model": model.id,
-                    "host": model.host,
-                    "finish_reason": finish_reason,
-                    "event": "inference.stream-error",
-                },
-            )
-            yield message.MessageStreamError(message=reply.id, error=f"{e}", reason="general exception")
-
-        match finish_reason:
-            case FinishReason.UnclosedStream:
-                logger.error(
-                    "Finished with reason UnclosedStream",
-                    extra={
-                        "message_id": reply.id,
-                        "model": model.id,
-                        "host": model.host,
-                        "finish_reason": finish_reason,
-                        "event": "inference.stream-error",
-                    },
-                )
-                err = "inference failed for an unknown reason: sometimes this happens when the prompt is too long"
-                yield message.MessageStreamError(message=reply.id, error=err, reason=finish_reason)
-
-            case FinishReason.Length:
-                logger.error(
-                    "Finished with reason Length",
-                    extra={
-                        "message_id": reply.id,
-                        "model": model.id,
-                        "host": model.host,
-                        "finish_reason": finish_reason,
-                        "prompt_length": len(request.content),
-                        "event": "inference.stream-error",
-                    },
-                )
-                err = "the conversation is too large for the model to process, please shorten the conversation and try again"
-                yield message.MessageStreamError(message=reply.id, error=err, reason=finish_reason)
-
-            case FinishReason.Aborted:
-                logger.error(
-                    "Finished with reason Aborted",
-                    extra={
-                        "message_id": reply.id,
-                        "model": model.id,
-                        "host": model.host,
-                        "finish_reason": finish_reason,
-                        "event": "inference.stream-error",
-                    },
-                )
-                err = "inference aborted for an unknown reason"
-                yield message.MessageStreamError(message=reply.id, error=err, reason=finish_reason)
-
-            case FinishReason.ModelOverloaded:
-                logger.error(
-                    "Finished with reason ModelOverloaded",
-                    extra={
-                        "message_id": reply.id,
-                        "model": model.id,
-                        "host": model.host,
-                        "finish_reason": finish_reason,
-                        "event": "inference.stream-error",
-                    },
-                )
-                yield message.MessageStreamError(
-                    message=reply.id,
-                    error="model overloaded",
-                    reason=FinishReason.ModelOverloaded,
-                )
-
-            case FinishReason.Stop:
-                # This isn't an error
-                pass
-
-        # The generation is complete. Store it.
-        # TODO: InferD should store this so that we don't have to.
-        # TODO: capture InferD request input instead of our manifestation of the prompt format
-
-        gen = time_ns() - start_gen
+        gen = total_generation_ns
         gen //= 1000000
 
         prompt = create_prompt_from_engine_input(chain)
@@ -648,6 +477,22 @@ def stream_new_message(
         yield final_message
 
     return stream()
+
+
+def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> message.MessageChunk:
+    chunk_logprobs = chunk.logprobs if chunk.logprobs is not None else []
+    mapped_logprobs = [
+        [message.TokenLogProbs(token_id=lp.token_id, text=lp.text, logprob=lp.logprob) for lp in lp_list]
+        for lp_list in chunk_logprobs
+    ]
+
+    new_chunk = message.MessageChunk(
+        message=message_id,
+        content=chunk.content,
+        logprobs=mapped_logprobs,
+    )
+
+    return new_chunk
 
 
 def get_parent_and_root_messages_and_private(

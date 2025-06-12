@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, selectin_polymorphic, sessionmaker
 from src.config.Model import Model, MultiModalModel
 from src.config.ModelConfig import FileRequiredToPromptOption
 from src.dao.engine_models.model_config import (
+    FilesOnlyModelConfig,
     ModelConfig,
     MultiModalModelConfig,
 )
@@ -18,6 +19,7 @@ class ModelResponse(RootModel):
 
 
 def map_model(model: ModelConfig) -> MultiModalModel | Model:
+    # MultiModalModelConfig instances include FilesOnlyModelConfigs
     if isinstance(model, MultiModalModelConfig):
         return MultiModalModel(
             id=model.id,
@@ -38,6 +40,7 @@ def map_model(model: ModelConfig) -> MultiModalModel | Model:
             max_total_file_size=ByteSize(model.max_total_file_size) if model.max_total_file_size is not None else None,
             allow_files_in_followups=model.allow_files_in_followups or False,
             internal=model.internal,
+            prompt_type=model.prompt_type,  # type: ignore
         )
 
     return Model(
@@ -58,7 +61,9 @@ def map_model(model: ModelConfig) -> MultiModalModel | Model:
 
 def get_model_configs(session_maker: sessionmaker[Session], *, include_internal_models: bool = False) -> ModelResponse:
     with session_maker.begin() as session:
-        polymorphic_loader_opt = selectin_polymorphic(ModelConfig, [ModelConfig, MultiModalModelConfig])
+        polymorphic_loader_opt = selectin_polymorphic(
+            ModelConfig, [ModelConfig, MultiModalModelConfig, FilesOnlyModelConfig]
+        )
 
         stmt = select(ModelConfig).options(polymorphic_loader_opt).order_by(ModelConfig.order.asc())
 

@@ -27,8 +27,7 @@ You'll also need to make sure it's imported into `env.py`. In most cases you can
 To run schema migrations:
 
 1. Make a new migration file:
-    `alembic upgrade head --sql > schema/schema.sql`
-
+    `alembic upgrade head --sql > schema/02-schema.sql`
 2. Connect to the database:
 
     ```
@@ -45,3 +44,10 @@ To run schema migrations:
     psql "postgres://postgres:$PASSWD@localhost:5555/llmx?sslmode=disable" < schema/schema.sql
     ```
 
+### Reverting a migration on Production
+If you know which revision caused the problem, run 
+```
+alembic downgrade head:<bad-revision> --sql > downgrade.sql
+```
+
+Then run the downgrade SQL on prod.

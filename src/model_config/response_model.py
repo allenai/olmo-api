@@ -52,7 +52,7 @@ class TextOnlyResponseModel(BaseResponseModel):
 
 
 class MultiModalResponseModel(BaseResponseModel):
-    prompt_type: Literal[PromptType.MULTI_MODAL]
+    prompt_type: Literal[PromptType.MULTI_MODAL, PromptType.FILES_ONLY]
     accepted_file_types: list[str]
     max_files_per_message: int | None = Field(default=None)
     require_file_to_prompt: FileRequiredToPromptOption | None = Field(default=None)

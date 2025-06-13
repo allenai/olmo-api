@@ -29,5 +29,6 @@ puremagic==1.28.0
 sqlalchemy==2.0.40
 alembic==1.15.2
 alembic-postgresql-enum==1.7.0
+pydub==0.25.1
 # beaker-py==2.2.1
 ./vendor/beaker_py-2.2.1-py3-none-any.whl

@@ -1,6 +1,7 @@
 from collections.abc import Generator, Sequence
 
 import modal
+from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import BadRequest
 
 from src.inference.InferenceEngine import (
@@ -33,6 +34,9 @@ class OlmoAsrModalEngine(InferenceEngine):
             no_saved_file_message = "Tried to transcribe a message that had a previously uploaded file"
             raise BadRequest(no_saved_file_message)
 
-        transcription_result = modal_class().transcribe.remote(audio=audio.read())
+        if isinstance(audio, FileStorage):
+            audio = audio.read()
+
+        transcription_result = modal_class().transcribe.remote(audio=audio)
 
         yield InferenceEngineChunk(content=transcription_result.get("text"), model=model)

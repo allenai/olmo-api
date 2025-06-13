@@ -21,7 +21,8 @@ class GetTranscriptionResponse(APIInterface):
 
 
 def get_transcription(request: GetTranscriptionRequest, session_maker: sessionmaker):
-    segment = AudioSegment(request.audio.read())
+    # audio_bytes = request.audio.read()
+    segment = AudioSegment.from_file_using_temporary_files(request.audio)
     # .export can return a path with different options but returns IO when we call it without a filename
     converted_audio_file = cast(IO, segment.export(format="wav"))
 

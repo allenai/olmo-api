@@ -15,10 +15,6 @@ from src.inference.InferenceEngine import (
 )
 
 
-def get_modal_function(model: str, function_name: str, client: modal.Client):
-    return modal.Function.from_name(model, function_name).hydrate(client=client)
-
-
 class ModalEngine(InferenceEngine):
     def __get_args_for_model(
         self,

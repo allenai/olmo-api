@@ -24,12 +24,14 @@ services:
       - ./:/api
       - ./config.json:/secret/cfg/config.json
       - ./service_account.json:/secret/cfg/service_account.json
+      - ./.modal.toml:/secret/.modal.toml
     environment:
       - PYTHONUNBUFFERED=1
       - LOG_LEVEL=DEBUG
       - E2E_AUTH0_CLIENT_SECRET
       - GOOGLE_APPLICATION_CREDENTIALS=service_account.json
       - SHA=DEV
+      - MODAL_CONFIG_PATH=/secret/.modal.toml
     ports:
       - 8000:8000
 

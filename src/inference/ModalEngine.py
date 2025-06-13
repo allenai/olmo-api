@@ -5,7 +5,6 @@ from dataclasses import asdict
 import modal
 from werkzeug.datastructures import FileStorage
 
-from src.config.get_config import cfg
 from src.dao.message import Role
 from src.inference.InferenceEngine import (
     InferenceEngine,
@@ -16,16 +15,7 @@ from src.inference.InferenceEngine import (
 )
 
 
-def get_modal_function(model: str, function_name: str, client: modal.Client):
-    return modal.Function.from_name(model, function_name).hydrate(client=client)
-
-
 class ModalEngine(InferenceEngine):
-    client: modal.Client
-
-    def __init__(self) -> None:
-        self.client = modal.Client.from_credentials(cfg.modal.token, cfg.modal.token_secret)
-
     def __get_args_for_model(
         self,
         model: str,
@@ -66,7 +56,7 @@ class ModalEngine(InferenceEngine):
         messages: Sequence[InferenceEngineMessage],
         inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
-        f = get_modal_function(model, "vllm_api", self.client)
+        f = modal.Function.from_name(model, "vllm_api")
         args = self.__get_args_for_model(model=model, messages=messages, inference_options=inference_options)
 
         for chunk in f.remote_gen(*args):

@@ -254,6 +254,12 @@ function(apiImage, messageDeletionJobImage, cause, sha, env='prod', branch='', r
                                 secretName: 'cfg'
                             }
                         },
+                        {
+                            name: 'modal',
+                            secret: {
+                                secretName: 'modal'
+                            }
+                        }
                     ],
                     containers: [
                         {
@@ -267,6 +273,10 @@ function(apiImage, messageDeletionJobImage, cause, sha, env='prod', branch='', r
                                 {
                                     name: 'GOOGLE_APPLICATION_CREDENTIALS',
                                     value: '/secret/cfg/service_account.json'
+                                },
+                                {
+                                    name: 'MODAL_CONFIG_PATH',
+                                    value: '/secret/.modal.toml'
                                 }
                             ],
                             # The "probes" below allow Kubernetes to determine
@@ -333,6 +343,11 @@ function(apiImage, messageDeletionJobImage, cause, sha, env='prod', branch='', r
                                 {
                                     name: 'cfg',
                                     mountPath: '/secret/cfg',
+                                    readOnly: true
+                                },
+                                {
+                                    name: 'modal',
+                                    mountPath: '/secret',
                                     readOnly: true
                                 }
                             ]

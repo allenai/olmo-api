@@ -39,3 +39,6 @@ echo "wrote \"$dir/../config.json\""
 
 kubectl get secret/cfg --namespace olmo-api --output jsonpath="{.data.service_account\.json}" | base64 -D > "$dir/../service_account.json"
 echo "wrote \"$dir/../service_account.json\""
+
+kubectl get secret/modal --namespace olmo-api --output jsonpath="{.data.\.modal\.toml}" | base64 -D > "$dir/../.modal.toml"
+echo "wrote \"$dir/../.modal.toml\""

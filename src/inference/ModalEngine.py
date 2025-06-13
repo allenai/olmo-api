@@ -5,7 +5,6 @@ from dataclasses import asdict
 import modal
 from werkzeug.datastructures import FileStorage
 
-from src.config.get_config import cfg
 from src.dao.message import Role
 from src.inference.InferenceEngine import (
     InferenceEngine,
@@ -17,11 +16,6 @@ from src.inference.InferenceEngine import (
 
 
 class ModalEngine(InferenceEngine):
-    client: modal.Client
-
-    def __init__(self) -> None:
-        self.client = modal.Client.from_credentials(cfg.modal.token, cfg.modal.token_secret)
-
     def __get_args_for_model(
         self,
         model: str,
@@ -62,7 +56,7 @@ class ModalEngine(InferenceEngine):
         messages: Sequence[InferenceEngineMessage],
         inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
-        f = modal.Function.from_name(model, "vllm_api").hydrate(client=self.client)
+        f = modal.Function.from_name(model, "vllm_api")
         args = self.__get_args_for_model(model=model, messages=messages, inference_options=inference_options)
 
         for chunk in f.remote_gen(*args):
@@ -70,13 +64,13 @@ class ModalEngine(InferenceEngine):
 
             logprobs: Sequence[Sequence[Logprob]] = []
 
-            inputTokenCount = chunk.get("result", {}).get("inputTokenCount", -1)
-            outputTokenCount = chunk.get("result", {}).get("outputTokenCount", -1)
+            input_token_count = chunk.get("result", {}).get("inputTokenCount", -1)
+            output_token_count = chunk.get("result", {}).get("outputTokenCount", -1)
 
             yield InferenceEngineChunk(
                 content=content,
                 model=model,
                 logprobs=logprobs,
-                input_token_count=inputTokenCount,
-                output_token_count=outputTokenCount,
+                input_token_count=input_token_count,
+                output_token_count=output_token_count,
             )

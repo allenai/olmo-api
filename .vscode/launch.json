@@ -9,7 +9,8 @@
             "env": {
                 "FLASK_APP": "app.py",
                 "FLASK_DEBUG": "1",
-                "FLASK_CONFIG_PATH": "config.json"
+                "FLASK_CONFIG_PATH": "config.json",
+                "MODAL_CONFIG_PATH": ".modal.toml"
             },
             "args": [
                 "run",

@@ -1,3 +1,5 @@
+from typing import IO, cast
+
 from flask_pydantic_api.utils import UploadedFile
 from pydub import AudioSegment
 from sqlalchemy.orm import sessionmaker
@@ -20,7 +22,8 @@ class GetTranscriptionResponse(APIInterface):
 
 def get_transcription(request: GetTranscriptionRequest, session_maker: sessionmaker):
     segment = AudioSegment(request.audio.read())
-    converted_audio_file = segment.export(format="wav")
+    # .export can return a path with different options but returns IO when we call it without a filename
+    converted_audio_file = cast(IO, segment.export(format="wav"))
 
     olmo_asr_engine = OlmoAsrModalEngine()
 

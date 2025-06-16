@@ -1,7 +1,7 @@
 from typing import IO, cast
 
 from flask_pydantic_api.utils import UploadedFile
-from pydub import AudioSegment
+from pydub import AudioSegment  # type: ignore
 from sqlalchemy.orm import sessionmaker
 
 from src.api_interface import APIInterface

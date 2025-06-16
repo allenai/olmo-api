@@ -6,7 +6,9 @@ The HTTP API used by http://playground.allenai.org
 
 ### Getting Started
 
-The API depends on [InferD](https://github.com/allenai/inferd).
+Install ffmpeg:
+On OSX, ensure you have `homebrew` installed then run `brew install ffmpeg`
+
 To start a local server, follow these steps:
 
 1. Generate a local `config.json` file:

@@ -113,7 +113,7 @@ VALUES (
         'olmoasr',
         'OLMoASR',
         'OLMoASR',
-        'olmoasr',
+        'olmoasr_769m',
         'Base',
         NULL,
         NULL,

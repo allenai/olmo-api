@@ -181,7 +181,7 @@ def stream_new_message(
     start_all = time_ns()
     agent = authn()
 
-    inference_engine = get_engine(model.host, model=model.id)
+    inference_engine = get_engine(model)
 
     evaluate_prompt_submission_captcha(
         request.captcha_token,

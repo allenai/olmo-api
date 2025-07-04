@@ -28,6 +28,11 @@ class InferD(BaseInferenceEngineConfig):
 class Modal(BaseInferenceEngineConfig):
     token_secret: str
 
+@dataclass
+class Cirrascale:
+    # The base_url should be for the backend API, and not include the port number or version.
+    base_url: str
+    api_key: str
 
 @dataclass
 class Server:
@@ -104,6 +109,7 @@ class Config:
     models: list[Model | MultiModalModel]
     feature_flags: FeatureFlags
     beaker: Beaker
+    cirrascale: Cirrascale
 
     @classmethod
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
@@ -127,6 +133,10 @@ class Config:
                 modal=Modal(
                     token=data["modal"].get("token"),
                     token_secret=data["modal"].get("token_secret"),
+                ),
+                cirrascale=Cirrascale(
+                    base_url=data["cirrascale"]["base_url"],
+                    api_key=data["cirrascale"]["api_key"],
                 ),
                 auth=Auth(
                     domain=data["auth"].get("auth0_domain"),

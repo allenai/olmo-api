@@ -1,4 +1,4 @@
-"""add cirrascale model host
+"""add cirrascale backend model host
 
 Revision ID: b85b60aa5479
 Revises: 93d6e3c1967d
@@ -24,7 +24,7 @@ def upgrade() -> None:
     op.sync_enum_values(  # type: ignore[attr-defined]
         enum_schema="public",
         enum_name="modelhost",
-        new_values=["InferD", "Modal", "BeakerQueue", "Cirrascale"],
+        new_values=["InferD", "Modal", "BeakerQueue", "CirrascaleBackend"],
         affected_columns=[TableReference(table_schema="public", table_name="model_config", column_name="host")],
         enum_values_to_rename=[],
     )

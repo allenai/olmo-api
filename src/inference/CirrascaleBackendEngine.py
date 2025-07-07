@@ -15,7 +15,6 @@ from dataclasses import asdict
 
 from openai import OpenAI
 from src.config.get_config import cfg
-from src.dao.engine_models import ModelConfig
 from src.inference.InferenceEngine import (
     InferenceEngine,
     InferenceEngineChunk,
@@ -23,30 +22,15 @@ from src.inference.InferenceEngine import (
     InferenceOptions,
 )
 
-# This is the list of ports on which various models are hosted using on the ai2endpoints backend APIs.
-# Cirrascale should provide us these values when they add models.
-model_to_cirrascale_port = {
-    "OLMo-2-0425-1B-Instruct": 22501,
-    "OLMo-2-1124-7B-Instruct": 22502,
-    "OLMo-2-1124-13B-Instruct": 22503,
-    "OLMo-2-0325-32B-Instruct": 22504,
-    "Llama-3.1-Tulu-3.1-8B": 22505,
-    "Llama-3.1-Tulu-3-70B": 22506,
-    "Molmo-7B-D-0924": 22507
-}
-
-class CirrascaleEngine(InferenceEngine):
+class CirrascaleBackendEngine(InferenceEngine):
     client: OpenAI
     model_name: str
 
-    def __init__(self, model_name: str):
-        port = model_to_cirrascale_port.get(model_name, None)
-        if port is None:
-            raise ValueError(f"Cirrascale does not support model {model_name}")
+    def __init__(self, model_name: str, *, port: str):
         self.model_name = model_name
         self.client = OpenAI(
-            base_url=f"{cfg.cirrascale.base_url}:{port}/v1",
-            api_key=cfg.cirrascale.api_key,
+            base_url=f"{cfg.cirrascale_backend.base_url}:{port}/v1",
+            api_key=cfg.cirrascale_backend.api_key,
         )
 
     def create_streamed_message(
@@ -80,4 +64,3 @@ class CirrascaleEngine(InferenceEngine):
                 # According to the docs, if stream_options["include_usage"]=True, this can happen.
                 # For now, we don't support this mode.
                 raise NotImplementedError("chunks without choices are not yet supported")
-

@@ -29,8 +29,8 @@ class Modal(BaseInferenceEngineConfig):
     token_secret: str
 
 @dataclass
-class Cirrascale:
-    # The base_url should be for the backend API, and not include the port number or version.
+class CirrascaleBackend:
+    # The base_url should not contain the port.
     base_url: str
     api_key: str
 
@@ -109,7 +109,7 @@ class Config:
     models: list[Model | MultiModalModel]
     feature_flags: FeatureFlags
     beaker: Beaker
-    cirrascale: Cirrascale
+    cirrascale_backend: CirrascaleBackend
 
     @classmethod
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
@@ -134,9 +134,9 @@ class Config:
                     token=data["modal"].get("token"),
                     token_secret=data["modal"].get("token_secret"),
                 ),
-                cirrascale=Cirrascale(
-                    base_url=data["cirrascale"]["base_url"],
-                    api_key=data["cirrascale"]["api_key"],
+                cirrascale_backend=CirrascaleBackend(
+                    base_url=data["cirrascale_backend"]["base_url"],
+                    api_key=data["cirrascale_backend"]["api_key"],
                 ),
                 auth=Auth(
                     domain=data["auth"].get("auth0_domain"),

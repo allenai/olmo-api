@@ -9,7 +9,6 @@ Create Date: 2025-07-03 09:15:28.286567
 from collections.abc import Sequence
 
 from alembic import op
-import sqlalchemy as sa
 from alembic_postgresql_enum import TableReference
 
 # revision identifiers, used by Alembic.
@@ -25,7 +24,7 @@ def upgrade() -> None:
     op.sync_enum_values(  # type: ignore[attr-defined]
         enum_schema="public",
         enum_name="modelhost",
-        new_values=["InferD", "Modal", "BeakerQueue", "CirrascaleBackend"],
+        new_values=["InferD", "Modal", "BeakerQueues", "CirrascaleBackend"],
         affected_columns=[TableReference(table_schema="public", table_name="model_config", column_name="host")],
         enum_values_to_rename=[],
     )
@@ -38,7 +37,7 @@ def downgrade() -> None:
     op.sync_enum_values(  # type: ignore[attr-defined]
         enum_schema="public",
         enum_name="modelhost",
-        new_values=["InferD", "Modal", "BeakerQueue"],
+        new_values=["InferD", "Modal", "BeakerQueues"],
         affected_columns=[TableReference(table_schema="public", table_name="model_config", column_name="host")],
         enum_values_to_rename=[],
     )

@@ -28,11 +28,13 @@ class InferD(BaseInferenceEngineConfig):
 class Modal(BaseInferenceEngineConfig):
     token_secret: str
 
+
 @dataclass
 class CirrascaleBackend:
     # The base_url should not contain the port.
     base_url: str
     api_key: str
+
 
 @dataclass
 class Server:

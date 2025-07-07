@@ -5,6 +5,7 @@ Revises: 93d6e3c1967d
 Create Date: 2025-07-03 09:15:28.286567
 
 """
+
 from collections.abc import Sequence
 
 from alembic import op
@@ -12,8 +13,8 @@ import sqlalchemy as sa
 from alembic_postgresql_enum import TableReference
 
 # revision identifiers, used by Alembic.
-revision: str = 'b85b60aa5479'
-down_revision: str | None = '93d6e3c1967d'
+revision: str = "b85b60aa5479"
+down_revision: str | None = "93d6e3c1967d"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

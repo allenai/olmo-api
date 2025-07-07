@@ -22,6 +22,7 @@ from src.inference.InferenceEngine import (
     InferenceOptions,
 )
 
+
 class CirrascaleBackendEngine(InferenceEngine):
     client: OpenAI
     model_name: str
@@ -34,10 +35,10 @@ class CirrascaleBackendEngine(InferenceEngine):
         )
 
     def create_streamed_message(
-            self,
-            model: str,
-            messages: Sequence[InferenceEngineMessage],
-            inference_options: InferenceOptions,
+        self,
+        model: str,
+        messages: Sequence[InferenceEngineMessage],
+        inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
         messages = [asdict(message) for message in messages]
         chat_completion = self.client.chat.completions.create(
@@ -51,7 +52,7 @@ class CirrascaleBackendEngine(InferenceEngine):
         for chunk in chat_completion:
             if len(chunk.choices) > 0:
                 # Our API doesn't support choices, so choose the first.
-                choice=chunk.choices[0]
+                choice = chunk.choices[0]
                 yield InferenceEngineChunk(
                     content=choice.delta.content,
                     finish_reason=choice.finish_reason,

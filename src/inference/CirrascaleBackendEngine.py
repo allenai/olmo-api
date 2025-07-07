@@ -46,7 +46,7 @@ def map_openai_finish_reason(finish_reason: OpenAIFinishReason | None) -> Finish
 
 def map_openapi_top_logprob(top_logprob: TopLogprob) -> Logprob:
     # TODO: Make sure this is the right mapping for the token id.
-    token_id = top_logprob.bytes[0] if top_logprob.bytes is not None else -1
+    token_id = top_logprob.bytes[0] if (top_logprob.bytes is not None and len(top_logprob.bytes) > 0) else -1
     return Logprob(token_id=token_id, text=top_logprob.token, logprob=top_logprob.logprob)
 
 
@@ -61,8 +61,11 @@ class CirrascaleBackendEngine(InferenceEngine):
     client: OpenAI
     model_name: str
 
-    def __init__(self, model_name: str, *, port: str):
-        self.model_name = model_name
+    def __init__(self, model_id: str, port: str):
+        # As a hack, the model name is the id with the "cs-" prefix removed.
+        # This is done because we take the model_id_on_host field to store the port.
+        # When we switch to using the Cirrascale Consumer API we won't need this workaround.
+        self.model_name = model_id.replace("cs-", "")
         self.client = OpenAI(
             base_url=f"{cfg.cirrascale_backend.base_url}:{port}/v1",
             api_key=cfg.cirrascale_backend.api_key,

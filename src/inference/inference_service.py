@@ -23,7 +23,7 @@ def get_engine(model: ModelConfig) -> InferenceEngine:
         case ModelHost.BeakerQueues:
             return BeakerQueuesEngine()
         case ModelHost.CirrascaleBackend:
-            return CirrascaleBackendEngine(model.name, port=model.model_id_on_host)
+            return CirrascaleBackendEngine(model_id=model.id, port=model.model_id_on_host)
         case ModelHost.Modal | _:
             if model == OLMO_ASR_MODEL_ID:
                 # HACK: The OLMoASR model has some special handling. We'll want to correct that in the future

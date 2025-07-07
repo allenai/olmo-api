@@ -16,6 +16,7 @@ class ModelHost(StrEnum):
     InferD = "inferd"
     Modal = "modal"
     BeakerQueues = "beaker_queues"
+    CirrascaleBackend = "cirrascale_backend"
 
 
 class FileRequiredToPromptOption(StrEnum):

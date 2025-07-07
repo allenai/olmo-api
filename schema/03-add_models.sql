@@ -93,3 +93,47 @@ VALUES (
         'FirstMessage',
         'false'
     );
+
+
+
+INSERT INTO model_config(
+        id,
+        name,
+        description,
+        model_id_on_host,
+        model_type,
+        default_system_prompt,
+        family_id,
+        family_name,
+        host,
+        prompt_type,
+        internal
+    )
+VALUES (
+        'olmoasr',
+        'OLMoASR',
+        'OLMoASR',
+        'olmoasr_769m',
+        'Base',
+        NULL,
+        NULL,
+        NULL,
+        'Modal',
+        'FILES_ONLY',
+        true
+    );
+
+INSERT INTO multi_modal_model_config(
+        id,
+        accepted_file_types,
+        max_files_per_message,
+        require_file_to_prompt,
+        allow_files_in_followups
+    )
+VALUES (
+        'olmoasr',
+        '{ "audio/webm", "audio/mp4", "audio/ogg", "audio/wav" }',
+        1,
+        'AllMessages',
+        'false'
+    );

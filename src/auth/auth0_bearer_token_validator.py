@@ -24,5 +24,6 @@ class Auth0JWTBearerTokenValidator(JWTBearerTokenValidator):
         self.claims_options = {
             "exp": {"essential": True},
             "aud": {"essential": True, "value": audience},
+            # TODO: remove the old a0 issuer when we finish transitioning to the new domain
             "iss": {"essential": True, "values": [issuer, OLD_AUTH0_ISSUER]},
         }

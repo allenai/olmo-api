@@ -29,7 +29,7 @@ class IntegrationTest(TestCase):
             }
             headers = {"content-type": "application/json"}
             response = requests.post(
-                "https://allenai-public.us.auth0.com/oauth/token",
+                "https://auth0.allenai.org/oauth/token",
                 json=payload,
                 headers=headers,
             )

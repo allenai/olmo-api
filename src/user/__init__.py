@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request
 from flask_pydantic_api.api_wrapper import pydantic_api
 from pydantic import ValidationError
 from werkzeug import exceptions
+from datetime import date
 
 from src import db
 from src.auth.auth_service import authn, request_agent
@@ -43,10 +44,23 @@ class UserBlueprint(Blueprint):
             raise exceptions.Unauthorized
 
         user = self.dbc.user.get_by_client(agent.client)
-        has_accepted_terms_and_conditions = (
-            user is not None
-            and user.terms_accepted_date is not None
-            and (user.acceptance_revoked_date is None or user.acceptance_revoked_date < user.terms_accepted_date)
+        last_terms_update_date = date(2025, 7, 11)
+        
+        # A user is considered to have accepted the latest terms if:
+        # - they exist,
+        # - their acceptance date is set,
+        # - and they accepted on or after the latest terms update,
+        #   OR if they revoked before terms update.
+        has_accepted_terms_and_conditions = not (
+            user is None
+            or user.terms_accepted_date is None
+            or (
+                user.terms_accepted_date < last_terms_update_date
+                and (
+                    user.acceptance_revoked_date is None
+                    or user.acceptance_revoked_date < last_terms_update_date
+                )
+            )
         )
         
         has_accepted_data_collection = (

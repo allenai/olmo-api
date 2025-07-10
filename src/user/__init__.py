@@ -48,11 +48,18 @@ class UserBlueprint(Blueprint):
             and user.terms_accepted_date is not None
             and (user.acceptance_revoked_date is None or user.acceptance_revoked_date < user.terms_accepted_date)
         )
+        
+        has_accepted_data_collection = (
+            user is not None
+            and user.data_collection_accepted_date is not None
+            and (user.data_collection_acceptance_revoked_date is None or user.data_collection_acceptance_revoked_date < user.data_collection_accepted_date)
+        )
 
         return AuthenticatedClient(
             id=user.id if user is not None else None,
             client=agent.client,
             has_accepted_terms_and_conditions=has_accepted_terms_and_conditions,
+            has_accepted_data_collection=has_accepted_data_collection,
             permissions=get_permissions(agent.token),
         )
 

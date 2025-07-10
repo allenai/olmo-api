@@ -671,5 +671,15 @@ DROP TYPE "public"."modelhost_old";
 
 UPDATE alembic_version SET version_num='b85b60aa5479' WHERE alembic_version.version_num = '93d6e3c1967d';
 
+-- Running upgrade b85b60aa5479 -> c44d4eee37f6
+
+ALTER TABLE olmo_user ADD COLUMN data_collection_accepted_date TIMESTAMP WITH TIME ZONE;
+
+ALTER TABLE olmo_user ADD COLUMN data_collection_acceptance_revoked_date TIMESTAMP WITH TIME ZONE;
+
+COMMENT ON COLUMN olmo_user.data_collection_acceptance_revoked_date IS 'GDPR requires that consent can be revoked. This field will allow us to track that while still keeping the user around. That may come in handy if we need to delete their data programmatically.';
+
+UPDATE alembic_version SET version_num='c44d4eee37f6' WHERE alembic_version.version_num = 'b85b60aa5479';
+
 COMMIT;
 

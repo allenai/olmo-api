@@ -2,7 +2,8 @@ from flask import Blueprint, jsonify, request
 from flask_pydantic_api.api_wrapper import pydantic_api
 from pydantic import ValidationError
 from werkzeug import exceptions
-from datetime import date
+from datetime import datetime
+from datetime import timezone
 
 from src import db
 from src.auth.auth_service import authn, request_agent

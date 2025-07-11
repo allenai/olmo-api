@@ -44,7 +44,7 @@ class UserBlueprint(Blueprint):
             raise exceptions.Unauthorized
 
         user = self.dbc.user.get_by_client(agent.client)
-        last_terms_update_date = date(2025, 7, 11)
+        last_terms_update_date = datetime(2025, 7, 11, tzinfo=UTC)
 
         # A user is considered to have accepted the latest terms if:
         # - they exist,

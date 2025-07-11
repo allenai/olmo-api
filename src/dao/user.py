@@ -24,7 +24,7 @@ class User(APIInterface):
             terms_accepted_date,
             acceptance_revoked_date,
             data_collection_accepted_date,
-            data_collection_acceptance_revoked_date
+            data_collection_acceptance_revoked_date,
         ] = row
 
         return cls(
@@ -33,7 +33,7 @@ class User(APIInterface):
             terms_accepted_date=terms_accepted_date,
             acceptance_revoked_date=acceptance_revoked_date,
             data_collection_accepted_date=data_collection_accepted_date,
-            data_collection_acceptance_revoked_date=data_collection_acceptance_revoked_date
+            data_collection_acceptance_revoked_date=data_collection_acceptance_revoked_date,
         )
 
 

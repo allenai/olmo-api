@@ -45,7 +45,7 @@ class UserBlueprint(Blueprint):
 
         user = self.dbc.user.get_by_client(agent.client)
         last_terms_update_date = date(2025, 7, 11)
-        
+
         # A user is considered to have accepted the latest terms if:
         # - they exist,
         # - their acceptance date is set,
@@ -56,17 +56,17 @@ class UserBlueprint(Blueprint):
             or user.terms_accepted_date is None
             or (
                 user.terms_accepted_date < last_terms_update_date
-                and (
-                    user.acceptance_revoked_date is None
-                    or user.acceptance_revoked_date < last_terms_update_date
-                )
+                and (user.acceptance_revoked_date is None or user.acceptance_revoked_date < last_terms_update_date)
             )
         )
-        
+
         has_accepted_data_collection = (
             user is not None
             and user.data_collection_accepted_date is not None
-            and (user.data_collection_acceptance_revoked_date is None or user.data_collection_acceptance_revoked_date < user.data_collection_accepted_date)
+            and (
+                user.data_collection_acceptance_revoked_date is None
+                or user.data_collection_acceptance_revoked_date < user.data_collection_accepted_date
+            )
         )
 
         return AuthenticatedClient(

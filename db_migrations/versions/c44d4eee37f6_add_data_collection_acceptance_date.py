@@ -20,25 +20,22 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Upgrade schema."""
+    op.add_column("olmo_user", sa.Column("data_collection_accepted_date", sa.TIMESTAMP(timezone=True), nullable=True))
     op.add_column(
-        'olmo_user',
-        sa.Column('data_collection_accepted_date', sa.TIMESTAMP(timezone=True), nullable=True)
-    )
-    op.add_column(
-        'olmo_user',
+        "olmo_user",
         sa.Column(
-            'data_collection_acceptance_revoked_date',
+            "data_collection_acceptance_revoked_date",
             sa.TIMESTAMP(timezone=True),
             nullable=True,
             comment=(
-                'GDPR requires that consent can be revoked. This field will allow us to track that '
-                'while still keeping the user around. That may come in handy if we need to delete their data programmatically.'
-            )
-        )
+                "GDPR requires that consent can be revoked. This field will allow us to track that "
+                "while still keeping the user around. That may come in handy if we need to delete their data programmatically."
+            ),
+        ),
     )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.drop_column('olmo_user', 'data_collection_acceptance_revoked_date')
-    op.drop_column('olmo_user', 'data_collection_accepted_date')
+    op.drop_column("olmo_user", "data_collection_acceptance_revoked_date")
+    op.drop_column("olmo_user", "data_collection_accepted_date")

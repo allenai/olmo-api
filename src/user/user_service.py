@@ -79,13 +79,21 @@ def migrate_user_from_anonymous_user(
     if previous_user is not None and new_user is not None:
         most_recent_terms_accepted_date = max(previous_user.terms_accepted_date, new_user.terms_accepted_date)
         most_recent_data_collection_accepted_date = max(
-            (d for d in [previous_user.data_collection_accepted_date, new_user.data_collection_accepted_date] if d is not None),
-            default=None
+            (
+                d
+                for d in [previous_user.data_collection_accepted_date, new_user.data_collection_accepted_date]
+                if d is not None
+            ),
+            default=None,
         )
 
         # TODO: carry over acceptance revoked date
 
-        updated_user = dbc.user.update(client=new_user_id, terms_accepted_date=most_recent_terms_accepted_date, data_collection_accepted_date=most_recent_data_collection_accepted_date)
+        updated_user = dbc.user.update(
+            client=new_user_id,
+            terms_accepted_date=most_recent_terms_accepted_date,
+            data_collection_accepted_date=most_recent_data_collection_accepted_date,
+        )
 
     elif previous_user is not None and new_user is None:
         updated_user = dbc.user.create(

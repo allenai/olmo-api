@@ -27,4 +27,6 @@ def get_threads(dbc: db.Client, request: GetThreadsRequest) -> GetThreadsRespons
         agent=agent.client,
     )
 
-    return GetThreadsResponse(threads=[Thread.from_message(message) for message in message_list.messages], meta=message_list.meta)
+    return GetThreadsResponse(
+        threads=[Thread.from_message(message) for message in message_list.messages], meta=message_list.meta
+    )

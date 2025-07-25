@@ -16,6 +16,8 @@ class UpsertUserRequest(APIInterface):
     id: str | None = None
     terms_accepted_date: datetime | None = None
     acceptance_revoked_date: datetime | None = None
+    data_collection_accepted_date: datetime | None = None
+    data_collection_acceptance_revoked_date: datetime | None = None
 
 
 def upsert_user(dbc: db.Client, client: str) -> User | None:
@@ -29,12 +31,16 @@ def upsert_user(dbc: db.Client, client: str) -> User | None:
             id=request.id,
             terms_accepted_date=request.terms_accepted_date,
             acceptance_revoked_date=request.acceptance_revoked_date,
+            data_collection_accepted_date=request.data_collection_accepted_date,
+            data_collection_acceptance_revoked_date=request.data_collection_acceptance_revoked_date,
         )
 
     new_user = dbc.user.create(
         client=request.client,
         terms_accepted_date=request.terms_accepted_date,
         acceptance_revoked_date=request.acceptance_revoked_date,
+        data_collection_accepted_date=request.data_collection_accepted_date,
+        data_collection_acceptance_revoked_date=request.data_collection_acceptance_revoked_date,
     )
 
     if new_user:
@@ -72,16 +78,30 @@ def migrate_user_from_anonymous_user(
 
     if previous_user is not None and new_user is not None:
         most_recent_terms_accepted_date = max(previous_user.terms_accepted_date, new_user.terms_accepted_date)
+        most_recent_data_collection_accepted_date = max(
+            (
+                d
+                for d in [previous_user.data_collection_accepted_date, new_user.data_collection_accepted_date]
+                if d is not None
+            ),
+            default=None,
+        )
 
         # TODO: carry over acceptance revoked date
 
-        updated_user = dbc.user.update(client=new_user_id, terms_accepted_date=most_recent_terms_accepted_date)
+        updated_user = dbc.user.update(
+            client=new_user_id,
+            terms_accepted_date=most_recent_terms_accepted_date,
+            data_collection_accepted_date=most_recent_data_collection_accepted_date,
+        )
 
     elif previous_user is not None and new_user is None:
         updated_user = dbc.user.create(
             client=new_user_id,
             terms_accepted_date=previous_user.terms_accepted_date,
             acceptance_revoked_date=previous_user.acceptance_revoked_date,
+            data_collection_accepted_date=previous_user.data_collection_accepted_date,
+            data_collection_acceptance_revoked_date=previous_user.data_collection_acceptance_revoked_date,
         )
 
     elif previous_user is None and new_user is not None:

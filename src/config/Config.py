@@ -84,7 +84,6 @@ class GoogleCloudServices:
 
 @dataclass
 class FeatureFlags:
-    enable_dynamic_model_config: bool
     allow_files_only_model_in_thread: bool
 
 
@@ -178,7 +177,6 @@ class Config:
                     require_recaptcha=data["google_cloud_services"].get("require_recaptcha", True),
                 ),
                 feature_flags=FeatureFlags(
-                    enable_dynamic_model_config=data.get("feature_flags", {}).get("enable_dynamic_model_config", False),
                     allow_files_only_model_in_thread=data.get("feature_flags", {}).get(
                         "allow_files_only_model_in_thread", False
                     ),

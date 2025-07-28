@@ -1,4 +1,4 @@
-from flask import Blueprint, Response
+from flask import Blueprint, Response, stream_with_context
 from sqlalchemy.orm import Session, sessionmaker
 
 from src import db
@@ -39,6 +39,10 @@ def create_v4_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage, sess
 
     @v4_blueprint.post("/test-message")
     def test_message():
-        return Response(chat_service.stream_message(), mimetype="application/jsonl")
+        model = chat_service.get_test_model("OLMo-2-0425-1B-Instruct")
+        return Response(
+            stream_with_context(chat_service.stream_message(model, user_prompt="Tell me about lions in one sentence")),
+            mimetype="application/jsonl",
+        )
 
     return v4_blueprint

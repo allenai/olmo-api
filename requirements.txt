@@ -35,3 +35,4 @@ openai==1.93.0
 ./vendor/beaker_py-2.2.1-py3-none-any.whl
 langchain==0.3.27
 langchain-openai==0.3.28
+langchain-community==0.3.27

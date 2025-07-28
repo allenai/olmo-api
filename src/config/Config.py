@@ -3,6 +3,8 @@ import os
 from dataclasses import dataclass
 from typing import Self
 
+from pydantic import SecretStr
+
 from src.config.InfiniGramSource import InfiniGramSource, map_infinigram_sources
 from src.config.Model import Model, MultiModalModel, map_model_from_config
 
@@ -34,6 +36,12 @@ class CirrascaleBackend:
     # The base_url should not contain the port.
     base_url: str
     api_key: str
+
+
+@dataclass
+class Cirrascale:
+    base_url: str
+    api_key: SecretStr
 
 
 @dataclass
@@ -85,6 +93,7 @@ class GoogleCloudServices:
 @dataclass
 class FeatureFlags:
     allow_files_only_model_in_thread: bool
+    use_new_streaming_framework: bool
 
 
 @dataclass
@@ -111,6 +120,7 @@ class Config:
     feature_flags: FeatureFlags
     beaker: Beaker
     cirrascale_backend: CirrascaleBackend
+    cirrascale: Cirrascale
 
     @classmethod
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
@@ -138,6 +148,9 @@ class Config:
                 cirrascale_backend=CirrascaleBackend(
                     base_url=data["cirrascale_backend"]["base_url"],
                     api_key=data["cirrascale_backend"]["api_key"],
+                ),
+                cirrascale=Cirrascale(
+                    base_url=data["cirrascale"]["base_url"], api_key=SecretStr(data["cirrascale"]["api_key"])
                 ),
                 auth=Auth(
                     domain=data["auth"].get("auth0_domain"),
@@ -180,6 +193,7 @@ class Config:
                     allow_files_only_model_in_thread=data.get("feature_flags", {}).get(
                         "allow_files_only_model_in_thread", False
                     ),
+                    use_new_streaming_framework=data.get("feature_flags", {}).get("use_new_streaming_framework", False),
                 ),
                 models=[map_model_from_config(model_config) for model_config in data["models"]],
                 beaker=Beaker(

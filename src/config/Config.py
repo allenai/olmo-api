@@ -121,6 +121,8 @@ class Config:
     beaker: Beaker
     cirrascale_backend: CirrascaleBackend
     cirrascale: Cirrascale
+    cirrascale_public: Cirrascale
+    modal_qwen: Cirrascale
 
     @classmethod
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
@@ -151,6 +153,14 @@ class Config:
                 ),
                 cirrascale=Cirrascale(
                     base_url=data["cirrascale"]["base_url"], api_key=SecretStr(data["cirrascale"]["api_key"])
+                ),
+                cirrascale_public=Cirrascale(
+                    base_url=data["cirrascale_public"]["base_url"],
+                    api_key=SecretStr(data["cirrascale_public"]["api_key"]),
+                ),
+                modal_qwen=Cirrascale(
+                    base_url=data["modal_qwen"]["base_url"],
+                    api_key=SecretStr(data["modal_qwen"]["api_key"]),
                 ),
                 auth=Auth(
                     domain=data["auth"].get("auth0_domain"),

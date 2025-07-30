@@ -49,6 +49,6 @@ def create_v4_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage, sess
 
     @v4_blueprint.post("/test-pydantic")
     def test_pydantic():
-        return Response(stream_with_context(pydantic_chat_service.stream_message("Tell me about lions")))
+        return Response(stream_with_context(pydantic_chat_service.stream_message("What is 3 + 1?")))
 
     return v4_blueprint

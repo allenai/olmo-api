@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from src import db
 from src.admin.admin_blueprint import create_admin_blueprint
-from src.chat import chat_service
+from src.chat import chat_service, pydantic_chat_service
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.v4_message_blueprint import create_v4_message_blueprint
 from src.model_config.model_config_blueprint import create_model_config_blueprint
@@ -41,8 +41,14 @@ def create_v4_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage, sess
     def test_message():
         model = chat_service.get_test_model("OLMo-2-0425-1B-Instruct")
         return Response(
-            stream_with_context(chat_service.stream_message(model, user_prompt="Tell me about lions in one sentence")),
+            stream_with_context(
+                chat_service.stream_message(model, user_prompt="<thought>thinking about a lot of things</thought>")
+            ),
             mimetype="application/jsonl",
         )
+
+    @v4_blueprint.post("/test-pydantic")
+    def test_pydantic():
+        return Response(stream_with_context(pydantic_chat_service.stream_message("Tell me about lions")))
 
     return v4_blueprint

@@ -6,10 +6,11 @@ flowchart TD
         safety --> notSafe["Not safe, return validation error"]
         hasParent --> fetchThread["Has parent, fetch thread messages"]
         determineHost --> hasParent{"Parent ID?"}
-        fetchThread --> mapMessages["Map messages"]
+        fetchThread --> saveStartOfNewMessage["Save new empty message to DB"]
         hasParent --> determineTools["Determine what tools to include in the system message"]
         determineTools --> setSystemMessage["Create a thread with a system message from a prompt template"]
-        setSystemMessage --> mapMessages
+        setSystemMessage -->saveStartOfNewMessage 
+        saveStartOfNewMessage --> mapMessages["Map from DB messages to P-AI messages"]
         mapMessages --> submit["Submit messages to model"]
         submit --> stream["Stream chunks to client"]
         stream --> streamErrors{"Was there an error while streaming?"}

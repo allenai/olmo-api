@@ -46,6 +46,23 @@ from src.message.validate_message_files_from_config import (
 from src.message.WildGuard import WildGuard
 from src.util.generator_with_return_value import GeneratorWithReturnValue
 
+from src.pydantic_inference.pydantic_inference_service import get_pydantic_inference_engine
+from pydantic_ai.direct import model_request_stream_sync
+from pydantic_ai.messages import (
+    PartStartEvent,
+    PartDeltaEvent,
+    ModelMessage,
+    ModelRequest,
+    UserPromptPart,
+    ModelResponse,
+    ModelResponsePart,
+    TextPart,
+    SystemPromptPart,
+    TextPartDelta,
+    ThinkingPartDelta,
+    ToolCallPartDelta,
+)
+
 
 def check_message_safety(
     text: str,
@@ -182,6 +199,8 @@ def stream_new_message(
     agent = authn()
 
     inference_engine = get_engine(model)
+    # TODO get pydantic from model
+    pydantic_inference_engine = get_pydantic_inference_engine(model)
 
     evaluate_prompt_submission_captcha(
         request.captcha_token,
@@ -381,14 +400,34 @@ def stream_new_message(
             )
         )
 
-        for chunk in message_chunks_generator:
-            if isinstance(chunk, InferenceEngineChunk):
-                mapped_chunk = map_chunk(chunk, message_id=reply.id)
-                yield mapped_chunk
-                finish_reason = chunk.finish_reason
+        # Replace with pydantic stream implementation
+
+        # pydantic_map_chunk
+
+        # TODO mpa messages
+
+        pydantic_messages = pydantic_map_messages(chain)
+        print(f"pydantic_messages: {pydantic_messages}")
+
+        with model_request_stream_sync(
+            model=pydantic_inference_engine,
+            messages=pydantic_messages,
+        ) as stream:
+            for chunk in stream:
+                mapped_chunk = pydantic_map_chunk(chunk, message_id=reply.id)
                 chunks.append(mapped_chunk)
-            else:
-                yield chunk
+                print(f"mapped_chunk: {mapped_chunk}")
+                yield mapped_chunk
+
+        # TODO turn baack on with feature flag....
+        # for chunk in message_chunks_generator:
+        #     if isinstance(chunk, InferenceEngineChunk):
+        #         mapped_chunk = map_chunk(chunk, message_id=reply.id)
+        #         yield mapped_chunk
+        #         finish_reason = chunk.finish_reason
+        #         chunks.append(mapped_chunk)
+        #     else:
+        #         yield chunk
 
         stream_metrics: StreamMetrics = message_chunks_generator.value
         first_ns = stream_metrics.first_chunk_ns or 0
@@ -492,6 +531,67 @@ def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> message.MessageCh
     )
 
     return new_chunk
+
+
+def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent, message_id: str) -> message.MessageChunk:
+    mapped_logprobs = [
+        [message.TokenLogProbs(token_id=lp.token_id, text=lp.text, logprob=lp.logprob) for lp in lp_list]
+        for lp_list in []  # TODO: replace with actual logprobs from pydantic inference engine
+    ]
+
+    if isinstance(chunk, PartStartEvent):
+        return message.MessageChunk(
+            message=message_id,
+            content="",
+            logprobs=mapped_logprobs,
+        )
+
+    if isinstance(chunk.delta, TextPartDelta):
+        return message.MessageChunk(
+            message=message_id,
+            content=chunk.delta.content_delta,
+            logprobs=mapped_logprobs,
+        )
+
+    if isinstance(chunk.delta, ThinkingPartDelta):
+        return message.MessageChunk(
+            message=message_id,
+            content=chunk.delta.content_delta or "",
+            logprobs=mapped_logprobs,
+        )
+
+    if isinstance(chunk.delta, ToolCallPartDelta):
+        return message.MessageChunk(
+            message=message_id,
+            content=chunk.delta.part_delta_kind or "",
+            logprobs=mapped_logprobs,
+        )
+
+    raise ValueError(
+        f"Unexpected chunk type: {type(chunk)}. Expected PartStartEvent or PartDeltaEvent with TextPartDelta, "
+        "ThinkingPartDelta, or ToolCallPartDelta."
+    )
+
+
+def pydantic_map_messages(
+    messages: Sequence[InferenceEngineMessage],
+) -> list[ModelMessage]:
+    # TODO FILES
+
+    model_messages: list[ModelMessage] = []
+    for message in messages:
+        if message.role == "user":
+            model_messages.append(ModelRequest([UserPromptPart(message.content)]))
+        elif message.role == "assistant":
+            model_messages.append(
+                ModelResponse(
+                    parts=[TextPart(content=message.content)],
+                )
+            )
+        elif message.role == "system":
+            model_messages.append(ModelRequest([SystemPromptPart(message.content)]))
+
+    return model_messages
 
 
 def get_parent_and_root_messages_and_private(

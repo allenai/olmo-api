@@ -50,9 +50,6 @@ from src.pydantic_inference.pydantic_inference_service import get_pydantic_infer
 from src.pydantic_inference.pydantic_helpers import pydantic_map_chunk, pydantic_map_messages
 from pydantic_ai.direct import model_request_stream_sync
 
-FAKE_FEATURE_FLAG = True
-
-
 def check_message_safety(
     text: str,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
@@ -379,7 +376,7 @@ def stream_new_message(
         output_token_count: int = -1
         total_generation_ns: int = 0
 
-        if FAKE_FEATURE_FLAG:
+        if cfg.feature_flags.enable_pydantic_inference:
             pydantic_inference_engine = get_pydantic_inference_engine(model)
 
             pydantic_messages = pydantic_map_messages(chain)

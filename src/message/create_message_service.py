@@ -63,6 +63,8 @@ from pydantic_ai.messages import (
     ToolCallPartDelta,
 )
 
+FAKE_FEATURE_FLAG = True
+
 
 def check_message_safety(
     text: str,
@@ -197,10 +199,6 @@ def stream_new_message(
 ) -> message.Message | Generator[message.Message | message.MessageChunk | message.MessageStreamError, Any, None]:
     start_all = time_ns()
     agent = authn()
-
-    inference_engine = get_engine(model)
-    # TODO get pydantic from model
-    pydantic_inference_engine = get_pydantic_inference_engine(model)
 
     evaluate_prompt_submission_captcha(
         request.captcha_token,
@@ -394,46 +392,47 @@ def stream_new_message(
         output_token_count: int = -1
         total_generation_ns: int = 0
 
-        message_chunks_generator = GeneratorWithReturnValue(
-            stream_message_chunks(
-                reply_id=reply.id, model=model, messages=chain, opts=request.opts, inference_engine=inference_engine
+        if FAKE_FEATURE_FLAG:
+            pydantic_inference_engine = get_pydantic_inference_engine(model)
+
+            pydantic_messages = pydantic_map_messages(chain)
+
+            with model_request_stream_sync(
+                model=pydantic_inference_engine,
+                messages=pydantic_messages,
+            ) as stream:
+                for chunk in stream:
+                    mapped_chunk = pydantic_map_chunk(chunk, message_id=reply.id)
+                    chunks.append(mapped_chunk)
+                    yield mapped_chunk
+            # add StreamMetrics
+
+        else:
+            inference_engine = get_engine(model)
+            message_chunks_generator = GeneratorWithReturnValue(
+                stream_message_chunks(
+                    reply_id=reply.id,
+                    model=model,
+                    messages=chain,
+                    opts=request.opts,
+                    inference_engine=inference_engine,
+                )
             )
-        )
 
-        # Replace with pydantic stream implementation
+            for chunk in message_chunks_generator:
+                if isinstance(chunk, InferenceEngineChunk):
+                    mapped_chunk = map_chunk(chunk, message_id=reply.id)
+                    yield mapped_chunk
+                    finish_reason = chunk.finish_reason
+                    chunks.append(mapped_chunk)
+                else:
+                    yield chunk
 
-        # pydantic_map_chunk
-
-        # TODO mpa messages
-
-        pydantic_messages = pydantic_map_messages(chain)
-        print(f"pydantic_messages: {pydantic_messages}")
-
-        with model_request_stream_sync(
-            model=pydantic_inference_engine,
-            messages=pydantic_messages,
-        ) as stream:
-            for chunk in stream:
-                mapped_chunk = pydantic_map_chunk(chunk, message_id=reply.id)
-                chunks.append(mapped_chunk)
-                print(f"mapped_chunk: {mapped_chunk}")
-                yield mapped_chunk
-
-        # TODO turn baack on with feature flag....
-        # for chunk in message_chunks_generator:
-        #     if isinstance(chunk, InferenceEngineChunk):
-        #         mapped_chunk = map_chunk(chunk, message_id=reply.id)
-        #         yield mapped_chunk
-        #         finish_reason = chunk.finish_reason
-        #         chunks.append(mapped_chunk)
-        #     else:
-        #         yield chunk
-
-        stream_metrics: StreamMetrics = message_chunks_generator.value
-        first_ns = stream_metrics.first_chunk_ns or 0
-        input_token_count = stream_metrics.input_token_count or -1
-        output_token_count = stream_metrics.output_token_count or -1
-        total_generation_ns = stream_metrics.total_generation_ns or 0
+            stream_metrics: StreamMetrics = message_chunks_generator.value
+            first_ns = stream_metrics.first_chunk_ns or 0
+            input_token_count = stream_metrics.input_token_count or -1
+            output_token_count = stream_metrics.output_token_count or -1
+            total_generation_ns = stream_metrics.total_generation_ns or 0
 
         gen = total_generation_ns
         gen //= 1000000

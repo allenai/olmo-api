@@ -17,6 +17,8 @@ class ModelHost(StrEnum):
     Modal = "modal"
     BeakerQueues = "beaker_queues"
     CirrascaleBackend = "cirrascale_backend"
+    Cirrascale = "cirrascale"
+    ModalOpenAI = "modal_openai"
 
 
 class FileRequiredToPromptOption(StrEnum):

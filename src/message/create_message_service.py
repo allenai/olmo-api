@@ -47,21 +47,8 @@ from src.message.WildGuard import WildGuard
 from src.util.generator_with_return_value import GeneratorWithReturnValue
 
 from src.pydantic_inference.pydantic_inference_service import get_pydantic_inference_engine
+from src.pydantic_inference.pydantic_helpers import pydantic_map_chunk, pydantic_map_messages
 from pydantic_ai.direct import model_request_stream_sync
-from pydantic_ai.messages import (
-    PartStartEvent,
-    PartDeltaEvent,
-    ModelMessage,
-    ModelRequest,
-    UserPromptPart,
-    ModelResponse,
-    ModelResponsePart,
-    TextPart,
-    SystemPromptPart,
-    TextPartDelta,
-    ThinkingPartDelta,
-    ToolCallPartDelta,
-)
 
 FAKE_FEATURE_FLAG = True
 
@@ -405,7 +392,7 @@ def stream_new_message(
                     mapped_chunk = pydantic_map_chunk(chunk, message_id=reply.id)
                     chunks.append(mapped_chunk)
                     yield mapped_chunk
-            # add StreamMetrics
+            # TODO add StreamMetrics
 
         else:
             inference_engine = get_engine(model)
@@ -428,6 +415,7 @@ def stream_new_message(
                 else:
                     yield chunk
 
+            # TODO Looks like these are not working with Cirrascale
             stream_metrics: StreamMetrics = message_chunks_generator.value
             first_ns = stream_metrics.first_chunk_ns or 0
             input_token_count = stream_metrics.input_token_count or -1
@@ -530,67 +518,6 @@ def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> message.MessageCh
     )
 
     return new_chunk
-
-
-def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent, message_id: str) -> message.MessageChunk:
-    mapped_logprobs = [
-        [message.TokenLogProbs(token_id=lp.token_id, text=lp.text, logprob=lp.logprob) for lp in lp_list]
-        for lp_list in []  # TODO: replace with actual logprobs from pydantic inference engine
-    ]
-
-    if isinstance(chunk, PartStartEvent):
-        return message.MessageChunk(
-            message=message_id,
-            content="",
-            logprobs=mapped_logprobs,
-        )
-
-    if isinstance(chunk.delta, TextPartDelta):
-        return message.MessageChunk(
-            message=message_id,
-            content=chunk.delta.content_delta,
-            logprobs=mapped_logprobs,
-        )
-
-    if isinstance(chunk.delta, ThinkingPartDelta):
-        return message.MessageChunk(
-            message=message_id,
-            content=chunk.delta.content_delta or "",
-            logprobs=mapped_logprobs,
-        )
-
-    if isinstance(chunk.delta, ToolCallPartDelta):
-        return message.MessageChunk(
-            message=message_id,
-            content=chunk.delta.part_delta_kind or "",
-            logprobs=mapped_logprobs,
-        )
-
-    raise ValueError(
-        f"Unexpected chunk type: {type(chunk)}. Expected PartStartEvent or PartDeltaEvent with TextPartDelta, "
-        "ThinkingPartDelta, or ToolCallPartDelta."
-    )
-
-
-def pydantic_map_messages(
-    messages: Sequence[InferenceEngineMessage],
-) -> list[ModelMessage]:
-    # TODO FILES
-
-    model_messages: list[ModelMessage] = []
-    for message in messages:
-        if message.role == "user":
-            model_messages.append(ModelRequest([UserPromptPart(message.content)]))
-        elif message.role == "assistant":
-            model_messages.append(
-                ModelResponse(
-                    parts=[TextPart(content=message.content)],
-                )
-            )
-        elif message.role == "system":
-            model_messages.append(ModelRequest([SystemPromptPart(message.content)]))
-
-    return model_messages
 
 
 def get_parent_and_root_messages_and_private(

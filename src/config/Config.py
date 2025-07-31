@@ -86,6 +86,7 @@ class GoogleCloudServices:
 class FeatureFlags:
     enable_dynamic_model_config: bool
     allow_files_only_model_in_thread: bool
+    enable_pydantic_inference: bool
 
 
 @dataclass
@@ -181,6 +182,9 @@ class Config:
                     enable_dynamic_model_config=data.get("feature_flags", {}).get("enable_dynamic_model_config", False),
                     allow_files_only_model_in_thread=data.get("feature_flags", {}).get(
                         "allow_files_only_model_in_thread", False
+                    ),
+                    enable_pydantic_inference=data.get("feature_flags", {}).get(
+                        "enable_pydantic_inference", False
                     ),
                 ),
                 models=[map_model_from_config(model_config) for model_config in data["models"]],

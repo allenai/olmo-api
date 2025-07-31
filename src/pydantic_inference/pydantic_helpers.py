@@ -25,7 +25,6 @@ from src.dao import message
 def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent, message_id: str) -> message.MessageChunk:
     match chunk:
         case PartStartEvent():
-            # TODO learn more about this first start event. Maybe can ignore...
             return pydantic_map_part(chunk.part, message_id)
         case PartDeltaEvent():
             return pydantic_map_delta(chunk.delta, message_id)

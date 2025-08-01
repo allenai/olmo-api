@@ -1,13 +1,17 @@
 from collections.abc import Sequence
+import base64
 
 from src.inference.InferenceEngine import (
     InferenceEngineMessage,
 )
 from pydantic_ai.messages import (
+    BinaryContent,
+    ImageUrl,
     PartStartEvent,
     PartDeltaEvent,
     ModelMessage,
     ModelRequest,
+    UserContent,
     UserPromptPart,
     ModelResponse,
     TextPart,
@@ -17,7 +21,6 @@ from pydantic_ai.messages import (
     ToolCallPartDelta,
     ThinkingPart,
     ToolCallPart,
-    ThinkingPart
 )
 from src.dao import message
 
@@ -30,16 +33,26 @@ def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent, message_id: str) 
             return pydantic_map_delta(chunk.delta, message_id)
 
 
-
 def pydantic_map_messages(
     messages: Sequence[InferenceEngineMessage],
 ) -> list[ModelMessage]:
-    # TODO FILES
+    # TODO FILES / Images
 
     model_messages: list[ModelMessage] = []
     for message in messages:
         if message.role == "user":
-            model_messages.append(ModelRequest([UserPromptPart(message.content)]))
+            user_content: list[UserContent] = [message.content]
+            for file in message.files or []:
+                if isinstance(file, str):
+                    user_content.append(ImageUrl(url='https://iili.io/3Hs4FMg.png'))
+                else:
+                    # TODO not sure about this... copied from ModalEngine.py
+                    image_bytes = base64.b64encode(file.stream.read())
+                    user_content.append(BinaryContent(image_bytes, media_type=file.mimetype))
+
+            user_prompt_part = UserPromptPart(user_content)
+
+            model_messages.append(ModelRequest([user_prompt_part]))
         elif message.role == "assistant":
             model_messages.append(
                 ModelResponse(
@@ -52,10 +65,7 @@ def pydantic_map_messages(
     return model_messages
 
 def pydantic_map_part(part: TextPart | ToolCallPart | ThinkingPart, message_id: str) -> message.MessageChunk:
-    mapped_logprobs = [
-        [message.TokenLogProbs(token_id=lp.token_id, text=lp.text, logprob=lp.logprob) for lp in lp_list]
-        for lp_list in []  # TODO: replace with actual logprobs from pydantic inference engine
-    ]
+    mapped_logprobs = [] # TODO Depracated property
 
     match part:
         case TextPart():

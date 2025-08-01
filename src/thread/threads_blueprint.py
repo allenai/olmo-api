@@ -16,7 +16,7 @@ from src.message.create_message_request import (
     CreateMessageRequest,
     CreateMessageRequestWithLists,
 )
-from src.message.create_message_service import (
+from src.message.create_message_service.stream_new_message import (
     create_message_v4,
     format_message,
 )

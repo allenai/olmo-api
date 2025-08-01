@@ -1,8 +1,8 @@
-import base64
+
 import dataclasses
 import json
 import os
-from collections.abc import Generator, Sequence
+from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 from time import time_ns
 from typing import Any, cast
@@ -12,11 +12,9 @@ from flask import request as flask_request
 from pydantic_ai.direct import model_request_stream_sync
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
-from werkzeug.datastructures import FileStorage
 
 from src import db, parse, util
 from src.auth.auth_service import authn
-from src.bot_detection.create_assessment import create_assessment
 from src.config.get_config import cfg
 from src.config.get_models import get_model_by_host_and_id
 from src.dao import completion, message
@@ -31,145 +29,30 @@ from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
     CreateMessageRequestWithLists,
 )
+from src.message.create_message_service.files import upload_request_files
+from src.message.create_message_service.safety import (
+    check_image_safety,
+    check_message_safety,
+    evaluate_prompt_submission_captcha,
+)
 from src.message.GoogleCloudStorage import GoogleCloudStorage
-from src.message.GoogleModerateText import GoogleModerateText
-from src.message.GoogleVisionSafeSearch import GoogleVisionSafeSearch
 from src.message.inference_logging import log_inference_timing
 from src.message.SafetyChecker import (
-    SafetyChecker,
     SafetyCheckerType,
-    SafetyCheckRequest,
 )
 from src.message.stream_message import StreamMetrics, stream_message_chunks
 from src.message.validate_message_files_from_config import (
     validate_message_files_from_config,
 )
-from src.message.WildGuard import WildGuard
 from src.pydantic_inference.pydantic_helpers import pydantic_map_chunk, pydantic_map_messages
 from src.pydantic_inference.pydantic_inference_service import get_pydantic_inference_engine
 from src.util.generator_with_return_value import GeneratorWithReturnValue
-
-
-def check_message_safety(
-    text: str,
-    checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
-) -> bool | None:
-    safety_checker: SafetyChecker = GoogleModerateText()
-    request = SafetyCheckRequest(content=text)
-
-    if checker_type == SafetyCheckerType.WildGuard:
-        safety_checker = WildGuard()
-
-    try:
-        result = safety_checker.check_request(request)
-
-        return result.is_safe()
-
-    except Exception as e:
-        current_app.logger.exception("Skipped message safety check due to error: %s. ", repr(e))
-
-    return None
-
-
-def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
-    checker = GoogleVisionSafeSearch()
-
-    for file in files:
-        try:
-            image = base64.b64encode(file.stream.read()).decode("utf-8")
-            file.stream.seek(0)
-
-            request = SafetyCheckRequest(image, file.filename)
-            result = checker.check_request(request)
-
-            if not result.is_safe():
-                return False
-
-        except Exception as e:
-            current_app.logger.exception(
-                "Skipped image safety check over %s due to error: %s. ",
-                file.filename,
-                repr(e),
-            )
-
-            return None
-
-    return True
 
 
 @dataclasses.dataclass
 class ParsedMessage:
     content: parse.MessageContent
     role: message.Role
-
-
-def upload_request_files(
-    files: Sequence[FileStorage] | None,
-    message_id: str,
-    storage_client: GoogleCloudStorage,
-    root_message_id: str,
-    is_anonymous: bool = False,
-) -> list[str] | None:
-    if files is None or len(files) == 0:
-        return None
-
-    file_urls: list[str] = []
-
-    for i, file in enumerate(files):
-        file_extension = os.path.splitext(file.filename)[1] if file.filename is not None else ""
-
-        # We don't want to save filenames since we're not safety checking them for dangerous or personal info
-        filename = f"{root_message_id}/{message_id}-{i}{file_extension}"
-
-        if file.content_type is None:
-            file_url = storage_client.upload_content(
-                filename=filename, content=file.stream.read(), is_anonymous=is_anonymous
-            )
-        else:
-            file_url = storage_client.upload_content(
-                filename=filename, content=file.stream.read(), content_type=file.content_type, is_anonymous=is_anonymous
-            )
-
-        # since we read from the file we need to rewind it so the next consumer can read it
-        file.stream.seek(0)
-        file_urls.append(file_url)
-
-    return file_urls
-
-
-def evaluate_prompt_submission_captcha(
-    captcha_token: str | None, user_ip_address: str | None, user_agent: str | None, *, is_anonymous_user: bool
-):
-    prompt_submission_action = "prompt_submission"
-    if cfg.google_cloud_services.recaptcha_key is not None and captcha_token is not None:
-        captcha_assessment = create_assessment(
-            project_id="ai2-reviz",
-            recaptcha_key=cfg.google_cloud_services.recaptcha_key,
-            token=captcha_token,
-            recaptcha_action=prompt_submission_action,
-            user_ip_address=user_ip_address,
-            user_agent=user_agent,
-        )
-
-        if not is_anonymous_user or not cfg.google_cloud_services.enable_recaptcha:
-            return
-
-        logger = current_app.logger
-
-        if captcha_assessment is None or not captcha_assessment.token_properties.valid:
-            logger.info("rejecting message request due to invalid captcha", extra={"assessment": captcha_assessment})
-            invalid_captcha_message = "invalid_captcha"
-            raise exceptions.BadRequest(invalid_captcha_message)
-
-        if (
-            captcha_assessment.risk_analysis.score == 0.0
-            or captcha_assessment.token_properties.action != prompt_submission_action
-        ):
-            logger.info(
-                "rejecting message request due to failed captcha assessment", extra={"assessment": captcha_assessment}
-            )
-            failed_captcha_assessment_message = "failed_captcha_assessment"
-            raise exceptions.BadRequest(failed_captcha_assessment_message)
 
 
 def stream_new_message(
@@ -317,17 +200,6 @@ def stream_new_message(
         root_message_id=message_chain[0].id,
         is_anonymous=agent.is_anonymous_user,
     )
-
-    chain: list[InferenceEngineMessage] = [
-        InferenceEngineMessage(
-            role=message_in_chain.role,
-            content=message_in_chain.content,
-            # We only want to add the request files to the new message. The rest will have file urls associated with them
-            files=request.files if message_in_chain.id == msg.id else message_in_chain.file_urls,
-        )
-        for message_in_chain in message_chain
-    ]
-
     # TODO: https://github.com/allenai/playground-issues-repo/issues/9: Get this from the DB
     msg.file_urls = file_urls
 
@@ -391,6 +263,14 @@ def stream_new_message(
                     yield mapped_chunk
 
         else:
+            chain: list[InferenceEngineMessage] = [
+                    InferenceEngineMessage(
+                    role=message_in_chain.role,
+                    content=message_in_chain.content,
+                    # We only want to add the request files to the new message. The rest will have file urls associated with them
+                    files=request.files if message_in_chain.id == msg.id else message_in_chain.file_urls,
+                    )for message_in_chain in message_chain
+                ]
             inference_engine = get_engine(model)
             message_chunks_generator = GeneratorWithReturnValue(
                 stream_message_chunks(
@@ -421,7 +301,7 @@ def stream_new_message(
         gen = total_generation_ns
         gen //= 1000000
 
-        prompt = create_prompt_from_engine_input(chain)
+        prompt = create_prompt_from_engine_input(message_chain)
         output, logprobs = create_output_from_chunks(chunks)
 
         message_completion = None
@@ -499,7 +379,7 @@ def stream_new_message(
 
     return stream()
 
-
+# depracated
 def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> message.MessageChunk:
     chunk_logprobs = chunk.logprobs if chunk.logprobs is not None else []
     mapped_logprobs = [
@@ -604,15 +484,10 @@ def create_message_v4(
 def format_message(obj) -> str:
     return json.dumps(obj=obj, cls=util.CustomEncoder) + "\n"
 
-
-def format_prompt(message: InferenceEngineMessage) -> str:
-    return f"<|{message.role}|>\n{message.content}"
-
-
 def create_prompt_from_engine_input(
-    input_list: list[InferenceEngineMessage],
+    input_list: list[message.Message],
 ) -> str:
-    return "\n".join([format_prompt(m) for m in input_list])
+    return "\n".join([f"<|{m.role}|>\n{m.content}" for m in input_list])
 
 
 def create_output_from_chunks(chunks: list[message.MessageChunk]):

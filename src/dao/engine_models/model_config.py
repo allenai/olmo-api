@@ -17,6 +17,8 @@ class ModelHost(StrEnum):
     Modal = "modal"
     BeakerQueues = "beaker_queues"
     CirrascaleBackend = "cirrascale_backend"
+    Cirrascale = "cirrascale"
+    ModalOpenAI = "modal_openai"
 
 
 class FileRequiredToPromptOption(StrEnum):
@@ -56,6 +58,8 @@ class ModelConfig(Base, kw_only=True):
 
     created_time: Mapped[datetime] = mapped_column(server_default=func.now(), init=False)
     updated_time: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now(), init=False)
+
+    can_call_tools: Mapped[bool] = mapped_column(default=False)
 
     __mapper_args__ = {
         "polymorphic_identity": PromptType.TEXT_ONLY,

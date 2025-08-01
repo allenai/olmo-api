@@ -681,5 +681,59 @@ COMMENT ON COLUMN olmo_user.data_collection_acceptance_revoked_date IS 'GDPR req
 
 UPDATE alembic_version SET version_num='c44d4eee37f6' WHERE alembic_version.version_num = 'b85b60aa5479';
 
+-- Running upgrade c44d4eee37f6 -> f34d2db4d75d
+
+ALTER TABLE model_config ADD COLUMN can_call_tools BOOLEAN DEFAULT 'false' NOT NULL;
+
+UPDATE alembic_version SET version_num='f34d2db4d75d' WHERE alembic_version.version_num = 'c44d4eee37f6';
+
+-- Running upgrade f34d2db4d75d -> 17a551c5bc64
+
+ALTER TYPE "public"."modelhost" RENAME TO modelhost_old;
+
+CREATE TYPE "public"."modelhost" AS ENUM('InferD', 'Modal', 'BeakerQueues', 'CirrascaleBackend', 'Cirrascale', 'ModalOpenAI');
+
+CREATE FUNCTION new_old_not_equals(
+                new_enum_val "public"."modelhost", old_enum_val "public"."modelhost_old"
+            )
+            RETURNS boolean AS $$
+                SELECT new_enum_val::text != old_enum_val::text;
+            $$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OPERATOR != (
+            leftarg = "public"."modelhost",
+            rightarg = "public"."modelhost_old",
+            procedure = new_old_not_equals
+        );
+
+CREATE FUNCTION new_old_equals(
+                new_enum_val "public"."modelhost", old_enum_val "public"."modelhost_old"
+            )
+            RETURNS boolean AS $$
+                SELECT new_enum_val::text = old_enum_val::text;
+            $$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OPERATOR = (
+            leftarg = "public"."modelhost",
+            rightarg = "public"."modelhost_old",
+            procedure = new_old_equals
+        );
+
+ALTER TABLE "public"."model_config" 
+                ALTER COLUMN "host" TYPE "public"."modelhost" 
+                USING "host"::text::"public"."modelhost";
+
+DROP FUNCTION new_old_not_equals(
+            new_enum_val "public"."modelhost", old_enum_val "public"."modelhost_old"
+        ) CASCADE;
+
+DROP FUNCTION new_old_equals(
+            new_enum_val "public"."modelhost", old_enum_val "public"."modelhost_old"
+        ) CASCADE;
+
+DROP TYPE "public"."modelhost_old";
+
+UPDATE alembic_version SET version_num='17a551c5bc64' WHERE alembic_version.version_num = 'f34d2db4d75d';
+
 COMMIT;
 

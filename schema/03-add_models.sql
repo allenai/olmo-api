@@ -137,3 +137,32 @@ VALUES (
         'AllMessages',
         'false'
     );
+
+INSERT INTO model_config(
+        id,
+        name,
+        description,
+        model_id_on_host,
+        model_type,
+        default_system_prompt,
+        family_id,
+        family_name,
+        host,
+        prompt_type,
+        internal,
+        can_call_tools
+    )
+VALUES (
+        'qwen3-openai',
+        'Qwen3',
+        'Qwen3 hosted to test thinking and tool calls',
+        'https://ai2-reviz--qwen3-openai-serve.modal.run/v1',
+        'Chat',
+        NULL,
+        NULL,
+        NULL,
+        'ModalOpenAI',
+        'TEXT_ONLY',
+        true,
+        true
+    );

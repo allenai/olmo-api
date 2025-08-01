@@ -1,24 +1,20 @@
 
 import dataclasses
-import json
 import os
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 from time import time_ns
-from typing import Any, cast
+from typing import Any
 
 from flask import current_app
-from flask import request as flask_request
 from pydantic_ai.direct import model_request_stream_sync
-from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
 
-from src import db, parse, util
+from src import db, parse
 from src.auth.auth_service import authn
 from src.config.get_config import cfg
-from src.config.get_models import get_model_by_host_and_id
 from src.dao import completion, message
-from src.dao.engine_models.model_config import ModelConfig, PromptType
+from src.dao.engine_models.model_config import ModelConfig
 from src.inference.inference_service import get_engine
 from src.inference.InferenceEngine import (
     FinishReason,
@@ -27,7 +23,6 @@ from src.inference.InferenceEngine import (
 )
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
-    CreateMessageRequestWithLists,
 )
 from src.message.create_message_service.files import upload_request_files
 from src.message.create_message_service.safety import (
@@ -41,12 +36,11 @@ from src.message.SafetyChecker import (
     SafetyCheckerType,
 )
 from src.message.stream_message import StreamMetrics, stream_message_chunks
-from src.message.validate_message_files_from_config import (
-    validate_message_files_from_config,
-)
 from src.pydantic_inference.pydantic_helpers import pydantic_map_chunk, pydantic_map_messages
 from src.pydantic_inference.pydantic_inference_service import get_pydantic_inference_engine
 from src.util.generator_with_return_value import GeneratorWithReturnValue
+
+from .database import setup_msg_thread
 
 
 @dataclasses.dataclass
@@ -116,68 +110,12 @@ def stream_new_message(
 
     # We currently want anonymous users' messages to expire after 1 days
     message_expiration_time = datetime.now(UTC) + timedelta(days=1) if agent.is_anonymous_user else None
-
     is_msg_harmful = None if is_content_safe is None or is_image_safe is None else False
-    system_msg = None
-    msg = None
 
-    # if the request message is the first message in a thread
-    if request.parent is None:
-        # create a system prompt message if the current model is specified with a system prompt
-        if model.default_system_prompt is not None:
-            system_msg = dbc.message.create(
-                content=model.default_system_prompt,
-                creator=agent.client,
-                role=message.Role.System,
-                opts=request.opts,
-                model_id=request.model,
-                model_host=request.host,
-                root=None,
-                parent=None,
-                template=request.template,
-                final=False,
-                original=request.original,
-                private=request.private,
-                harmful=is_msg_harmful,
-                expiration_time=message_expiration_time,
-            )
+    msg, system_msg = setup_msg_thread(dbc=dbc, model=model, request=request, agent=agent, message_expiration_time=message_expiration_time, is_msg_harmful=is_msg_harmful)
 
-        parent_id = None if system_msg is None else system_msg.id
 
-        msg = dbc.message.create(
-            content=request.content,
-            creator=agent.client,
-            role=request.role,
-            opts=request.opts,
-            model_id=request.model,
-            model_host=request.host,
-            root=parent_id,
-            parent=parent_id,
-            template=request.template,
-            final=request.role == message.Role.Assistant,
-            original=request.original,
-            private=request.private,
-            harmful=is_msg_harmful,
-            expiration_time=message_expiration_time,
-        )
-    else:
-        msg = dbc.message.create(
-            content=request.content,
-            creator=agent.client,
-            role=request.role,
-            opts=request.opts,
-            model_id=request.model,
-            model_host=request.host,
-            root=request.parent.root,
-            parent=request.parent.id,
-            template=request.template,
-            final=request.role == message.Role.Assistant,
-            original=request.original,
-            private=request.private,
-            harmful=is_msg_harmful,
-            expiration_time=message_expiration_time,
-        )
-
+    # TODO: is this expected?
     if msg.role == message.Role.Assistant:
         return msg
 
@@ -227,157 +165,155 @@ def stream_new_message(
     if system_msg is not None:
         system_msg = dataclasses.replace(system_msg, children=[msg])
 
-    def stream() -> Generator[message.Message | message.MessageChunk | message.MessageStreamError, Any, None]:
-        # We keep track of each chunk and the timing information per-chunk
-        # so that we can manifest a completion at the end. This will go
-        # away when InferD stores this I/O.
-        chunks: list[message.MessageChunk] = []
+    # We keep track of each chunk and the timing information per-chunk
+    # so that we can manifest a completion at the end. This will go
+    # away when InferD stores this I/O.
+    chunks: list[message.MessageChunk] = []
 
-        # Yield the system prompt message if there is any
-        if system_msg is not None:
-            yield system_msg
-        # Yield the new user message
-        else:
-            yield msg
+    # Yield the system prompt message if there is any
+    if system_msg is not None:
+        yield system_msg
+    # Yield the new user message
+    else:
+        yield msg
 
-        # Now yield each chunk as it's returned.
-        finish_reason: FinishReason | None = None
-        start_message_generation_ns = time_ns()
-        first_ns: int = 0
-        input_token_count: int = -1
-        output_token_count: int = -1
-        total_generation_ns: int = 0
+    # Now yield each chunk as it's returned.
+    finish_reason: FinishReason | None = None
+    start_message_generation_ns = time_ns()
+    first_ns: int = 0
+    input_token_count: int = -1
+    output_token_count: int = -1
+    total_generation_ns: int = 0
 
-        if cfg.feature_flags.enable_pydantic_inference:
-            pydantic_inference_engine = get_pydantic_inference_engine(model)
+    if cfg.feature_flags.enable_pydantic_inference:
+        pydantic_inference_engine = get_pydantic_inference_engine(model)
 
-            pydantic_messages = pydantic_map_messages(message_chain)
+        pydantic_messages = pydantic_map_messages(message_chain)
 
-            with model_request_stream_sync(
-                model=pydantic_inference_engine,
-                messages=pydantic_messages,
-            ) as stream:
-                for chunk in stream:
-                    mapped_chunk = pydantic_map_chunk(chunk, message_id=reply.id)
-                    chunks.append(mapped_chunk)
-                    yield mapped_chunk
+        with model_request_stream_sync(
+            model=pydantic_inference_engine,
+            messages=pydantic_messages,
+        ) as stream:
+            for chunk in stream:
+                mapped_chunk = pydantic_map_chunk(chunk, message_id=reply.id)
+                chunks.append(mapped_chunk)
+                yield mapped_chunk
 
-        else:
-            chain: list[InferenceEngineMessage] = [
-                    InferenceEngineMessage(
-                    role=message_in_chain.role,
-                    content=message_in_chain.content,
-                    # We only want to add the request files to the new message. The rest will have file urls associated with them
-                    files=request.files if message_in_chain.id == msg.id else message_in_chain.file_urls,
-                    )for message_in_chain in message_chain
-                ]
-            inference_engine = get_engine(model)
-            message_chunks_generator = GeneratorWithReturnValue(
-                stream_message_chunks(
-                    reply_id=reply.id,
-                    model=model,
-                    messages=chain,
-                    opts=request.opts,
-                    inference_engine=inference_engine,
-                )
-            )
-
-            for chunk in message_chunks_generator:
-                if isinstance(chunk, InferenceEngineChunk):
-                    mapped_chunk = map_chunk(chunk, message_id=reply.id)
-                    yield mapped_chunk
-                    finish_reason = chunk.finish_reason
-                    chunks.append(mapped_chunk)
-                else:
-                    yield chunk
-
-            # TODO: Looks like these are not working with Cirrascale
-            stream_metrics: StreamMetrics = message_chunks_generator.value
-            first_ns = stream_metrics.first_chunk_ns or 0
-            input_token_count = stream_metrics.input_token_count or -1
-            output_token_count = stream_metrics.output_token_count or -1
-            total_generation_ns = stream_metrics.total_generation_ns or 0
-
-        gen = total_generation_ns
-        gen //= 1000000
-
-        prompt = create_prompt_from_engine_input(message_chain)
-        output, logprobs = create_output_from_chunks(chunks)
-
-        message_completion = None
-        if not agent.is_anonymous_user:
-            message_completion = dbc.completion.create(
-                prompt,
-                [completion.CompletionOutput(output, str(finish_reason), logprobs)],
-                msg.opts,
-                model.model_id_on_host,
-                sha,
-                tokenize_ms=-1,
-                generation_ms=gen,
-                queue_ms=0,
-                input_tokens=input_token_count,
-                output_tokens=output_token_count,
-            )
-
-        # Finalize the messages and yield
-        final_message = dbc.message.finalize(msg.id, file_urls=file_urls)
-        if final_message is None:
-            final_message_error = RuntimeError(f"failed to finalize message {msg.id}")
-            yield message.MessageStreamError(
-                message=msg.id, error=str(final_message_error), reason="finalization failure"
-            )
-            raise final_message_error
-
-        final_reply = dbc.message.finalize(
-            reply.id,
-            output,
-            logprobs,
-            message_completion.id if message_completion is not None else None,
-            finish_reason,
-        )
-        if final_reply is None:
-            final_reply_error = RuntimeError(f"failed to finalize message {reply.id}")
-            yield message.MessageStreamError(
-                message=reply.id, error=str(final_reply_error), reason="finalization failure"
-            )
-            raise final_reply_error
-
-        final_message = dataclasses.replace(final_message, children=[final_reply])
-
-        if system_msg is not None:
-            finalSystemMessage = dbc.message.finalize(system_msg.id)
-
-            if finalSystemMessage is None:
-                final_system_message_error = RuntimeError(f"failed to finalize message {system_msg.id}")
-                yield message.MessageStreamError(
-                    message=system_msg.id,
-                    error=str(final_system_message_error),
-                    reason="finalization failure",
-                )
-                raise final_system_message_error
-
-            finalSystemMessage = dataclasses.replace(finalSystemMessage, children=[final_message])
-            final_message = finalSystemMessage
-
-        end_all = time_ns()
-        if first_ns > start_all:
-            log_inference_timing(
-                event_type="create_message",
-                ttft_ns=(first_ns - start_message_generation_ns),
-                total_ns=(end_all - start_all),
-                ttft_ms_including_checks=(first_ns - start_all) // 1e6,
-                safety_ms=safety_check_elapsed_time,
-                input_token_count=input_token_count,
-                output_token_count=output_token_count,
-                model=model.id,
-                safety_check_id=checker_type,
-                message_id=msg.id,
+    else:
+        chain: list[InferenceEngineMessage] = [
+                InferenceEngineMessage(
+                role=message_in_chain.role,
+                content=message_in_chain.content,
+                # We only want to add the request files to the new message. The rest will have file urls associated with them
+                files=request.files if message_in_chain.id == msg.id else message_in_chain.file_urls,
+                )for message_in_chain in message_chain
+            ]
+        inference_engine = get_engine(model)
+        message_chunks_generator = GeneratorWithReturnValue(
+            stream_message_chunks(
                 reply_id=reply.id,
+                model=model,
+                messages=chain,
+                opts=request.opts,
+                inference_engine=inference_engine,
             )
+        )
 
-        yield final_message
+        for chunk in message_chunks_generator:
+            if isinstance(chunk, InferenceEngineChunk):
+                mapped_chunk = map_chunk(chunk, message_id=reply.id)
+                yield mapped_chunk
+                finish_reason = chunk.finish_reason
+                chunks.append(mapped_chunk)
+            else:
+                yield chunk
 
-    return stream()
+        # TODO: Looks like these are not working with Cirrascale
+        stream_metrics: StreamMetrics = message_chunks_generator.value
+        first_ns = stream_metrics.first_chunk_ns or 0
+        input_token_count = stream_metrics.input_token_count or -1
+        output_token_count = stream_metrics.output_token_count or -1
+        total_generation_ns = stream_metrics.total_generation_ns or 0
+
+    gen = total_generation_ns
+    gen //= 1000000
+
+    prompt = create_prompt_from_engine_input(message_chain)
+    output, logprobs = create_output_from_chunks(chunks)
+
+    message_completion = None
+    if not agent.is_anonymous_user:
+        message_completion = dbc.completion.create(
+            prompt,
+            [completion.CompletionOutput(output, str(finish_reason), logprobs)],
+            msg.opts,
+            model.model_id_on_host,
+            sha,
+            tokenize_ms=-1,
+            generation_ms=gen,
+            queue_ms=0,
+            input_tokens=input_token_count,
+            output_tokens=output_token_count,
+        )
+
+    # Finalize the messages and yield
+    final_message = dbc.message.finalize(msg.id, file_urls=file_urls)
+    if final_message is None:
+        final_message_error = RuntimeError(f"failed to finalize message {msg.id}")
+        yield message.MessageStreamError(
+            message=msg.id, error=str(final_message_error), reason="finalization failure"
+        )
+        raise final_message_error
+
+    final_reply = dbc.message.finalize(
+        reply.id,
+        output,
+        logprobs,
+        message_completion.id if message_completion is not None else None,
+        finish_reason,
+    )
+    if final_reply is None:
+        final_reply_error = RuntimeError(f"failed to finalize message {reply.id}")
+        yield message.MessageStreamError(
+            message=reply.id, error=str(final_reply_error), reason="finalization failure"
+        )
+        raise final_reply_error
+
+    final_message = dataclasses.replace(final_message, children=[final_reply])
+
+    if system_msg is not None:
+        finalSystemMessage = dbc.message.finalize(system_msg.id)
+
+        if finalSystemMessage is None:
+            final_system_message_error = RuntimeError(f"failed to finalize message {system_msg.id}")
+            yield message.MessageStreamError(
+                message=system_msg.id,
+                error=str(final_system_message_error),
+                reason="finalization failure",
+            )
+            raise final_system_message_error
+
+        finalSystemMessage = dataclasses.replace(finalSystemMessage, children=[final_message])
+        final_message = finalSystemMessage
+
+    end_all = time_ns()
+    if first_ns > start_all:
+        log_inference_timing(
+            event_type="create_message",
+            ttft_ns=(first_ns - start_message_generation_ns),
+            total_ns=(end_all - start_all),
+            ttft_ms_including_checks=(first_ns - start_all) // 1e6,
+            safety_ms=safety_check_elapsed_time,
+            input_token_count=input_token_count,
+            output_token_count=output_token_count,
+            model=model.id,
+            safety_check_id=checker_type,
+            message_id=msg.id,
+            reply_id=reply.id,
+        )
+
+    yield final_message
+
 
 # depracated
 def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> message.MessageChunk:
@@ -395,100 +331,10 @@ def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> message.MessageCh
 
     return new_chunk
 
-
-def get_parent_and_root_messages_and_private(
-    parent_message_id: str | None,
-    dbc: db.Client,
-    request_private: bool | None,
-    is_anonymous_user: bool,
-) -> tuple[message.Message | None, message.Message | None, bool]:
-    parent_message = dbc.message.get(parent_message_id) if parent_message_id is not None else None
-    root_message = dbc.message.get(parent_message.root) if parent_message is not None else None
-
-    private = (
-        # Anonymous users aren't allowed to share messages
-        True
-        if is_anonymous_user
-        else (
-            request_private
-            if request_private is not None
-            else root_message.private
-            if root_message is not None
-            else False
-        )
-    )
-
-    return parent_message, root_message, private
-
-
-def create_message_v4(
-    request: CreateMessageRequestWithLists,
-    dbc: db.Client,
-    storage_client: GoogleCloudStorage,
-    session_maker: sessionmaker[Session],
-    checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
-):
-    agent = authn()
-
-    parent_message, root_message, private = get_parent_and_root_messages_and_private(
-        request.parent, dbc, request.private, is_anonymous_user=agent.is_anonymous_user
-    )
-
-    mapped_request = CreateMessageRequestWithFullMessages(
-        parent_id=request.parent,
-        parent=parent_message,
-        opts=message.InferenceOpts(
-            max_tokens=request.max_tokens,
-            temperature=request.temperature,
-            n=request.n,
-            top_p=request.top_p,
-            logprobs=request.logprobs,
-            stop=request.stop,
-        ),
-        content=request.content,
-        role=cast(message.Role, request.role),
-        original=request.original,
-        private=private,
-        root=root_message,
-        template=request.template,
-        model=request.model,
-        host=request.host,
-        client=agent.client,
-        files=request.files,
-        captcha_token=request.captcha_token,
-    )
-
-    model = get_model_by_host_and_id(mapped_request.host, mapped_request.model, session_maker=session_maker)
-    if model.prompt_type == PromptType.FILES_ONLY and not cfg.feature_flags.allow_files_only_model_in_thread:
-        current_app.logger.error("Tried to use a files only model in a normal thread stream %s/%s", id, model)
-
-        # HACK: I want OLMoASR to be set up like a normal model but don't want people to stream to it yet
-        model_not_available_message = "This model isn't available yet"
-        raise exceptions.BadRequest(model_not_available_message)
-    validate_message_files_from_config(request.files, config=model, has_parent=mapped_request.parent is not None)
-
-    user_ip_address = flask_request.remote_addr
-    user_agent = flask_request.user_agent.string
-
-    return stream_new_message(
-        mapped_request,
-        dbc,
-        model=model,
-        storage_client=storage_client,
-        checker_type=checker_type,
-        user_ip_address=user_ip_address,
-        user_agent=user_agent,
-    )
-
-
-def format_message(obj) -> str:
-    return json.dumps(obj=obj, cls=util.CustomEncoder) + "\n"
-
 def create_prompt_from_engine_input(
     input_list: list[message.Message],
 ) -> str:
     return "\n".join([f"<|{m.role}|>\n{m.content}" for m in input_list])
-
 
 def create_output_from_chunks(chunks: list[message.MessageChunk]):
     output = ""

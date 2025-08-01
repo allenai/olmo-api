@@ -1,31 +1,28 @@
-from collections.abc import Sequence
 import base64
 
-from src.inference.InferenceEngine import (
-    InferenceEngineMessage,
-)
 from pydantic_ai.messages import (
     BinaryContent,
     ImageUrl,
-    PartStartEvent,
-    PartDeltaEvent,
     ModelMessage,
     ModelRequest,
+    ModelResponse,
+    PartDeltaEvent,
+    PartStartEvent,
+    SystemPromptPart,
+    TextPart,
+    TextPartDelta,
+    ThinkingPart,
+    ThinkingPartDelta,
+    ToolCallPart,
+    ToolCallPartDelta,
     UserContent,
     UserPromptPart,
-    ModelResponse,
-    TextPart,
-    SystemPromptPart,
-    TextPartDelta,
-    ThinkingPartDelta,
-    ToolCallPartDelta,
-    ThinkingPart,
-    ToolCallPart,
 )
-from src.dao import message
+
+from src.dao.message import Message, MessageChunk
 
 
-def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent, message_id: str) -> message.MessageChunk:
+def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent, message_id: str) -> MessageChunk:
     match chunk:
         case PartStartEvent():
             return pydantic_map_part(chunk.part, message_id)
@@ -34,19 +31,18 @@ def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent, message_id: str) 
 
 
 def pydantic_map_messages(
-    messages: Sequence[InferenceEngineMessage],
+    messages: list[Message]
 ) -> list[ModelMessage]:
-    # TODO FILES / Images
 
     model_messages: list[ModelMessage] = []
     for message in messages:
         if message.role == "user":
             user_content: list[UserContent] = [message.content]
-            for file in message.files or []:
+            for file in message.file_urls or []:
                 if isinstance(file, str):
-                    user_content.append(ImageUrl(url='https://iili.io/3Hs4FMg.png'))
+                    user_content.append(ImageUrl(url="https://iili.io/3Hs4FMg.png"))
                 else:
-                    # TODO not sure about this... copied from ModalEngine.py
+                    # TODO: not sure about this... copied from ModalEngine.py
                     image_bytes = base64.b64encode(file.stream.read())
                     user_content.append(BinaryContent(image_bytes, media_type=file.mimetype))
 
@@ -64,56 +60,52 @@ def pydantic_map_messages(
 
     return model_messages
 
-def pydantic_map_part(part: TextPart | ToolCallPart | ThinkingPart, message_id: str) -> message.MessageChunk:
-    mapped_logprobs = [] # TODO Depracated property
+
+def pydantic_map_part(part: TextPart | ToolCallPart | ThinkingPart, message_id: str) -> MessageChunk:
+    mapped_logprobs = []  # TODO: Depracated property
 
     match part:
         case TextPart():
-            return message.MessageChunk(
+            return MessageChunk(
                 message=message_id,
                 content=part.content,
                 logprobs=mapped_logprobs,
             )
         case ThinkingPart():
-            return message.MessageChunk(
+            return MessageChunk(
                 message=message_id,
                 content=part.content or "",
                 logprobs=mapped_logprobs,
             )
         case ToolCallPart():
-            return message.MessageChunk(
+            return MessageChunk(
                 message=message_id,
                 content=part.part_kind or "",
                 logprobs=mapped_logprobs,
             )
-        case _:
-            raise ValueError(f"Unknown part type: {type(part)}")
-        
 
-def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDelta, message_id: str) -> message.MessageChunk:
-    mapped_logprobs = [
-        [message.TokenLogProbs(token_id=lp.token_id, text=lp.text, logprob=lp.logprob) for lp in lp_list]
-        for lp_list in []  # TODO: replace with actual logprobs from pydantic inference engine
-    ]
+
+def pydantic_map_delta(
+    part: TextPartDelta | ToolCallPartDelta | ThinkingPartDelta, message_id: str
+) -> MessageChunk:
+    mapped_logprobs = []  # TODO: Depracated property
 
     match part:
         case TextPartDelta():
-            return message.MessageChunk(
+            return MessageChunk(
                 message=message_id,
                 content=part.content_delta,
                 logprobs=mapped_logprobs,
             )
         case ThinkingPartDelta():
-            return message.MessageChunk(
+            return MessageChunk(
                 message=message_id,
                 content=part.content_delta or "",
                 logprobs=mapped_logprobs,
             )
         case ToolCallPartDelta():
-            return message.MessageChunk(
+            return MessageChunk(
                 message=message_id,
                 content=part.part_delta_kind or "",
                 logprobs=mapped_logprobs,
             )
-        case _:
-            raise ValueError(f"Unknown part type: {type(part)}")

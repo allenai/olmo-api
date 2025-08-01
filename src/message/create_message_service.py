@@ -9,6 +9,7 @@ from typing import Any, cast
 
 from flask import current_app
 from flask import request as flask_request
+from pydantic_ai.direct import model_request_stream_sync
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
 from werkzeug.datastructures import FileStorage
@@ -44,11 +45,10 @@ from src.message.validate_message_files_from_config import (
     validate_message_files_from_config,
 )
 from src.message.WildGuard import WildGuard
+from src.pydantic_inference.pydantic_helpers import pydantic_map_chunk, pydantic_map_messages
+from src.pydantic_inference.pydantic_inference_service import get_pydantic_inference_engine
 from src.util.generator_with_return_value import GeneratorWithReturnValue
 
-from src.pydantic_inference.pydantic_inference_service import get_pydantic_inference_engine
-from src.pydantic_inference.pydantic_helpers import pydantic_map_chunk, pydantic_map_messages
-from pydantic_ai.direct import model_request_stream_sync
 
 def check_message_safety(
     text: str,
@@ -328,7 +328,7 @@ def stream_new_message(
         for message_in_chain in message_chain
     ]
 
-    # TODO https://github.com/allenai/playground-issues-repo/issues/9: Get this from the DB
+    # TODO: https://github.com/allenai/playground-issues-repo/issues/9: Get this from the DB
     msg.file_urls = file_urls
 
     # Create a message that will eventually capture the streamed response.
@@ -379,7 +379,7 @@ def stream_new_message(
         if cfg.feature_flags.enable_pydantic_inference:
             pydantic_inference_engine = get_pydantic_inference_engine(model)
 
-            pydantic_messages = pydantic_map_messages(chain)
+            pydantic_messages = pydantic_map_messages(message_chain)
 
             with model_request_stream_sync(
                 model=pydantic_inference_engine,
@@ -389,7 +389,6 @@ def stream_new_message(
                     mapped_chunk = pydantic_map_chunk(chunk, message_id=reply.id)
                     chunks.append(mapped_chunk)
                     yield mapped_chunk
-            # TODO add StreamMetrics
 
         else:
             inference_engine = get_engine(model)
@@ -412,7 +411,7 @@ def stream_new_message(
                 else:
                     yield chunk
 
-            # TODO Looks like these are not working with Cirrascale
+            # TODO: Looks like these are not working with Cirrascale
             stream_metrics: StreamMetrics = message_chunks_generator.value
             first_ns = stream_metrics.first_chunk_ns or 0
             input_token_count = stream_metrics.input_token_count or -1

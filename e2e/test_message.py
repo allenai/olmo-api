@@ -9,7 +9,11 @@ from e2e import util
 
 from . import base
 
-default_model_options = {"host": (None, "cirrascale_backend"), "model": (None, "cs-OLMo-2-0325-32B-Instruct"), "files": (None, None)}
+default_model_options = {
+    "host": (None, "cirrascale_backend"),
+    "model": (None, "cs-OLMo-2-0325-32B-Instruct"),
+    "files": (None, None),
+}
 
 
 default_options: list[tuple[str, Any]] = [
@@ -121,11 +125,12 @@ class TestMessageEndpoints(base.IntegrationTest):
         r = requests.get(f"{self.origin}/v3/message/{root_message_1['id']}", headers=self.auth(u1))
         root_message_v3_test = r.json()
 
-
         # note breaks if system prompt changes...
-        assert root_message_v3_test["content"] == "You are OLMo 2 Instruct, a helpful, open-source AI Assistant built by the Allen Institute for AI."
+        assert (
+            root_message_v3_test["content"]
+            == "You are OLMo 2 Instruct, a helpful, open-source AI Assistant built by the Allen Institute for AI."
+        )
         assert root_message_v3_test["role"] == "system"
-
 
         root_message_v3_user_message = root_message_v3_test["children"][0]
 
@@ -147,7 +152,6 @@ class TestMessageEndpoints(base.IntegrationTest):
         c1 = r.json()
         assert c1["id"] == root_message_1["children"][0]["id"]
         assert c1["parent"] == root_message_1["id"]
-
 
         assistant_response_message = root_message_v3_user_message["children"][0]
         # Make sure that creating messages with parents works as expected
@@ -333,7 +337,7 @@ class TestMessageEndpoints(base.IntegrationTest):
             r.raise_for_status()
             snippet_test_message = json.loads(util.last_response_line(r))
             self.messages.append((snippet_test_message["id"], u1))
-            assert snippet_test_message['children'][0]["snippet"] == snippet
+            assert snippet_test_message["children"][0]["snippet"] == snippet
 
     def tearDown(self):
         # Since the delete operation cascades, we have to find all child messages

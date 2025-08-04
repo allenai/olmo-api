@@ -36,7 +36,7 @@ from src.message.SafetyChecker import (
 )
 from src.message.stream_message import StreamMetrics, stream_message_chunks
 from src.pydantic_inference.pydantic_ai_helpers import pydantic_map_chunk, pydantic_map_messages
-from src.pydantic_inference.pydantic_inference_service import get_pydantic_inference_engine
+from src.pydantic_inference.pydantic_model_service import get_pydantic_model
 from src.util.generator_with_return_value import GeneratorWithReturnValue
 
 from .database import setup_msg_thread
@@ -191,7 +191,7 @@ def stream_new_message(
     total_generation_ns: int = 0
 
     if cfg.feature_flags.enable_pydantic_inference:
-        pydantic_inference_engine = get_pydantic_inference_engine(model)
+        pydantic_inference_engine = get_pydantic_model(model)
 
         pydantic_messages = pydantic_map_messages(message_chain)
         tools = get_tools() if model.can_call_tools else []

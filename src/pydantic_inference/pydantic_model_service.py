@@ -7,7 +7,7 @@ from .backends.modal_open_ai import get_modal_openai_model
 from .backends.pydantic_ai_test import get_test_model
 
 
-def get_pydantic_inference_engine(model: ModelConfig) -> Model:
+def get_pydantic_model(model: ModelConfig) -> Model:
     match model.host:
         case ModelHost.CirrascaleBackend:
             return get_cirrascale_model(model)

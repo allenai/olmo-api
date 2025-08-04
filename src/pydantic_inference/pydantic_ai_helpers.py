@@ -75,9 +75,13 @@ def pydantic_map_part(part: TextPart | ToolCallPart | ThinkingPart, message_id: 
                 logprobs=mapped_logprobs,
             )
         case ToolCallPart():
+            args_content = part.args or ""
+            if isinstance(args_content, dict):
+                args_content = str(args_content)
+
             return MessageChunk(
                 message=message_id,
-                content=part.part_kind or "",
+                content=args_content,
                 logprobs=mapped_logprobs,
             )
 
@@ -106,6 +110,6 @@ def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDel
 
             return MessageChunk(
                 message=message_id,
-                content=f"TOOL: {args_content} \n",
+                content=f"TOOL {args_content} \n",
                 logprobs=mapped_logprobs,
             )

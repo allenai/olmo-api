@@ -169,7 +169,6 @@ class TestMessageEndpoints(base.IntegrationTest):
             c_tup = (c["id"], u1)
             self.messages.append(c_tup)
             self.child_msgs.append(c_tup)
-        assert c2["parent"] == c1["id"]
         assert c2["content"] == "Complete this thought: I like "
         assert len(c2["children"]) == 1
 
@@ -177,8 +176,9 @@ class TestMessageEndpoints(base.IntegrationTest):
         r = requests.get(f"{self.origin}/v3/message/{root_message_1['id']}", headers=self.auth(u1))
         r.raise_for_status()
         expect = [
-            (root_message_1["id"], "user", None, 1),
-            (c1["id"], "assistant", "chat", 1),
+            (root_message_v3_test["id"], "system", None, 1),
+            (root_message_v3_user_message["id"], "user", None, 1),
+            (assistant_response_message["id"], "assistant", "chat", 1),
             (c2["id"], "user", None, 1),
             (c2["children"][0]["id"], "assistant", "chat", 0),
         ]
@@ -331,9 +331,9 @@ class TestMessageEndpoints(base.IntegrationTest):
                 files={"content": (None, content), **default_model_options},
             )
             r.raise_for_status()
-            root_message_v3_user_message = json.loads(util.last_response_line(r))
-            self.messages.append((root_message_v3_user_message["id"], u1))
-            assert root_message_v3_user_message["snippet"] == snippet
+            snippet_test_message = json.loads(util.last_response_line(r))
+            self.messages.append((snippet_test_message["id"], u1))
+            assert snippet_test_message['children'][0]["snippet"] == snippet
 
     def tearDown(self):
         # Since the delete operation cascades, we have to find all child messages

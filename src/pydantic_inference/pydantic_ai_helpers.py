@@ -37,7 +37,7 @@ def pydantic_map_messages(messages: list[Message]) -> list[ModelMessage]:
             user_content: list[UserContent] = [message.content]
             for file in message.file_urls or []:
                 if isinstance(file, str):
-                    user_content.append(ImageUrl(url="https://iili.io/3Hs4FMg.png"))
+                    user_content.append(ImageUrl(url=file))
                 else:
                     # TODO: not sure about this... copied from ModalEngine.py
                     image_bytes = base64.b64encode(file.stream.read())
@@ -99,8 +99,13 @@ def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDel
                 logprobs=mapped_logprobs,
             )
         case ToolCallPartDelta():
+            # Convert args_delta to string if it's a dictionary
+            args_content = part.args_delta or ""
+            if isinstance(args_content, dict):
+                args_content = str(args_content)
+
             return MessageChunk(
                 message=message_id,
-                content=part.part_delta_kind or "",
+                content=f"TOOL: {args_content} \n",
                 logprobs=mapped_logprobs,
             )

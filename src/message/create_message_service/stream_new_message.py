@@ -6,6 +6,7 @@ from time import time_ns
 from typing import Any
 
 from pydantic_ai.direct import model_request_stream_sync
+from pydantic_ai.models import ModelRequestParameters
 from werkzeug import exceptions
 
 from src import db, parse
@@ -39,6 +40,7 @@ from src.pydantic_inference.pydantic_inference_service import get_pydantic_infer
 from src.util.generator_with_return_value import GeneratorWithReturnValue
 
 from .database import setup_msg_thread
+from .tools import get_tools
 
 
 @dataclasses.dataclass
@@ -192,10 +194,11 @@ def stream_new_message(
         pydantic_inference_engine = get_pydantic_inference_engine(model)
 
         pydantic_messages = pydantic_map_messages(message_chain)
-
+        tools = get_tools() if model.can_call_tools else []
         with model_request_stream_sync(
             model=pydantic_inference_engine,
             messages=pydantic_messages,
+            model_request_parameters=ModelRequestParameters(function_tools=tools),
         ) as stream:
             for chunk in stream:
                 mapped_chunk = pydantic_map_chunk(chunk, message_id=reply.id)

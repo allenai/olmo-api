@@ -1,4 +1,3 @@
-
 import dataclasses
 import os
 from collections.abc import Generator
@@ -6,7 +5,6 @@ from datetime import UTC, datetime, timedelta
 from time import time_ns
 from typing import Any
 
-from flask import current_app
 from pydantic_ai.direct import model_request_stream_sync
 from werkzeug import exceptions
 
@@ -36,7 +34,7 @@ from src.message.SafetyChecker import (
     SafetyCheckerType,
 )
 from src.message.stream_message import StreamMetrics, stream_message_chunks
-from src.pydantic_inference.pydantic_helpers import pydantic_map_chunk, pydantic_map_messages
+from src.pydantic_inference.pydantic_ai_helpers import pydantic_map_chunk, pydantic_map_messages
 from src.pydantic_inference.pydantic_inference_service import get_pydantic_inference_engine
 from src.util.generator_with_return_value import GeneratorWithReturnValue
 
@@ -72,7 +70,6 @@ def stream_new_message(
     is_image_safe = None
     # Capture the SHA and logger, as the current_app context is lost in the generator.
     sha = os.environ.get("SHA") or "DEV"
-    logger = current_app.logger
 
     safety_check_elapsed_time = 0
     if request.role == message.Role.User:
@@ -112,8 +109,14 @@ def stream_new_message(
     message_expiration_time = datetime.now(UTC) + timedelta(days=1) if agent.is_anonymous_user else None
     is_msg_harmful = None if is_content_safe is None or is_image_safe is None else False
 
-    msg, system_msg = setup_msg_thread(dbc=dbc, model=model, request=request, agent=agent, message_expiration_time=message_expiration_time, is_msg_harmful=is_msg_harmful)
-
+    msg, system_msg = setup_msg_thread(
+        dbc=dbc,
+        model=model,
+        request=request,
+        agent=agent,
+        message_expiration_time=message_expiration_time,
+        is_msg_harmful=is_msg_harmful,
+    )
 
     # TODO: is this expected?
     if msg.role == message.Role.Assistant:
@@ -201,13 +204,14 @@ def stream_new_message(
 
     else:
         chain: list[InferenceEngineMessage] = [
-                InferenceEngineMessage(
+            InferenceEngineMessage(
                 role=message_in_chain.role,
                 content=message_in_chain.content,
                 # We only want to add the request files to the new message. The rest will have file urls associated with them
                 files=request.files if message_in_chain.id == msg.id else message_in_chain.file_urls,
-                )for message_in_chain in message_chain
-            ]
+            )
+            for message_in_chain in message_chain
+        ]
         inference_engine = get_engine(model)
         message_chunks_generator = GeneratorWithReturnValue(
             stream_message_chunks(
@@ -260,9 +264,7 @@ def stream_new_message(
     final_message = dbc.message.finalize(msg.id, file_urls=file_urls)
     if final_message is None:
         final_message_error = RuntimeError(f"failed to finalize message {msg.id}")
-        yield message.MessageStreamError(
-            message=msg.id, error=str(final_message_error), reason="finalization failure"
-        )
+        yield message.MessageStreamError(message=msg.id, error=str(final_message_error), reason="finalization failure")
         raise final_message_error
 
     final_reply = dbc.message.finalize(
@@ -274,9 +276,7 @@ def stream_new_message(
     )
     if final_reply is None:
         final_reply_error = RuntimeError(f"failed to finalize message {reply.id}")
-        yield message.MessageStreamError(
-            message=reply.id, error=str(final_reply_error), reason="finalization failure"
-        )
+        yield message.MessageStreamError(message=reply.id, error=str(final_reply_error), reason="finalization failure")
         raise final_reply_error
 
     final_message = dataclasses.replace(final_message, children=[final_reply])
@@ -331,10 +331,12 @@ def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> message.MessageCh
 
     return new_chunk
 
+
 def create_prompt_from_engine_input(
     input_list: list[message.Message],
 ) -> str:
     return "\n".join([f"<|{m.role}|>\n{m.content}" for m in input_list])
+
 
 def create_output_from_chunks(chunks: list[message.MessageChunk]):
     output = ""

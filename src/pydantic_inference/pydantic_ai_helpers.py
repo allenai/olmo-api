@@ -30,10 +30,7 @@ def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent, message_id: str) 
             return pydantic_map_delta(chunk.delta, message_id)
 
 
-def pydantic_map_messages(
-    messages: list[Message]
-) -> list[ModelMessage]:
-
+def pydantic_map_messages(messages: list[Message]) -> list[ModelMessage]:
     model_messages: list[ModelMessage] = []
     for message in messages:
         if message.role == "user":
@@ -85,9 +82,7 @@ def pydantic_map_part(part: TextPart | ToolCallPart | ThinkingPart, message_id: 
             )
 
 
-def pydantic_map_delta(
-    part: TextPartDelta | ToolCallPartDelta | ThinkingPartDelta, message_id: str
-) -> MessageChunk:
+def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDelta, message_id: str) -> MessageChunk:
     mapped_logprobs = []  # TODO: Depracated property
 
     match part:

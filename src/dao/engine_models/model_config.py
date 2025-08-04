@@ -19,6 +19,7 @@ class ModelHost(StrEnum):
     CirrascaleBackend = "cirrascale_backend"
     Cirrascale = "cirrascale"
     ModalOpenAI = "modal_openai"
+    PydanticAiTest = "pydantic_test"
 
 
 class FileRequiredToPromptOption(StrEnum):

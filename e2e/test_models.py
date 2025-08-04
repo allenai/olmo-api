@@ -2,7 +2,9 @@ import requests
 
 from src.dao.engine_models.model_config import ModelHost, ModelType, PromptType
 from src.model_config.create_model_config_service import (
+    BaseCreateModelConfigRequest,
     CreateMultiModalModelConfigRequest,
+    CreateTextOnlyModelConfigRequest,
 )
 from src.model_config.response_model import MultiModalResponseModel, ResponseModel
 from src.model_config.update_model_config_service import (
@@ -47,6 +49,18 @@ class BaseTestV4ModelEndpoints(base.IntegrationTest):
 
     def setUp(self):
         self.created_model_ids = []
+
+    def create_model(self, request: BaseCreateModelConfigRequest, *, skip_cleanup=False):
+        response = requests.post(
+            self.model_config_endpoint,
+            json=request.model_dump(by_alias=True),
+            headers=self.auth(self.client),
+        )
+
+        if not skip_cleanup:
+            self.created_model_ids.append(request.id)
+
+        return response
 
     def tearDown(self):
         for model_id in self.created_model_ids:
@@ -108,23 +122,17 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
 
     def test_should_create_a_model(self):
         model_id = "test-model"
-        create_model_request = {
-            "id": model_id,
-            "name": "model made for testing",
-            "description": "This model is made for testing",
-            "modelIdOnHost": "test-model-id",
-            "modelType": "chat",
-            "host": "inferd",
-            "promptType": "text_only",
-        }
-
-        self.created_model_ids.append(model_id)
-
-        create_response = requests.post(
-            self.model_config_endpoint,
-            json=create_model_request,
-            headers=self.auth(self.client),
+        create_model_request = CreateTextOnlyModelConfigRequest(
+            id=model_id,
+            name="model made for testing",
+            description="This model is made for testing",
+            model_id_on_host="test-model-id",
+            model_type=ModelType.Chat,
+            host=ModelHost.InferD,
+            prompt_type=PromptType.TEXT_ONLY,
         )
+
+        create_response = self.create_model(create_model_request)
         create_response.raise_for_status()
 
         created_model = create_response.json()
@@ -154,13 +162,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
             allow_files_in_followups=False,
         )
 
-        self.created_model_ids.append(model_id)
-
-        create_response = requests.post(
-            self.model_config_endpoint,
-            json=create_model_request.model_dump(),
-            headers=self.auth(self.client),
-        )
+        create_response = self.create_model(create_model_request)
         create_response.raise_for_status()
 
         created_model = create_response.json()
@@ -178,31 +180,27 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
 
     def test_should_delete_a_model(self):
         model_id = "test-model"
-        create_model_request = {
-            "id": model_id,
-            "name": "model made for testing",
-            "description": "This model is made for testing",
-            "modelIdOnHost": "test-model-id",
-            "modelType": "chat",
-            "host": "inferd",
-            "promptType": "text_only",
-        }
-
-        create_response = requests.post(
-            self.model_config_endpoint,
-            json=create_model_request,
-            headers=self.auth(self.client),
+        create_model_request = CreateTextOnlyModelConfigRequest(
+            id=model_id,
+            name="model made for testing",
+            description="This model is made for testing",
+            model_id_on_host="test-model-id",
+            model_type=ModelType.Chat,
+            host=ModelHost.InferD,
+            prompt_type=PromptType.TEXT_ONLY,
         )
+
+        create_response = self.create_model(create_model_request, skip_cleanup=True)
         create_response.raise_for_status()
 
         delete_response = requests.delete(
-            f"{self.origin}/v4/models/{model_id}",
+            self.model_config_endpoint + "/" + model_id,
             headers=self.auth(self.client),
         )
         delete_response.raise_for_status()
         assert delete_response.status_code == 204
 
-        get_models_response = requests.get(f"{self.origin}/v4/models/", headers=self.auth(self.client))
+        get_models_response = requests.get(self.model_config_endpoint, headers=self.auth(self.client))
         get_models_response.raise_for_status()
         available_models = get_models_response.json()
 
@@ -211,21 +209,17 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
     def test_should_reorder_models(self):
         model_ids = ["model-a", "model-b", "model-c"]
         for model_id in model_ids:
-            self.created_model_ids.append(model_id)
-            create_model_request = {
-                "id": model_id,
-                "name": f"{model_id} name",
-                "description": f"{model_id} desc",
-                "modelIdOnHost": f"{model_id}-host",
-                "modelType": "chat",
-                "host": "inferd",
-                "promptType": "text_only",
-            }
-            create_response = requests.post(
-                self.model_config_endpoint,
-                json=create_model_request,
-                headers=self.auth(self.client),
+            create_model_request = CreateTextOnlyModelConfigRequest(
+                id=model_id,
+                name=f"{model_id} name",
+                description=f"{model_id} desc",
+                model_id_on_host=f"{model_id}-host",
+                model_type=ModelType.Chat,
+                host=ModelHost.InferD,
+                prompt_type=PromptType.TEXT_ONLY,
             )
+
+            create_response = self.create_model(create_model_request)
             create_response.raise_for_status()
 
         reordered = [
@@ -256,23 +250,18 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
 
     def test_should_update_a_text_only_model(self):
         model_id = "test-model"
-        create_model_request = {
-            "id": model_id,
-            "name": "model made for testing",
-            "description": "This model is made for testing",
-            "modelIdOnHost": "test-model-id",
-            "modelType": "chat",
-            "host": "inferd",
-            "promptType": "text_only",
-        }
-
-        create_response = requests.post(
-            self.model_config_endpoint,
-            json=create_model_request,
-            headers=self.auth(self.client),
+        create_model_request = CreateTextOnlyModelConfigRequest(
+            id=model_id,
+            name="model made for testing",
+            description="This model is made for testing",
+            model_id_on_host="test-model-id",
+            model_type=ModelType.Chat,
+            host=ModelHost.InferD,
+            prompt_type=PromptType.TEXT_ONLY,
         )
+
+        create_response = self.create_model(create_model_request)
         create_response.raise_for_status()
-        self.created_model_ids.append(model_id)
 
         update_model_request = {
             "name": "updated model made for testing",
@@ -283,7 +272,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
             "promptType": "text_only",
         }
         update_model_response = requests.put(
-            self.model_config_endpoint,
+            self.model_config_endpoint + "/" + model_id,
             headers=self.auth(self.client),
             json=update_model_request,
         )
@@ -317,13 +306,8 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
             allow_files_in_followups=False,
         )
 
-        create_response = requests.post(
-            self.model_config_endpoint,
-            json=create_model_request.model_dump(),
-            headers=self.auth(self.client),
-        )
+        create_response = self.create_model(create_model_request)
         create_response.raise_for_status()
-        self.created_model_ids.append(model_id)
 
         update_model_request = UpdateMultiModalModelConfigRequest(
             name="multi-modal model made for testing",
@@ -338,7 +322,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         )
 
         update_model_response = requests.put(
-            self.model_config_endpoint,
+            self.model_config_endpoint + "/" + model_id,
             headers=self.auth(self.client),
             json=update_model_request.model_dump(by_alias=True),
         )

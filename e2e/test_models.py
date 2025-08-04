@@ -37,13 +37,21 @@ class BaseTestV4ModelEndpoints(base.IntegrationTest):
     client: base.AuthenticatedClient
     created_model_ids: list[str]
 
+    @property
+    def model_endpoint(self):
+        return f"{self.origin}/v4/models"
+
+    @property
+    def model_config_endpoint(self):
+        return f"{self.origin}/v4/admin/models"
+
     def setUp(self):
         self.created_model_ids = []
 
     def tearDown(self):
         for model_id in self.created_model_ids:
             delete_response = requests.delete(
-                f"{self.origin}/v4/models/{model_id}",
+                self.model_config_endpoint + "/" + model_id,
                 headers=self.auth(self.client),
             )
             assert delete_response.status_code == 204
@@ -58,7 +66,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         self.created_model_ids = []
 
     def test_get_a_list_of_models(self):
-        r = requests.get(f"{self.origin}/v4/models", headers=self.auth(self.client))
+        r = requests.get(self.model_endpoint, headers=self.auth(self.client))
         r.raise_for_status()
 
         response = r.json()
@@ -76,7 +84,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
 
     def test_get_admin_models(self):
         r = requests.get(
-            f"{self.origin}/v4/admin/models",
+            self.model_config_endpoint,
             headers=self.auth(self.client),
         )
         r.raise_for_status()
@@ -113,7 +121,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         self.created_model_ids.append(model_id)
 
         create_response = requests.post(
-            f"{self.origin}/v4/models/",
+            self.model_config_endpoint,
             json=create_model_request,
             headers=self.auth(self.client),
         )
@@ -123,7 +131,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert created_model.get("createdTime") is not None
         assert created_model.get("modelType") == "chat"
 
-        get_models_response = requests.get(f"{self.origin}/v4/models/", headers=self.auth(self.client))
+        get_models_response = requests.get(self.model_config_endpoint, headers=self.auth(self.client))
         get_models_response.raise_for_status()
 
         available_models = get_models_response.json()
@@ -149,7 +157,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         self.created_model_ids.append(model_id)
 
         create_response = requests.post(
-            f"{self.origin}/v4/models/",
+            self.model_config_endpoint,
             json=create_model_request.model_dump(),
             headers=self.auth(self.client),
         )
@@ -181,7 +189,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         }
 
         create_response = requests.post(
-            f"{self.origin}/v4/models/",
+            self.model_config_endpoint,
             json=create_model_request,
             headers=self.auth(self.client),
         )
@@ -214,7 +222,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
                 "promptType": "text_only",
             }
             create_response = requests.post(
-                f"{self.origin}/v4/models/",
+                self.model_config_endpoint,
                 json=create_model_request,
                 headers=self.auth(self.client),
             )
@@ -227,14 +235,14 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         ]
 
         reorder_response = requests.put(
-            f"{self.origin}/v4/models",
+            self.model_config_endpoint,
             json={"ordered_models": reordered},
             headers=self.auth(self.client),
         )
         reorder_response.raise_for_status()
 
         get_response = requests.get(
-            f"{self.origin}/v4/admin/models/",
+            self.model_config_endpoint,
             headers=self.auth(self.client),
         )
         get_response.raise_for_status()
@@ -259,7 +267,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         }
 
         create_response = requests.post(
-            f"{self.origin}/v4/models/",
+            self.model_config_endpoint,
             json=create_model_request,
             headers=self.auth(self.client),
         )
@@ -275,7 +283,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
             "promptType": "text_only",
         }
         update_model_response = requests.put(
-            f"{self.origin}/v4/models/{model_id}",
+            self.model_config_endpoint,
             headers=self.auth(self.client),
             json=update_model_request,
         )
@@ -283,7 +291,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert update_model_response.status_code == 200
 
         get_models_response = requests.get(
-            f"{self.origin}/v4/admin/models/",
+            self.model_config_endpoint,
             headers=self.auth(self.client),
         )
         get_models_response.raise_for_status()
@@ -310,7 +318,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         )
 
         create_response = requests.post(
-            f"{self.origin}/v4/models/",
+            self.model_config_endpoint,
             json=create_model_request.model_dump(),
             headers=self.auth(self.client),
         )
@@ -330,7 +338,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         )
 
         update_model_response = requests.put(
-            f"{self.origin}/v4/models/{model_id}",
+            self.model_config_endpoint,
             headers=self.auth(self.client),
             json=update_model_request.model_dump(by_alias=True),
         )
@@ -338,7 +346,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert update_model_response.status_code == 200
 
         get_models_response = requests.get(
-            f"{self.origin}/v4/admin/models/",
+            self.model_config_endpoint,
             headers=self.auth(self.client),
         )
         get_models_response.raise_for_status()

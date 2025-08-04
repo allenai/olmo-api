@@ -12,15 +12,15 @@ INSERT INTO model_config(
         internal
     )
 VALUES (
-        'olmo-2-0325-32b-instruct',
+        'cs-OLMo-2-0325-32B-Instruct',
         'OLMo 2 32B Instruct',
         'Ai2''s 32B model using the OLMo2 architecture.',
-        'OLMo-2-0325-32B-Instruct-COMBO',
+        '22504',
         'Chat',
         'You are OLMo 2 Instruct, a helpful, open-source AI Assistant built by the Allen Institute for AI.',
         'olmo',
         'OLMo',
-        'Modal',
+        'CirrascaleBackend',
         'TEXT_ONLY',
         false
     );

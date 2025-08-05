@@ -1,0 +1,115 @@
+import json
+from typing import cast
+
+from flask import current_app
+from flask import request as flask_request
+from sqlalchemy.orm import Session, sessionmaker
+from werkzeug import exceptions
+
+from src import db, util
+from src.auth.auth_service import authn
+from src.config.get_config import cfg
+from src.config.get_models import get_model_by_host_and_id
+from src.dao import message
+from src.dao.engine_models.model_config import PromptType
+from src.message.create_message_request import (
+    CreateMessageRequestWithFullMessages,
+    CreateMessageRequestWithLists,
+)
+from src.message.create_message_service.stream_new_message import stream_new_message
+from src.message.GoogleCloudStorage import GoogleCloudStorage
+from src.message.SafetyChecker import (
+    SafetyCheckerType,
+)
+from src.message.validate_message_files_from_config import (
+    validate_message_files_from_config,
+)
+
+
+def format_message(obj) -> str:
+    return json.dumps(obj=obj, cls=util.CustomEncoder) + "\n"
+
+
+def create_message_v4(
+    request: CreateMessageRequestWithLists,
+    dbc: db.Client,
+    storage_client: GoogleCloudStorage,
+    session_maker: sessionmaker[Session],
+    checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
+):
+    agent = authn()
+
+    parent_message, root_message, private = get_parent_and_root_messages_and_private(
+        request.parent, dbc, request.private, is_anonymous_user=agent.is_anonymous_user
+    )
+
+    mapped_request = CreateMessageRequestWithFullMessages(
+        parent_id=request.parent,
+        parent=parent_message,
+        opts=message.InferenceOpts(
+            max_tokens=request.max_tokens,
+            temperature=request.temperature,
+            n=request.n,
+            top_p=request.top_p,
+            logprobs=request.logprobs,
+            stop=request.stop,
+        ),
+        content=request.content,
+        role=cast(message.Role, request.role),
+        original=request.original,
+        private=private,
+        root=root_message,
+        template=request.template,
+        model=request.model,
+        host=request.host,
+        client=agent.client,
+        files=request.files,
+        captcha_token=request.captcha_token,
+    )
+
+    model = get_model_by_host_and_id(mapped_request.host, mapped_request.model, session_maker=session_maker)
+    if model.prompt_type == PromptType.FILES_ONLY and not cfg.feature_flags.allow_files_only_model_in_thread:
+        current_app.logger.error("Tried to use a files only model in a normal thread stream %s/%s", id, model)
+
+        # HACK: I want OLMoASR to be set up like a normal model but don't want people to stream to it yet
+        model_not_available_message = "This model isn't available yet"
+        raise exceptions.BadRequest(model_not_available_message)
+    validate_message_files_from_config(request.files, config=model, has_parent=mapped_request.parent is not None)
+
+    user_ip_address = flask_request.remote_addr
+    user_agent = flask_request.user_agent.string
+
+    return stream_new_message(
+        mapped_request,
+        dbc,
+        model=model,
+        storage_client=storage_client,
+        checker_type=checker_type,
+        user_ip_address=user_ip_address,
+        user_agent=user_agent,
+    )
+
+
+def get_parent_and_root_messages_and_private(
+    parent_message_id: str | None,
+    dbc: db.Client,
+    request_private: bool | None,
+    is_anonymous_user: bool,
+) -> tuple[message.Message | None, message.Message | None, bool]:
+    parent_message = dbc.message.get(parent_message_id) if parent_message_id is not None else None
+    root_message = dbc.message.get(parent_message.root) if parent_message is not None else None
+
+    private = (
+        # Anonymous users aren't allowed to share messages
+        True
+        if is_anonymous_user
+        else (
+            request_private
+            if request_private is not None
+            else root_message.private
+            if root_message is not None
+            else False
+        )
+    )
+
+    return parent_message, root_message, private

@@ -1,40 +1,18 @@
-from typing import Literal, cast
+from typing import cast
 
-from pydantic import AwareDatetime, ByteSize, Field, RootModel
+from pydantic import Field, RootModel
 from sqlalchemy.orm import Session, sessionmaker
 
-from src.api_interface import APIInterface
-from src.config.ModelConfig import FileRequiredToPromptOption, ModelHost, ModelType
-from src.dao.engine_models.model_config import MultiModalModelConfig, PromptType
+from src.dao.engine_models.model_config import MultiModalModelConfig
+from src.model_config.base_model_config import BaseMultiModalModelConfigRequest, BaseTextOnlyModelConfigRequest
 from src.model_config.model_config_utils import get_model_config_class
 from src.model_config.response_model import ResponseModel
 
 
-class BaseUpdateModelConfigRequest(APIInterface):
-    name: str
-    host: ModelHost
-    description: str
-    model_type: ModelType
-    model_id_on_host: str
-    internal: bool = Field(default=True)
-    default_system_prompt: str | None = Field(default=None)
-    family_id: str | None = Field(default=None)
-    family_name: str | None = Field(default=None)
-    available_time: AwareDatetime | None = Field(default=None)
-    deprecation_time: AwareDatetime | None = Field(default=None)
+class UpdateTextOnlyModelConfigRequest(BaseTextOnlyModelConfigRequest): ...
 
 
-class UpdateTextOnlyModelConfigRequest(BaseUpdateModelConfigRequest):
-    prompt_type: Literal[PromptType.TEXT_ONLY]
-
-
-class UpdateMultiModalModelConfigRequest(BaseUpdateModelConfigRequest):
-    prompt_type: Literal[PromptType.MULTI_MODAL, PromptType.FILES_ONLY]
-    accepted_file_types: list[str]
-    max_files_per_message: int | None = Field(default=None)
-    require_file_to_prompt: FileRequiredToPromptOption | None = Field(default=None)
-    max_total_file_size: ByteSize | None = Field(default=None)
-    allow_files_in_followups: bool | None = Field(default=None)
+class UpdateMultiModalModelConfigRequest(BaseMultiModalModelConfigRequest): ...
 
 
 # We can't make a discriminated union at the top level so we need to use a RootModel
@@ -48,7 +26,7 @@ def update_model_config(
     session_maker: sessionmaker[Session],
 ) -> ResponseModel | None:
     with session_maker.begin() as session:
-        RequestClass = get_model_config_class(request.root)
+        RequestClass = get_model_config_class(request.root)  # noqa: N806
         model_to_update = session.get(RequestClass, model_id)
 
         if model_to_update is None:
@@ -66,6 +44,7 @@ def update_model_config(
         model_to_update.available_time = request.root.available_time
         model_to_update.deprecation_time = request.root.deprecation_time
         model_to_update.prompt_type = request.root.prompt_type
+        model_to_update.can_call_tools = request.root.can_call_tools
 
         if isinstance(model_to_update, MultiModalModelConfig):
             multi_modal_request = cast(UpdateMultiModalModelConfigRequest, request.root)

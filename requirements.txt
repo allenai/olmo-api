@@ -1,7 +1,7 @@
 beautifulsoup4==4.12.2
-Flask==2.3.1
+Flask==2.3.3
 python-json-logger==2.0.7
-requests==2.31.0
+requests==2.32.4
 psycopg[binary,pool]==3.2.4
 ./vendor/inferd-0.5.9-0_v0.5.9-py3-none-any.whl
 pydantic==2.11.5
@@ -31,5 +31,6 @@ alembic==1.15.2
 alembic-postgresql-enum==1.7.0
 pydub==0.25.1
 openai==1.93.0
+pydantic-ai==0.4.9
 # beaker-py==2.2.1
 ./vendor/beaker_py-2.2.1-py3-none-any.whl

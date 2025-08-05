@@ -3,6 +3,8 @@ import os
 from dataclasses import dataclass
 from typing import Self
 
+from pydantic import SecretStr
+
 from src.config.InfiniGramSource import InfiniGramSource, map_infinigram_sources
 from src.config.Model import Model, MultiModalModel, map_model_from_config
 
@@ -86,12 +88,18 @@ class GoogleCloudServices:
 class FeatureFlags:
     enable_dynamic_model_config: bool
     allow_files_only_model_in_thread: bool
+    enable_pydantic_inference: bool
 
 
 @dataclass
 class Beaker:
     address: str
     user_token: str
+
+
+@dataclass
+class ModalOpenAI:
+    api_key: SecretStr
 
 
 DEFAULT_CONFIG_PATH = "/secret/cfg/config.json"
@@ -112,6 +120,7 @@ class Config:
     feature_flags: FeatureFlags
     beaker: Beaker
     cirrascale_backend: CirrascaleBackend
+    modal_openai: ModalOpenAI
 
     @classmethod
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
@@ -140,6 +149,7 @@ class Config:
                     base_url=data["cirrascale_backend"]["base_url"],
                     api_key=data["cirrascale_backend"]["api_key"],
                 ),
+                modal_openai=ModalOpenAI(api_key=SecretStr(data["modal_openai"]["api_key"])),
                 auth=Auth(
                     domain=data["auth"].get("auth0_domain"),
                     audience=data["auth"].get("auth0_audience"),
@@ -182,6 +192,7 @@ class Config:
                     allow_files_only_model_in_thread=data.get("feature_flags", {}).get(
                         "allow_files_only_model_in_thread", False
                     ),
+                    enable_pydantic_inference=data.get("feature_flags", {}).get("enable_pydantic_inference", False),
                 ),
                 models=[map_model_from_config(model_config) for model_config in data["models"]],
                 beaker=Beaker(

@@ -19,6 +19,7 @@ class ModelHost(StrEnum):
     CirrascaleBackend = "cirrascale_backend"
     Cirrascale = "cirrascale"
     ModalOpenAI = "modal_openai"
+    TestBackend = "test_backend"
 
 
 class FileRequiredToPromptOption(StrEnum):

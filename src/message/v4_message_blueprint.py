@@ -14,7 +14,7 @@ from src.message.create_message_request import (
     CreateMessageRequest,
     CreateMessageRequestWithLists,
 )
-from src.message.create_message_service import create_message_v4, format_message
+from src.message.create_message_service.endpoint import create_message_v4, format_message
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 
 

@@ -6,7 +6,7 @@ from src.config.get_config import get_config
 from src.dao.engine_models.model_config import ModelConfig
 
 
-def get_cirrascale_model(model_config: ModelConfig) -> Model:
+def get_cirrascale_backend_model(model_config: ModelConfig) -> Model:
     cfg = get_config()
     port = model_config.model_id_on_host
     model_name = model_config.id.replace("cs-", "")

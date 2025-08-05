@@ -316,7 +316,7 @@ def stream_new_message(
         )
 
     yield final_message
-    return
+    return None
 
 
 def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> message.MessageChunk:

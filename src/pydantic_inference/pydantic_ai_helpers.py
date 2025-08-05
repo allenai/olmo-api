@@ -1,7 +1,4 @@
-import base64
-
 from pydantic_ai.messages import (
-    BinaryContent,
     ImageUrl,
     ModelMessage,
     ModelRequest,
@@ -36,12 +33,7 @@ def pydantic_map_messages(messages: list[Message]) -> list[ModelMessage]:
         if message.role == "user":
             user_content: list[UserContent] = [message.content]
             for file in message.file_urls or []:
-                if isinstance(file, str):
-                    user_content.append(ImageUrl(url=file))
-                else:
-                    # TODO: not sure about this... copied from ModalEngine.py
-                    image_bytes = base64.b64encode(file.stream.read())
-                    user_content.append(BinaryContent(image_bytes, media_type=file.mimetype))
+                user_content.append(ImageUrl(url=file))
 
             user_prompt_part = UserPromptPart(user_content)
 

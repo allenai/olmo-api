@@ -192,9 +192,7 @@ class Config:
                     allow_files_only_model_in_thread=data.get("feature_flags", {}).get(
                         "allow_files_only_model_in_thread", False
                     ),
-                    enable_pydantic_inference=data.get("feature_flags", {}).get(
-                        "enable_pydantic_inference", False
-                    ),
+                    enable_pydantic_inference=data.get("feature_flags", {}).get("enable_pydantic_inference", False),
                 ),
                 models=[map_model_from_config(model_config) for model_config in data["models"]],
                 beaker=Beaker(

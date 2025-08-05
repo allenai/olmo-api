@@ -1,4 +1,3 @@
-
 import base64
 from collections.abc import Sequence
 
@@ -63,8 +62,6 @@ def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
             return None
 
     return True
-
-
 
 
 def evaluate_prompt_submission_captcha(

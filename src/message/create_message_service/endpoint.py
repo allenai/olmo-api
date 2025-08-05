@@ -89,6 +89,7 @@ def create_message_v4(
         user_agent=user_agent,
     )
 
+
 def get_parent_and_root_messages_and_private(
     parent_message_id: str | None,
     dbc: db.Client,

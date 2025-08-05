@@ -170,12 +170,7 @@ def stream_new_message(
     if system_msg is not None:
         system_msg = dataclasses.replace(system_msg, children=[msg])
 
-    # We keep track of each chunk and the timing information per-chunk
-    # so that we can manifest a completion at the end. This will go
-    # away when InferD stores this I/O.
-    chunks: list[message.MessageChunk] = []
-
-    # Yield the system prompt message if there is any
+        # Yield the system prompt message if there is any
     if system_msg is not None:
         yield system_msg
     # Yield the new user message
@@ -189,6 +184,11 @@ def stream_new_message(
     input_token_count: int = -1
     output_token_count: int = -1
     total_generation_ns: int = 0
+
+    # We keep track of each chunk and the timing information per-chunk
+    # so that we can manifest a completion at the end. This will go
+    # away when InferD stores this I/O.
+    chunks: list[message.MessageChunk] = []
 
     if cfg.feature_flags.enable_pydantic_inference:
         pydantic_inference_engine = get_pydantic_model(model)

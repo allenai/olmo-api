@@ -1,4 +1,3 @@
-
 from datetime import datetime
 
 from src import db
@@ -10,7 +9,14 @@ from src.message.create_message_request import (
 )
 
 
-def setup_msg_thread(dbc: db.Client, model: ModelConfig, request: CreateMessageRequestWithFullMessages, agent: Token, message_expiration_time: datetime | None, is_msg_harmful: bool | None = None):
+def setup_msg_thread(
+    dbc: db.Client,
+    model: ModelConfig,
+    request: CreateMessageRequestWithFullMessages,
+    agent: Token,
+    message_expiration_time: datetime | None,
+    is_msg_harmful: bool | None = None,
+):
     system_msg = None
     msg = None
 

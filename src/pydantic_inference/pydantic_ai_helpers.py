@@ -59,20 +59,16 @@ def pydantic_map_messages(messages: list[Message]) -> list[ModelMessage]:
 
 
 def pydantic_map_part(part: TextPart | ToolCallPart | ThinkingPart, message_id: str) -> MessageChunk:
-    mapped_logprobs = []  # TODO: Depracated property
-
     match part:
         case TextPart():
             return MessageChunk(
                 message=message_id,
                 content=part.content,
-                logprobs=mapped_logprobs,
             )
         case ThinkingPart():
             return MessageChunk(
                 message=message_id,
                 content=part.content or "",
-                logprobs=mapped_logprobs,
             )
         case ToolCallPart():
             args_content = part.args or ""
@@ -82,25 +78,20 @@ def pydantic_map_part(part: TextPart | ToolCallPart | ThinkingPart, message_id: 
             return MessageChunk(
                 message=message_id,
                 content=args_content,
-                logprobs=mapped_logprobs,
             )
 
 
 def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDelta, message_id: str) -> MessageChunk:
-    mapped_logprobs = []  # TODO: Depracated property
-
     match part:
         case TextPartDelta():
             return MessageChunk(
                 message=message_id,
                 content=part.content_delta,
-                logprobs=mapped_logprobs,
             )
         case ThinkingPartDelta():
             return MessageChunk(
                 message=message_id,
                 content=part.content_delta or "",
-                logprobs=mapped_logprobs,
             )
         case ToolCallPartDelta():
             # Convert args_delta to string if it's a dictionary
@@ -111,5 +102,4 @@ def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDel
             return MessageChunk(
                 message=message_id,
                 content=f"TOOL {args_content} \n",
-                logprobs=mapped_logprobs,
             )

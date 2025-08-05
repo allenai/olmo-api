@@ -316,9 +316,9 @@ def stream_new_message(
         )
 
     yield final_message
+    return
 
 
-# depracated
 def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> message.MessageChunk:
     chunk_logprobs = chunk.logprobs if chunk.logprobs is not None else []
     mapped_logprobs = [

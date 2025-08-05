@@ -13,7 +13,7 @@ def get_pydantic_model(model: ModelConfig) -> Model:
             return get_cirrascale_model(model)
         case ModelHost.ModalOpenAI:
             return get_modal_openai_model(model)
-        case ModelHost.PydanticAiTest:
+        case ModelHost.TestBackend:
             return get_test_model()
         case _:
             raise ValueError(f"Unsupported model host: {model.host}")

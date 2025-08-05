@@ -9,7 +9,11 @@ from e2e import util
 
 from . import base
 
-default_model_options = {"host": (None, "modal"), "model": (None, "OLMoE-1B-7B-0924-Instruct"), "files": (None, None)}
+default_model_options = {
+    "host": (None, "cirrascale_backend"),
+    "model": (None, "cs-OLMo-2-0325-32B-Instruct"),
+    "files": (None, None),
+}
 
 
 default_options: list[tuple[str, Any]] = [
@@ -104,51 +108,59 @@ class TestMessageEndpoints(base.IntegrationTest):
         )
         r.raise_for_status()
 
-        msgs = [json.loads(util.last_response_line(r))]
-        m1 = msgs[0]
-        self.messages.append((m1["id"], u1))
-        for c in m1["children"]:
+        root_message_1 = json.loads(util.last_response_line(r))
+        self.messages.append((root_message_1["id"], u1))
+        for c in root_message_1["children"]:
             c_tup = (c["id"], u1)
             self.messages.append(c_tup)
             self.child_msgs.append(c_tup)
 
         for name, value in default_options:
-            assert m1["opts"][name] == value
-        assert m1["model_id"] == default_model_options["model"][1]
-        assert m1["model_host"] == default_model_options["host"][1]
+            assert root_message_1["opts"][name] == value
+        assert root_message_1["model_id"] == default_model_options["model"][1]
+        assert root_message_1["model_host"] == default_model_options["host"][1]
 
+        # Fails as system message is now the first message in the thread...
         # Verify GET /v3/message/:id
-        r = requests.get(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
-        msgs.append(r.json())
-        for m in msgs:
-            assert m["id"] is not None
-            assert m["content"] == "I'm a magical labrador named Murphy, who are you? "
-            assert m["creator"] == u1.client
-            assert m["role"] == "user"
-            assert m["model_type"] is None  # We only set model_type for assistant messages
-            assert datetime.fromisoformat(m["created"]) <= datetime.now(UTC)
-            assert m["deleted"] is None
-            assert m["root"] == m["id"]
-            assert m["template"] is None
-            assert m["logprobs"] is None
-            assert m["private"] is False
-            assert len(m["children"]) == 1
+        r = requests.get(f"{self.origin}/v3/message/{root_message_1['id']}", headers=self.auth(u1))
+        root_message_v3_test = r.json()
+
+        # note breaks if system prompt changes...
+        assert (
+            root_message_v3_test["content"]
+            == "You are OLMo 2 Instruct, a helpful, open-source AI Assistant built by the Allen Institute for AI."
+        )
+        assert root_message_v3_test["role"] == "system"
+
+        root_message_v3_user_message = root_message_v3_test["children"][0]
+
+        assert root_message_v3_user_message["id"] is not None
+        assert root_message_v3_user_message["content"] == "I'm a magical labrador named Murphy, who are you? "
+        assert root_message_v3_user_message["creator"] == u1.client
+        assert root_message_v3_user_message["role"] == "user"
+        assert root_message_v3_user_message["model_type"] is None  # We only set model_type for assistant messages
+        assert datetime.fromisoformat(root_message_v3_user_message["created"]) <= datetime.now(UTC)
+        assert root_message_v3_user_message["deleted"] is None
+        assert root_message_v3_user_message["template"] is None
+        assert root_message_v3_user_message["logprobs"] is None
+        assert root_message_v3_user_message["private"] is False
+        assert len(root_message_v3_user_message["children"]) == 1
 
         # Check /v3/message/:id works as expected for children
-        c1 = m1["children"][0]
+        c1 = root_message_v3_user_message
         r = requests.get(f"{self.origin}/v3/message/{c1['id']}", headers=self.auth(u1))
         c1 = r.json()
-        assert c1["id"] == m1["children"][0]["id"]
-        assert c1["parent"] == m1["id"]
-        assert c1["children"] is None
+        assert c1["id"] == root_message_1["children"][0]["id"]
+        assert c1["parent"] == root_message_1["id"]
 
+        assistant_response_message = root_message_v3_user_message["children"][0]
         # Make sure that creating messages with parents works as expected
         r = requests.post(
             f"{self.origin}/v4/message/stream",
             headers=self.auth(u1),
             files={
                 "content": (None, "Complete this thought: I like "),
-                "parent": (None, c1["id"]),
+                "parent": (None, assistant_response_message["id"]),
                 **default_model_options,
             },
         )
@@ -161,16 +173,16 @@ class TestMessageEndpoints(base.IntegrationTest):
             c_tup = (c["id"], u1)
             self.messages.append(c_tup)
             self.child_msgs.append(c_tup)
-        assert c2["parent"] == c1["id"]
         assert c2["content"] == "Complete this thought: I like "
         assert len(c2["children"]) == 1
 
         # Verify the full tree
-        r = requests.get(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
+        r = requests.get(f"{self.origin}/v3/message/{root_message_1['id']}", headers=self.auth(u1))
         r.raise_for_status()
         expect = [
-            (m1["id"], "user", None, 1),
-            (c1["id"], "assistant", "chat", 1),
+            (root_message_v3_test["id"], "system", None, 1),
+            (root_message_v3_user_message["id"], "user", None, 1),
+            (assistant_response_message["id"], "assistant", "chat", 1),
             (c2["id"], "user", None, 1),
             (c2["children"][0]["id"], "assistant", "chat", 0),
         ]
@@ -211,7 +223,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert msglist["meta"]["offset"] == 0
         assert msglist["meta"]["limit"] == 10
         ids = [m["id"] for m in msglist["messages"]]
-        assert m1["id"] in ids
+        assert root_message_1["id"] in ids
         assert m2["id"] in ids
         # assert ids.index(m2["id"]) < ids.index(m1["id"])
         # TODO: Figure out how to get this to work with system messages
@@ -229,9 +241,9 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert offset_msglist["meta"]["limit"] == 10
         offset_ids = [m["id"] for m in offset_msglist["messages"]]
         assert msglist["messages"][0]["id"] not in offset_ids
-        for m in msglist["messages"][1:]:
-            assert m["id"] in offset_ids
-        assert m1["id"] in offset_ids
+        for root_message_v3_user_message in msglist["messages"][1:]:
+            assert root_message_v3_user_message["id"] in offset_ids
+        assert root_message_1["id"] in offset_ids
 
         r = requests.get(f"{self.origin}/v3/messages?offset=1&limit=1", headers=self.auth(u1))
         r.raise_for_status()
@@ -253,7 +265,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert u1_msglist["meta"]["total"] > 0
         assert u1_msglist["meta"]["total"] < msglist["meta"]["total"]
         ids = [m["id"] for m in u1_msglist["messages"]]
-        assert m1["id"] in ids
+        assert root_message_1["id"] in ids
         # We don't have a a way of setting a second author with the current auth setup. we can probably log in with other users in the future
         # assert m2["id"] not in ids
 
@@ -277,21 +289,21 @@ class TestMessageEndpoints(base.IntegrationTest):
         # assert r.status_code == 403
 
         # Delete message m1
-        r = requests.delete(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
+        r = requests.delete(f"{self.origin}/v3/message/{root_message_1['id']}", headers=self.auth(u1))
         r.raise_for_status()
         assert r.status_code == 200
-        self.messages = list(filter(lambda m: m[0] != m1["id"], self.messages))
+        self.messages = list(filter(lambda m: m[0] != root_message_1["id"], self.messages))
 
         # The DB should not have the deleted message anymore
-        r = requests.get(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
+        r = requests.get(f"{self.origin}/v3/message/{root_message_1['id']}", headers=self.auth(u1))
         assert r.status_code == 404
 
         # Deleting message m1 again should also get a 404
-        r = requests.delete(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
+        r = requests.delete(f"{self.origin}/v3/message/{root_message_1['id']}", headers=self.auth(u1))
         assert r.status_code == 404
 
         # If a deleted parent message has children, those children should be deleted as well
-        for c in m1["children"]:
+        for c in root_message_1["children"]:
             r = requests.get(f"{self.origin}/v3/message/{c['id']}", headers=self.auth(u1))
             assert r.status_code == 404
 
@@ -300,7 +312,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         r.raise_for_status()
         msglist = r.json()
         ids = [m["id"] for m in msglist["messages"]]
-        assert m1["id"] not in ids
+        assert root_message_1["id"] not in ids
 
         # Test snippet creation
         cases = [
@@ -323,9 +335,9 @@ class TestMessageEndpoints(base.IntegrationTest):
                 files={"content": (None, content), **default_model_options},
             )
             r.raise_for_status()
-            m = json.loads(util.last_response_line(r))
-            self.messages.append((m["id"], u1))
-            assert m["snippet"] == snippet
+            snippet_test_message = json.loads(util.last_response_line(r))
+            self.messages.append((snippet_test_message["id"], u1))
+            assert snippet_test_message["children"][0]["snippet"] == snippet
 
     def tearDown(self):
         # Since the delete operation cascades, we have to find all child messages

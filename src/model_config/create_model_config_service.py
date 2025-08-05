@@ -1,19 +1,13 @@
-from typing import Literal
-
 from psycopg.errors import UniqueViolation
-from pydantic import AwareDatetime, ByteSize, Field, RootModel
+from pydantic import Field, RootModel
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
 
 from src.api_interface import APIInterface
-from src.config.ModelConfig import (
-    FileRequiredToPromptOption,
-    ModelHost,
-    ModelType,
-)
-from src.dao.engine_models.model_config import (
-    PromptType,
+from src.model_config.base_model_config import (
+    BaseMultiModalModelConfigRequest,
+    BaseTextOnlyModelConfigRequest,
 )
 from src.model_config.model_config_utils import get_model_config_class
 from src.model_config.response_model import ResponseModel
@@ -21,30 +15,18 @@ from src.model_config.response_model import ResponseModel
 
 class BaseCreateModelConfigRequest(APIInterface):
     id: str = Field(min_length=1)
-    name: str = Field(min_length=1)
-    host: ModelHost
-    description: str = Field(min_length=1)
-    model_type: ModelType
-    model_id_on_host: str = Field(min_length=1)
-    internal: bool = Field(default=True)
-    default_system_prompt: str | None = Field(default=None)
-    family_id: str | None = Field(default=None)
-    family_name: str | None = Field(default=None)
-    available_time: AwareDatetime | None = Field(default=None)
-    deprecation_time: AwareDatetime | None = Field(default=None)
 
 
-class CreateTextOnlyModelConfigRequest(BaseCreateModelConfigRequest):
-    prompt_type: Literal[PromptType.TEXT_ONLY]
+class CreateTextOnlyModelConfigRequest(
+    BaseCreateModelConfigRequest,
+    BaseTextOnlyModelConfigRequest,
+): ...
 
 
-class CreateMultiModalModelConfigRequest(BaseCreateModelConfigRequest):
-    prompt_type: Literal[PromptType.MULTI_MODAL, PromptType.FILES_ONLY]
-    accepted_file_types: list[str]
-    max_files_per_message: int | None = Field(default=None)
-    require_file_to_prompt: FileRequiredToPromptOption | None = Field(default=None)
-    max_total_file_size: ByteSize | None = Field(default=None)
-    allow_files_in_followups: bool | None = Field(default=None)
+class CreateMultiModalModelConfigRequest(
+    BaseCreateModelConfigRequest,
+    BaseMultiModalModelConfigRequest,
+): ...
 
 
 # We can't make a discriminated union at the top level so we need to use a RootModel

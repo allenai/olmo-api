@@ -24,7 +24,7 @@ from src.inference.InferenceEngine import (
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
-from src.message.create_message_service.files import upload_request_files, FileUploadResult
+from src.message.create_message_service.files import FileUploadResult, upload_request_files
 from src.message.create_message_service.safety import (
     check_image_safety,
     check_message_safety,
@@ -43,9 +43,6 @@ from src.util.generator_with_return_value import GeneratorWithReturnValue
 
 from .database import setup_msg_thread
 from .tools import get_tools
-import logging
-
-logging.basicConfig(level=logging.DEBUG)
 
 
 @dataclasses.dataclass

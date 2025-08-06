@@ -9,8 +9,8 @@
 # Cirrascale has provided us an API token valid directly with the backend APIs
 # that comes with a substantial allocation.
 #
+import base64
 from collections.abc import Generator, Sequence
-from dataclasses import asdict
 from typing import Any, Literal, TypeAlias
 
 from openai import OpenAI
@@ -19,6 +19,7 @@ from openai.types.chat import (
     ChatCompletionTokenLogprob,
 )
 from openai.types.chat.chat_completion_token_logprob import TopLogprob
+from werkzeug.datastructures import FileStorage
 
 from src.config.get_config import cfg
 from src.inference.InferenceEngine import (
@@ -126,16 +127,6 @@ class CirrascaleEngine(InferenceEngine):
 
 
 def map_to_openai_message(message: InferenceEngineMessage) -> ChatCompletionMessageParam:
-    """
-    Maps an InferenceEngineMessage to OpenAI ChatCompletionMessageParam format.
-
-    Args:
-        message: InferenceEngineMessage instance
-
-    Returns:
-        Dictionary compatible with OpenAI's ChatCompletionMessageParam
-    """
-
     openai_message: dict[str, Any] = {"role": message.role, "content": message.content}
 
     if message.files:
@@ -144,14 +135,17 @@ def map_to_openai_message(message: InferenceEngineMessage) -> ChatCompletionMess
         for file in message.files:
             if isinstance(file, str):
                 content_parts.append({"type": "image_url", "image_url": {"url": file}})
-            elif hasattr(file, "url"):
-                content_parts.append({"type": "image_url", "image_url": {"url": file.url}})
-            elif hasattr(file, "to_base64"):
+            elif isinstance(file, FileStorage):
+                file.stream.seek(0)
+                image = base64.b64encode(file.stream.read()).decode()
+                # print start of image
+
+                # Rewind the stream for future use
                 content_parts.append({
                     "type": "image_url",
-                    "image_url": {"url": f"data:image/jpeg;base64,{file.to_base64()}"},
+                    "image_url": {"url": f"data:{file.content_type or 'image/png'};base64,{image}"},
                 })
 
         openai_message["content"] = content_parts
 
-    return openai_message  # type: ignore
+    return openai_message  # type: ignore[return-value]

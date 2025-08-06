@@ -14,7 +14,7 @@ from src import db, parse
 from src.auth.auth_service import authn
 from src.config.get_config import cfg
 from src.dao import completion, message
-from src.dao.engine_models.model_config import ModelConfig, ModelHost
+from src.dao.engine_models.model_config import ModelConfig
 from src.inference.inference_service import get_engine
 from src.inference.InferenceEngine import (
     FinishReason,
@@ -24,7 +24,7 @@ from src.inference.InferenceEngine import (
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
-from src.message.create_message_service.files import upload_request_files
+from src.message.create_message_service.files import upload_request_files, FileUploadResult
 from src.message.create_message_service.safety import (
     check_image_safety,
     check_message_safety,
@@ -43,6 +43,9 @@ from src.util.generator_with_return_value import GeneratorWithReturnValue
 
 from .database import setup_msg_thread
 from .tools import get_tools
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 @dataclasses.dataclass
@@ -140,7 +143,7 @@ def stream_new_message(
 
     message_chain.reverse()
 
-    file_urls = upload_request_files(
+    file_uploads = upload_request_files(
         files=request.files,
         message_id=msg.id,
         storage_client=storage_client,
@@ -148,7 +151,12 @@ def stream_new_message(
         is_anonymous=agent.is_anonymous_user,
     )
     # TODO: https://github.com/allenai/playground-issues-repo/issues/9: Get this from the DB
+    file_urls = [file.file_url for file in file_uploads or []]
     msg.file_urls = file_urls
+
+    blob_map: dict[str, FileUploadResult] = {}
+    for file in file_uploads:
+        blob_map[file.file_url] = file
 
     # Create a message that will eventually capture the streamed response.
     # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message
@@ -198,7 +206,7 @@ def stream_new_message(
         chunks = cast(list[Chunk], chunks)
         pydantic_inference_engine = get_pydantic_model(model)
 
-        pydantic_messages = pydantic_map_messages(message_chain)
+        pydantic_messages = pydantic_map_messages(message_chain, blob_map)
         tools = get_tools() if model.can_call_tools else []
         with model_request_stream_sync(
             model=pydantic_inference_engine,
@@ -224,9 +232,7 @@ def stream_new_message(
                 role=message_in_chain.role,
                 content=message_in_chain.content,
                 # We only want to add the request files to the new message. The rest will have file urls associated with them
-                files=request.files
-                if message_in_chain.id == msg.id and model.host != ModelHost.Cirrascale
-                else message_in_chain.file_urls,
+                files=request.files if message_in_chain.id == msg.id else message_in_chain.file_urls,
             )
             for message_in_chain in message_chain
         ]

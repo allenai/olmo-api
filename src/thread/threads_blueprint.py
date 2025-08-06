@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from logging import getLogger
 from typing import Any, cast
 
 from flask import Blueprint, Response, jsonify, request, stream_with_context
@@ -26,14 +27,18 @@ from src.thread.thread_models import Thread
 def format_messages(
     stream_generator: Generator[message.Message | message.MessageChunk | message.MessageStreamError, Any, None],
 ) -> Generator[str, Any, None]:
-    for stream_message in stream_generator:
-        match stream_message:
-            case message.Message():
-                flat_messages = Thread.from_message(stream_message)
+    try:
+        for stream_message in stream_generator:
+            match stream_message:
+                case message.Message():
+                    flat_messages = Thread.from_message(stream_message)
 
-                yield format_message(flat_messages)
-            case APIInterface():
-                yield format_message(stream_message)
+                    yield format_message(flat_messages)
+                case APIInterface():
+                    yield format_message(stream_message)
+    except Exception as e:
+        getLogger().exception("Error when streaming")
+        raise e
 
 
 def create_threads_blueprint(

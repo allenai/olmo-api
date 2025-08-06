@@ -105,8 +105,8 @@ def stream_new_message(
                 output_tokens=-1,
             )
 
-        if is_content_safe is False:
-            raise exceptions.BadRequest(description="inappropriate_prompt_text")
+        # if is_content_safe is False:
+        raise exceptions.BadRequest(description="inappropriate_prompt_text")
 
         if is_image_safe is False:
             raise exceptions.BadRequest(description="inappropriate_prompt_file")

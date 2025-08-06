@@ -1,7 +1,14 @@
+from enum import StrEnum
 from typing import Any, Literal
 
 from src import obj
 from src.api_interface import APIInterface
+
+
+class ChunkType(StrEnum):
+    MODEL_RESPONSE = "modelResponse"
+    TOOL_CALL = "toolCall"
+    THINKING = "thinking"
 
 
 class BaseChunk(APIInterface):
@@ -9,11 +16,12 @@ class BaseChunk(APIInterface):
 
 
 class ModelResponseChunk(BaseChunk):
+    type: Literal[ChunkType.MODEL_RESPONSE] = ChunkType.MODEL_RESPONSE
     content: str
 
 
 class ToolCallChunk(BaseChunk):
-    type: Literal["toolCall"]
+    type: Literal[ChunkType.TOOL_CALL] = ChunkType.TOOL_CALL
 
     tool_call_id: str
     """The tool call identifier, this is used by some models including OpenAI.
@@ -32,10 +40,13 @@ class ToolCallChunk(BaseChunk):
 
 
 class ThinkingChunk(BaseChunk):
-    type: Literal["thinking"]
+    type: Literal[ChunkType.THINKING] = ChunkType.THINKING
 
     content: str
     """The thinking content of the response."""
 
     id: str | None = None
     """The identifier of the thinking part."""
+
+
+Chunk = ModelResponseChunk | ToolCallChunk | ThinkingChunk

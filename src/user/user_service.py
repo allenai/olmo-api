@@ -20,7 +20,7 @@ class UpsertUserRequest(APIInterface):
     data_collection_acceptance_revoked_date: datetime | None = None
 
 
-def upsert_user(dbc: db.Client, client: str) -> User | None:
+def upsert_user(dbc: db.Client, client: str, *, should_create_contact: bool) -> User | None:
     request = _map_and_validate_upsert_user_request(client)
 
     user = dbc.user.get_by_client(request.client)
@@ -43,7 +43,7 @@ def upsert_user(dbc: db.Client, client: str) -> User | None:
         data_collection_acceptance_revoked_date=request.data_collection_acceptance_revoked_date,
     )
 
-    if new_user:
+    if should_create_contact and new_user:
         create_contact()
 
     return new_user

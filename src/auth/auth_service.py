@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from http import HTTPStatus
 
 import requests
 from flask import Request, current_app, request
@@ -70,12 +71,12 @@ def get_user_info() -> UserInfo | None:
     headers = {"Authorization": f"{auth}", "Content-Type": "application/json"}
     response = requests.get(f"https://{cfg.auth.domain}/userinfo", headers=headers)
 
-    if response.status_code == 200:
+    if response.status_code == HTTPStatus.OK:
         user_info = response.json()
         email = user_info.get("email")
         first_name = user_info.get("given_name")
         last_name = user_info.get("family_name")
 
         return UserInfo(email=email, first_name=first_name, last_name=last_name)
-    current_app.logger.error("Error fetching user info:", response.status_code, response.text)
+    current_app.logger.error("Error fetching user info: %s %s", response.status_code, response.text)
     return None

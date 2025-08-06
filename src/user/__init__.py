@@ -1,9 +1,9 @@
+from datetime import UTC, datetime
+
 from flask import Blueprint, jsonify, request
 from flask_pydantic_api.api_wrapper import pydantic_api
 from pydantic import ValidationError
 from werkzeug import exceptions
-from datetime import UTC, datetime
-from datetime import timezone
 
 from src import db
 from src.auth.auth_service import authn, request_agent
@@ -80,8 +80,9 @@ class UserBlueprint(Blueprint):
 
     def upsert_user(self):
         agent = authn()
+        should_create_contact = not agent.is_anonymous_user
 
-        user = upsert_user(self.dbc, client=agent.client)
+        user = upsert_user(self.dbc, client=agent.client, should_create_contact=should_create_contact)
 
         dump = user.model_dump(by_alias=True) if user is not None else None
         return jsonify(dump)

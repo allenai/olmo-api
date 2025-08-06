@@ -12,18 +12,19 @@
 
 from collections.abc import Generator, Sequence
 from dataclasses import asdict
-from typing import TypeAlias, Literal
+from typing import Literal, TypeAlias
 
+from openai import OpenAI
 from openai.types.chat import ChatCompletionTokenLogprob
 from openai.types.chat.chat_completion_token_logprob import TopLogprob
-from openai import OpenAI
+
 from src.config.get_config import cfg
 from src.inference.InferenceEngine import (
+    FinishReason,
     InferenceEngine,
     InferenceEngineChunk,
     InferenceEngineMessage,
     InferenceOptions,
-    FinishReason,
     Logprob,
 )
 

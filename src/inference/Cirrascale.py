@@ -9,21 +9,24 @@
 # Cirrascale has provided us an API token valid directly with the backend APIs
 # that comes with a substantial allocation.
 #
-
 from collections.abc import Generator, Sequence
 from dataclasses import asdict
-from typing import TypeAlias, Literal
+from typing import Any, Literal, TypeAlias
 
-from openai.types.chat import ChatCompletionTokenLogprob
-from openai.types.chat.chat_completion_token_logprob import TopLogprob
 from openai import OpenAI
+from openai.types.chat import (
+    ChatCompletionMessageParam,
+    ChatCompletionTokenLogprob,
+)
+from openai.types.chat.chat_completion_token_logprob import TopLogprob
+
 from src.config.get_config import cfg
 from src.inference.InferenceEngine import (
+    FinishReason,
     InferenceEngine,
     InferenceEngineChunk,
     InferenceEngineMessage,
     InferenceOptions,
-    FinishReason,
     Logprob,
 )
 
@@ -77,15 +80,15 @@ class CirrascaleEngine(InferenceEngine):
         messages: Sequence[InferenceEngineMessage],
         inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
-        chat_messages = [asdict(message) for message in messages]  # type: ignore
-
         top_logprobs = 0
         if inference_options.logprobs is not None:
             top_logprobs = inference_options.logprobs
 
+        open_ai_message: list[ChatCompletionMessageParam] = [map_to_openai_message(message) for message in messages]
+
         chat_completion = self.client.chat.completions.create(
             model=self.model_name,
-            messages=chat_messages,  # type: ignore
+            messages=open_ai_message,
             temperature=inference_options.temperature,
             max_tokens=inference_options.max_tokens,
             n=inference_options.n,
@@ -120,3 +123,35 @@ class CirrascaleEngine(InferenceEngine):
                 # According to the docs, if stream_options["include_usage"]=True, this can happen.
                 # For now, we don't support this mode.
                 raise NotImplementedError("chunks without choices are not yet supported")
+
+
+def map_to_openai_message(message: InferenceEngineMessage) -> ChatCompletionMessageParam:
+    """
+    Maps an InferenceEngineMessage to OpenAI ChatCompletionMessageParam format.
+
+    Args:
+        message: InferenceEngineMessage instance
+
+    Returns:
+        Dictionary compatible with OpenAI's ChatCompletionMessageParam
+    """
+
+    openai_message: dict[str, Any] = {"role": message.role, "content": message.content}
+
+    if message.files:
+        content_parts: list[dict[str, Any]] = [{"type": "text", "text": message.content}]
+
+        for file in message.files:
+            if isinstance(file, str):
+                content_parts.append({"type": "image_url", "image_url": {"url": file}})
+            elif hasattr(file, "url"):
+                content_parts.append({"type": "image_url", "image_url": {"url": file.url}})
+            elif hasattr(file, "to_base64"):
+                content_parts.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg;base64,{file.to_base64()}"},
+                })
+
+        openai_message["content"] = content_parts
+
+    return openai_message  # type: ignore

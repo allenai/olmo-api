@@ -14,7 +14,7 @@ from src import db, parse
 from src.auth.auth_service import authn
 from src.config.get_config import cfg
 from src.dao import completion, message
-from src.dao.engine_models.model_config import ModelConfig
+from src.dao.engine_models.model_config import ModelConfig, ModelHost
 from src.inference.inference_service import get_engine
 from src.inference.InferenceEngine import (
     FinishReason,
@@ -224,7 +224,9 @@ def stream_new_message(
                 role=message_in_chain.role,
                 content=message_in_chain.content,
                 # We only want to add the request files to the new message. The rest will have file urls associated with them
-                files=request.files if message_in_chain.id == msg.id else message_in_chain.file_urls,
+                files=request.files
+                if message_in_chain.id == msg.id and model.host != ModelHost.Cirrascale
+                else message_in_chain.file_urls,
             )
             for message_in_chain in message_chain
         ]

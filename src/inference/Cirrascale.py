@@ -66,9 +66,6 @@ class CirrascaleEngine(InferenceEngine):
     model_name: str
 
     def __init__(self, model_id: str):
-        # As a hack, the model name is the id with the "cs-" prefix removed.
-        # This is done because we take the model_id_on_host field to store the port.
-        # When we switch to using the Cirrascale Consumer API we won't need this workaround.
         self.model_name = model_id
         self.client = OpenAI(
             base_url=f"{cfg.cirrascale.base_url}",

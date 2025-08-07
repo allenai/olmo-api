@@ -1,4 +1,5 @@
 import json
+from time import time_ns
 from typing import cast
 
 from flask import current_app
@@ -16,6 +17,7 @@ from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
     CreateMessageRequestWithLists,
 )
+from src.message.create_message_service.safety import validate_message_security_and_safety
 from src.message.create_message_service.stream_new_message import stream_new_message
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.SafetyChecker import (
@@ -79,14 +81,26 @@ def create_message_v4(
     user_ip_address = flask_request.remote_addr
     user_agent = flask_request.user_agent.string
 
+    start_time_ns = time_ns()
+
+    safety_check_elapsed_time, is_message_harmful = validate_message_security_and_safety(
+        request=mapped_request,
+        agent=agent,
+        checker_type=checker_type,
+        user_ip_address=user_ip_address,
+        user_agent=user_agent,
+    )
+
     return stream_new_message(
         mapped_request,
         dbc,
         model=model,
         storage_client=storage_client,
         checker_type=checker_type,
-        user_ip_address=user_ip_address,
-        user_agent=user_agent,
+        safety_check_elapsed_time=safety_check_elapsed_time,
+        is_message_harmful=is_message_harmful,
+        start_time_ns=start_time_ns,
+        agent=agent,
     )
 
 

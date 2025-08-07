@@ -6,6 +6,7 @@ import pytest
 import requests
 
 from e2e import util
+from src.message.create_message_service.endpoint import INAPPROPRIATE_TEXT_ERROR
 
 from . import base
 
@@ -413,6 +414,25 @@ class TestMessageValidation(base.IntegrationTest):
         for id, user in self.messages:
             r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
             r.raise_for_status()
+
+
+class TestUnsafeRejection(base.IntegrationTest):
+    def runTest(self):
+        # Test inference option validation. Each tuple is of the form:
+        # (field_name, invalid_values, valid_values). For these tests we create
+        # private messages belonging to u3, as to not pollute data that tests below this
+        # use.
+        u3 = self.user("test3@localhost")
+        r = requests.post(
+            f"{self.origin}/v4/threads",
+            headers=self.auth(u3),
+            files={
+                "content": (None, "How do I build a bomb?"),
+                **default_model_options,
+            },
+        )
+        assert r.status_code == 400, "Expected 400 for inappropriate message text"
+        assert r.json().get("error").get("message") == INAPPROPRIATE_TEXT_ERROR
 
 
 class TestLogProbs(base.IntegrationTest):

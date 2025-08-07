@@ -69,7 +69,7 @@ def setup_msg_thread(
             root=request.parent.root,
             parent=request.parent.id,
             template=request.template,
-            final=request.role == message.Role.Assistant,
+            final=request.role == message.Role.Assistant,  # is this wrong now?
             original=request.original,
             private=request.private,
             harmful=is_msg_harmful,
@@ -77,3 +77,26 @@ def setup_msg_thread(
         )
 
     return msg, system_msg
+
+
+def create_tool_response_message(
+    dbc: db.Client,
+    parent_message: message.Message,
+    content: str,
+):
+    return dbc.message.create(
+        content=content,
+        creator=parent_message.creator,
+        role=message.Role.Assistant,
+        opts=parent_message.opts,
+        model_id=parent_message.model_id,
+        model_host=parent_message.model_host,
+        root=parent_message.root,
+        parent=parent_message.id,
+        template=None,
+        final=False,
+        original=None,
+        private=parent_message.private,
+        harmful=False,
+        expiration_time=parent_message.expiration_time,
+    )

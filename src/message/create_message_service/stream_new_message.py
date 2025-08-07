@@ -24,7 +24,7 @@ from src.inference.InferenceEngine import (
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
-from src.message.create_message_service.files import upload_request_files
+from src.message.create_message_service.files import FileUploadResult, upload_request_files
 from src.message.create_message_service.safety import (
     check_image_safety,
     check_message_safety,
@@ -140,7 +140,7 @@ def stream_new_message(
 
     message_chain.reverse()
 
-    file_urls = upload_request_files(
+    file_uploads = upload_request_files(
         files=request.files,
         message_id=msg.id,
         storage_client=storage_client,
@@ -148,7 +148,12 @@ def stream_new_message(
         is_anonymous=agent.is_anonymous_user,
     )
     # TODO: https://github.com/allenai/playground-issues-repo/issues/9: Get this from the DB
+    file_urls = [file.file_url for file in file_uploads or []]
     msg.file_urls = file_urls
+
+    blob_map: dict[str, FileUploadResult] = {}
+    for file in file_uploads:
+        blob_map[file.file_url] = file
 
     # Create a message that will eventually capture the streamed response.
     # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message
@@ -198,7 +203,7 @@ def stream_new_message(
         chunks = cast(list[Chunk], chunks)
         pydantic_inference_engine = get_pydantic_model(model)
 
-        pydantic_messages = pydantic_map_messages(message_chain)
+        pydantic_messages = pydantic_map_messages(message_chain, blob_map)
         tools = get_tools() if model.can_call_tools else []
         with model_request_stream_sync(
             model=pydantic_inference_engine,

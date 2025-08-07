@@ -1,4 +1,5 @@
 from pydantic_ai.messages import (
+    BinaryContent,
     ImageUrl,
     ModelMessage,
     ModelRequest,
@@ -17,6 +18,7 @@ from pydantic_ai.messages import (
 )
 
 from src.dao.message import Message
+from src.message.create_message_service.files import FileUploadResult
 from src.message.message_chunk import Chunk, ModelResponseChunk, ThinkingChunk, ToolCallChunk
 
 
@@ -28,13 +30,21 @@ def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent, message_id: str) 
             return pydantic_map_delta(chunk.delta, message_id)
 
 
-def pydantic_map_messages(messages: list[Message]) -> list[ModelMessage]:
+def pydantic_map_messages(messages: list[Message], blob_map: dict[str, FileUploadResult]) -> list[ModelMessage]:
     model_messages: list[ModelMessage] = []
     for message in messages:
         if message.role == "user":
             user_content: list[UserContent] = [message.content]
-            for file in message.file_urls or []:
-                user_content.append(ImageUrl(url=file))
+            for file_url in message.file_urls or []:
+                if file_url in blob_map:
+                    user_content.append(
+                        BinaryContent(
+                            data=blob_map[file_url].file_storage.stream.read(),
+                            media_type=blob_map[file_url].file_storage.content_type or "image/png",
+                        )
+                    )
+                else:
+                    user_content.append(ImageUrl(url=file_url))
 
             user_prompt_part = UserPromptPart(user_content)
 

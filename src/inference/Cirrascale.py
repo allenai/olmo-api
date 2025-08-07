@@ -9,14 +9,17 @@
 # Cirrascale has provided us an API token valid directly with the backend APIs
 # that comes with a substantial allocation.
 #
-
+import base64
 from collections.abc import Generator, Sequence
-from dataclasses import asdict
-from typing import Literal, TypeAlias
+from typing import Any, Literal, TypeAlias
 
 from openai import OpenAI
-from openai.types.chat import ChatCompletionTokenLogprob
+from openai.types.chat import (
+    ChatCompletionMessageParam,
+    ChatCompletionTokenLogprob,
+)
 from openai.types.chat.chat_completion_token_logprob import TopLogprob
+from werkzeug.datastructures import FileStorage
 
 from src.config.get_config import cfg
 from src.inference.InferenceEngine import (
@@ -58,18 +61,15 @@ def map_openai_logprobs(logprobs: list[ChatCompletionTokenLogprob] | None) -> Se
     return [[map_openapi_top_logprob(top_logprob) for top_logprob in logprob.top_logprobs] for logprob in logprobs]
 
 
-class CirrascaleBackendEngine(InferenceEngine):
+class CirrascaleEngine(InferenceEngine):
     client: OpenAI
     model_name: str
 
-    def __init__(self, model_id: str, port: str):
-        # As a hack, the model name is the id with the "cs-" prefix removed.
-        # This is done because we take the model_id_on_host field to store the port.
-        # When we switch to using the Cirrascale Consumer API we won't need this workaround.
-        self.model_name = model_id.replace("cs-", "")
+    def __init__(self, model_id: str):
+        self.model_name = model_id
         self.client = OpenAI(
-            base_url=f"{cfg.cirrascale_backend.base_url}:{port}/v1",
-            api_key=cfg.cirrascale_backend.api_key,
+            base_url=f"{cfg.cirrascale.base_url}",
+            api_key=cfg.cirrascale.api_key.get_secret_value(),
         )
 
     def create_streamed_message(
@@ -78,15 +78,15 @@ class CirrascaleBackendEngine(InferenceEngine):
         messages: Sequence[InferenceEngineMessage],
         inference_options: InferenceOptions,
     ) -> Generator[InferenceEngineChunk, None, None]:
-        chat_messages = [asdict(message) for message in messages]  # type: ignore
-
         top_logprobs = 0
         if inference_options.logprobs is not None:
             top_logprobs = inference_options.logprobs
 
+        open_ai_message: list[ChatCompletionMessageParam] = [map_to_openai_message(message) for message in messages]
+
         chat_completion = self.client.chat.completions.create(
             model=self.model_name,
-            messages=chat_messages,  # type: ignore
+            messages=open_ai_message,
             temperature=inference_options.temperature,
             max_tokens=inference_options.max_tokens,
             n=inference_options.n,
@@ -121,3 +121,28 @@ class CirrascaleBackendEngine(InferenceEngine):
                 # According to the docs, if stream_options["include_usage"]=True, this can happen.
                 # For now, we don't support this mode.
                 raise NotImplementedError("chunks without choices are not yet supported")
+
+
+def map_to_openai_message(message: InferenceEngineMessage) -> ChatCompletionMessageParam:
+    openai_message: dict[str, Any] = {"role": message.role, "content": message.content}
+
+    if message.files:
+        content_parts: list[dict[str, Any]] = [{"type": "text", "text": message.content}]
+
+        for file in message.files:
+            if isinstance(file, str):
+                content_parts.append({"type": "image_url", "image_url": {"url": file}})
+            elif isinstance(file, FileStorage):
+                file.stream.seek(0)
+                image = base64.b64encode(file.stream.read()).decode()
+                # print start of image
+
+                # Rewind the stream for future use
+                content_parts.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{file.content_type or 'image/png'};base64,{image}"},
+                })
+
+        openai_message["content"] = content_parts
+
+    return openai_message  # type: ignore[return-value]

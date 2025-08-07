@@ -1,9 +1,16 @@
 import os
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 from werkzeug.datastructures import FileStorage
 
 from src.message.GoogleCloudStorage import GoogleCloudStorage
+
+
+@dataclass
+class FileUploadResult:
+    file_url: str
+    file_storage: FileStorage
 
 
 def upload_request_files(
@@ -12,11 +19,11 @@ def upload_request_files(
     storage_client: GoogleCloudStorage,
     root_message_id: str,
     is_anonymous: bool = False,
-) -> list[str] | None:
+) -> list[FileUploadResult]:
     if files is None or len(files) == 0:
-        return None
+        return []
 
-    file_urls: list[str] = []
+    file_results: list[FileUploadResult] = []
 
     for i, file in enumerate(files):
         file_extension = os.path.splitext(file.filename)[1] if file.filename is not None else ""
@@ -35,6 +42,7 @@ def upload_request_files(
 
         # since we read from the file we need to rewind it so the next consumer can read it
         file.stream.seek(0)
-        file_urls.append(file_url)
 
-    return file_urls
+        file_results.append(FileUploadResult(file_url=file_url, file_storage=file))
+
+    return file_results

@@ -39,6 +39,12 @@ class CirrascaleBackend:
 
 
 @dataclass
+class Cirrascale:
+    base_url: str
+    api_key: SecretStr
+
+
+@dataclass
 class Server:
     num_proxies: int
     log_level: str
@@ -119,6 +125,7 @@ class Config:
     feature_flags: FeatureFlags
     beaker: Beaker
     cirrascale_backend: CirrascaleBackend
+    cirrascale: Cirrascale
     modal_openai: ModalOpenAI
 
     @classmethod
@@ -143,6 +150,9 @@ class Config:
                 modal=Modal(
                     token=data["modal"].get("token"),
                     token_secret=data["modal"].get("token_secret"),
+                ),
+                cirrascale=Cirrascale(
+                    base_url=data["cirrascale"]["base_url"], api_key=SecretStr(data["cirrascale"]["api_key"])
                 ),
                 cirrascale_backend=CirrascaleBackend(
                     base_url=data["cirrascale_backend"]["base_url"],

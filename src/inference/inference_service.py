@@ -3,8 +3,9 @@ from collections.abc import Sequence
 from src.config import get_config
 from src.config.Model import Model, MultiModalModel
 from src.constants import OLMO_ASR_MODEL_ID
-from src.dao.engine_models.model_config import ModelHost, ModelConfig
+from src.dao.engine_models.model_config import ModelConfig, ModelHost
 from src.inference.BeakerQueuesEngine import BeakerQueuesEngine
+from src.inference.Cirrascale import CirrascaleEngine
 from src.inference.CirrascaleBackendEngine import CirrascaleBackendEngine
 from src.inference.InferDEngine import InferDEngine
 from src.inference.InferenceEngine import InferenceEngine
@@ -24,6 +25,8 @@ def get_engine(model: ModelConfig) -> InferenceEngine:
             return BeakerQueuesEngine()
         case ModelHost.CirrascaleBackend:
             return CirrascaleBackendEngine(model_id=model.id, port=model.model_id_on_host)
+        case ModelHost.Cirrascale:
+            return CirrascaleEngine(model_id=model.model_id_on_host)
         case ModelHost.Modal | _:
             if model == OLMO_ASR_MODEL_ID:
                 # HACK: The OLMoASR model has some special handling. We'll want to correct that in the future

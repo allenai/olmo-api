@@ -4,6 +4,7 @@ from pydantic_ai.messages import (
     ModelMessage,
     ModelRequest,
     ModelResponse,
+    ModelResponsePart,
     PartDeltaEvent,
     PartStartEvent,
     SystemPromptPart,
@@ -61,7 +62,7 @@ def pydantic_map_messages(messages: list[Message], blob_map: dict[str, FileUploa
     return model_messages
 
 
-def pydantic_map_part(part: TextPart | ToolCallPart | ThinkingPart, message_id: str) -> Chunk:
+def pydantic_map_part(part: ModelResponsePart, message_id: str) -> Chunk:
     match part:
         case TextPart():
             return ModelResponseChunk(
@@ -77,6 +78,9 @@ def pydantic_map_part(part: TextPart | ToolCallPart | ThinkingPart, message_id: 
             return ToolCallChunk(
                 message=message_id, tool_call_id=part.tool_call_id, tool_name=part.tool_name, args=part.args
             )
+        case _:
+            msg = "unsupported response part"
+            raise NotImplementedError(msg)
 
 
 def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDelta, message_id: str) -> Chunk:

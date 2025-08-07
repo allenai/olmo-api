@@ -31,7 +31,7 @@ class BeakerQueuesEngine(InferenceEngine):
             "model": q.id,
             "messages": [asdict(message) for message in messages],
             "stream": True,
-            "opts": asdict(inference_options),
+            **asdict(inference_options),
         }
 
         for m in self.beaker_client.queue.create_entry(q, input=queue_input, expires_in_sec=EXPIRES_IN):

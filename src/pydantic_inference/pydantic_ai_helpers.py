@@ -35,16 +35,16 @@ def pydantic_map_messages(messages: list[Message], blob_map: dict[str, FileUploa
     for message in messages:
         if message.role == "user":
             user_content: list[UserContent] = [message.content]
-            for file in message.file_urls or []:
-                if file in blob_map:
+            for file_url in message.file_urls or []:
+                if file_url in blob_map:
                     user_content.append(
                         BinaryContent(
-                            data=blob_map[file].file_storage.stream.read(),
-                            media_type=blob_map[file].file_storage.content_type or "image/png",
+                            data=blob_map[file_url].file_storage.stream.read(),
+                            media_type=blob_map[file_url].file_storage.content_type or "image/png",
                         )
                     )
                 else:
-                    user_content.append(ImageUrl(url=file))
+                    user_content.append(ImageUrl(url=file_url))
 
             user_prompt_part = UserPromptPart(user_content)
 

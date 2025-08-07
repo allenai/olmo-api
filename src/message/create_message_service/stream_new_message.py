@@ -3,10 +3,11 @@ import os
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 from time import time_ns
-from typing import Any
+from typing import Any, cast
 
 from pydantic_ai.direct import model_request_stream_sync
 from pydantic_ai.models import ModelRequestParameters
+from pydantic_ai.models.openai import OpenAIModelSettings
 from werkzeug import exceptions
 
 from src import db, parse
@@ -31,6 +32,7 @@ from src.message.create_message_service.safety import (
 )
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.inference_logging import log_inference_timing
+from src.message.message_chunk import Chunk
 from src.message.SafetyChecker import (
     SafetyCheckerType,
 )
@@ -57,7 +59,9 @@ def stream_new_message(
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     user_ip_address: str | None = None,
     user_agent: str | None = None,
-) -> message.Message | Generator[message.Message | message.MessageChunk | message.MessageStreamError, Any, None]:
+) -> (
+    message.Message | Generator[message.Message | message.MessageChunk | message.MessageStreamError | Chunk, Any, None]
+):
     start_all = time_ns()
     agent = authn()
 
@@ -188,9 +192,10 @@ def stream_new_message(
     # We keep track of each chunk and the timing information per-chunk
     # so that we can manifest a completion at the end. This will go
     # away when InferD stores this I/O.
-    chunks: list[message.MessageChunk] = []
+    chunks: list[message.MessageChunk] | list[Chunk] = []
 
     if cfg.feature_flags.enable_pydantic_inference:
+        chunks = cast(list[Chunk], chunks)
         pydantic_inference_engine = get_pydantic_model(model)
 
         pydantic_messages = pydantic_map_messages(message_chain)
@@ -198,14 +203,22 @@ def stream_new_message(
         with model_request_stream_sync(
             model=pydantic_inference_engine,
             messages=pydantic_messages,
+            model_settings=OpenAIModelSettings(openai_reasoning_effort="low"),
             model_request_parameters=ModelRequestParameters(function_tools=tools),
         ) as stream:
             for chunk in stream:
-                mapped_chunk = pydantic_map_chunk(chunk, message_id=reply.id)
-                chunks.append(mapped_chunk)
-                yield mapped_chunk
+                pydantic_chunk = pydantic_map_chunk(chunk, message_id=reply.id)
+                chunks.append(pydantic_chunk)
+                yield pydantic_chunk
+
+        full_response = stream.get()
+        text_part = next((part for part in full_response.parts if part.part_kind == "text"), None)
+        output = text_part.content if text_part is not None else ""
+        logprobs = []
 
     else:
+        chunks = cast(list[message.MessageChunk], chunks)
+
         chain: list[InferenceEngineMessage] = [
             InferenceEngineMessage(
                 role=message_in_chain.role,
@@ -241,12 +254,12 @@ def stream_new_message(
         input_token_count = stream_metrics.input_token_count or -1
         output_token_count = stream_metrics.output_token_count or -1
         total_generation_ns = stream_metrics.total_generation_ns or 0
+        output, logprobs = create_output_from_chunks(chunks)
 
     gen = total_generation_ns
     gen //= 1000000
 
     prompt = create_prompt_from_engine_input(message_chain)
-    output, logprobs = create_output_from_chunks(chunks)
 
     message_completion = None
     if not agent.is_anonymous_user:
@@ -345,7 +358,7 @@ def create_output_from_chunks(chunks: list[message.MessageChunk]):
     output = ""
     logprobs: list[list[message.TokenLogProbs]] = []
 
-    for chunk in chunks:
+    for chunk in cast(list[message.MessageChunk], chunks):
         output += chunk.content
         if chunk.logprobs is not None and len(chunk.logprobs) > 0:
             logprobs.append(*chunk.logprobs)

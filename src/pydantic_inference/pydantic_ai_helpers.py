@@ -16,10 +16,11 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 
-from src.dao.message import Message, MessageChunk
+from src.dao.message import Message
+from src.message.message_chunk import Chunk, ModelResponseChunk, ThinkingChunk, ToolCallChunk
 
 
-def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent, message_id: str) -> MessageChunk:
+def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent, message_id: str) -> Chunk:
     match chunk:
         case PartStartEvent():
             return pydantic_map_part(chunk.part, message_id)
@@ -50,48 +51,34 @@ def pydantic_map_messages(messages: list[Message]) -> list[ModelMessage]:
     return model_messages
 
 
-def pydantic_map_part(part: TextPart | ToolCallPart | ThinkingPart, message_id: str) -> MessageChunk:
+def pydantic_map_part(part: TextPart | ToolCallPart | ThinkingPart, message_id: str) -> Chunk:
     match part:
         case TextPart():
-            return MessageChunk(
+            return ModelResponseChunk(
                 message=message_id,
                 content=part.content,
             )
         case ThinkingPart():
-            return MessageChunk(
+            return ThinkingChunk(
                 message=message_id,
                 content=part.content or "",
             )
         case ToolCallPart():
-            args_content = part.args or ""
-            if isinstance(args_content, dict):
-                args_content = str(args_content)
-
-            return MessageChunk(
-                message=message_id,
-                content=args_content,
+            return ToolCallChunk(
+                message=message_id, tool_call_id=part.tool_call_id, tool_name=part.tool_name, args=part.args
             )
 
 
-def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDelta, message_id: str) -> MessageChunk:
+def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDelta, message_id: str) -> Chunk:
     match part:
         case TextPartDelta():
-            return MessageChunk(
-                message=message_id,
-                content=part.content_delta,
-            )
+            return ModelResponseChunk(message=message_id, content=part.content_delta or "")
         case ThinkingPartDelta():
-            return MessageChunk(
-                message=message_id,
-                content=part.content_delta or "",
-            )
+            return ThinkingChunk(message=message_id, content=part.content_delta or "")
         case ToolCallPartDelta():
-            # Convert args_delta to string if it's a dictionary
-            args_content = part.args_delta or ""
-            if isinstance(args_content, dict):
-                args_content = str(args_content)
-
-            return MessageChunk(
+            return ToolCallChunk(
                 message=message_id,
-                content=f"TOOL {args_content} \n",
+                tool_call_id=part.tool_call_id or "",
+                tool_name=part.tool_name_delta or "",
+                args=part.args_delta,
             )

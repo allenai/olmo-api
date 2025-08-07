@@ -6,6 +6,7 @@ from time import time_ns
 from typing import Any, cast
 
 from pydantic_ai.direct import model_request_stream_sync
+from pydantic_ai.messages import ToolCallPart
 from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.openai import OpenAIModelSettings
 
@@ -35,8 +36,8 @@ from src.pydantic_inference.pydantic_ai_helpers import pydantic_map_chunk, pydan
 from src.pydantic_inference.pydantic_model_service import get_pydantic_model
 from src.util.generator_with_return_value import GeneratorWithReturnValue
 
-from .database import setup_msg_thread
-from .tools import get_tools
+from .database import create_tool_response_message, setup_msg_thread
+from .tools import call_tool, get_tools
 
 
 @dataclasses.dataclass
@@ -146,6 +147,7 @@ def stream_new_message(
     # so that we can manifest a completion at the end. This will go
     # away when InferD stores this I/O.
     chunks: list[message.MessageChunk] | list[Chunk] = []
+    tool_parts: list[ToolCallPart] | None = []
 
     if cfg.feature_flags.enable_pydantic_inference:
         chunks = cast(list[Chunk], chunks)
@@ -157,7 +159,7 @@ def stream_new_message(
             model=pydantic_inference_engine,
             messages=pydantic_messages,
             model_settings=OpenAIModelSettings(openai_reasoning_effort="low"),
-            model_request_parameters=ModelRequestParameters(function_tools=tools),
+            model_request_parameters=ModelRequestParameters(function_tools=tools, allow_text_output=True),
         ) as stream:
             for chunk in stream:
                 pydantic_chunk = pydantic_map_chunk(chunk, message_id=reply.id)
@@ -165,9 +167,10 @@ def stream_new_message(
                 yield pydantic_chunk
 
         full_response = stream.get()
-
         # TODO BREAKS WITH TOOL CALL ENDING?
         text_part = next((part for part in full_response.parts if part.part_kind == "text"), None)
+        # tool_parts = [part for part in full_response.parts if part.part_kind == "tool-call"]
+        tool_parts = list(filter(lambda part: part.part_kind == "tool-call", full_response.parts))  # type: ignore
         output = text_part.content if text_part is not None else ""
         logprobs = []
 
@@ -284,6 +287,33 @@ def stream_new_message(
         )
 
     yield final_message
+
+    if tool_parts is not None and len(tool_parts) > 0:
+        tool_responses = [call_tool(tool) for tool in tool_parts]
+        last_msg = final_message
+        for tool in tool_responses:
+            tool_msg = create_tool_response_message(dbc=dbc, content=tool.content, parent_message=last_msg)
+            last_msg = tool_msg
+
+        new_payload = CreateMessageRequestWithFullMessages(
+            parent_id=last_msg.id,
+            parent=last_msg,
+            opts=request.opts,
+            content="",
+            role=cast(message.Role, request.role),
+            original=request.original,
+            private=request.private,
+            root=None,  # TODO incorrect
+            template=request.template,
+            model=request.model,
+            host=request.host,
+            client=agent.client,
+            files=request.files,
+            captcha_token=request.captcha_token,
+        )
+
+        # TODO save...
+
     return None
 
 

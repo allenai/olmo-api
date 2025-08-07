@@ -23,6 +23,7 @@ class Role(StrEnum):
     User = "user"
     Assistant = "assistant"
     System = "system"
+    Enviroment = "environment"
 
 
 @dataclass

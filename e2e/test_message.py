@@ -6,7 +6,7 @@ import pytest
 import requests
 
 from e2e import util
-from src.message.create_message_service.endpoint import INAPPROPRIATE_TEXT_ERROR
+from src.message.create_message_service.safety import INAPPROPRIATE_TEXT_ERROR
 
 from . import base
 

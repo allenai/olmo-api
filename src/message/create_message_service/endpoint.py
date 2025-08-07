@@ -81,7 +81,6 @@ def create_message_v4(
     user_ip_address = flask_request.remote_addr
     user_agent = flask_request.user_agent.string
 
-    agent = authn()
     start_time_ns = time_ns()
 
     safety_check_elapsed_time, is_message_harmful = validate_message_security_and_safety(

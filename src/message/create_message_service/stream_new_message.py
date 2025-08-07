@@ -8,10 +8,9 @@ from typing import Any, cast
 from pydantic_ai.direct import model_request_stream_sync
 from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.openai import OpenAIModelSettings
-from werkzeug import exceptions
 
 from src import db, parse
-from src.auth.auth_service import authn
+from src.auth.token import Token
 from src.config.get_config import cfg
 from src.dao import completion, message
 from src.dao.engine_models.model_config import ModelConfig
@@ -25,11 +24,6 @@ from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
 from src.message.create_message_service.files import FileUploadResult, upload_request_files
-from src.message.create_message_service.safety import (
-    check_image_safety,
-    check_message_safety,
-    evaluate_prompt_submission_captcha,
-)
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.inference_logging import log_inference_timing
 from src.message.message_chunk import Chunk
@@ -56,64 +50,18 @@ def stream_new_message(
     dbc: db.Client,
     storage_client: GoogleCloudStorage,
     model: ModelConfig,
+    safety_check_elapsed_time: float,
+    start_time_ns: int,
+    agent: Token,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
-    user_ip_address: str | None = None,
-    user_agent: str | None = None,
-) -> (
-    message.Message | Generator[message.Message | message.MessageChunk | message.MessageStreamError | Chunk, Any, None]
-):
-    start_all = time_ns()
-    agent = authn()
-
-    evaluate_prompt_submission_captcha(
-        request.captcha_token,
-        user_ip_address=user_ip_address,
-        user_agent=user_agent,
-        is_anonymous_user=agent.is_anonymous_user,
-    )
-
-    is_content_safe = None
-    is_image_safe = None
+    *,
+    is_message_harmful: bool | None = None,
+) -> message.Message | Generator[message.Message | message.MessageChunk | message.MessageStreamError, Any, None]:
     # Capture the SHA and logger, as the current_app context is lost in the generator.
     sha = os.environ.get("SHA") or "DEV"
 
-    safety_check_elapsed_time = 0
-    if request.role == message.Role.User:
-        safety_check_start_time = time_ns()
-        is_content_safe = check_message_safety(request.content, checker_type)
-        is_image_safe = check_image_safety(request.files or [])
-        safety_check_elapsed_time = (time_ns() - safety_check_start_time) // 1_000_000
-
-        # We don't want to save messages from anonymous users
-        # Not saving the completion is probably better than saving it with bad info
-        if not agent.is_anonymous_user:
-            dbc.completion.create(
-                request.content,
-                [
-                    completion.CompletionOutput(
-                        str(is_content_safe),
-                        finish_reason=FinishReason.Stop,
-                    )
-                ],
-                message.InferenceOpts(),
-                checker_type,
-                sha,
-                tokenize_ms=-1,
-                generation_ms=safety_check_elapsed_time,
-                queue_ms=0,
-                input_tokens=-1,
-                output_tokens=-1,
-            )
-
-        # if is_content_safe is False:
-        raise exceptions.BadRequest(description="inappropriate_prompt_text")
-
-        if is_image_safe is False:
-            raise exceptions.BadRequest(description="inappropriate_prompt_file")
-
     # We currently want anonymous users' messages to expire after 1 days
     message_expiration_time = datetime.now(UTC) + timedelta(days=1) if agent.is_anonymous_user else None
-    is_msg_harmful = None if is_content_safe is None or is_image_safe is None else False
 
     msg, system_msg = setup_msg_thread(
         dbc=dbc,
@@ -121,7 +69,7 @@ def stream_new_message(
         request=request,
         agent=agent,
         message_expiration_time=message_expiration_time,
-        is_msg_harmful=is_msg_harmful,
+        is_msg_harmful=is_message_harmful,
     )
 
     # TODO: is this expected?
@@ -318,12 +266,12 @@ def stream_new_message(
         final_message = finalSystemMessage
 
     end_all = time_ns()
-    if first_ns > start_all:
+    if first_ns > start_time_ns:
         log_inference_timing(
             event_type="create_message",
             ttft_ns=(first_ns - start_message_generation_ns),
-            total_ns=(end_all - start_all),
-            ttft_ms_including_checks=(first_ns - start_all) // 1e6,
+            total_ns=(end_all - start_time_ns),
+            ttft_ms_including_checks=(first_ns - start_time_ns) // 1e6,
             safety_ms=safety_check_elapsed_time,
             input_token_count=input_token_count,
             output_token_count=output_token_count,

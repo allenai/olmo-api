@@ -1,12 +1,17 @@
 import base64
 from collections.abc import Sequence
+from time import time_ns
 
 from flask import current_app
 from werkzeug import exceptions
 from werkzeug.datastructures import FileStorage
 
+from src.auth.token import Token
 from src.bot_detection.create_assessment import create_assessment
 from src.config.get_config import cfg
+from src.message.create_message_request import (
+    CreateMessageRequestWithFullMessages,
+)
 from src.message.GoogleModerateText import GoogleModerateText
 from src.message.GoogleVisionSafeSearch import GoogleVisionSafeSearch
 from src.message.SafetyChecker import (
@@ -97,3 +102,37 @@ def evaluate_prompt_submission_captcha(
             )
             failed_captcha_assessment_message = "failed_captcha_assessment"
             raise exceptions.BadRequest(failed_captcha_assessment_message)
+
+
+INAPPROPRIATE_TEXT_ERROR = "inappropriate_prompt_text"
+INAPPROPRIATE_FILE_ERROR = "inappropriate_prompt_file"
+
+
+def validate_message_security_and_safety(
+    request: CreateMessageRequestWithFullMessages,
+    agent: Token,
+    checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
+    user_ip_address: str | None = None,
+    user_agent: str | None = None,
+):
+    evaluate_prompt_submission_captcha(
+        captcha_token=request.captcha_token,
+        user_ip_address=user_ip_address,
+        user_agent=user_agent,
+        is_anonymous_user=agent.is_anonymous_user,
+    )
+
+    safety_check_start_time = time_ns()
+    is_content_safe = check_message_safety(request.content, checker_type=checker_type)
+    is_image_safe = check_image_safety(files=request.files or [])
+    safety_check_elapsed_time = (time_ns() - safety_check_start_time) // 1_000_000
+
+    if is_content_safe is False:
+        raise exceptions.BadRequest(INAPPROPRIATE_TEXT_ERROR)
+
+    if is_image_safe is False:
+        raise exceptions.BadRequest(INAPPROPRIATE_FILE_ERROR)
+
+    is_message_harmful = None if is_content_safe is None or is_image_safe is None else False
+
+    return safety_check_elapsed_time, is_message_harmful

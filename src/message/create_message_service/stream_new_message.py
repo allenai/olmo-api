@@ -72,16 +72,13 @@ def stream_new_message(
         message_expiration_time=message_expiration_time,
         is_msg_harmful=is_message_harmful,
     )
-
-    system_msg_created = message_chain[0] if request.parent is None and model.default_system_prompt else None
-    parent_msg = message_chain[-1] if len(message_chain) > 0 else None
     msg: message.Message | None = None
     blob_map: dict[str, FileUploadResult] = {}
 
     if len(message_chain) == 0 or message_chain[-1].role != message.Role.Enviroment:
         msg = create_user_message(
             dbc=dbc,
-            parent=parent_msg,
+            parent=message_chain[-1] if len(message_chain) > 0 else None,
             request=request,
             agent=agent,
             message_expiration_time=message_expiration_time,
@@ -123,14 +120,7 @@ def stream_new_message(
     message_chain.append(reply)
 
     repair_children(message_chain)
-
-    # Update system prompt to include user message as a child.
-    # Yield the system prompt message if there is any
-    if system_msg_created is not None:
-        yield system_msg_created
-    # Yield the new user message
-    if msg is not None:
-        yield msg
+    yield message_chain[0]
 
     # Now yield each chunk as it's returned.
     finish_reason: FinishReason | None = None

@@ -8,12 +8,10 @@ from flask_pydantic_api.api_wrapper import pydantic_api
 from flask_pydantic_api.utils import UploadedFile
 from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug import exceptions
 
 from src import db
 from src.api_interface import APIInterface
 from src.dao import message
-from src.dao.engine_models.message import Message
 from src.error import handle_validation_error
 from src.message.create_message_request import (
     CreateMessageRequest,
@@ -21,6 +19,7 @@ from src.message.create_message_request import (
 )
 from src.message.create_message_service.endpoint import create_message_v4, format_message
 from src.message.GoogleCloudStorage import GoogleCloudStorage
+from src.thread.get_thread_service import get_thread
 from src.thread.get_threads_service import GetThreadsRequest, GetThreadsResponse, get_threads
 from src.thread.thread_models import Thread
 
@@ -52,20 +51,10 @@ def create_threads_blueprint(
     def list_threads(request: GetThreadsRequest) -> GetThreadsResponse:
         return get_threads(dbc, request)
 
-    # @threads_blueprint.get("/<thread_id>")
-    # @pydantic_api(name="Get message", tags=["v4", "threads"])
-    # def get_single_thread(thread_id: str) -> Thread:
-    #     return Thread.from_message(get_message(thread_id, dbc))
-
     @threads_blueprint.get("/<thread_id>")
     @pydantic_api(name="Get message", tags=["v4", "threads"])
     def get_single_thread(thread_id: str) -> Thread:
-        with session_maker.begin() as session:
-            result = session.get(Message, thread_id)
-            if result is None:
-                raise exceptions.NotFound
-
-            return Thread.from_message(result)
+        return get_thread(thread_id, session_maker)
 
     @threads_blueprint.post("/")
     @pydantic_api(name="Stream a prompt response", tags=["v4", "threads"])

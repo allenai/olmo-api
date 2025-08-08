@@ -72,13 +72,3 @@ class Message(Base, kw_only=True):
 
     prompt_template: Mapped[PromptTemplate | None] = relationship("PromptTemplate", back_populates="message")
     label: Mapped[list[Label]] = relationship("Label", back_populates="message_")
-
-    def flatten(self) -> list["Message"]:
-        if self.children is None:
-            return [self]
-
-        return [self] + [child for message in self.children for child in message.flatten()]
-        flat: list[Message] = [self]
-        for c in self.children:
-            flat += c.flatten()
-        return flat

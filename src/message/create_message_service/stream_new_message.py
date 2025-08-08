@@ -122,6 +122,8 @@ def stream_new_message(
 
     message_chain.append(reply)
 
+    repair_children(message_chain)
+
     # Update system prompt to include user message as a child.
     # Yield the system prompt message if there is any
     if system_msg_created is not None:
@@ -168,6 +170,7 @@ def stream_new_message(
         tool_parts = list(filter(lambda part: part.part_kind == "tool-call", full_response.parts))  # type: ignore
         output = text_part.content if text_part is not None else ""
         logprobs = []
+        # TODO finish reason
 
     else:
         chunks = cast(list[message.MessageChunk], chunks)
@@ -221,7 +224,7 @@ def stream_new_message(
         message_completion = dbc.completion.create(
             prompt,
             [completion.CompletionOutput(output, str(finish_reason), logprobs)],
-            msg.opts,
+            request.opts,
             model.model_id_on_host,
             sha,
             tokenize_ms=-1,
@@ -239,6 +242,12 @@ def stream_new_message(
         message_completion.id if message_completion is not None else None,
         finish_reason,
     )
+
+    reply.content = output
+    reply.logprobs = logprobs
+    reply.finish_reason = finish_reason
+    reply.completion = message_completion.id if message_completion is not None else None
+
     if final_reply is None:
         final_reply_error = RuntimeError(f"failed to finalize message {reply.id}")
         yield message.MessageStreamError(message=reply.id, error=str(final_reply_error), reason="finalization failure")

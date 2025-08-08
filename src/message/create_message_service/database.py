@@ -18,6 +18,7 @@ def setup_msg_thread(
     is_msg_harmful: bool | None = None,
 ) -> list[message.Message]:
     system_msg = None
+    message_chain = []
 
     if request.parent is None and model.default_system_prompt is not None:
         system_msg = dbc.message.create(
@@ -37,9 +38,11 @@ def setup_msg_thread(
             expiration_time=message_expiration_time,
         )
 
-    message_chain = []
+    if request.parent:
+        message_chain.append(request.parent)
+
     if request.root is not None:
-        msgs = message.Message.group_by_id(request.root.flatten())
+        msgs = message.Message.group_by_id(request.root.flatten())  # TODO fix loading of thread...
         while message_chain[-1].parent is not None:
             message_chain.append(msgs[message_chain[-1].parent])
 

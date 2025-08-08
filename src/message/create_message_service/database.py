@@ -31,7 +31,7 @@ def setup_msg_thread(
             root=None,
             parent=None,
             template=request.template,
-            final=False,
+            final=True,
             original=request.original,
             private=request.private,
             harmful=is_msg_harmful,
@@ -72,7 +72,7 @@ def create_user_message(
         root=parent.root if parent is not None else None,
         parent=parent.id if parent is not None else None,
         template=request.template,
-        final=request.role == message.Role.Assistant,  # is this wrong now?
+        final=True,
         original=request.original,
         private=request.private,
         harmful=is_msg_harmful,

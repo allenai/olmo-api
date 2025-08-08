@@ -36,7 +36,7 @@ from src.pydantic_inference.pydantic_ai_helpers import pydantic_map_chunk, pydan
 from src.pydantic_inference.pydantic_model_service import get_pydantic_model
 from src.util.generator_with_return_value import GeneratorWithReturnValue
 
-from .database import create_tool_response_message, setup_msg_thread
+from .database import create_tool_response_message, create_user_message, setup_msg_thread
 from .tools import call_tool, get_tools
 
 
@@ -64,7 +64,7 @@ def stream_new_message(
     # We currently want anonymous users' messages to expire after 1 days
     message_expiration_time = datetime.now(UTC) + timedelta(days=1) if agent.is_anonymous_user else None
 
-    msg, system_msg = setup_msg_thread(
+    message_chain = setup_msg_thread(
         dbc=dbc,
         model=model,
         request=request,
@@ -73,36 +73,34 @@ def stream_new_message(
         is_msg_harmful=is_message_harmful,
     )
 
-    # TODO: is this expected?
-    if msg.role == message.Role.Assistant:
-        return msg
-
-    # Resolve the message chain if we need to.
-    message_chain = [msg]
-    if request.root is not None:
-        msgs = message.Message.group_by_id(request.root.flatten())
-        while message_chain[-1].parent is not None:
-            message_chain.append(msgs[message_chain[-1].parent])
-
-    if system_msg is not None:
-        message_chain.append(system_msg)
-
-    message_chain.reverse()
-
-    file_uploads = upload_request_files(
-        files=request.files,
-        message_id=msg.id,
-        storage_client=storage_client,
-        root_message_id=message_chain[0].id,
-        is_anonymous=agent.is_anonymous_user,
-    )
-    # TODO: https://github.com/allenai/playground-issues-repo/issues/9: Get this from the DB
-    file_urls = [file.file_url for file in file_uploads or []]
-    msg.file_urls = file_urls
-
+    system_msg_created = message_chain[0] if request.parent is None and model.default_system_prompt else None
+    msg: message.Message | None = None
     blob_map: dict[str, FileUploadResult] = {}
-    for file in file_uploads:
-        blob_map[file.file_url] = file
+
+    if message_chain[-1].role != message.Role.Enviroment:
+        msg = create_user_message(
+            dbc=dbc,
+            parent=message_chain[-1],
+            request=request,
+            agent=agent,
+            message_expiration_time=message_expiration_time,
+            is_msg_harmful=is_message_harmful,
+        )
+        message_chain.append(msg)
+
+        file_uploads = upload_request_files(
+            files=request.files,
+            message_id=msg.id,
+            storage_client=storage_client,
+            root_message_id=message_chain[0].id,
+            is_anonymous=agent.is_anonymous_user,
+        )
+        # TODO: https://github.com/allenai/playground-issues-repo/issues/9: Get this from the DB
+        file_urls = [file.file_url for file in file_uploads or []]
+        msg.file_urls = file_urls
+
+        for file in file_uploads:
+            blob_map[file.file_url] = file
 
     # Create a message that will eventually capture the streamed response.
     # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message
@@ -110,11 +108,11 @@ def stream_new_message(
         "",
         agent.client,
         message.Role.Assistant,
-        msg.opts,
+        request.opts,
         model_id=request.model,
         model_host=request.host,
-        root=msg.root,
-        parent=msg.id,
+        root=message_chain[-1].root,
+        parent=message_chain[-1].id,
         final=False,
         private=request.private,
         model_type=model.model_type,
@@ -122,17 +120,18 @@ def stream_new_message(
     )
 
     # Update the parent message to include the reply.
-    msg = dataclasses.replace(msg, children=[reply])
+    if msg is not None:
+        msg = dataclasses.replace(msg, children=[reply])
 
     # Update system prompt to include user message as a child.
-    if system_msg is not None:
-        system_msg = dataclasses.replace(system_msg, children=[msg])
+    if system_msg_created is not None:
+        system_msg = dataclasses.replace(system_msg_created, children=[msg])
 
         # Yield the system prompt message if there is any
-    if system_msg is not None:
-        yield system_msg
+    if system_msg_created is not None:
+        yield system_msg_created
     # Yield the new user message
-    else:
+    if msg is not None:
         yield msg
 
     # Now yield each chunk as it's returned.
@@ -182,7 +181,9 @@ def stream_new_message(
                 role=message_in_chain.role,
                 content=message_in_chain.content,
                 # We only want to add the request files to the new message. The rest will have file urls associated with them
-                files=request.files if message_in_chain.id == msg.id else message_in_chain.file_urls,
+                files=request.files
+                if msg is not None and message_in_chain.id == msg.id
+                else message_in_chain.file_urls,
             )
             for message_in_chain in message_chain
         ]
@@ -234,13 +235,7 @@ def stream_new_message(
             output_tokens=output_token_count,
         )
 
-    # Finalize the messages and yield
-    final_message = dbc.message.finalize(msg.id, file_urls=file_urls)
-    if final_message is None:
-        final_message_error = RuntimeError(f"failed to finalize message {msg.id}")
-        yield message.MessageStreamError(message=msg.id, error=str(final_message_error), reason="finalization failure")
-        raise final_message_error
-
+    final_message = None
     final_reply = dbc.message.finalize(
         reply.id,
         output,
@@ -253,25 +248,34 @@ def stream_new_message(
         yield message.MessageStreamError(message=reply.id, error=str(final_reply_error), reason="finalization failure")
         raise final_reply_error
 
-    final_message = dataclasses.replace(final_message, children=[final_reply])
+    # Finalize the messages and yield
+    if msg is not None:
+        final_message = dbc.message.finalize(msg.id, file_urls=msg.file_urls)
+        if final_message is None:
+            final_message_error = RuntimeError(f"failed to finalize message {msg.id}")
+            yield message.MessageStreamError(
+                message=msg.id, error=str(final_message_error), reason="finalization failure"
+            )
+            raise final_message_error
+        final_message = dataclasses.replace(final_message, children=[final_reply])
 
-    if system_msg is not None:
-        finalSystemMessage = dbc.message.finalize(system_msg.id)
+    if system_msg_created is not None:
+        finalSystemMessage = dbc.message.finalize(system_msg_created.id)
 
         if finalSystemMessage is None:
             final_system_message_error = RuntimeError(f"failed to finalize message {system_msg.id}")
             yield message.MessageStreamError(
-                message=system_msg.id,
+                message=system_msg_created.id,
                 error=str(final_system_message_error),
                 reason="finalization failure",
             )
             raise final_system_message_error
-
-        finalSystemMessage = dataclasses.replace(finalSystemMessage, children=[final_message])
-        final_message = finalSystemMessage
+        if final_message is not None:
+            finalSystemMessage = dataclasses.replace(finalSystemMessage, children=[final_message])
+            final_message = finalSystemMessage
 
     end_all = time_ns()
-    if first_ns > start_time_ns:
+    if first_ns > start_time_ns and msg is not None:
         log_inference_timing(
             event_type="create_message",
             ttft_ns=(first_ns - start_message_generation_ns),
@@ -286,11 +290,12 @@ def stream_new_message(
             reply_id=reply.id,
         )
 
-    yield final_message
+    if final_message:
+        yield final_message
 
     if tool_parts is not None and len(tool_parts) > 0:
         tool_responses = [call_tool(tool) for tool in tool_parts]
-        last_msg = final_message
+        last_msg = reply
         for tool in tool_responses:
             tool_msg = create_tool_response_message(dbc=dbc, content=tool.content, parent_message=last_msg)
             last_msg = tool_msg
@@ -312,6 +317,16 @@ def stream_new_message(
             captcha_token=request.captcha_token,
         )
 
+        return stream_new_message(
+            dbc=dbc,
+            storage_client=storage_client,
+            model=model,
+            safety_check_elapsed_time=safety_check_elapsed_time,
+            request=new_payload,
+            is_message_harmful=False,
+            agent=agent,
+            start_time_ns=start_time_ns,
+        )
         # TODO save...
 
     return None

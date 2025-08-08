@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from src import db
 from src.api_interface import APIInterface
 from src.dao import message
+from src.dao.engine_models.sqla_message import Message
 from src.error import handle_validation_error
 from src.message.create_message_request import (
     CreateMessageRequest,
@@ -19,7 +20,6 @@ from src.message.create_message_request import (
 )
 from src.message.create_message_service.endpoint import create_message_v4, format_message
 from src.message.GoogleCloudStorage import GoogleCloudStorage
-from src.message.message_service import get_message
 from src.thread.get_threads_service import GetThreadsRequest, GetThreadsResponse, get_threads
 from src.thread.thread_models import Thread
 
@@ -51,10 +51,17 @@ def create_threads_blueprint(
     def list_threads(request: GetThreadsRequest) -> GetThreadsResponse:
         return get_threads(dbc, request)
 
+    # @threads_blueprint.get("/<thread_id>")
+    # @pydantic_api(name="Get message", tags=["v4", "threads"])
+    # def get_single_thread(thread_id: str) -> Thread:
+    #     return Thread.from_message(get_message(thread_id, dbc))
+
     @threads_blueprint.get("/<thread_id>")
     @pydantic_api(name="Get message", tags=["v4", "threads"])
-    def get_single_thread(thread_id: str) -> Thread:
-        return Thread.from_message(get_message(thread_id, dbc))
+    def get_single_thread(thread_id: str):
+        with session_maker.begin() as session:
+            result = session.get(Message, thread_id)
+            return jsonify(result)
 
     @threads_blueprint.post("/")
     @pydantic_api(name="Stream a prompt response", tags=["v4", "threads"])
@@ -62,7 +69,7 @@ def create_threads_blueprint(
         create_message_request: CreateMessageRequest,
     ) -> ResponseReturnValue:
         request_files = request.files.getlist("files")
-        # Defaulting to an empty list can cause problems with Modal
+        # Defaulting to an empty list can cause problems with Modal5
         # This isn't happening from the UI but it is happening through e2e tests, so better safe than sorry!
         files = cast(list[UploadedFile], request_files) if len(request_files) > 0 else None
 

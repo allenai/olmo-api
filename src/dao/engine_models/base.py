@@ -1,7 +1,7 @@
 import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, Dialect, TypeDecorator
+from sqlalchemy import JSON, DateTime, Dialect, TypeDecorator
 from sqlalchemy.orm import DeclarativeBase, MappedAsDataclass
 
 
@@ -25,15 +25,15 @@ class DateTimeUTC(TypeDecorator[datetime.datetime]):
         if not value.tzinfo:
             msg = "tzinfo is required"
             raise TypeError(msg)
-        return value.astimezone(datetime.timezone.utc)
+        return value.astimezone(datetime.UTC)
 
     def process_result_value(self, value: Optional[datetime.datetime], dialect: Dialect) -> Optional[datetime.datetime]:
         if value is None:
             return value
         if value.tzinfo is None:
-            return value.replace(tzinfo=datetime.timezone.utc)
+            return value.replace(tzinfo=datetime.UTC)
         return value
 
 
 class Base(MappedAsDataclass, DeclarativeBase):
-    type_annotation_map = {datetime.datetime: DateTimeUTC}
+    type_annotation_map = {datetime.datetime: DateTimeUTC, dict: JSON}

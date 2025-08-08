@@ -8,11 +8,12 @@ from flask_pydantic_api.api_wrapper import pydantic_api
 from flask_pydantic_api.utils import UploadedFile
 from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug import exceptions
 
 from src import db
 from src.api_interface import APIInterface
 from src.dao import message
-from src.dao.engine_models.sqla_message import Message
+from src.dao.engine_models.message import Message
 from src.error import handle_validation_error
 from src.message.create_message_request import (
     CreateMessageRequest,
@@ -58,10 +59,13 @@ def create_threads_blueprint(
 
     @threads_blueprint.get("/<thread_id>")
     @pydantic_api(name="Get message", tags=["v4", "threads"])
-    def get_single_thread(thread_id: str):
+    def get_single_thread(thread_id: str) -> Thread:
         with session_maker.begin() as session:
             result = session.get(Message, thread_id)
-            return jsonify(result)
+            if result is None:
+                raise exceptions.NotFound
+
+            return Thread.from_message(result)
 
     @threads_blueprint.post("/")
     @pydantic_api(name="Stream a prompt response", tags=["v4", "threads"])

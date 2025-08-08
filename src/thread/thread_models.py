@@ -1,10 +1,11 @@
-from dataclasses import asdict
 from datetime import datetime
+from typing import cast
 
-from pydantic import AwareDatetime, Field, computed_field
+from pydantic import AwareDatetime, Field, computed_field, field_validator
 
 from src.api_interface import APIInterface
 from src.dao import message
+from src.dao.engine_models.message import Message as SQLAMessage
 from src.dao.engine_models.model_config import ModelType
 from src.dao.label import Rating
 from src.dao.message import InferenceOpts, Message, Role
@@ -56,6 +57,19 @@ class FlatMessage(APIInterface):
     labels: list[LabelResponse] = Field(default_factory=list)
     file_urls: list[str] | None = Field(default=None)
 
+    @field_validator("children", mode="before")
+    @classmethod
+    def map_message_children_to_ids(cls, value):
+        if isinstance(value, list):
+            if len(value) == 0:
+                return value
+
+            if isinstance(value[0], (Message, SQLAMessage)):
+                value = cast(list[Message] | list[SQLAMessage], value)
+                return [child.id for child in value]
+
+        return value
+
     @computed_field  # type:ignore
     @property
     def is_limit_reached(self) -> bool:
@@ -68,14 +82,16 @@ class FlatMessage(APIInterface):
         return time_since_creation.days > 30  # noqa: PLR2004
 
     @staticmethod
-    def from_message(message: message.Message) -> list["FlatMessage"]:
-        messages = [asdict(message_in_list) for message_in_list in message.flatten()]
-        for message_to_change in messages:
-            children = message_to_change.get("children", [])
-            if children is not None:
-                message_to_change["children"] = [child.get("id") for child in children]
+    def from_message(message: message.Message | SQLAMessage) -> "FlatMessage":
+        return FlatMessage.model_validate(message)
 
-        return [FlatMessage.model_validate(mapped_message) for mapped_message in messages]
+        # messages = [asdict(message_in_list) for message_in_list in message.flatten()]
+        # for message_to_change in messages:
+        #     children = message_to_change.children
+        #     if children is not None:
+        #         message_to_change.children = [child.get("id") for child in children]
+
+        # return [FlatMessage.model_validate(mapped_message) for mapped_message in messages]
 
 
 class MessageChunkResponse(APIInterface):
@@ -88,5 +104,10 @@ class Thread(APIInterface):
     messages: list[FlatMessage]
 
     @staticmethod
-    def from_message(message: Message):
-        return Thread(id=message.id, messages=FlatMessage.from_message(message))
+    def from_message(message: Message | SQLAMessage):
+        flat_children = (
+            [FlatMessage.from_message(child) for child in message.children] if message.children is not None else []
+        )
+        messages = [FlatMessage.from_message(message), *flat_children]
+
+        return Thread(id=message.id, messages=messages)

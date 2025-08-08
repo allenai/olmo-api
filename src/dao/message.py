@@ -1,10 +1,8 @@
-import re
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, cast
 
-import bs4
 from psycopg import errors
 from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool
@@ -15,6 +13,7 @@ from werkzeug import exceptions
 from src import obj
 from src.api_interface import APIInterface
 from src.config.Model import ModelType
+from src.message.map_text_snippet import text_snippet
 
 from . import label, paged
 
@@ -148,19 +147,6 @@ class MessageStreamError(APIInterface):
     message: obj.ID
     error: str
     reason: str
-
-
-def first_n_words(s: str, n: int) -> str:
-    # We take the first n * 32 characters as to avoid processing the entire text, which might be
-    # large. This is for obvious reasons imperfect but probably good enough for manifesting a short,
-    # representative snippet.
-    words = re.split(r"\s+", s[: n * 32])
-    return " ".join(words[:n]) + ("…" if len(words) > n else "")
-
-
-def text_snippet(s: str) -> str:
-    soup = bs4.BeautifulSoup(s, features="html.parser")
-    return first_n_words(soup.get_text(), 16)
 
 
 @dataclass

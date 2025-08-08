@@ -16,67 +16,65 @@ def setup_msg_thread(
     agent: Token,
     message_expiration_time: datetime | None,
     is_msg_harmful: bool | None = None,
-):
+) -> list[message.Message]:
     system_msg = None
-    msg = None
 
-    if request.parent is None:
-        # create a system prompt message if the current model is specified with a system prompt
-        if model.default_system_prompt is not None:
-            system_msg = dbc.message.create(
-                content=model.default_system_prompt,
-                creator=agent.client,
-                role=message.Role.System,
-                opts=request.opts,
-                model_id=request.model,
-                model_host=request.host,
-                root=None,
-                parent=None,
-                template=request.template,
-                final=False,
-                original=request.original,
-                private=request.private,
-                harmful=is_msg_harmful,
-                expiration_time=message_expiration_time,
-            )
-
-        parent_id = None if system_msg is None else system_msg.id
-
-        msg = dbc.message.create(
-            content=request.content,
+    if request.parent is None and model.default_system_prompt is not None:
+        system_msg = dbc.message.create(
+            content=model.default_system_prompt,
             creator=agent.client,
-            role=request.role,
+            role=message.Role.System,
             opts=request.opts,
             model_id=request.model,
             model_host=request.host,
-            root=parent_id,
-            parent=parent_id,
+            root=None,
+            parent=None,
             template=request.template,
-            final=request.role == message.Role.Assistant,
-            original=request.original,
-            private=request.private,
-            harmful=is_msg_harmful,
-            expiration_time=message_expiration_time,
-        )
-    else:
-        msg = dbc.message.create(
-            content=request.content,
-            creator=agent.client,
-            role=request.role,
-            opts=request.opts,
-            model_id=request.model,
-            model_host=request.host,
-            root=request.parent.root,
-            parent=request.parent.id,
-            template=request.template,
-            final=request.role == message.Role.Assistant,  # is this wrong now?
+            final=False,
             original=request.original,
             private=request.private,
             harmful=is_msg_harmful,
             expiration_time=message_expiration_time,
         )
 
-    return msg, system_msg
+    message_chain = []
+    if request.root is not None:
+        msgs = message.Message.group_by_id(request.root.flatten())
+        while message_chain[-1].parent is not None:
+            message_chain.append(msgs[message_chain[-1].parent])
+
+    if system_msg is not None:
+        message_chain.append(system_msg)
+
+    message_chain.reverse()
+
+    return message_chain
+
+
+def create_user_message(
+    dbc: db.Client,
+    request: CreateMessageRequestWithFullMessages,
+    parent: message.Message | None,
+    agent: Token,
+    message_expiration_time: datetime | None,
+    is_msg_harmful: bool | None = None,
+):
+    return dbc.message.create(
+        content=request.content,
+        creator=agent.client,
+        role=request.role,
+        opts=request.opts,
+        model_id=request.model,
+        model_host=request.host,
+        root=parent.root if parent is not None else None,
+        parent=parent.id if parent is not None else None,
+        template=request.template,
+        final=request.role == message.Role.Assistant,  # is this wrong now?
+        original=request.original,
+        private=request.private,
+        harmful=is_msg_harmful,
+        expiration_time=message_expiration_time,
+    )
 
 
 def create_tool_response_message(

@@ -85,7 +85,7 @@ def create_tool_response_message(
     return dbc.message.create(
         content=content,
         creator=parent_message.creator,
-        role=message.Role.Assistant,
+        role=message.Role.Enviroment,
         opts=parent_message.opts,
         model_id=parent_message.model_id,
         model_host=parent_message.model_host,

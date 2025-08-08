@@ -74,13 +74,14 @@ def stream_new_message(
     )
 
     system_msg_created = message_chain[0] if request.parent is None and model.default_system_prompt else None
+    parent_msg = message_chain[-1] if len(message_chain) > 0 else None
     msg: message.Message | None = None
     blob_map: dict[str, FileUploadResult] = {}
 
-    if message_chain[-1].role != message.Role.Enviroment:
+    if len(message_chain) == 0 or message_chain[-1].role != message.Role.Enviroment:
         msg = create_user_message(
             dbc=dbc,
-            parent=message_chain[-1],
+            parent=parent_msg,
             request=request,
             agent=agent,
             message_expiration_time=message_expiration_time,
@@ -119,15 +120,10 @@ def stream_new_message(
         expiration_time=message_expiration_time,
     )
 
-    # Update the parent message to include the reply.
-    if msg is not None:
-        msg = dataclasses.replace(msg, children=[reply])
+    message_chain.append(reply)
 
     # Update system prompt to include user message as a child.
-    if system_msg_created is not None:
-        system_msg = dataclasses.replace(system_msg_created, children=[msg])
-
-        # Yield the system prompt message if there is any
+    # Yield the system prompt message if there is any
     if system_msg_created is not None:
         yield system_msg_created
     # Yield the new user message
@@ -257,23 +253,22 @@ def stream_new_message(
                 message=msg.id, error=str(final_message_error), reason="finalization failure"
             )
             raise final_message_error
-        final_message = dataclasses.replace(final_message, children=[final_reply])
-
-    if system_msg_created is not None:
-        finalSystemMessage = dbc.message.finalize(system_msg_created.id)
-
-        if finalSystemMessage is None:
-            final_system_message_error = RuntimeError(f"failed to finalize message {system_msg.id}")
-            yield message.MessageStreamError(
-                message=system_msg_created.id,
-                error=str(final_system_message_error),
-                reason="finalization failure",
-            )
-            raise final_system_message_error
-        if final_message is not None:
-            finalSystemMessage = dataclasses.replace(finalSystemMessage, children=[final_message])
-            final_message = finalSystemMessage
-
+    #
+    # if system_msg_created is not None:
+    #     finalSystemMessage = dbc.message.finalize(system_msg_created.id)
+    #
+    #     if finalSystemMessage is None:
+    #         final_system_message_error = RuntimeError(f"failed to finalize message {system_msg.id}")
+    #         yield message.MessageStreamError(
+    #             message=system_msg_created.id,
+    #             error=str(final_system_message_error),
+    #             reason="finalization failure",
+    #         )
+    #         raise final_system_message_error
+    #     if final_message is not None:
+    #         finalSystemMessage = dataclasses.replace(finalSystemMessage, children=[final_message])
+    #         final_message = finalSystemMessage
+    #
     end_all = time_ns()
     if first_ns > start_time_ns and msg is not None:
         log_inference_timing(
@@ -290,46 +285,27 @@ def stream_new_message(
             reply_id=reply.id,
         )
 
-    if final_message:
-        yield final_message
-
     if tool_parts is not None and len(tool_parts) > 0:
         tool_responses = [call_tool(tool) for tool in tool_parts]
         last_msg = reply
         for tool in tool_responses:
             tool_msg = create_tool_response_message(dbc=dbc, content=tool.content, parent_message=last_msg)
-            last_msg = tool_msg
+            message_chain.append(tool_msg)
 
-        new_payload = CreateMessageRequestWithFullMessages(
-            parent_id=last_msg.id,
-            parent=last_msg,
-            opts=request.opts,
-            content="",
-            role=cast(message.Role, request.role),
-            original=request.original,
-            private=request.private,
-            root=None,  # TODO incorrect
-            template=request.template,
-            model=request.model,
-            host=request.host,
-            client=agent.client,
-            files=request.files,
-            captcha_token=request.captcha_token,
-        )
-
-        return stream_new_message(
-            dbc=dbc,
-            storage_client=storage_client,
-            model=model,
-            safety_check_elapsed_time=safety_check_elapsed_time,
-            request=new_payload,
-            is_message_harmful=False,
-            agent=agent,
-            start_time_ns=start_time_ns,
-        )
-        # TODO save...
+    repair_children(message_chain)
+    yield message_chain[0]
 
     return None
+
+
+def repair_children(msg_chain: list[message.Message]):
+    for i, msg in enumerate(msg_chain):
+        next_msg = msg_chain[i + 1] if i < len(msg_chain) - 1 else None
+        msg.children = [next_msg] if next_msg else None
+
+
+def stream_assistant_response():
+    return
 
 
 def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> message.MessageChunk:

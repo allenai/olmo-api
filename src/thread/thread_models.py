@@ -10,6 +10,7 @@ from src.dao.engine_models.model_config import ModelType
 from src.dao.label import Rating
 from src.dao.message import InferenceOpts, Message, Role
 from src.inference.InferenceEngine import FinishReason
+from src.message.map_text_snippet import text_snippet
 
 
 class LabelResponse(APIInterface):
@@ -34,7 +35,6 @@ class LogProbResponse(APIInterface):
 class FlatMessage(APIInterface):
     id: str
     content: str
-    snippet: str
     creator: str
     role: Role
     opts: InferenceOptionsResponse
@@ -72,6 +72,11 @@ class FlatMessage(APIInterface):
 
     @computed_field  # type:ignore
     @property
+    def map_snippet(self) -> str:
+        return text_snippet(self.content)
+
+    @computed_field  # type:ignore
+    @property
     def is_limit_reached(self) -> bool:
         return self.finish_reason == FinishReason.Length
 
@@ -84,14 +89,6 @@ class FlatMessage(APIInterface):
     @staticmethod
     def from_message(message: message.Message | SQLAMessage) -> "FlatMessage":
         return FlatMessage.model_validate(message)
-
-        # messages = [asdict(message_in_list) for message_in_list in message.flatten()]
-        # for message_to_change in messages:
-        #     children = message_to_change.children
-        #     if children is not None:
-        #         message_to_change.children = [child.get("id") for child in children]
-
-        # return [FlatMessage.model_validate(mapped_message) for mapped_message in messages]
 
 
 class MessageChunkResponse(APIInterface):

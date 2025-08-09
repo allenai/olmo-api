@@ -61,8 +61,6 @@ def stream_new_message(
 ) -> (
     message.Message | Generator[message.Message | message.MessageChunk | message.MessageStreamError | Chunk, Any, None]
 ):
-    # Capture the SHA and logger, as the current_app context is lost in the generator.
-
     # We currently want anonymous users' messages to expire after 1 days
     message_expiration_time = datetime.now(UTC) + timedelta(days=1) if agent.is_anonymous_user else None
 
@@ -74,9 +72,6 @@ def stream_new_message(
         message_expiration_time=message_expiration_time,
         is_msg_harmful=is_message_harmful,
     )
-
-    blob_map: dict[str, FileUploadResult] = {}
-
     msg = create_user_message(
         dbc=dbc,
         parent=message_chain[-1] if len(message_chain) > 0 else None,
@@ -98,6 +93,7 @@ def stream_new_message(
     file_urls = [file.file_url for file in file_uploads or []]
     msg.file_urls = file_urls
 
+    blob_map: dict[str, FileUploadResult] = {}
     for file in file_uploads:
         blob_map[file.file_url] = file
 
@@ -156,8 +152,7 @@ def stream_new_message(
                 tool_msg = create_tool_response_message(dbc=dbc, content=tool.content, parent_message=last_msg)
                 message_chain.append(tool_msg)
 
-        repair_children(message_chain)
-        yield message_chain[0]
+        yield prepare_yield_message_chain(message_chain, msg)
 
         if tool_parts is None or len(tool_parts) == 0:
             break
@@ -181,7 +176,7 @@ def stream_assistant_response(
     agent: Token,
     blob_map: dict[str, FileUploadResult],
     message_expiration_time: datetime | None,
-    msg: message.Message | None,
+    msg: message.Message,
 ) -> tuple[
     Generator[
         message.Message | message.MessageChunk | message.MessageStreamError | Chunk,
@@ -194,6 +189,7 @@ def stream_assistant_response(
     """
     Adds a new assistant message to the conversation, and streams the llm response to the api
     """
+    # Capture the SHA and logger, as the current_app context is lost in the generator.
     sha = os.environ.get("SHA") or "DEV"
     # Create a message that will eventually capture the streamed response.
     # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message
@@ -217,8 +213,7 @@ def stream_assistant_response(
     tool_parts: list[ToolCallPart] | None = []
 
     def stream_generator():
-        repair_children(message_chain)
-        yield message_chain[0]
+        yield prepare_yield_message_chain(message_chain, msg)
 
         # Now yield each chunk as it's returned.
         finish_reason: FinishReason | None = None
@@ -344,6 +339,21 @@ def stream_assistant_response(
     return stream_generator(), reply, tool_parts
 
 
+def prepare_yield_message_chain(message_chain: list[message.Message], user_message: message.Message):
+    user_message_index = next((i for i, message in enumerate(message_chain) if message.id == user_message.id), -1)
+
+    repair_children(message_chain)
+
+    if user_message_index == -1:
+        error_msg = "failed to find user message in chain"
+        raise RuntimeError(error_msg)
+
+    if user_message_index == 1 and message_chain[0].role == "system":
+        return message_chain[0]
+
+    return message_chain[user_message_index]
+
+
 def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> message.MessageChunk:
     chunk_logprobs = chunk.logprobs if chunk.logprobs is not None else []
     mapped_logprobs = [
@@ -351,13 +361,11 @@ def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> message.MessageCh
         for lp_list in chunk_logprobs
     ]
 
-    new_chunk = message.MessageChunk(
+    return message.MessageChunk(
         message=message_id,
         content=chunk.content,
         logprobs=mapped_logprobs,
     )
-
-    return new_chunk
 
 
 def create_prompt_from_engine_input(

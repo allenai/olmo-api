@@ -90,11 +90,6 @@ class FlatMessage(APIInterface):
         return FlatMessage.model_validate(message)
 
 
-class MessageChunkResponse(APIInterface):
-    message: str
-    content: str
-
-
 def _map_messages(message: Message | SQLAMessage) -> list[FlatMessage]:
     messages = [FlatMessage.from_message(message)]
 

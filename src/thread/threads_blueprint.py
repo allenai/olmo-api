@@ -54,7 +54,7 @@ def create_threads_blueprint(
     @threads_blueprint.get("/<thread_id>")
     @pydantic_api(name="Get message", tags=["v4", "threads"])
     def get_single_thread(thread_id: str) -> Thread:
-        return get_thread(thread_id, session_maker)
+        return get_thread(thread_id, session_maker, dbc)
 
     @threads_blueprint.post("/")
     @pydantic_api(name="Stream a prompt response", tags=["v4", "threads"])
@@ -62,7 +62,7 @@ def create_threads_blueprint(
         create_message_request: CreateMessageRequest,
     ) -> ResponseReturnValue:
         request_files = request.files.getlist("files")
-        # Defaulting to an empty list can cause problems with Modal5
+        # Defaulting to an empty list can cause problems with Modal
         # This isn't happening from the UI but it is happening through e2e tests, so better safe than sorry!
         files = cast(list[UploadedFile], request_files) if len(request_files) > 0 else None
 

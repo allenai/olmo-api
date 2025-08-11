@@ -58,9 +58,9 @@ class BaseMessageRepository(abc.ABC):
     def update(self, message: FlatMessage) -> FlatMessage:
         raise NotImplementedError
 
-    @abc.abstractmethod
-    def remove(self, message_id: obj.ID) -> None:
-        raise NotImplementedError
+    # @abc.abstractmethod
+    # def remove(self, message_id: obj.ID) -> None:
+    #     raise NotImplementedError
 
 
 def map_flat_message_to_message(message: FlatMessage) -> Message:
@@ -88,6 +88,16 @@ def map_flat_message_to_message(message: FlatMessage) -> Message:
         expiration_time=message.expiration_time,
         file_urls=message.file_urls,
     )
+
+
+def _map_messages(message: Message) -> list[FlatMessage]:
+    messages = [FlatMessage.from_message(message)]
+
+    if message.children is None or len(message.children) == 0:
+        return messages
+
+    mapped_messages = [child_child for child in message.children for child_child in _map_messages(child)]
+    return [*messages, *mapped_messages]
 
 
 class MessageRepository(BaseMessageRepository):
@@ -120,3 +130,11 @@ class MessageRepository(BaseMessageRepository):
 
         self.session.commit()
         return FlatMessage.from_message(message_to_update)
+
+    def get_with_children(self, message_id: obj.ID) -> list[FlatMessage] | None:
+        message = self.session.get(Message, message_id)
+
+        if message is None:
+            return None
+
+        return _map_messages(message)

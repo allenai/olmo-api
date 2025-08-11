@@ -4,13 +4,12 @@ from typing import Optional
 from sqlalchemy import (
     ARRAY,
     Boolean,
+    DateTime,
     Enum,
-    ForeignKey,
     ForeignKeyConstraint,
     Index,
     PrimaryKeyConstraint,
     Text,
-    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -19,7 +18,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.dao.engine_models.completion import Completion
 from src.dao.engine_models.label import Label
 from src.dao.engine_models.prompt_template import PromptTemplate
-from src.dao.message import TokenLogProbs
 
 from .base import Base
 
@@ -40,28 +38,28 @@ class Message(Base, kw_only=True):
         Index("message_root_fkey_ix", "root"),
     )
 
-    id: Mapped[str] = mapped_column(primary_key=True)
-    content: Mapped[str]
-    creator: Mapped[str]
-    role: Mapped[str]
-    opts: Mapped[dict]
-    root: Mapped[str] = mapped_column(ForeignKey("message.id"))
-    created: Mapped[datetime.datetime] = mapped_column(server_default=func.now(), init=False)
-    final: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), default=False)
-    private: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), default=False)
-    model_id: Mapped[str]
-    model_host: Mapped[str]
-    deleted: Mapped[datetime.datetime | None]
-    parent: Mapped[str | None] = mapped_column(ForeignKey("message.id"), default=None)
-    template: Mapped[str | None] = mapped_column(default=None)
-    logprobs: Mapped[list[list[TokenLogProbs]] | None] = mapped_column(ARRAY(JSONB(astext_type=Text())), default=None)
-    completion: Mapped[str | None] = mapped_column(default=None, init=False)
-    original: Mapped[str | None] = mapped_column(default=None)
-    model_type: Mapped[str | None] = mapped_column(Enum("base", "chat", "image_prompt", name="model_type"))
-    finish_reason: Mapped[str | None] = mapped_column(default=None)
-    harmful: Mapped[bool] = mapped_column(default=False)
-    expiration_time: Mapped[datetime.datetime | None] = mapped_column(default=None)
-    file_urls: Mapped[list[str] | None] = mapped_column(ARRAY(Text), default=None)
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    creator: Mapped[str] = mapped_column(Text, nullable=False)
+    role: Mapped[str] = mapped_column(Text, nullable=False)
+    opts: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    root: Mapped[str] = mapped_column(Text, nullable=False)
+    created: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text("now()"))
+    final: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    private: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    model_id: Mapped[str] = mapped_column(Text, nullable=False)
+    model_host: Mapped[str] = mapped_column(Text, nullable=False)
+    deleted: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    parent: Mapped[Optional[str]] = mapped_column(Text)
+    template: Mapped[Optional[str]] = mapped_column(Text)
+    logprobs: Mapped[Optional[list[dict]]] = mapped_column(ARRAY(JSONB()))
+    completion: Mapped[Optional[str]] = mapped_column(Text)
+    original: Mapped[Optional[str]] = mapped_column(Text)
+    model_type: Mapped[Optional[str]] = mapped_column(Enum("base", "chat", "image_prompt", name="model_type"))
+    finish_reason: Mapped[Optional[str]] = mapped_column(Text)
+    harmful: Mapped[Optional[bool]] = mapped_column(Boolean)
+    expiration_time: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    file_urls: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text()))
 
     completion_: Mapped[Completion | None] = relationship("Completion", back_populates="message")
 

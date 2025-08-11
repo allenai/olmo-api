@@ -8,6 +8,7 @@ from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool
 from pydantic import BaseModel
 from pydantic import Field as PydanticField
+from pydantic_ai.messages import ToolCallPart
 from werkzeug import exceptions
 
 from src import obj
@@ -100,6 +101,13 @@ def prepare_logprobs(
     return [Jsonb([asdict(lp) for lp in lps]) for lps in logprobs]
 
 
+def prepare_tool_calls(tool_calls: list[ToolCallPart] | None) -> list[Jsonb] | None:
+    if tool_calls is None:
+        return None
+
+    return [Jsonb([asdict(tool_call) for tool_call in tool_calls])]
+
+
 MessageRow = tuple[
     # Message fields
     str,
@@ -124,6 +132,8 @@ MessageRow = tuple[
     str,
     datetime | None,
     list[str] | None,
+    str | None,
+    list[ToolCallPart] | None,
     # Label fields
     str | None,
     str | None,
@@ -176,6 +186,8 @@ class Message:
     expiration_time: datetime | None = None
     labels: list[label.Label] = field(default_factory=list)
     file_urls: list[str] | None = None
+    thinking: str | None = None
+    tool_calls: list[ToolCallPart] | None = None
 
     def flatten(self) -> list["Message"]:
         if self.children is None:
@@ -190,7 +202,7 @@ class Message:
     def from_row(r: MessageRow) -> "Message":
         labels = []
         # If the label id is not None, unpack the label.
-        label_row = 22
+        label_row = 24
         if r[label_row] is not None:
             labels = [label.Label.from_row(cast(label.LabelRow, r[label_row:]))]
 
@@ -227,6 +239,8 @@ class Message:
             model_host=r[19],
             expiration_time=r[20],
             file_urls=r[21],
+            thinking=r[22],
+            tool_calls=r[23],
             labels=labels,
         )
 
@@ -302,15 +316,17 @@ class Store:
         harmful: bool | None = None,
         expiration_time: datetime | None = None,
         file_urls: list[str] | None = None,
+        thinking: str | None = None,
+        tool_calls: list[ToolCallPart] | None = None,
     ) -> Message:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 try:
                     q = """
                         INSERT INTO
-                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private, model_type, finish_reason, harmful, model_id, model_host, expiration_time, file_urls)
+                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private, model_type, finish_reason, harmful, model_id, model_host, expiration_time, file_urls, thinking, tool_calls)
                         VALUES
-                            (%(id)s, %(content)s, %(creator)s, %(role)s, %(opts)s, %(root)s, %(parent)s, %(template)s, %(logprobs)s, %(completion)s, %(final)s, %(original)s, %(private)s, %(model_type)s, %(finish_reason)s, %(harmful)s, %(model_id)s, %(model_host)s, %(expiration_time)s, %(file_urls)s)
+                            (%(id)s, %(content)s, %(creator)s, %(role)s, %(opts)s, %(root)s, %(parent)s, %(template)s, %(logprobs)s, %(completion)s, %(final)s, %(original)s, %(private)s, %(model_type)s, %(finish_reason)s, %(harmful)s, %(model_id)s, %(model_host)s, %(expiration_time)s, %(file_urls)s, %(thinking)s, %(tool_calls)s)
                         RETURNING
                             id,
                             content,
@@ -368,6 +384,8 @@ class Store:
                             "model_host": model_host,
                             "expiration_time": expiration_time,
                             "file_urls": file_urls,
+                            "thinking": thinking,
+                            "tool_calls": prepare_tool_calls(tool_calls),
                         },
                     ).fetchone()
 
@@ -423,6 +441,8 @@ class Store:
                         message.model_host,
                         message.expiration_time,
                         message.file_urls,
+                        message.thinking,
+                        message.tool_calls,
                         label.id,
                         label.message,
                         label.rating,
@@ -483,6 +503,8 @@ class Store:
                         message.model_host,
                         message.expiration_time,
                         message.file_urls,
+                        message.thinking,
+                        message.tool_calls,
                         label.id,
                         label.message,
                         label.rating,
@@ -553,6 +575,8 @@ class Store:
                             model_host,
                             expiration_time,
                             file_urls,
+                            thinking,
+                            tool_calls,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -619,6 +643,8 @@ class Store:
                         updated.model_host,
                         updated.expiration_time,
                         updated.file_urls,
+                        updated.thinking,
+                        updated.tool_calls,
                         label.id,
                         label.message,
                         label.rating,
@@ -680,6 +706,8 @@ class Store:
                     message.model_host,
                     message.expiration_time,
                     message.file_urls,
+                    message.thinking,
+                    message.tool_calls,
                     label.id,
                     label.message,
                     label.rating,
@@ -782,6 +810,8 @@ class Store:
                         message.model_host,
                         message.expiration_time,
                         message.file_urls,
+                        message.thinking,
+                        message.tool_calls,
                         label.id,
                         label.message,
                         label.rating,

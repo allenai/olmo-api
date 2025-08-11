@@ -783,5 +783,19 @@ DROP TYPE "public"."modelhost_old";
 
 UPDATE alembic_version SET version_num='97428846ee1e' WHERE alembic_version.version_num = '17a551c5bc64';
 
+-- Running upgrade 97428846ee1e -> ba2462b3122c
+
+ALTER TABLE message ADD COLUMN thinking VARCHAR;
+
+ALTER TABLE message ADD COLUMN tool_calls JSON[];
+
+UPDATE alembic_version SET version_num='ba2462b3122c' WHERE alembic_version.version_num = '97428846ee1e';
+
+-- Running upgrade ba2462b3122c -> 51ded224eed6
+
+ALTER TABLE message ALTER COLUMN tool_calls TYPE JSONB[];
+
+UPDATE alembic_version SET version_num='51ded224eed6' WHERE alembic_version.version_num = 'ba2462b3122c';
+
 COMMIT;
 

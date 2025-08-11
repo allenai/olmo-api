@@ -3,7 +3,6 @@ from typing import Optional
 
 from sqlalchemy import (
     ARRAY,
-    JSON,
     Boolean,
     DateTime,
     Enum,
@@ -64,7 +63,7 @@ class Message(Base, kw_only=True):
 
     thinking: Mapped[str | None] = mapped_column(default=None)
 
-    tool_calls: Mapped[list[dict] | None] = mapped_column(ARRAY(JSON), default=None)
+    tool_calls: Mapped[list[dict] | None] = mapped_column(ARRAY(JSONB()), default=None)
 
     completion_: Mapped[Completion | None] = relationship("Completion", back_populates="message")
 

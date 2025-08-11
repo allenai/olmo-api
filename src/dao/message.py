@@ -241,7 +241,12 @@ class Message:
             expiration_time=r[20],
             file_urls=r[21],
             thinking=r[22],
-            tool_calls=r[23],
+            tool_calls=[
+                ToolCallPart(tool_name=tool["tool_name"], args=tool["args"], tool_call_id=tool["tool_call_id"])  # type: ignore
+                for tool in r[23]
+            ]
+            if r[23] is not None
+            else None,
             labels=labels,
         )
 

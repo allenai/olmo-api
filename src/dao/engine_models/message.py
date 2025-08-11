@@ -1,0 +1,74 @@
+import datetime
+from typing import Optional
+
+from sqlalchemy import (
+    ARRAY,
+    Boolean,
+    DateTime,
+    Enum,
+    ForeignKeyConstraint,
+    Index,
+    PrimaryKeyConstraint,
+    Text,
+    text,
+)
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from src.dao.engine_models.completion import Completion
+from src.dao.engine_models.label import Label
+from src.dao.engine_models.prompt_template import PromptTemplate
+
+from .base import Base
+
+
+# Generated using sqlacodegen
+class Message(Base, kw_only=True):
+    __tablename__ = "message"
+    __table_args__ = (
+        ForeignKeyConstraint(["completion"], ["completion.id"], ondelete="CASCADE", name="message_completion_fkey"),
+        ForeignKeyConstraint(["original"], ["message.id"], ondelete="CASCADE", name="message_original_fkey"),
+        ForeignKeyConstraint(["parent"], ["message.id"], ondelete="CASCADE", name="message_parent_fkey"),
+        ForeignKeyConstraint(["root"], ["message.id"], ondelete="CASCADE", name="message_root_fkey"),
+        ForeignKeyConstraint(["template"], ["prompt_template.id"], name="message_template_fkey"),
+        PrimaryKeyConstraint("id", name="message_pkey"),
+        Index("message_created_ix", "created"),
+        Index("message_original_fkey_ix", "original"),
+        Index("message_parent_fkey_ix", "parent"),
+        Index("message_root_fkey_ix", "root"),
+    )
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    creator: Mapped[str] = mapped_column(Text, nullable=False)
+    role: Mapped[str] = mapped_column(Text, nullable=False)
+    opts: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    root: Mapped[str] = mapped_column(Text, nullable=False)
+    created: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text("now()"))
+    final: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    private: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    model_id: Mapped[str] = mapped_column(Text, nullable=False)
+    model_host: Mapped[str] = mapped_column(Text, nullable=False)
+    deleted: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    parent: Mapped[Optional[str]] = mapped_column(Text)
+    template: Mapped[Optional[str]] = mapped_column(Text)
+    logprobs: Mapped[Optional[list[dict]]] = mapped_column(ARRAY(JSONB()))
+    completion: Mapped[Optional[str]] = mapped_column(Text)
+    original: Mapped[Optional[str]] = mapped_column(Text)
+    model_type: Mapped[Optional[str]] = mapped_column(Enum("base", "chat", "image_prompt", name="model_type"))
+    finish_reason: Mapped[Optional[str]] = mapped_column(Text)
+    harmful: Mapped[Optional[bool]] = mapped_column(Boolean)
+    expiration_time: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    file_urls: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text()))
+
+    completion_: Mapped[Completion | None] = relationship("Completion", back_populates="message")
+
+    children: Mapped[list["Message"] | None] = relationship(
+        back_populates="parent_", lazy="joined", join_depth=1, foreign_keys=[parent]
+    )
+    parent_: Mapped[Optional["Message"]] = relationship(
+        back_populates="children", remote_side=[id], foreign_keys=[parent]
+    )
+
+    prompt_template: Mapped[PromptTemplate | None] = relationship("PromptTemplate", back_populates="message")
+    label: Mapped[list[Label]] = relationship("Label", back_populates="message_")

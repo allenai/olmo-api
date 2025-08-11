@@ -19,7 +19,7 @@ from src.message.create_message_request import (
 )
 from src.message.create_message_service.endpoint import create_message_v4, format_message
 from src.message.GoogleCloudStorage import GoogleCloudStorage
-from src.message.message_service import get_message
+from src.thread.get_thread_service import get_thread
 from src.thread.get_threads_service import GetThreadsRequest, GetThreadsResponse, get_threads
 from src.thread.thread_models import Thread
 
@@ -54,7 +54,7 @@ def create_threads_blueprint(
     @threads_blueprint.get("/<thread_id>")
     @pydantic_api(name="Get message", tags=["v4", "threads"])
     def get_single_thread(thread_id: str) -> Thread:
-        return Thread.from_message(get_message(thread_id, dbc))
+        return get_thread(thread_id, session_maker, dbc)
 
     @threads_blueprint.post("/")
     @pydantic_api(name="Stream a prompt response", tags=["v4", "threads"])

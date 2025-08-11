@@ -811,7 +811,7 @@ class Store:
                         message.expiration_time,
                         message.file_urls,
                         message.thinking,
-                        message.tool_calls
+                        message.tool_calls,
                         label.id,
                         label.message,
                         label.rating,

@@ -65,14 +65,16 @@ class Message(Base, kw_only=True):
 
     tool_calls: Mapped[list[dict] | None] = mapped_column(ARRAY(JSONB()), default=None)
 
-    completion_: Mapped[Completion | None] = relationship("Completion", back_populates="message")
+    completion_: Mapped[Completion | None] = relationship("Completion", back_populates="message", init=False)
 
     children: Mapped[list["Message"] | None] = relationship(
-        back_populates="parent_", lazy="joined", join_depth=1, foreign_keys=[parent]
+        back_populates="parent_", lazy="joined", join_depth=1, foreign_keys=[parent], init=False
     )
     parent_: Mapped[Optional["Message"]] = relationship(
-        back_populates="children", remote_side=[id], foreign_keys=[parent]
+        back_populates="children", remote_side=[id], foreign_keys=[parent], init=False
     )
 
-    prompt_template: Mapped[PromptTemplate | None] = relationship("PromptTemplate", back_populates="message")
-    label: Mapped[list[Label]] = relationship("Label", back_populates="message_")
+    prompt_template: Mapped[PromptTemplate | None] = relationship(
+        "PromptTemplate", back_populates="message", init=False
+    )
+    label: Mapped[list[Label]] = relationship("Label", back_populates="message_", init=False)

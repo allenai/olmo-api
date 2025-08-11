@@ -259,7 +259,7 @@ def stream_assistant_response(
             # TODO finish reason
 
         else:
-            tool_parts = None
+            tool_parts = []
             chunks = cast(list[message.MessageChunk], chunks)
 
             chain: list[InferenceEngineMessage] = [

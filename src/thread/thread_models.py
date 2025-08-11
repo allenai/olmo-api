@@ -4,7 +4,6 @@ from typing import cast
 from pydantic import AwareDatetime, Field, computed_field, field_validator
 
 from src.api_interface import APIInterface
-from src.dao import message
 from src.dao.engine_models.message import Message as SQLAMessage
 from src.dao.engine_models.model_config import ModelType
 from src.dao.label import Rating
@@ -87,7 +86,7 @@ class FlatMessage(APIInterface):
         return time_since_creation.days > 30  # noqa: PLR2004
 
     @staticmethod
-    def from_message(message: message.Message | SQLAMessage) -> "FlatMessage":
+    def from_message(message: Message | SQLAMessage) -> "FlatMessage":
         return FlatMessage.model_validate(message)
 
 
@@ -96,15 +95,22 @@ class MessageChunkResponse(APIInterface):
     content: str
 
 
+def _map_messages(message: Message | SQLAMessage) -> list[FlatMessage]:
+    messages = [FlatMessage.from_message(message)]
+
+    if message.children is None or len(message.children) == 0:
+        return messages
+
+    mapped_messages = [child_child for child in message.children for child_child in _map_messages(child)]
+    return [*messages, *mapped_messages]
+
+
 class Thread(APIInterface):
     id: str
     messages: list[FlatMessage]
 
     @staticmethod
     def from_message(message: Message | SQLAMessage):
-        flat_children = (
-            [FlatMessage.from_message(child) for child in message.children] if message.children is not None else []
-        )
-        messages = [FlatMessage.from_message(message), *flat_children]
+        messages = _map_messages(message)
 
         return Thread(id=message.id, messages=messages)

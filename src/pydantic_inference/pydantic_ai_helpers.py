@@ -75,13 +75,12 @@ def pydantic_map_messages(messages: list[Message], blob_map: dict[str, FileUploa
                 msg = "expected exactly one tool in Tool Response Message"
                 raise TypeError(msg)
 
-            # TODO FIND OUT WHY WE GET A DOUBLE ARRAY IN ORM
             model_messages.append(
                 ModelRequest(
                     parts=[
                         ToolReturnPart(
-                            tool_name=request_tool[0]["tool_name"],  # type: ignore
-                            tool_call_id=request_tool[0]["tool_call_id"],  # type: ignore
+                            tool_name=request_tool["tool_name"],  # type: ignore
+                            tool_call_id=request_tool["tool_call_id"],  # type: ignore
                             content=message.content,
                         )
                     ]

@@ -37,7 +37,7 @@ from src.pydantic_inference.pydantic_model_service import get_pydantic_model
 from src.util.generator_with_return_value import GeneratorWithReturnValue
 
 from .database import create_tool_response_message, create_user_message, setup_msg_thread
-from .tools import call_tool, get_tools
+from .tools.tool_calls import call_tool, get_tools
 
 MAX_REPEATED_TOOL_CALLS = 10
 

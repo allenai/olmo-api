@@ -106,7 +106,7 @@ def prepare_tool_calls(tool_calls: list[ToolCallPart] | None) -> list[Jsonb] | N
     if tool_calls is None:
         return None
 
-    return [Jsonb([asdict(tool_call) for tool_call in tool_calls])]
+    return [Jsonb(asdict(tool_call)) for tool_call in tool_calls]
 
 
 MessageRow = tuple[
@@ -537,6 +537,7 @@ class Store:
         harmful: bool | None = None,
         file_urls: list[str] | None = None,
         tool_calls: list[ToolCallPart] | None = None,
+        thinking: str | None = None,
     ) -> Message | None:
         """
         Used to finalize a Message produced via a streaming response.
@@ -554,6 +555,8 @@ class Store:
                             harmful = COALESCE(%(harmful)s, harmful),
                             file_urls= COALESCE(%(file_urls)s, file_urls),
                             tool_calls= COALESCE(%(tool_calls)s, tool_calls),
+                            thinking = COALESCE(%(content)s, content),
+ 
                             final = true
                         WHERE
                             id = %(id)s
@@ -603,6 +606,7 @@ class Store:
                         "file_urls": file_urls,
                         "id": id,
                         "tool_calls": prepare_tool_calls(tool_calls),
+                        "thinking": thinking,
                     },
                 ).fetchone()
                 return Message.from_row(row) if row is not None else None

@@ -1,5 +1,6 @@
 import dataclasses
 import os
+import pprint
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 from time import time_ns
@@ -139,22 +140,24 @@ def stream_new_message(
     #
     tool_calls_made = 0
     while tool_calls_made < MAX_REPEATED_TOOL_CALLS:
-        assistant_stream, reply, tool_parts = stream_assistant_response(
+        assistant_stream, reply = stream_assistant_response(
             request, dbc, message_chain, model, agent, blob_map, message_expiration_time, msg
         )
 
         yield from assistant_stream
 
-        if tool_parts is not None and len(tool_parts) > 0:
-            tool_responses = [call_tool(tool) for tool in tool_parts]
+        if reply.tool_calls is not None and len(reply.tool_calls) > 0:
             last_msg = reply
-            for tool in tool_responses:
-                tool_msg = create_tool_response_message(dbc=dbc, content=tool.content, parent_message=last_msg)
+            for tool in reply.tool_calls:
+                tool_response = call_tool(tool)
+                tool_msg = create_tool_response_message(
+                    dbc=dbc, content=tool_response.content, parent_message=last_msg, source_tool=tool
+                )
                 message_chain.append(tool_msg)
 
         yield prepare_yield_message_chain(message_chain, msg)
 
-        if tool_parts is None or len(tool_parts) == 0:
+        if reply.tool_calls is None or len(reply.tool_calls) == 0:
             break
 
         tool_calls_made += 1
@@ -184,7 +187,6 @@ def stream_assistant_response(
         None,
     ],
     message.Message,
-    list[ToolCallPart],
 ]:
     """
     Adds a new assistant message to the conversation, and streams the llm response to the api
@@ -210,9 +212,8 @@ def stream_assistant_response(
 
     message_chain.append(reply)
 
-    tool_parts: list[ToolCallPart] | None = []
-
     def stream_generator():
+        tool_parts: list[ToolCallPart] = []
         yield prepare_yield_message_chain(message_chain, msg)
 
         # Now yield each chunk as it's returned.
@@ -249,12 +250,16 @@ def stream_assistant_response(
             # TODO BREAKS WITH TOOL CALL ENDING?
             text_part = next((part for part in full_response.parts if part.part_kind == "text"), None)
             # tool_parts = [part for part in full_response.parts if part.part_kind == "tool-call"]
-            tool_parts = list(filter(lambda part: part.part_kind == "tool-call", full_response.parts))  # type: ignore
+            # tool_parts = list(filter(lambda part: part.part_kind == "tool-call", full_response.parts))
+
+            tool_parts = [part for part in full_response.parts if isinstance(part, ToolCallPart)]
+
             output = text_part.content if text_part is not None else ""
             logprobs = []
             # TODO finish reason
 
         else:
+            tool_parts = None
             chunks = cast(list[message.MessageChunk], chunks)
 
             chain: list[InferenceEngineMessage] = [
@@ -322,11 +327,13 @@ def stream_assistant_response(
             logprobs,
             message_completion.id if message_completion is not None else None,
             finish_reason,
+            tool_calls=tool_parts,
         )
 
         reply.content = output
         reply.logprobs = logprobs
         reply.finish_reason = finish_reason
+        reply.tool_calls = tool_parts
         reply.completion = message_completion.id if message_completion is not None else None
 
         if final_reply is None:
@@ -336,7 +343,7 @@ def stream_assistant_response(
             )
             raise final_reply_error
 
-    return stream_generator(), reply, tool_parts
+    return stream_generator(), reply
 
 
 def prepare_yield_message_chain(message_chain: list[message.Message], user_message: message.Message):

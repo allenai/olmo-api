@@ -23,7 +23,7 @@ class Role(StrEnum):
     User = "user"
     Assistant = "assistant"
     System = "system"
-    Enviroment = "environment"
+    ToolResponse = "tool_call_result"
 
 
 @dataclass
@@ -351,6 +351,8 @@ class Store:
                             model_host,
                             expiration_time,
                             file_urls,
+                            thinking,
+                            tool_calls,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -534,6 +536,7 @@ class Store:
         finish_reason: str | None = None,
         harmful: bool | None = None,
         file_urls: list[str] | None = None,
+        tool_calls: list[ToolCallPart] | None = None,
     ) -> Message | None:
         """
         Used to finalize a Message produced via a streaming response.
@@ -550,6 +553,7 @@ class Store:
                             finish_reason = COALESCE(%(finish_reason)s, finish_reason),
                             harmful = COALESCE(%(harmful)s, harmful),
                             file_urls= COALESCE(%(file_urls)s, file_urls),
+                            tool_calls= COALESCE(%(tool_calls)s, tool_calls),
                             final = true
                         WHERE
                             id = %(id)s
@@ -598,6 +602,7 @@ class Store:
                         "harmful": harmful,
                         "file_urls": file_urls,
                         "id": id,
+                        "tool_calls": prepare_tool_calls(tool_calls),
                     },
                 ).fetchone()
                 return Message.from_row(row) if row is not None else None

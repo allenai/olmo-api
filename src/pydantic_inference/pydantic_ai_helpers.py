@@ -14,11 +14,12 @@ from pydantic_ai.messages import (
     ThinkingPartDelta,
     ToolCallPart,
     ToolCallPartDelta,
+    ToolReturnPart,
     UserContent,
     UserPromptPart,
 )
 
-from src.dao.message import Message
+from src.dao.message import Message, Role
 from src.message.create_message_service.files import FileUploadResult
 from src.message.message_chunk import Chunk, ModelResponseChunk, ThinkingChunk, ToolCallChunk
 
@@ -34,7 +35,7 @@ def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent, message_id: str) 
 def pydantic_map_messages(messages: list[Message], blob_map: dict[str, FileUploadResult]) -> list[ModelMessage]:
     model_messages: list[ModelMessage] = []
     for message in messages:
-        if message.role == "user":
+        if message.role == Role.User:
             user_content: list[UserContent] = [message.content]
             for file_url in message.file_urls or []:
                 if file_url in blob_map:
@@ -50,14 +51,42 @@ def pydantic_map_messages(messages: list[Message], blob_map: dict[str, FileUploa
             user_prompt_part = UserPromptPart(user_content)
 
             model_messages.append(ModelRequest([user_prompt_part]))
-        elif message.role == "assistant":
+        elif message.role == Role.Assistant:
+            assistant_message_parts: list[ModelResponsePart] = [TextPart(content=message.content)]
+
+            if message.tool_calls:
+                assistant_message_parts.extend(message.tool_calls)
+
             model_messages.append(
                 ModelResponse(
-                    parts=[TextPart(content=message.content)],
+                    parts=assistant_message_parts,
                 )
             )
-        elif message.role == "system":
+        elif message.role == Role.System:
             model_messages.append(ModelRequest([SystemPromptPart(message.content)]))
+        elif message.role == Role.ToolResponse:
+            if message.tool_calls is None:
+                msg = "expected tool call in message"
+                raise TypeError(msg)
+
+            request_tool = message.tool_calls[0]
+
+            if len(message.tool_calls) != 1:
+                msg = "expected exactly one tool in Tool Response Message"
+                raise TypeError(msg)
+
+            # TODO FIND OUT WHY WE GET A DOUBLE ARRAY IN ORM
+            model_messages.append(
+                ModelRequest(
+                    parts=[
+                        ToolReturnPart(
+                            tool_name=request_tool[0]["tool_name"],  # type: ignore
+                            tool_call_id=request_tool[0]["tool_call_id"],  # type: ignore
+                            content=message.content,
+                        )
+                    ]
+                )
+            )
 
     return model_messages
 

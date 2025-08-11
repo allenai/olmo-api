@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from pydantic_ai.messages import ToolCallPart
+
 from src import db
 from src.auth.token import Token
 from src.dao import message
@@ -81,23 +83,22 @@ def create_user_message(
 
 
 def create_tool_response_message(
-    dbc: db.Client,
-    parent_message: message.Message,
-    content: str,
+    dbc: db.Client, parent_message: message.Message, content: str, source_tool: ToolCallPart
 ):
     return dbc.message.create(
         content=content,
         creator=parent_message.creator,
-        role=message.Role.Enviroment,
+        role=message.Role.ToolResponse,
         opts=parent_message.opts,
         model_id=parent_message.model_id,
         model_host=parent_message.model_host,
         root=parent_message.root,
         parent=parent_message.id,
         template=None,
-        final=False,
+        final=True,
         original=None,
         private=parent_message.private,
         harmful=False,
         expiration_time=parent_message.expiration_time,
+        tool_calls=[source_tool],
     )

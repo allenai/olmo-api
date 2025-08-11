@@ -12,6 +12,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from src import db
 from src.api_interface import APIInterface
 from src.dao import message
+from src.dao.flask_sqlalchemy_session import current_session
+from src.dao.message_respository import MessageRepository
 from src.error import handle_validation_error
 from src.message.create_message_request import (
     CreateMessageRequest,
@@ -42,7 +44,7 @@ def format_messages(
 
 
 def create_threads_blueprint(
-    dbc: db.Client, storage_client: GoogleCloudStorage, session_maker: sessionmaker[Session]
+    dbc: db.Client, session_maker: sessionmaker[Session], storage_client: GoogleCloudStorage
 ) -> Blueprint:
     threads_blueprint = Blueprint("messages", __name__)
 
@@ -54,7 +56,7 @@ def create_threads_blueprint(
     @threads_blueprint.get("/<thread_id>")
     @pydantic_api(name="Get message", tags=["v4", "threads"])
     def get_single_thread(thread_id: str) -> Thread:
-        return get_thread(thread_id, session_maker, dbc)
+        return get_thread(thread_id, dbc=dbc, message_repository=MessageRepository(current_session))
 
     @threads_blueprint.post("/")
     @pydantic_api(name="Stream a prompt response", tags=["v4", "threads"])

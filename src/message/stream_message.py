@@ -11,7 +11,7 @@ import grpc
 from flask import current_app
 
 from src.dao.engine_models.model_config import ModelConfig
-from src.dao.message import InferenceOpts, MessageStreamError
+from src.dao.message.message_models import InferenceOpts, MessageStreamError
 from src.inference.InferenceEngine import (
     FinishReason,
     InferenceEngine,

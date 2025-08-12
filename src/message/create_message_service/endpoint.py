@@ -7,11 +7,11 @@ from flask import request as flask_request
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
 
+import src.dao.message.message_models as message
 from src import db, util
 from src.auth.auth_service import authn
 from src.config.get_config import cfg
 from src.config.get_models import get_model_by_host_and_id
-from src.dao import message
 from src.dao.engine_models.model_config import PromptType
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,

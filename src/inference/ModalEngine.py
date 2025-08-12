@@ -5,7 +5,7 @@ from dataclasses import asdict
 import modal
 from werkzeug.datastructures import FileStorage
 
-from src.dao.message import Role
+from src.dao.message.message_models import Role
 from src.inference.InferenceEngine import (
     InferenceEngine,
     InferenceEngineChunk,

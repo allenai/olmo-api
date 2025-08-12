@@ -4,8 +4,8 @@ from pydantic_ai.messages import ToolCallPart
 
 from src import db
 from src.auth.token import Token
-from src.dao import message
 from src.dao.engine_models.model_config import ModelConfig
+from src.dao.message.message_models import Role
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )

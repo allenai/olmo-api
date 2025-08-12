@@ -7,7 +7,7 @@ from werkzeug import exceptions
 
 from src.api_interface import APIInterface
 from src.config.get_config import get_config
-from src.dao.message import (
+from src.dao.message.message_models import (
     InferenceOpts,
     Message,
     Role,

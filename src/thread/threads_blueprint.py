@@ -9,13 +9,13 @@ from flask_pydantic_api.utils import UploadedFile
 from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
+import src.dao.message.message_models as message
 from src import db
 from src.api_interface import APIInterface
 from src.auth.resource_protectors import anonymous_auth_protector
 from src.auth.auth_service import authn
-from src.dao import message
 from src.dao.flask_sqlalchemy_session import current_session
-from src.dao.message_respository import MessageRepository
+from src.dao.message.message_repository import MessageRepository
 from src.error import handle_validation_error
 from src.message.create_message_request import (
     CreateMessageRequest,
@@ -62,8 +62,10 @@ def create_threads_blueprint(
     @anonymous_auth_protector()
     @pydantic_api(name="Get message", tags=["v4", "threads"])
     def get_single_thread(thread_id: str) -> Thread:
-        authn()
-        return get_thread(thread_id, dbc=dbc, message_repository=MessageRepository(current_session))
+        agent = authn()
+        return get_thread(
+            thread_id, user_id=agent.client, dbc=dbc, message_repository=MessageRepository(current_session)
+        )
 
     @threads_blueprint.post("/")
     @anonymous_auth_protector()

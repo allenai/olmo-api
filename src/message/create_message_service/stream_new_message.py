@@ -1,6 +1,5 @@
 import dataclasses
 import os
-import pprint
 from collections.abc import Generator
 from datetime import UTC, datetime, timedelta
 from time import time_ns
@@ -233,7 +232,7 @@ def stream_assistant_response(
             chunks = cast(list[Chunk], chunks)
             pydantic_inference_engine = get_pydantic_model(model)
 
-            pydantic_messages = pydantic_map_messages(message_chain, blob_map)
+            pydantic_messages = pydantic_map_messages(message_chain[:-1], blob_map)
             tools = get_tools() if model.can_call_tools else []
             with model_request_stream_sync(
                 model=pydantic_inference_engine,
@@ -271,7 +270,7 @@ def stream_assistant_response(
                     if msg is not None and message_in_chain.id == msg.id
                     else message_in_chain.file_urls,
                 )
-                for message_in_chain in message_chain
+                for message_in_chain in message_chain[:-1]
             ]
             inference_engine = get_engine(model)
             message_chunks_generator = GeneratorWithReturnValue(

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from src import db
 from src.api_interface import APIInterface
+from src.auth.resource_protectors import anonymous_auth_protector
 from src.dao import message
 from src.error import handle_validation_error
 from src.message.create_message_request import (
@@ -47,16 +48,19 @@ def create_threads_blueprint(
     threads_blueprint = Blueprint("messages", __name__)
 
     @threads_blueprint.get("/")
+    @anonymous_auth_protector()
     @pydantic_api(name="Get messages", tags=["v4", "threads"])
     def list_threads(request: GetThreadsRequest) -> GetThreadsResponse:
         return get_threads(dbc, request)
 
     @threads_blueprint.get("/<thread_id>")
+    @anonymous_auth_protector()
     @pydantic_api(name="Get message", tags=["v4", "threads"])
     def get_single_thread(thread_id: str) -> Thread:
         return get_thread(thread_id, session_maker, dbc)
 
     @threads_blueprint.post("/")
+    @anonymous_auth_protector()
     @pydantic_api(name="Stream a prompt response", tags=["v4", "threads"])
     def create_message(
         create_message_request: CreateMessageRequest,

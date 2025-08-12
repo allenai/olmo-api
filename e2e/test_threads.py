@@ -1,0 +1,197 @@
+from typing import Any
+
+import requests
+
+from e2e import util
+from src.dao.message import Role
+from src.thread.get_threads_service import GetThreadsResponse
+from src.thread.thread_models import Thread
+
+from . import base
+
+default_model_options = {
+    "host": (None, "test_backend"),
+    "model": (None, "test-model"),
+}
+
+
+class BaseTestThreadEndpoints(base.IntegrationTest):
+    messages: list[tuple[str, base.AuthenticatedClient]]
+    child_msgs: list[tuple[str, base.AuthenticatedClient]]
+
+    def add_messages_in_thread(self, thread: Thread, user: base.AuthenticatedClient):
+        for c in thread.messages:
+            c_tup = (c.id, user)
+            self.messages.append(c_tup)
+            self.child_msgs.append(c_tup)
+
+    def setUp(self):
+        self.messages = []
+        self.child_msgs = []
+
+    def tearDown(self):
+        # Since the delete operation cascades, we have to find all child messages
+        # and remove them from self.messages. Otherwise, we'll run into 404 errors
+        # when executing r.raise_for_status()
+        self.messages = [msg for msg in self.messages if msg not in self.child_msgs]
+
+        for id, user in self.messages:
+            r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
+            r.raise_for_status()
+
+
+class TestThreadEndpoints(BaseTestThreadEndpoints):
+    def setUp(self) -> None:
+        self.default_options: list[tuple[str, Any]] = [
+            ("maxTokens", 2048),
+            ("temperature", 0.7),
+            ("n", 1),
+            ("topP", 1.0),
+            ("logprobs", None),
+            ("stop", []),
+        ]
+        return super().setUp()
+
+    def test_fails_without_auth(self):
+        # Make sure all endpoints fail w/o auth
+        for r in [
+            requests.post(
+                f"{self.origin}/v4/threads",
+                # The Pydantic validation setup  makes it so that we run request validation before auth validation
+                files={
+                    "content": (None, "I'm a magical labrador named Murphy, who are you?"),
+                    "private": (None, str(True)),
+                    **default_model_options,
+                },
+            ),
+            requests.get(f"{self.origin}/v4/threads/XXX"),
+            requests.delete(f"{self.origin}/v3/message/XXX"),
+        ]:
+            assert r.status_code == 401, f"{r.url} didn't respond with a 401"
+
+    def assert_stream_and_response(self, user: base.AuthenticatedClient):
+        # Create a message belonging to u1
+        r = requests.post(
+            f"{self.origin}/v4/threads/",
+            headers=self.auth(user),
+            files={
+                "content": (None, "I'm a magical labrador named Murphy, who are you? "),
+                **default_model_options,
+            },
+        )
+        r.raise_for_status()
+
+        thread = Thread.model_validate_json(util.last_response_line(r))
+        self.add_messages_in_thread(thread, user)
+
+        root_message = thread.messages[0]
+        opts_dict = root_message.opts.model_dump()
+        for name, value in self.default_options:
+            assert opts_dict[name] == value
+
+        assert root_message.model_id == default_model_options["model"][1]
+        assert root_message.model_host == default_model_options["host"][1]
+
+        assert thread.messages[0].role == Role.System
+        assert thread.messages[0].content == "You are a fake model used for testing"
+
+        user_message = next(message for message in thread.messages if message.role == Role.User)
+        assert user_message.content == "I'm a magical labrador named Murphy, who are you? "
+        assert user_message.creator == user.client
+        assert user_message.model_type is None
+        assert user_message.created is not None
+        assert user_message.deleted is None
+        assert user_message.template is None
+        assert user_message.private is False
+        assert user_message.children is not None
+        assert len(user_message.children) == 1
+
+        return thread
+
+    def assert_get_non_root_message(self, child_id: str, user: base.AuthenticatedClient):
+        r = requests.get(f"{self.origin}/v4/threads/{child_id}", headers=self.auth(user))
+        thread = Thread.model_validate(r.json())
+        assert thread.id == child_id
+        assert thread.messages[1].parent == child_id
+
+    def assert_can_add_to_thread(self, last_child_id: str, user: base.AuthenticatedClient):
+        r = requests.post(
+            f"{self.origin}/v4/threads",
+            headers=self.auth(user),
+            files={
+                "content": (None, "Complete this thought: I like "),
+                "parent": (None, last_child_id),
+                **default_model_options,
+            },
+        )
+        r.raise_for_status()
+        thread = Thread.model_validate_json(util.last_response_line(r))
+        self.add_messages_in_thread(thread, user)
+
+        user_message = next(message for message in thread.messages if message.role == Role.User)
+        assert user_message.content == "Complete this thought: I like "
+        assert user_message.children is not None
+        assert len(user_message.children) == 1
+
+        return thread
+
+    def assert_full_tree(
+        self,
+        first_thread: Thread,
+        second_thread: Thread,
+        user: base.AuthenticatedClient,
+    ):
+        all_messages = first_thread.messages + second_thread.messages
+        system_message = next(message for message in all_messages if message.role == Role.System)
+
+        user_messages = [message for message in all_messages if message.role == Role.User]
+        first_user_message = user_messages[0]
+        second_user_message = user_messages[1]
+
+        model_messages = [message for message in all_messages if message.role == Role.Assistant]
+        first_model_message = model_messages[0]
+        second_model_message = model_messages[1]
+
+        expected_messages = [
+            (system_message.id, Role.System, None, 1),
+            (first_user_message.id, Role.User, None, 1),
+            (first_model_message.id, Role.Assistant, "chat", 1),
+            (second_user_message.id, Role.User, None, 1),
+            (second_model_message.id, Role.Assistant, "chat", 0),
+        ]
+
+        r = requests.get(f"{self.origin}/v4/threads/{first_thread.id}", headers=self.auth(user))
+        r.raise_for_status()
+
+        thread = Thread.model_validate(r.json())
+
+        for i, message in enumerate(thread.messages):
+            assert (
+                message.id,
+                message.role,
+                message.model_type,
+                len(message.children) if message.children else 0,
+            ) == expected_messages[i]
+
+    def assert_list_threads_belonging_to_user(self, thread_id_to_ensure: str, user: base.AuthenticatedClient):
+        r = requests.get(f"{self.origin}/v4/threads", headers=self.auth(user))
+        r.raise_for_status()
+
+        response = GetThreadsResponse.model_validate(r.json())
+        assert response.meta.total > 1
+        assert response.meta.offset == 0
+        assert response.meta.limit == 10
+
+        assert any(thread.id == thread_id_to_ensure for thread in response.threads), (
+            f"{thread_id_to_ensure} not found in list of threads"
+        )
+
+    def test_stream(self):
+        u1 = self.user("test1@localhost")
+
+        # We need to keep the messages around to test them so these are all in one test
+        first_thread = self.assert_stream_and_response(u1)
+        self.assert_get_non_root_message(first_thread.messages[1].id, u1)
+        new_messages_thread_response = self.assert_can_add_to_thread(first_thread.messages[-1].id, u1)
+        self.assert_full_tree(first_thread, new_messages_thread_response, u1)
+        self.assert_list_threads_belonging_to_user(first_thread.id, u1)

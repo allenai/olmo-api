@@ -166,3 +166,32 @@ VALUES (
         true,
         true
     );
+
+INSERT INTO model_config(
+        id,
+        name,
+        description,
+        model_id_on_host,
+        model_type,
+        default_system_prompt,
+        family_id,
+        family_name,
+        host,
+        prompt_type,
+        internal,
+        can_call_tools
+    )
+VALUES (
+        'test-model',
+        'Test Model',
+        'A fake model to test with',
+        'foo',
+        'Chat',
+        'You are a fake model used for testing',
+        NULL,
+        NULL,
+        'TestBackend',
+        'TEXT_ONLY',
+        true,
+        true
+    );

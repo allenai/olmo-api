@@ -68,12 +68,11 @@ def pydantic_map_messages(messages: list[Message], blob_map: dict[str, FileUploa
             if message.tool_calls is None:
                 msg = "expected tool call in message"
                 raise TypeError(msg)
-
-            request_tool = message.tool_calls[0]
-
             if len(message.tool_calls) != 1:
                 msg = "expected exactly one tool in Tool Response Message"
                 raise TypeError(msg)
+
+            request_tool = message.tool_calls[0]
 
             model_messages.append(
                 ModelRequest(

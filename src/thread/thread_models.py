@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, cast
 
@@ -117,7 +118,13 @@ class Thread(APIInterface):
     messages: list[FlatMessage]
 
     @staticmethod
-    def from_message(message: Message | SQLAMessage):
+    def from_message(message: Message | SQLAMessage) -> "Thread":
         messages = FlatMessage.from_message_with_children(message)
 
         return Thread(id=message.id, messages=messages)
+
+    @staticmethod
+    def from_messages(messages: Sequence[SQLAMessage]) -> "Thread":
+        mapped_messages = [FlatMessage.from_message(message) for message in messages]
+
+        return Thread(id=mapped_messages[0].id, messages=mapped_messages)

@@ -29,14 +29,16 @@ def call_tool_function(tool_call: ToolCallPart):
     found_tool = next((tool for tool in TOOL_REGISTRY if tool_call.tool_name == tool.__name__.lower()), None)
 
     if found_tool is None:
-        return "Could not find tool"  # TODO: maybe error. or maybe kick over to frontend for user tool/function calls
-
-    return found_tool.call(parsed_args)
+        return "Could not find tool"
+    try:
+        return found_tool.call(parsed_args)
+    except Exception:
+        logging.exception("tool call failed")
+        return "Failed to call tool"
 
 
 def call_tool(tool_call: ToolCallPart) -> ToolReturnPart:
     tool_response = call_tool_function(tool_call)
-    # TODO: respond with something else out of here shouldn't be toolreturn part
 
     return ToolReturnPart(tool_name=tool_call.tool_name, content=tool_response, tool_call_id=tool_call.tool_call_id)
 

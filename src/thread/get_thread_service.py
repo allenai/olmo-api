@@ -15,7 +15,7 @@ def get_thread(thread_id: str, user_id: str, message_repository: BaseMessageRepo
         if messages is None:
             raise exceptions.NotFound
 
-        return Thread.from_message(messages)
+        return Thread.from_messages(messages)
 
     thread = get_message(thread_id, dbc)
     if thread is None:

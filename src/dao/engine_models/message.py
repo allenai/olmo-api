@@ -18,6 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.dao.engine_models.completion import Completion
 from src.dao.engine_models.label import Label
 from src.dao.engine_models.prompt_template import PromptTemplate
+from src.dao.engine_models.tool_call import ToolCall
 
 from .base import Base
 
@@ -63,7 +64,7 @@ class Message(Base, kw_only=True):
 
     thinking: Mapped[str | None] = mapped_column(default=None)
 
-    tool_calls: Mapped[list[dict] | None] = mapped_column(ARRAY(JSONB()), default=None)
+    tool_calls: Mapped[list[ToolCall] | None] = relationship(back_populates="message", cascade="all, delete")
 
     completion_: Mapped[Completion | None] = relationship("Completion", back_populates="message", init=False)
 

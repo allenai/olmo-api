@@ -5,13 +5,13 @@ from typing import Any
 from pydantic_ai.messages import ToolCallPart, ToolReturnPart
 from pydantic_ai.tools import ToolDefinition
 
-from .internal_tools import Add, Subtract
+from .internal_tools import Add, MakePerson, Subtract
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.NOTSET)
 
 
-TOOL_REGISTRY = [Add, Subtract]
+TOOL_REGISTRY = [Add, Subtract, MakePerson]
 
 
 def get_tools() -> list[ToolDefinition]:

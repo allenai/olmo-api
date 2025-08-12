@@ -245,11 +245,7 @@ def stream_assistant_response(
                     yield pydantic_chunk
 
             full_response = stream.get()
-            # TODO BREAKS WITH TOOL CALL ENDING?
             text_part = next((part for part in full_response.parts if part.part_kind == "text"), None)
-            # tool_parts = [part for part in full_response.parts if part.part_kind == "tool-call"]
-            # tool_parts = list(filter(lambda part: part.part_kind == "tool-call", full_response.parts))
-
             tool_parts = [part for part in full_response.parts if isinstance(part, ToolCallPart)]
 
             output = text_part.content if text_part is not None else ""

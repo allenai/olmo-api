@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from src import db
 from src.api_interface import APIInterface
+from src.auth.auth_service import authn
 from src.dao import message
 from src.dao.flask_sqlalchemy_session import current_session
 from src.dao.message_respository import MessageRepository
@@ -51,11 +52,13 @@ def create_threads_blueprint(
     @threads_blueprint.get("/")
     @pydantic_api(name="Get messages", tags=["v4", "threads"])
     def list_threads(request: GetThreadsRequest) -> GetThreadsResponse:
+        authn()
         return get_threads(dbc, request, message_repository=MessageRepository(current_session))
 
     @threads_blueprint.get("/<thread_id>")
     @pydantic_api(name="Get message", tags=["v4", "threads"])
     def get_single_thread(thread_id: str) -> Thread:
+        authn()
         return get_thread(thread_id, dbc=dbc, message_repository=MessageRepository(current_session))
 
     @threads_blueprint.post("/")

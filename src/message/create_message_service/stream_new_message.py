@@ -332,6 +332,7 @@ def stream_assistant_response(
         reply.logprobs = logprobs
         reply.finish_reason = finish_reason
         reply.tool_calls = tool_parts
+        reply.final = True
         reply.completion = message_completion.id if message_completion is not None else None
 
         if final_reply is None:

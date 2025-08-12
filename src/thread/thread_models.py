@@ -89,6 +89,10 @@ class FlatMessage(APIInterface):
     def from_message(message: Message | SQLAMessage) -> "FlatMessage":
         return FlatMessage.model_validate(message)
 
+    @staticmethod
+    def from_message_with_children(message: Message | SQLAMessage) -> list["FlatMessage"]:
+        return _map_messages(message)
+
 
 def _map_messages(message: Message | SQLAMessage) -> list[FlatMessage]:
     messages = [FlatMessage.from_message(message)]
@@ -106,6 +110,6 @@ class Thread(APIInterface):
 
     @staticmethod
     def from_message(message: Message | SQLAMessage):
-        messages = _map_messages(message)
+        messages = FlatMessage.from_message_with_children(message)
 
         return Thread(id=message.id, messages=messages)

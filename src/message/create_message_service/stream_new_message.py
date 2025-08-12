@@ -226,10 +226,9 @@ def stream_assistant_response(
         # We keep track of each chunk and the timing information per-chunk
         # so that we can manifest a completion at the end. This will go
         # away when InferD stores this I/O.
-        chunks: list[message.MessageChunk] | list[Chunk] = []
 
         if cfg.feature_flags.enable_pydantic_inference:
-            chunks = cast(list[Chunk], chunks)
+            pydantic_chunks: list[Chunk] = []
             pydantic_inference_engine = get_pydantic_model(model)
 
             pydantic_messages = pydantic_map_messages(message_chain[:-1], blob_map)
@@ -242,7 +241,7 @@ def stream_assistant_response(
             ) as stream:
                 for chunk in stream:
                     pydantic_chunk = pydantic_map_chunk(chunk, message_id=reply.id)
-                    chunks.append(pydantic_chunk)
+                    pydantic_chunks.append(pydantic_chunk)
                     yield pydantic_chunk
 
             full_response = stream.get()
@@ -259,7 +258,7 @@ def stream_assistant_response(
 
         else:
             tool_parts = []
-            chunks = cast(list[message.MessageChunk], chunks)
+            chunks: list[message.MessageChunk] = []
 
             chain: list[InferenceEngineMessage] = [
                 InferenceEngineMessage(

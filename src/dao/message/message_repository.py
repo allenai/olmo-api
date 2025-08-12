@@ -1,23 +1,15 @@
 import abc
 from collections.abc import Sequence
-from typing import Any
 
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from src import obj
-from src.api_interface import APIInterface
 from src.dao import paged
 from src.dao.engine_models.label import Label
 from src.dao.engine_models.message import Message
 from src.dao.message.message_models import ThreadList
 from src.dao.paged import Opts
-
-
-class ToolCall(APIInterface):
-    tool_name: str
-    args: str | dict[str, Any] | None = None
-    tool_call_id: str
 
 
 class BaseMessageRepository(abc.ABC):

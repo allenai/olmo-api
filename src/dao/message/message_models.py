@@ -15,6 +15,12 @@ from src.dao.engine_models.model_config import ModelType
 from src.message.map_text_snippet import text_snippet
 
 
+class ToolCall(APIInterface):
+    tool_name: str
+    args: str | dict[str, Any] | None = None
+    tool_call_id: str
+
+
 class Role(StrEnum):
     User = "user"
     Assistant = "assistant"
@@ -135,6 +141,11 @@ MessageRow = tuple[
     str | None,
     datetime | None,
     datetime | None,
+    # Tool call fields
+    str | None,
+    str | None,
+    dict[str, Any] | None,
+    str | None,
 ]
 
 
@@ -166,6 +177,7 @@ class Message:
     labels: list[label.Label] = field(default_factory=list)
     file_urls: list[str] | None = None
     thinking: str | None = None
+    tool_calls: list[ToolCall] = field(default_factory=list)
 
     def flatten(self) -> list["Message"]:
         if self.children is None:

@@ -18,4 +18,4 @@ class ToolCall(Base, kw_only=True):
     args: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None)
 
     message_id: Mapped[str] = mapped_column(ForeignKey("message.id"))
-    message: Mapped["Message"] = relationship(back_populates="tool_calls")
+    message: Mapped["Message"] = relationship(back_populates="tool_calls", init=False)

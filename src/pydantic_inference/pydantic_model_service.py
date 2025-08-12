@@ -2,6 +2,7 @@ from pydantic_ai.models import Model
 
 from src.dao.engine_models.model_config import ModelConfig, ModelHost
 
+from .backends.beaker_queues import get_beaker_queues_model
 from .backends.cirrascale import get_cirrascale_model
 from .backends.cirrascale_backend import get_cirrascale_backend_model
 from .backends.modal_open_ai import get_modal_openai_model
@@ -16,6 +17,8 @@ def get_pydantic_model(model: ModelConfig) -> Model:
             return get_cirrascale_backend_model(model)
         case ModelHost.ModalOpenAI:
             return get_modal_openai_model(model)
+        case ModelHost.BeakerQueues:
+            return get_beaker_queues_model(model)
         case ModelHost.TestBackend:
             return get_test_model()
         case _:

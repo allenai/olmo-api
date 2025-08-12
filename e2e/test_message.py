@@ -11,9 +11,8 @@ from src.message.create_message_service.safety import INAPPROPRIATE_TEXT_ERROR
 from . import base
 
 default_model_options = {
-    "host": (None, "cirrascale_backend"),
-    "model": (None, "cs-OLMo-2-0325-32B-Instruct"),
-    "files": (None, None),
+    "host": (None, "test_backend"),
+    "model": (None, "test-model"),
 }
 
 
@@ -127,10 +126,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         root_message_v3_test = r.json()
 
         # note breaks if system prompt changes...
-        assert (
-            root_message_v3_test["content"]
-            == "You are OLMo 2 Instruct, a helpful, open-source AI Assistant built by the Allen Institute for AI."
-        )
+        assert root_message_v3_test["content"] == "You are a fake model used for testing"
         assert root_message_v3_test["role"] == "system"
 
         root_message_v3_user_message = root_message_v3_test["children"][0]

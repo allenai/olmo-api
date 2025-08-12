@@ -12,9 +12,9 @@ class SortDirection(StrEnum):
 
 
 class SortOptions(BaseModel):
-    offset: int | None = Field(default=None, ge=0)
+    offset: int | None = Field(default=0, ge=0)
     # TODO: Implement a customizable max_limit if we use this everywhere
-    limit: int | None = Field(default=None, ge=0)
+    limit: int = Field(default=10, ge=0, le=100)
     field: str | None = Field(default=None, validation_alias="sort")
     order: SortDirection = Field(default=SortDirection.DESC)
 

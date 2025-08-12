@@ -1,3 +1,5 @@
+import functools
+
 from authlib.integrations.flask_oauth2.requests import FlaskJsonRequest
 from authlib.integrations.flask_oauth2.signals import token_authenticated
 from authlib.oauth2 import OAuth2Error
@@ -5,6 +7,7 @@ from authlib.oauth2 import ResourceProtector as BaseResourceProtector
 from authlib.oauth2.rfc6749 import MissingAuthorizationError
 from flask import g
 from flask import request as flask_request
+from werkzeug.exceptions import Unauthorized
 
 from src.constants import ANONYMOUS_USER_ID_HEADER
 
@@ -42,3 +45,22 @@ class AllowAnonymousResourceProtector(BaseResourceProtector):
 
         except OAuth2Error:
             return None
+
+    def __call__(self, scopes=None, optional=False, **kwargs):  # noqa: FBT002
+        claims = kwargs
+        claims["scopes"] = scopes
+
+        def wrapper(f):
+            @functools.wraps(f)
+            def decorated(*args, **kwargs):
+                try:
+                    self.acquire_token(**claims)
+                except MissingAuthorizationError as error:
+                    if optional:
+                        return f(*args, **kwargs)
+                    raise Unauthorized(error.description) from error
+                return f(*args, **kwargs)
+
+            return decorated
+
+        return wrapper

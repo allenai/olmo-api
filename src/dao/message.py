@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
 from enum import StrEnum
@@ -14,6 +15,7 @@ from werkzeug import exceptions
 from src import obj
 from src.api_interface import APIInterface
 from src.config.Model import ModelType
+from src.dao.engine_models.message import Message as SQLAMessage
 from src.message.map_text_snippet import text_snippet
 
 from . import label, paged
@@ -187,7 +189,6 @@ class Message:
     labels: list[label.Label] = field(default_factory=list)
     file_urls: list[str] | None = None
     thinking: str | None = None
-    tool_calls: list[ToolCallPart] | None = None
 
     def flatten(self) -> list["Message"]:
         if self.children is None:
@@ -240,7 +241,6 @@ class Message:
             expiration_time=r[20],
             file_urls=r[21],
             thinking=r[22],
-            tool_calls=r[23],
             labels=labels,
         )
 
@@ -291,6 +291,12 @@ class MessageList(paged.List):
     messages: list[Message]
 
 
+@dataclass
+class ThreadList:
+    threads: Sequence[SQLAMessage] | Sequence[Message]
+    meta: paged.ListMeta
+
+
 class Store:
     def __init__(self, pool: ConnectionPool):
         self.pool = pool
@@ -317,16 +323,15 @@ class Store:
         expiration_time: datetime | None = None,
         file_urls: list[str] | None = None,
         thinking: str | None = None,
-        tool_calls: list[ToolCallPart] | None = None,
     ) -> Message:
         with self.pool.connection() as conn:
             with conn.cursor() as cur:
                 try:
                     q = """
                         INSERT INTO
-                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private, model_type, finish_reason, harmful, model_id, model_host, expiration_time, file_urls, thinking, tool_calls)
+                            message (id, content, creator, role, opts, root, parent, template, logprobs, completion, final, original, private, model_type, finish_reason, harmful, model_id, model_host, expiration_time, file_urls, thinking)
                         VALUES
-                            (%(id)s, %(content)s, %(creator)s, %(role)s, %(opts)s, %(root)s, %(parent)s, %(template)s, %(logprobs)s, %(completion)s, %(final)s, %(original)s, %(private)s, %(model_type)s, %(finish_reason)s, %(harmful)s, %(model_id)s, %(model_host)s, %(expiration_time)s, %(file_urls)s, %(thinking)s, %(tool_calls)s)
+                            (%(id)s, %(content)s, %(creator)s, %(role)s, %(opts)s, %(root)s, %(parent)s, %(template)s, %(logprobs)s, %(completion)s, %(final)s, %(original)s, %(private)s, %(model_type)s, %(finish_reason)s, %(harmful)s, %(model_id)s, %(model_host)s, %(expiration_time)s, %(file_urls)s, %(thinking)s)
                         RETURNING
                             id,
                             content,
@@ -385,7 +390,6 @@ class Store:
                             "expiration_time": expiration_time,
                             "file_urls": file_urls,
                             "thinking": thinking,
-                            "tool_calls": prepare_tool_calls(tool_calls),
                         },
                     ).fetchone()
 
@@ -442,7 +446,6 @@ class Store:
                         message.expiration_time,
                         message.file_urls,
                         message.thinking,
-                        message.tool_calls,
                         label.id,
                         label.message,
                         label.rating,
@@ -504,7 +507,6 @@ class Store:
                         message.expiration_time,
                         message.file_urls,
                         message.thinking,
-                        message.tool_calls,
                         label.id,
                         label.message,
                         label.rating,
@@ -576,7 +578,6 @@ class Store:
                             expiration_time,
                             file_urls,
                             thinking,
-                            tool_calls,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -644,7 +645,6 @@ class Store:
                         updated.expiration_time,
                         updated.file_urls,
                         updated.thinking,
-                        updated.tool_calls,
                         label.id,
                         label.message,
                         label.rating,
@@ -707,7 +707,6 @@ class Store:
                     message.expiration_time,
                     message.file_urls,
                     message.thinking,
-                    message.tool_calls,
                     label.id,
                     label.message,
                     label.rating,
@@ -738,7 +737,7 @@ class Store:
         deleted: bool = False,
         opts: paged.Opts = paged.Opts(),
         agent: str | None = None,
-    ) -> MessageList:
+    ) -> "ThreadList":
         """
         Returns messages from the database. If agent is set, both private messages
         and labels belonging to that user will be returned.
@@ -811,7 +810,6 @@ class Store:
                         message.expiration_time,
                         message.file_urls,
                         message.thinking,
-                        message.tool_calls,
                         label.id,
                         label.message,
                         label.rating,
@@ -854,16 +852,16 @@ class Store:
                 args["offset"] = 0
                 row = cur.execute(q, args).fetchone()
                 total = row[0] if row is not None else 0
-                return MessageList(
-                    messages=[],
+                return ThreadList(
+                    threads=[],
                     meta=paged.ListMeta(total, opts.offset, opts.limit, opts.sort),
                 )
 
             total = rows[0][0]
             tree_roots, _ = Message.tree(Message.group_by_id([Message.from_row(r[1:]) for r in rows]))
 
-            return MessageList(
-                messages=tree_roots,
+            return ThreadList(
+                threads=tree_roots,
                 meta=paged.ListMeta(total, opts.offset, opts.limit),
             )
 

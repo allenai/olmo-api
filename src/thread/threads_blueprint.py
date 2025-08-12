@@ -51,7 +51,7 @@ def create_threads_blueprint(
     @threads_blueprint.get("/")
     @pydantic_api(name="Get messages", tags=["v4", "threads"])
     def list_threads(request: GetThreadsRequest) -> GetThreadsResponse:
-        return get_threads(dbc, request)
+        return get_threads(dbc, request, message_repository=MessageRepository(current_session))
 
     @threads_blueprint.get("/<thread_id>")
     @pydantic_api(name="Get message", tags=["v4", "threads"])
@@ -78,7 +78,11 @@ def create_threads_blueprint(
             )
 
             stream_response = create_message_v4(
-                create_message_request_with_lists, dbc, storage_client=storage_client, session_maker=session_maker
+                create_message_request_with_lists,
+                dbc,
+                storage_client=storage_client,
+                session_maker=session_maker,
+                message_repository=MessageRepository(current_session),
             )
             if isinstance(stream_response, Generator):
                 return Response(stream_with_context(format_messages(stream_response)), mimetype="application/jsonl")

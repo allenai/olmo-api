@@ -1,12 +1,15 @@
 import abc
 from typing import Any
 
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from src import obj
 from src.api_interface import APIInterface
+from src.dao import paged
 from src.dao.engine_models.message import Message
-from src.thread.thread_models import FlatMessage
+from src.dao.message import ThreadList
+from src.dao.paged import Opts
 
 
 class ToolCall(APIInterface):
@@ -47,57 +50,24 @@ class ToolCall(APIInterface):
 
 class BaseMessageRepository(abc.ABC):
     @abc.abstractmethod
-    def add(self, message: FlatMessage) -> FlatMessage:
+    def add(self, message: Message) -> Message:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get(self, message_id: obj.ID) -> FlatMessage | None:
+    def get(self, message_id: obj.ID) -> Message | None:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def update(self, message: FlatMessage) -> FlatMessage:
+    def update(self, message: Message) -> Message:
         raise NotImplementedError
 
     # @abc.abstractmethod
     # def remove(self, message_id: obj.ID) -> None:
     #     raise NotImplementedError
 
-
-def map_flat_message_to_message(message: FlatMessage) -> Message:
-    return Message(
-        id=message.id,
-        content=message.content,
-        creator=message.creator,
-        role=message.role,
-        opts=message.opts.model_dump(),
-        root=message.root,
-        created=message.created,
-        final=message.final,
-        private=message.private,
-        model_id=message.model_id,
-        model_host=message.model_host,
-        model_type=message.model_type,
-        deleted=message.deleted,
-        parent=message.parent,
-        template=message.template,
-        logprobs=None,
-        completion=message.completion,
-        original=message.original,
-        finish_reason=message.finish_reason,
-        harmful=message.harmful,
-        expiration_time=message.expiration_time,
-        file_urls=message.file_urls,
-    )
-
-
-def _map_messages(message: Message) -> list[FlatMessage]:
-    messages = [FlatMessage.from_message(message)]
-
-    if message.children is None or len(message.children) == 0:
-        return messages
-
-    mapped_messages = [child_child for child in message.children for child_child in _map_messages(child)]
-    return [*messages, *mapped_messages]
+    @abc.abstractmethod
+    def get_threads_for_user(self, user_id: str, sort_opts: Opts) -> ThreadList:
+        raise NotImplementedError
 
 
 class MessageRepository(BaseMessageRepository):
@@ -106,35 +76,46 @@ class MessageRepository(BaseMessageRepository):
     def __init__(self, session: Session):
         self.session = session
 
-    def add(self, message: FlatMessage) -> FlatMessage:
-        message_to_add = map_flat_message_to_message(message)
-        self.session.add(message_to_add)
-        self.session.commit()
+    def add(self, message: Message) -> Message:
+        self.session.add(message)
+        self.session.flush()
 
         new_message = self.session.get_one(Message, message.id)
-        return FlatMessage.from_message(new_message)
+        return new_message
 
-    def get(self, message_id: obj.ID) -> FlatMessage | None:
+    def get(self, message_id: obj.ID) -> Message | None:
         message = self.session.get(Message, message_id)
+        return message
 
-        if message is None:
-            return None
-
-        return FlatMessage.from_message(message)
-
-    def update(self, message: FlatMessage) -> FlatMessage:
+    def update(self, message: Message) -> Message:
         message_to_update = self.session.get_one(Message, message.id)
 
         for var, value in vars(message).items():
             setattr(message_to_update, var, value) if value else None
 
-        self.session.commit()
-        return FlatMessage.from_message(message_to_update)
+        self.session.flush()
+        return message_to_update
 
-    def get_with_children(self, message_id: obj.ID) -> list[FlatMessage] | None:
-        message = self.session.get(Message, message_id)
+    def get_threads_for_user(self, user_id: str, sort_opts: Opts) -> ThreadList:
+        thread_conditions = [
+            Message.creator == user_id,
+            Message.final == True,  # noqa: E712
+            Message.parent == None,  # noqa: E711
+            or_(Message.expiration_time == None, Message.expiration_time > func.now()),  # noqa: E711
+        ]
 
-        if message is None:
-            return None
+        total = self.session.query(Message.id).where(*thread_conditions).count()
 
-        return _map_messages(message)
+        select_messages = select(Message).where(*thread_conditions).order_by(Message.created.desc())
+
+        if sort_opts.limit is not None:
+            select_messages = select_messages.limit(sort_opts.limit)
+
+        if sort_opts.offset is not None:
+            select_messages = select_messages.offset(sort_opts.offset)
+
+        threads = self.session.scalars(select_messages).unique().all()
+
+        return ThreadList(
+            threads=threads, meta=paged.ListMeta(total=total, offset=sort_opts.offset, limit=sort_opts.limit)
+        )

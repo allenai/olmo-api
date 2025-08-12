@@ -4,7 +4,7 @@ from src import db
 from src.api_interface import APIInterface
 from src.auth.auth_service import authn
 from src.config.get_config import get_config
-from src.dao.message_respository import MessageRepository, ThreadList
+from src.dao.message_respository import BaseMessageRepository, ThreadList
 from src.dao.paged import ListMeta, Opts, SortOptions
 from src.thread.thread_models import Thread
 
@@ -20,7 +20,7 @@ class GetThreadsResponse(APIInterface):
 
 
 def get_threads(
-    dbc: db.Client, request: GetThreadsRequest, message_repository: MessageRepository
+    dbc: db.Client, request: GetThreadsRequest, message_repository: BaseMessageRepository
 ) -> GetThreadsResponse:
     agent = authn()
 

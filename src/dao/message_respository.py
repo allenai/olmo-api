@@ -1,7 +1,7 @@
 import abc
 from typing import Any
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session
 
 from src import obj
@@ -61,9 +61,9 @@ class BaseMessageRepository(abc.ABC):
     def update(self, message: Message) -> Message:
         raise NotImplementedError
 
-    # @abc.abstractmethod
-    # def remove(self, message_id: obj.ID) -> None:
-    #     raise NotImplementedError
+    @abc.abstractmethod
+    def delete(self, message_id: obj.ID) -> None:
+        raise NotImplementedError
 
     @abc.abstractmethod
     def get_threads_for_user(self, user_id: str, sort_opts: Opts) -> ThreadList:
@@ -84,8 +84,7 @@ class MessageRepository(BaseMessageRepository):
         return new_message
 
     def get(self, message_id: obj.ID) -> Message | None:
-        message = self.session.get(Message, message_id)
-        return message
+        return self.session.get(Message, message_id)
 
     def update(self, message: Message) -> Message:
         message_to_update = self.session.get_one(Message, message.id)
@@ -95,6 +94,9 @@ class MessageRepository(BaseMessageRepository):
 
         self.session.flush()
         return message_to_update
+
+    def delete(self, message_id: obj.ID) -> None:
+        self.session.execute(delete(Message).where(Message.id == message_id))
 
     def get_threads_for_user(self, user_id: str, sort_opts: Opts) -> ThreadList:
         thread_conditions = [

@@ -797,5 +797,22 @@ ALTER TABLE message ALTER COLUMN tool_calls TYPE JSONB[];
 
 UPDATE alembic_version SET version_num='51ded224eed6' WHERE alembic_version.version_num = 'ba2462b3122c';
 
+-- Running upgrade 51ded224eed6 -> 87f54c8af836
+
+CREATE TABLE tool_call (
+    tool_call_id VARCHAR NOT NULL, 
+    tool_name VARCHAR NOT NULL, 
+    args JSONB, 
+    message_id TEXT NOT NULL, 
+    PRIMARY KEY (tool_call_id), 
+    FOREIGN KEY(message_id) REFERENCES message (id)
+);
+
+ALTER TABLE message DROP COLUMN tool_calls;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE tool_call TO app;
+
+UPDATE alembic_version SET version_num='87f54c8af836' WHERE alembic_version.version_num = '51ded224eed6';
+
 COMMIT;
 

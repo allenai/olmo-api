@@ -80,4 +80,4 @@ class Message(Base, kw_only=True):
     prompt_template: Mapped[PromptTemplate | None] = relationship(
         "PromptTemplate", back_populates="message", init=False
     )
-    label: Mapped[list[Label]] = relationship("Label", back_populates="message_", init=False, lazy="joined")
+    labels: Mapped[list[Label]] = relationship("Label", back_populates="message_", init=False, lazy="joined")

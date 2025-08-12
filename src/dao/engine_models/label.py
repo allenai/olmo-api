@@ -32,4 +32,4 @@ class Label(Base):
     comment: Mapped[Optional[str]] = mapped_column(Text)
     deleted: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
 
-    message_: Mapped["Message"] = relationship("Message", back_populates="label")
+    message_: Mapped["Message"] = relationship("Message", back_populates="labels")

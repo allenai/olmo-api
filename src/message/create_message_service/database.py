@@ -2,8 +2,8 @@ from datetime import datetime
 
 from src import db
 from src.auth.token import Token
-from src.dao import message
 from src.dao.engine_models.model_config import ModelConfig
+from src.dao.message.message_models import Role
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
@@ -26,7 +26,7 @@ def setup_msg_thread(
             system_msg = dbc.message.create(
                 content=model.default_system_prompt,
                 creator=agent.client,
-                role=message.Role.System,
+                role=Role.System,
                 opts=request.opts,
                 model_id=request.model,
                 model_host=request.host,
@@ -52,7 +52,7 @@ def setup_msg_thread(
             root=parent_id,
             parent=parent_id,
             template=request.template,
-            final=request.role == message.Role.Assistant,
+            final=request.role == Role.Assistant,
             original=request.original,
             private=request.private,
             harmful=is_msg_harmful,
@@ -69,7 +69,7 @@ def setup_msg_thread(
             root=request.parent.root,
             parent=request.parent.id,
             template=request.template,
-            final=request.role == message.Role.Assistant,
+            final=request.role == Role.Assistant,
             original=request.original,
             private=request.private,
             harmful=is_msg_harmful,

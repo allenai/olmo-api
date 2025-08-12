@@ -10,11 +10,12 @@ from flask import (
 )
 from werkzeug import exceptions
 
+import src.dao.message.message_models as message
 from src import db, util
 from src.attribution.attribution_blueprint import attribution_blueprint
 from src.auth.auth_service import authn
 from src.config import get_config
-from src.dao import datachip, label, message, paged
+from src.dao import datachip, label, paged
 from src.inference.inference_service import get_available_models
 from src.log import logging_blueprint
 from src.message.GoogleCloudStorage import GoogleCloudStorage

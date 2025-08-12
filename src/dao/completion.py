@@ -7,7 +7,7 @@ from psycopg_pool import ConnectionPool
 
 from src import obj
 
-from .message import InferenceOpts, TokenLogProbs
+from .message.message import InferenceOpts, TokenLogProbs
 
 CompletionRow = tuple[
     str,

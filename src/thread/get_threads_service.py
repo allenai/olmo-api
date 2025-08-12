@@ -4,7 +4,7 @@ from src import db
 from src.api_interface import APIInterface
 from src.auth.auth_service import authn
 from src.config.get_config import get_config
-from src.dao.message_respository import BaseMessageRepository, ThreadList
+from src.dao.message.message_repository import BaseMessageRepository, ThreadList
 from src.dao.paged import ListMeta, Opts, SortOptions
 from src.thread.thread_models import Thread
 

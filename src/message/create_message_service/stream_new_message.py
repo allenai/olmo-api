@@ -9,10 +9,11 @@ from pydantic_ai.direct import model_request_stream_sync
 from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.openai import OpenAIModelSettings
 
+import src.dao.message.message_models as message
 from src import db, parse
 from src.auth.token import Token
 from src.config.get_config import cfg
-from src.dao import completion, message
+from src.dao import completion
 from src.dao.engine_models.model_config import ModelConfig
 from src.inference.inference_service import get_engine
 from src.inference.InferenceEngine import (

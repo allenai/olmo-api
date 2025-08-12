@@ -17,7 +17,7 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 
-from src.dao.message import Message
+from src.dao.message.message_models import Message
 from src.message.create_message_service.files import FileUploadResult
 from src.message.message_chunk import Chunk, ModelResponseChunk, ThinkingChunk, ToolCallChunk
 

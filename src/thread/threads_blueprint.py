@@ -20,13 +20,14 @@ from src.message.create_message_request import (
 )
 from src.message.create_message_service.endpoint import create_message_v4, format_message
 from src.message.GoogleCloudStorage import GoogleCloudStorage
+from src.message.message_chunk import Chunk
 from src.thread.get_thread_service import get_thread
 from src.thread.get_threads_service import GetThreadsRequest, GetThreadsResponse, get_threads
 from src.thread.thread_models import Thread
 
 
 def format_messages(
-    stream_generator: Generator[message.Message | message.MessageChunk | message.MessageStreamError, Any, None],
+    stream_generator: Generator[message.Message | message.MessageChunk | message.MessageStreamError | Chunk],
 ) -> Generator[str, Any, None]:
     try:
         for stream_message in stream_generator:

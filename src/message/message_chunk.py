@@ -1,6 +1,8 @@
 from enum import StrEnum
 from typing import Any, Literal
 
+from pydantic import Field
+
 from src import obj
 from src.api_interface import APIInterface
 
@@ -16,12 +18,12 @@ class BaseChunk(APIInterface):
 
 
 class ModelResponseChunk(BaseChunk):
-    type: Literal[ChunkType.MODEL_RESPONSE] = ChunkType.MODEL_RESPONSE
+    type: Literal[ChunkType.MODEL_RESPONSE] = Field(init=False, default=ChunkType.MODEL_RESPONSE)
     content: str
 
 
 class ToolCallChunk(BaseChunk):
-    type: Literal[ChunkType.TOOL_CALL] = ChunkType.TOOL_CALL
+    type: Literal[ChunkType.TOOL_CALL] = Field(init=False, default=ChunkType.TOOL_CALL)
 
     tool_call_id: str
     """The tool call identifier, this is used by some models including OpenAI.
@@ -40,7 +42,7 @@ class ToolCallChunk(BaseChunk):
 
 
 class ThinkingChunk(BaseChunk):
-    type: Literal[ChunkType.THINKING] = ChunkType.THINKING
+    type: Literal[ChunkType.THINKING] = Field(init=False, default=ChunkType.THINKING)
 
     content: str
     """The thinking content of the response."""

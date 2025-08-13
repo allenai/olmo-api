@@ -1,21 +1,9 @@
-from typing import Any
-
-from src.message.create_message_service.tools.tool_base import ToolBase
+from pydantic_ai import Tool
 
 
-class Add(ToolBase):
-    """Add two numbers together number_a + number_b"""
+def add_fn(x: int, y: int) -> int:
+    """Adds two numbers together"""
+    return x + y
 
-    number_a: int
-    number_b: int
 
-    @staticmethod
-    def call(args: str | dict[str, Any] | None):
-        if isinstance(args, str):
-            # TODO talk about how error these things...
-            return "Error calling tool with incorrect params"
-
-        if args is None:
-            return "Args are none"
-
-        return args["number_a"] + args["number_b"]
+Add = Tool(add_fn, takes_ctx=False)

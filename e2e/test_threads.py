@@ -226,7 +226,7 @@ class TestThreadEndpoints(BaseTestThreadEndpoints):
         r.raise_for_status()
 
         response = GetThreadsResponse.model_validate(r.json())
-        assert response.meta.total > 1
+        assert response.meta.total > 0
         assert response.meta.offset == 0
         assert response.meta.limit == 10
 

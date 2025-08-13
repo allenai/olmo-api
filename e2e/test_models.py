@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import requests
 
 from src.dao.engine_models.model_config import ModelHost, ModelType, PromptType
@@ -122,7 +124,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
             raise TypeError(msg)
 
     def test_should_create_a_model(self):
-        model_id = "test-model"
+        model_id = "test-model-" + str(uuid4())
         create_model_request = CreateTextOnlyModelConfigRequest(
             id=model_id,
             name="model made for testing",

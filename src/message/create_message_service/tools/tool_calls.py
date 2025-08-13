@@ -2,38 +2,39 @@ import json
 import logging
 from typing import Any
 
+from pydantic_ai import Tool
 from pydantic_ai.messages import ToolCallPart, ToolReturnPart
 from pydantic_ai.tools import ToolDefinition
 
-from .internal_tools import Add, MakePerson, Subtract
+from .internal_tools import MakePerson
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.NOTSET)
 
-
-TOOL_REGISTRY: list[Any] = [Add, Subtract, MakePerson]
+TOOL_REGISTRY: list[Tool[Any]] = [MakePerson]
 
 
 def get_tools() -> list[ToolDefinition]:
-    return [
-        ToolDefinition(
-            name=tool.__name__.lower(), description=tool.__doc__, parameters_json_schema=tool.model_json_schema()
-        )
-        for tool in TOOL_REGISTRY
-    ]
+    return [tool.tool_def for tool in TOOL_REGISTRY]
 
 
 def call_tool_function(tool_call: ToolCallPart):
-    parsed_args = arg_parse_helper(tool_call.args)
-
-    found_tool = next((tool for tool in TOOL_REGISTRY if tool_call.tool_name == tool.__name__.lower()), None)
+    found_tool = next((tool for tool in TOOL_REGISTRY if tool_call.tool_name == tool.name), None)
 
     if found_tool is None:
         return "Could not find tool"
+
     try:
-        return found_tool.call(parsed_args)
+        if found_tool.takes_ctx is False:
+            parsed_args = arg_parse_helper(tool_call.args)
+            if isinstance(parsed_args, dict):
+                return found_tool.function(**parsed_args)  # type: ignore
+            return found_tool.function(parsed_args)  # type: ignore
+        return "Tool setup incorrect"
+
     except Exception:
         logging.exception("tool call failed")
+
         return "Failed to call tool"
 
 

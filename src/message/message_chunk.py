@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from src import obj
 from src.api_interface import APIInterface
@@ -20,12 +20,18 @@ class BaseChunk(APIInterface):
 
 
 class ModelResponseChunk(BaseChunk):
-    type: Literal[ChunkType.MODEL_RESPONSE] = Field(init=False, default=ChunkType.MODEL_RESPONSE)
+    type: Literal[ChunkType.MODEL_RESPONSE] = Field(init=False)
     content: str
+
+    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
+    @field_validator("type", mode="before")
+    @classmethod
+    def add_type(cls, _v):
+        cls.type = ChunkType.MODEL_RESPONSE
 
 
 class ToolCallChunk(BaseChunk):
-    type: Literal[ChunkType.TOOL_CALL] = Field(init=False, default=ChunkType.TOOL_CALL)
+    type: Literal[ChunkType.TOOL_CALL] = Field(init=False)
 
     tool_call_id: str
     """The tool call identifier, this is used by some models including OpenAI.
@@ -42,15 +48,27 @@ class ToolCallChunk(BaseChunk):
     This is stored either as a JSON string or a Python dictionary depending on how data was received.
     """
 
+    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
+    @field_validator("type", mode="before")
+    @classmethod
+    def add_type(cls, _v):
+        cls.type = ChunkType.TOOL_CALL
+
 
 class ThinkingChunk(BaseChunk):
-    type: Literal[ChunkType.THINKING] = Field(init=False, default=ChunkType.THINKING)
+    type: Literal[ChunkType.THINKING] = Field(init=False)
 
     content: str
     """The thinking content of the response."""
 
     id: str | None = None
     """The identifier of the thinking part."""
+
+    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
+    @field_validator("type", mode="before")
+    @classmethod
+    def add_type(cls, _v):
+        cls.type = ChunkType.THINKING
 
 
 class StreamStartChunk(BaseChunk):

@@ -151,7 +151,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert test_model is not None, "The test model wasn't returned from the GET request"
 
     def test_should_create_a_multi_modal_model(self):
-        model_id = "test-mm-model"
+        model_id = "test-mm-model-" + str(uuid4())
         create_model_request = CreateMultiModalModelConfigRequest(
             id=model_id,
             name="multi-modal model made for testing",
@@ -182,7 +182,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert test_model.get("accepts_files") is True
 
     def test_should_create_a_model_with_tool_calling_enabled(self):
-        model_id = "test-tool-model"
+        model_id = "test-tool-model-" + str(uuid4())
         create_model_request = CreateTextOnlyModelConfigRequest(
             id=model_id,
             name="model made for testing",
@@ -212,7 +212,8 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert test_model.get("canCallTools") is True
 
     def test_should_delete_a_model(self):
-        model_id = "test-model"
+        model_id = "test-model-" + str(uuid4())
+
         create_model_request = CreateTextOnlyModelConfigRequest(
             id=model_id,
             name="model made for testing",
@@ -282,7 +283,8 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert actual_order == expected_order, f"Expected order {expected_order}, got {actual_order}"
 
     def test_should_update_a_text_only_model(self):
-        model_id = "test-model"
+        model_id = "test-model-" + str(uuid4())
+
         create_model_request = CreateTextOnlyModelConfigRequest(
             id=model_id,
             name="model made for testing",
@@ -327,7 +329,8 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert updated_model.get("canCallTools") is True
 
     def test_should_update_a_multi_modal_model(self):
-        model_id = "test-model"
+        model_id = "test-model-" + str(uuid4())
+
         create_model_request = CreateMultiModalModelConfigRequest(
             id=model_id,
             name="multi-modal model made for testing",

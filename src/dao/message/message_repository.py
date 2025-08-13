@@ -1,7 +1,7 @@
 import abc
 from collections.abc import Sequence
 
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.orm import Session, joinedload
 
 from src import obj
@@ -26,11 +26,19 @@ class BaseMessageRepository(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def delete(self, message_id: obj.ID) -> None:
+    def soft_delete(self, message_id: obj.ID) -> Message | None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def delete(self, message_id: obj.ID) -> Message | None:
         raise NotImplementedError
 
     @abc.abstractmethod
     def get_threads_for_user(self, user_id: str, sort_opts: Opts) -> ThreadList:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def migrate_messages_to_new_user(self, previous_user_id: str, new_user_id: str) -> int:
         raise NotImplementedError
 
 
@@ -66,8 +74,13 @@ class MessageRepository(BaseMessageRepository):
         self.session.flush()
         return message_to_update
 
-    def delete(self, message_id: obj.ID) -> None:
-        self.session.execute(delete(Message).where(Message.id == message_id))
+    def soft_delete(self, message_id: obj.ID) -> Message | None:
+        return self.session.execute(
+            update(Message).where(Message.id == message_id).values(deleted=func.now()).returning(Message)
+        ).scalar()
+
+    def delete(self, message_id: obj.ID) -> Message | None:
+        return self.session.execute(delete(Message).where(Message.id == message_id).returning(Message)).scalar()
 
     def get_threads_for_user(self, user_id: str, sort_opts: Opts) -> ThreadList:
         thread_conditions = [
@@ -92,3 +105,14 @@ class MessageRepository(BaseMessageRepository):
         return ThreadList(
             threads=threads, meta=paged.ListMeta(total=total, offset=sort_opts.offset, limit=sort_opts.limit)
         )
+
+    def migrate_messages_to_new_user(self, previous_user_id: str, new_user_id: str):
+        self.session.execute(update(Label).where(Label.creator == previous_user_id).values(creator=new_user_id))
+        count = self.session.execute(
+            update(Message)
+            .where(Message.creator == previous_user_id)
+            .values(creator=new_user_id, expiration_time=None, private=False)
+        ).rowcount
+        self.session.flush()
+
+        return count

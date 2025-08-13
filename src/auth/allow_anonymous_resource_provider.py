@@ -53,12 +53,10 @@ class AllowAnonymousResourceProtector(BaseResourceProtector):
         def wrapper(f):
             @functools.wraps(f)
             def decorated(*args, **kwargs):
-                try:
-                    self.acquire_token(**claims)
-                except MissingAuthorizationError as error:
-                    if optional:
-                        return f(*args, **kwargs)
-                    raise Unauthorized(error.description) from error
+                token = self.get_token(**claims)
+
+                if token is None:
+                    raise Unauthorized
                 return f(*args, **kwargs)
 
             return decorated

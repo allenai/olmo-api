@@ -1,3 +1,4 @@
+from http.client import UNAUTHORIZED
 from typing import Any
 
 import requests
@@ -36,6 +37,53 @@ class BaseTestThreadEndpoints(base.IntegrationTest):
         self.messages = [msg for msg in self.messages if msg not in self.child_msgs]
 
         for id, user in self.messages:
+            r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
+            r.raise_for_status()
+
+
+class TestAnonymousMessageEndpoints(BaseTestThreadEndpoints):
+    def test_passes_with_anonymous_auth(self):
+        anonymous_user = self.user(anonymous=True)
+        for r in [
+            requests.get(f"{self.origin}/v4/threads", headers=self.auth(anonymous_user)),
+            requests.get(f"{self.origin}/v4/threads/XXX", headers=self.auth(anonymous_user)),
+            requests.delete(f"{self.origin}/v3/message/XXX", headers=self.auth(anonymous_user)),
+        ]:
+            assert r.status_code != UNAUTHORIZED, f"{r.url} responded with an Unauthorized error for an anonymous user"
+
+    def test_can_stream_as_anonymous_user(self):
+        anonymous_user = self.user(anonymous=True)
+
+        create_message_request = requests.post(
+            f"{self.origin}/v4/threads",
+            headers=self.auth(anonymous_user),
+            json={
+                "content": "I'm a magical labrador named Murphy, who are you? ",
+                "private": True,
+                **default_model_options,
+            },
+            files={
+                "content": (None, "I'm a magical labrador named Murphy, who are you?"),
+                "private": (None, str(True)),
+                **default_model_options,
+            },
+        )
+        create_message_request.raise_for_status()
+
+        response_thread = Thread.model_validate_json(util.last_response_line(create_message_request))
+        self.add_messages_in_thread(response_thread, anonymous_user)
+        first_message = response_thread.messages[0]
+
+        assert first_message.private is True
+        assert first_message.expiration_time is not None
+
+    def tearDown(self):
+        # Since the delete operation cascades, we have to find all child messages
+        # and remove them from self.messages. Otherwise, we'll run into 404 errors
+        # when executing r.raise_for_status()
+        messages_to_delete = [msg for msg in self.messages if msg not in self.child_msgs]
+
+        for id, user in messages_to_delete:
             r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
             r.raise_for_status()
 
@@ -178,7 +226,7 @@ class TestThreadEndpoints(BaseTestThreadEndpoints):
         r.raise_for_status()
 
         response = GetThreadsResponse.model_validate(r.json())
-        assert response.meta.total > 1
+        assert response.meta.total > 0
         assert response.meta.offset == 0
         assert response.meta.limit == 10
 

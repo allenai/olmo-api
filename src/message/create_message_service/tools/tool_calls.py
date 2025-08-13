@@ -11,7 +11,7 @@ logging.basicConfig()
 logging.getLogger().setLevel(logging.NOTSET)
 
 
-TOOL_REGISTRY = [Add, Subtract, MakePerson]
+TOOL_REGISTRY: list[Any] = [Add, Subtract, MakePerson]
 
 
 def get_tools() -> list[ToolDefinition]:

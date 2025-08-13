@@ -104,42 +104,9 @@ def stream_new_message(
         yield message.MessageStreamError(message=msg.id, error=str(final_message_error), reason="finalization failure")
         raise final_message_error
 
-    # if system_msg_created is not None:
-    #     finalSystemMessage = dbc.message.finalize(system_msg_created.id)
-    #
-    #     if finalSystemMessage is None:
-    #         final_system_message_error = RuntimeError(f"failed to finalize message {system_msg.id}")
-    #         yield message.MessageStreamError(
-    #             message=system_msg_created.id,
-    #             error=str(final_system_message_error),
-    #             reason="finalization failure",
-    #         )
-    #         raise final_system_message_error
-    #     if final_message is not None:
-    #         finalSystemMessage = dataclasses.replace(finalSystemMessage, children=[final_message])
-    #         final_message = finalSystemMessage
-    #
-
-    # TODO turn back on...
-    # end_all = time_ns()
-    # if first_ns > start_time_ns and msg is not None:
-    #     log_inference_timing(
-    #         event_type="create_message",
-    #         ttft_ns=(first_ns - start_message_generation_ns),
-    #         total_ns=(end_all - start_time_ns),
-    #         ttft_ms_including_checks=(first_ns - start_time_ns) // 1e6,
-    #         safety_ms=safety_check_elapsed_time,
-    #         input_token_count=input_token_count,
-    #         output_token_count=output_token_count,
-    #         model=model.id,
-    #         safety_check_id=checker_type,
-    #         message_id=msg.id,
-    #         reply_id=reply.id,
-    #     )
-    #
     tool_calls_made = 0
     while tool_calls_made < MAX_REPEATED_TOOL_CALLS:
-        assistant_stream, reply = stream_assistant_response(
+        assistant_stream, reply, stream_stats = stream_assistant_response(
             request, dbc, message_chain, model, agent, blob_map, message_expiration_time, msg
         )
 
@@ -160,6 +127,30 @@ def stream_new_message(
             break
 
         tool_calls_made += 1
+
+    # first_ns = stream_metrics.first_chunk_ns or 0
+    # input_token_count = stream_metrics.input_token_count or -1
+    # output_token_count = stream_metrics.output_token_count or -1
+    # total_generation_ns = stream_metrics.total_generation_ns or 0
+    start_message_generation_ns = time_ns()
+    first_ns: int = 0
+
+    # TODO turn back on...
+    # end_all = time_ns()
+    # if first_ns > start_time_ns and msg is not None:
+    #     log_inference_timing(
+    #         event_type="create_message",
+    #         ttft_ns=(first_ns - start_message_generation_ns),
+    #         total_ns=(end_all - start_time_ns),
+    #         ttft_ms_including_checks=(first_ns - start_time_ns) // 1e6,
+    #         safety_ms=safety_check_elapsed_time,
+    #         input_token_count=input_token_count,
+    #         output_token_count=output_token_count,
+    #         model=model.id,
+    #         safety_check_id=checker_type,
+    #         message_id=msg.id,
+    #         reply_id=reply.id,
+    #     )
 
     return None
 
@@ -186,6 +177,7 @@ def stream_assistant_response(
         None,
     ],
     message.Message,
+    StreamMetrics,
 ]:
     """
     Adds a new assistant message to the conversation, and streams the llm response to the api
@@ -210,6 +202,9 @@ def stream_assistant_response(
     )
 
     message_chain.append(reply)
+    stream_metrics: StreamMetrics = StreamMetrics(
+        first_chunk_ns=0, input_token_count=-1, output_token_count=-1, total_generation_ns=0
+    )
 
     def stream_generator():
         tool_parts: list[ToolCallPart] = []
@@ -217,8 +212,7 @@ def stream_assistant_response(
 
         # Now yield each chunk as it's returned.
         finish_reason: FinishReason | None = None
-        start_message_generation_ns = time_ns()
-        first_ns: int = 0
+
         input_token_count: int = -1
         output_token_count: int = -1
         total_generation_ns: int = 0
@@ -250,8 +244,7 @@ def stream_assistant_response(
 
             output = text_part.content if text_part is not None else ""
             logprobs = []
-            # TODO finish reason
-
+            # TODO finish reason https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse.vendor_details should be here but isn't
         else:
             tool_parts = []
             chunks: list[message.MessageChunk] = []
@@ -288,11 +281,12 @@ def stream_assistant_response(
                     yield chunk
 
             # TODO: Looks like these are not working with Cirrascale
-            stream_metrics: StreamMetrics = message_chunks_generator.value
-            first_ns = stream_metrics.first_chunk_ns or 0
-            input_token_count = stream_metrics.input_token_count or -1
-            output_token_count = stream_metrics.output_token_count or -1
-            total_generation_ns = stream_metrics.total_generation_ns or 0
+            completed_stream_metrics = message_chunks_generator.value
+            stream_metrics.first_chunk_ns = completed_stream_metrics.first_chunk_ns or 0
+            stream_metrics.input_token_count = completed_stream_metrics.input_token_count or -1
+            stream_metrics.output_token_count = stream_metrics.output_token_count or -1
+            stream_metrics.total_generation_ns = stream_metrics.total_generation_ns or 0
+
             output, logprobs = create_output_from_chunks(chunks)
 
         gen = total_generation_ns
@@ -338,7 +332,7 @@ def stream_assistant_response(
             )
             raise final_reply_error
 
-    return stream_generator(), reply
+    return stream_generator(), reply, stream_metrics
 
 
 def prepare_yield_message_chain(message_chain: list[message.Message], user_message: message.Message):

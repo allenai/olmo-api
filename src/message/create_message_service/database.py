@@ -44,7 +44,7 @@ def setup_msg_thread(
         message_chain.append(request.parent)
 
     if request.root is not None:
-        msgs = message.Message.group_by_id(request.root.flatten())  # TODO fix loading of thread...
+        msgs = message.Message.group_by_id(request.root.flatten())
         while message_chain[-1].parent is not None:
             message_chain.append(msgs[message_chain[-1].parent])
 

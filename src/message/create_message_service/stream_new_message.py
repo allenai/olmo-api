@@ -232,8 +232,8 @@ def stream_assistant_response(
             model_settings=OpenAIModelSettings(openai_reasoning_effort="low"),
             model_request_parameters=ModelRequestParameters(function_tools=tools, allow_text_output=True),
         ) as stream:
-            for chunk in stream:
-                pydantic_chunk = pydantic_map_chunk(chunk, message_id=reply.id)
+            for generator_chunk_pydantic in stream:
+                pydantic_chunk = pydantic_map_chunk(generator_chunk_pydantic, message_id=reply.id)
                 pydantic_chunks.append(pydantic_chunk)
                 yield pydantic_chunk
 
@@ -270,14 +270,14 @@ def stream_assistant_response(
             )
         )
 
-        for chunk in message_chunks_generator:
-            if isinstance(chunk, InferenceEngineChunk):
-                mapped_chunk = map_chunk(chunk, message_id=reply.id)
+        for generator_chunk in message_chunks_generator:
+            if isinstance(generator_chunk, InferenceEngineChunk):
+                mapped_chunk = map_chunk(generator_chunk, message_id=reply.id)
                 yield mapped_chunk
-                finish_reason = chunk.finish_reason
+                finish_reason = generator_chunk.finish_reason
                 chunks.append(mapped_chunk)
             else:
-                yield chunk
+                yield generator_chunk
 
         # TODO: Looks like these are not working with Cirrascale
         completed_stream_metrics = message_chunks_generator.value

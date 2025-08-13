@@ -74,9 +74,21 @@ class ThinkingChunk(BaseChunk):
 class StreamStartChunk(BaseChunk):
     type: Literal[ChunkType.START] = ChunkType.START
 
+    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
+    @field_validator("type", mode="before")
+    @classmethod
+    def add_type(cls, _v):
+        cls.type = ChunkType.START
+
 
 class StreamEndChunk(BaseChunk):
     type: Literal[ChunkType.END] = ChunkType.END
+
+    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
+    @field_validator("type", mode="before")
+    @classmethod
+    def add_type(cls, _v):
+        cls.type = ChunkType.END
 
 
 Chunk = ModelResponseChunk | ToolCallChunk | ThinkingChunk | StreamStartChunk | StreamEndChunk

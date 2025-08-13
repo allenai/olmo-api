@@ -33,7 +33,7 @@ def setup_msg_thread(
             root=None,
             parent=None,
             template=request.template,
-            final=True,
+            final=False,
             original=request.original,
             private=request.private,
             harmful=is_msg_harmful,
@@ -74,7 +74,7 @@ def create_user_message(
         root=parent.root if parent is not None else None,
         parent=parent.id if parent is not None else None,
         template=request.template,
-        final=True,
+        final=False,
         original=request.original,
         private=request.private,
         harmful=is_msg_harmful,
@@ -101,4 +101,29 @@ def create_tool_response_message(
         harmful=False,
         expiration_time=parent_message.expiration_time,
         tool_calls=[source_tool],
+    )
+
+
+def create_assistant_message(
+    dbc: db.Client,
+    request: CreateMessageRequestWithFullMessages,
+    model: ModelConfig,
+    parent_message_id: str,
+    root_message_id: str,
+    message_expiration_time: datetime | None,
+    agent: Token,
+):
+    return dbc.message.create(
+        "",
+        agent.client,
+        message.Role.Assistant,
+        request.opts,
+        model_id=request.model,
+        model_host=request.host,
+        root=root_message_id,
+        parent=parent_message_id,
+        final=False,
+        private=request.private,
+        model_type=model.model_type,
+        expiration_time=message_expiration_time,
     )

@@ -26,7 +26,7 @@ from src.message.create_message_request import (
 )
 from src.message.create_message_service.files import FileUploadResult, upload_request_files
 from src.message.GoogleCloudStorage import GoogleCloudStorage
-from src.message.message_chunk import Chunk
+from src.message.message_chunk import Chunk, StreamEndChunk, StreamStartChunk
 from src.message.SafetyChecker import (
     SafetyCheckerType,
 )
@@ -62,6 +62,7 @@ def stream_new_message(
     # We currently want anonymous users' messages to expire after 1 days
     message_expiration_time = datetime.now(UTC) + timedelta(days=1) if agent.is_anonymous_user else None
 
+    # TODO: We currently do not handling branching/ creating assistant message
     message_chain = setup_msg_thread(
         dbc=dbc,
         model=model,
@@ -79,6 +80,8 @@ def stream_new_message(
         is_msg_harmful=is_message_harmful,
     )
     message_chain.append(user_message)
+
+    yield StreamStartChunk(message=message_chain[0].id)
 
     file_uploads = upload_request_files(
         files=request.files,
@@ -155,6 +158,7 @@ def stream_new_message(
     #         reply_id=reply.id,
     #     )
 
+    yield StreamEndChunk(message=message_chain[0].id)
 
 def finalize__messages(dbc: db.Client, message_chain: list[message.Message], user_message: message.Message):
     if message_chain[0].final is False and message_chain[0].role == message.Role.System:

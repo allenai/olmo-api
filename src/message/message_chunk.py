@@ -11,6 +11,8 @@ class ChunkType(StrEnum):
     MODEL_RESPONSE = "modelResponse"
     TOOL_CALL = "toolCall"
     THINKING = "thinking"
+    START = "start"
+    END = "end"
 
 
 class BaseChunk(APIInterface):
@@ -51,4 +53,12 @@ class ThinkingChunk(BaseChunk):
     """The identifier of the thinking part."""
 
 
-Chunk = ModelResponseChunk | ToolCallChunk | ThinkingChunk
+class StreamStartChunk(BaseChunk):
+    type: Literal[ChunkType.START] = ChunkType.START
+
+
+class StreamEndChunk(BaseChunk):
+    type: Literal[ChunkType.END] = ChunkType.END
+
+
+Chunk = ModelResponseChunk | ToolCallChunk | ThinkingChunk | StreamStartChunk | StreamEndChunk

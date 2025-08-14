@@ -70,6 +70,7 @@ def pydantic_reverse_map_messages(model_messages: list[ModelMessage]) -> list[di
                         case UserPromptPart():
                             content = "".join(c for c in part.content if isinstance(c, str))
                             file_urls = [c.url for c in part.content if isinstance(c, ImageUrl)]
+                            # Not sure what to do with blobs / BinaryContent() 
                             messages.append({"role": "user", "content": content, "file_urls": file_urls})
                         case SystemPromptPart():
                             messages.append({"role": "system", "content": part.content})

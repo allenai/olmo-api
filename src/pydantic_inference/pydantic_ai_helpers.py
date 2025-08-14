@@ -101,6 +101,24 @@ def pydantic_map_messages(messages: list[Message], blob_map: dict[str, FileUploa
 
     return model_messages
 
+def pydantic_reverse_map_messages(model_messages: list[ModelMessage]) -> list[dict]:
+    messages: list[dict] = []
+    for msg in model_messages:
+        match msg:
+            case ModelRequest():
+                for part in msg.parts:
+                    match part:
+                        case UserPromptPart():
+                            content = next((c for c in part.content if isinstance(c, str)), "")
+                            file_urls = [c.url for c in part.content if isinstance(c, ImageUrl)]
+                            messages.append({"role": "user", "content": content, "file_urls": file_urls})
+                        case SystemPromptPart():
+                            messages.append({"role": "system", "content": part.content})
+            case ModelResponse():
+                content = "".join(part.content for part in msg.parts if isinstance(part, TextPart))
+                messages.append({ "role": "assistant", "content": content})
+
+    return messages
 
 def pydantic_map_part(part: ModelResponsePart, message_id: str) -> Chunk:
     match part:

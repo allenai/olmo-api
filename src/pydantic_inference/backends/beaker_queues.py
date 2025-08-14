@@ -3,7 +3,6 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import assert_never
-from urllib import response
 
 from beaker import Beaker
 from beaker.beaker_pb2 import CreateQueueEntryResponse
@@ -14,24 +13,27 @@ from pydantic_ai.messages import (
     ModelResponse,
     ModelResponseStreamEvent,
     PartDeltaEvent,
+    PartStartEvent,
+    TextPart,
+    TextPartDelta,
 )
 from pydantic_ai.models import Model, ModelRequestParameters, StreamedResponse, check_allow_model_requests
 from pydantic_ai.settings import ModelSettings
 
 from src.config.get_config import get_config
 from src.dao.engine_models.model_config import ModelConfig
+from src.pydantic_inference.pydantic_ai_helpers import pydantic_reverse_map_messages
 
 EXPIRES_IN = 60 * 60 * 24 * 30  # 30 days
 
 MODEL_NO_RESPONSE_ERROR = "No response received from model"
 
 def get_beaker_queues_model(model_config: ModelConfig) -> Model:
-    """Create a new BeakerQueuesModel instance."""
     return BeakerQueuesModel(model=model_config.model_id_on_host)
 
 @dataclass(init=False)
 class BeakerQueuesModel(Model):
-    """A Beaker Queues Model implementation."""
+    """Beaker Queues Model for Pydantic AI."""
 
     model: str
     beaker_client: Beaker
@@ -48,13 +50,14 @@ class BeakerQueuesModel(Model):
         self._model_name = model
         self.beaker_client = Beaker(beaker_config)
 
+    # Sync 
     async def request(
         self,
         messages: list[ModelMessage],
         model_settings: ModelSettings | None,
-        model_request_parameters: ModelRequestParameters,  # Required by `Model`  # noqa: ARG002
+        model_request_parameters: ModelRequestParameters,
     ) -> ModelResponse:
-        """Make a request to the model."""
+        """Make a request to the model. (NotImplemented), streaming only"""
         raise NotImplementedError
 
     @asynccontextmanager
@@ -62,16 +65,16 @@ class BeakerQueuesModel(Model):
         self,
         messages: list[ModelMessage],
         model_settings: ModelSettings | None,
-        model_request_parameters: ModelRequestParameters,
+        model_request_parameters: ModelRequestParameters,  # noqa: ARG002
     ):
         """Make a streaming request to the model."""
-        _ = model_request_parameters  # Unused parameter
-        check_allow_model_requests()
-
+        check_allow_model_requests()  # Required for testing
         q = self.beaker_client.queue.get(self._model_name)
+
+        new_messages = pydantic_reverse_map_messages(messages)
         queue_input = {
             "model": q.id,
-            "messages": messages,
+            "messages": new_messages,
             "stream": True,
             **(model_settings or {}),
         }
@@ -87,41 +90,44 @@ class BeakerQueuesModel(Model):
 
     @property
     def model_name(self) -> str:
-        """Get the model name."""
         return self._model_name
 
     @property
     def system(self) -> str:
-        """Get the system prompt."""
         return self._system
 
 
 @dataclass
 class BeakerQueuesStreamedResponse(StreamedResponse):
-    """A structured response that streams test data."""
+    """A stream response from Beaker Queues."""
 
     _model_name: str
     _queue_entry: Iterable[CreateQueueEntryResponse]
     _timestamp: datetime = field(default_factory=lambda: datetime.now(UTC), init=False)
 
+    # Roughly from BeakerQueuesEngine
     async def _get_event_iterator(self) -> AsyncIterator[ModelResponseStreamEvent]:
         for index, resp in enumerate(self._queue_entry):
 
-            if resp.HasField("result"):
+            if resp.HasField("pending_entry"):
+                # Is this needed?
+                yield PartStartEvent(index=0, part=TextPart(content=""))
+            elif resp.HasField("result"):
                 result = json_format.MessageToDict(resp.result)
-                yield PartDeltaEvent(index=index, delta=result["choices"][0]["delta"]["content"])
-                # maybe_event = self._parts_manager.handle_text_delta(vendor_part_id=index, content=result["choices"][0]["delta"]["content"])
-                # if maybe_event is not None:
-                    # yield maybe_event
+                # Only handling content
+                content = result["choices"][0]["delta"]["content"]
+                yield PartDeltaEvent(index=index, delta=TextPartDelta(content_delta=content))
+            elif resp.HasField("finalized_entry"):
+                # Do something?
+                pass
             else:
                 assert_never(resp)  # type: ignore
 
+    # Required properties on StreamedResponse(ABC)
     @property
     def model_name(self) -> str:
-        """Get the model name of the response."""
         return self._model_name
 
     @property
     def timestamp(self) -> datetime:
-        """Get the timestamp of the response."""
         return self._timestamp

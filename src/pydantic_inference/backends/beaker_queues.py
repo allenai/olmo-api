@@ -50,7 +50,7 @@ class BeakerQueuesModel(Model):
         self._model_name = model
         self.beaker_client = Beaker(beaker_config)
 
-    # Sync 
+    # non streaming, not implemented 
     async def request(
         self,
         messages: list[ModelMessage],
@@ -70,6 +70,8 @@ class BeakerQueuesModel(Model):
         """Make a streaming request to the model."""
         check_allow_model_requests()  # Required for testing
         q = self.beaker_client.queue.get(self._model_name)
+
+        # tools = model_request_parameters.function_tools
 
         new_messages = pydantic_reverse_map_messages(messages)
         queue_input = {
@@ -111,7 +113,7 @@ class BeakerQueuesStreamedResponse(StreamedResponse):
 
             if resp.HasField("pending_entry"):
                 # Is this needed?
-                yield PartStartEvent(index=0, part=TextPart(content=""))
+                yield PartStartEvent(index=index, part=TextPart(content=""))
             elif resp.HasField("result"):
                 result = json_format.MessageToDict(resp.result)
                 # Only handling content

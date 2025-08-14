@@ -26,11 +26,12 @@ from src.message.create_message_request import (
 )
 from src.message.create_message_service.files import FileUploadResult, upload_request_files
 from src.message.GoogleCloudStorage import GoogleCloudStorage
+from src.message.inference_logging import log_inference_timing
 from src.message.message_chunk import Chunk, StreamEndChunk, StreamStartChunk
 from src.message.SafetyChecker import (
     SafetyCheckerType,
 )
-from src.message.stream_message import stream_message_chunks
+from src.message.stream_message import StreamMetrics, stream_message_chunks
 from src.pydantic_inference.pydantic_ai_helpers import pydantic_map_chunk, pydantic_map_messages
 from src.pydantic_inference.pydantic_model_service import get_pydantic_model
 from src.util.generator_with_return_value import GeneratorWithReturnValue
@@ -103,6 +104,9 @@ def stream_new_message(
     # Finalize the messages and yield
     tool_calls_made = 0
     while tool_calls_made < MAX_REPEATED_TOOL_CALLS:
+        stream_metrics = StreamMetrics(
+            first_chunk_ns=None, input_token_count=None, output_token_count=None, total_generation_ns=None
+        )
         reply = create_assistant_message(
             dbc=dbc,
             request=request,
@@ -116,7 +120,11 @@ def stream_new_message(
 
         yield prepare_yield_message_chain(message_chain, user_message)
 
-        yield from stream_assistant_response(request, dbc, message_chain, model, agent, blob_map, user_message, reply)
+        start_message_generation_ns = time_ns()
+        yield prepare_yield_message_chain(message_chain, user_message)
+        yield from stream_assistant_response(
+            request, dbc, message_chain, model, agent, blob_map, user_message, reply, stream_metrics
+        )
 
         if reply.tool_calls is not None and len(reply.tool_calls) > 0:
             last_msg = reply
@@ -129,6 +137,17 @@ def stream_new_message(
 
         yield from finalize__messages(dbc, message_chain, user_message)
 
+        log_create_message_stats(
+            user_message,
+            reply,
+            start_time_ns,
+            safety_check_elapsed_time,
+            model,
+            checker_type,
+            start_message_generation_ns,
+            stream_metrics,
+        )
+
         yield prepare_yield_message_chain(message_chain, user_message)
 
         if reply.tool_calls is None or len(reply.tool_calls) == 0:
@@ -136,32 +155,35 @@ def stream_new_message(
 
         tool_calls_made += 1
 
-    # first_ns = stream_metrics.first_chunk_ns or 0
-    # input_token_count = stream_metrics.input_token_count or -1
-    # output_token_count = stream_metrics.output_token_count or -1
-    # total_generation_ns = stream_metrics.total_generation_ns or 0
-    start_message_generation_ns = time_ns()
-    first_ns: int = 0
-
-    # TODO turn back on...
-    # end_all = time_ns()
-    # if first_ns > start_time_ns and msg is not None:
-    #     log_inference_timing(
-    #         event_type="create_message",
-    #         ttft_ns=(first_ns - start_message_generation_ns),
-    #         total_ns=(end_all - start_time_ns),
-    #         ttft_ms_including_checks=(first_ns - start_time_ns) // 1e6,
-    #         safety_ms=safety_check_elapsed_time,
-    #         input_token_count=input_token_count,
-    #         output_token_count=output_token_count,
-    #         model=model.id,
-    #         safety_check_id=checker_type,
-    #         message_id=msg.id,
-    #         reply_id=reply.id,
-    #     )
-
     yield StreamEndChunk(message=message_chain[0].id)
     return None
+
+
+def log_create_message_stats(
+    user_message: message.Message,
+    reply: message.Message,
+    start_time_ns: int,
+    safety_check_elapsed_time: float,
+    model: ModelConfig,
+    checker_type: SafetyCheckerType,
+    start_message_generation_ns: int,
+    stream_metrics: StreamMetrics,
+):
+    end_all = time_ns()
+    if stream_metrics.first_chunk_ns or start_time_ns < 0:
+        log_inference_timing(
+            event_type="create_message",
+            ttft_ns=(stream_metrics.first_chunk_ns or 0 - start_message_generation_ns),
+            total_ns=(end_all - start_time_ns),
+            ttft_ms_including_checks=(stream_metrics.first_chunk_ns or 0 - start_time_ns) // 1e6,
+            safety_ms=safety_check_elapsed_time,
+            input_token_count=-1,
+            output_token_count=-1,
+            model=model.id,
+            safety_check_id=checker_type,
+            message_id=user_message.id,
+            reply_id=reply.id,
+        )
 
 
 def finalize__messages(dbc: db.Client, message_chain: list[message.Message], user_message: message.Message):
@@ -205,21 +227,18 @@ def stream_assistant_response(
     blob_map: dict[str, FileUploadResult],
     msg: message.Message,
     reply: message.Message,
+    stream_metrics: StreamMetrics,
 ) -> Generator[message.MessageChunk | message.MessageStreamError | Chunk, Any, None]:
     """
     Adds a new assistant message to the conversation, and streams the llm response to the api
     """
     # Capture the SHA and logger, as the current_app context is lost in the generator.
     sha = os.environ.get("SHA") or "DEV"
+    start_generation_ns = time_ns()
 
     tool_parts: list[ToolCallPart] = []
     # Now yield each chunk as it's returned.
     finish_reason: FinishReason | None = None
-
-    input_token_count: int = -1
-    output_token_count: int = -1
-    total_generation_ns: int = 0
-
     # We keep track of each chunk and the timing information per-chunk
     # so that we can manifest a completion at the end. This will go
     # away when InferD stores this I/O.
@@ -228,6 +247,7 @@ def stream_assistant_response(
         pydantic_chunks: list[Chunk] = []
         pydantic_inference_engine = get_pydantic_model(model)
 
+        first_chunk_ns: int | None = None
         pydantic_messages = pydantic_map_messages(message_chain[:-1], blob_map)
         tools = get_tools() if model.can_call_tools else []
         with model_request_stream_sync(
@@ -237,6 +257,9 @@ def stream_assistant_response(
             model_request_parameters=ModelRequestParameters(function_tools=tools, allow_text_output=True),
         ) as stream:
             for generator_chunk_pydantic in stream:
+                if first_chunk_ns is None:
+                    first_chunk_ns = time_ns()
+
                 pydantic_chunk = pydantic_map_chunk(generator_chunk_pydantic, message_id=reply.id)
                 pydantic_chunks.append(pydantic_chunk)
                 yield pydantic_chunk
@@ -244,6 +267,11 @@ def stream_assistant_response(
         full_response = stream.get()
         text_part = next((part for part in full_response.parts if part.part_kind == "text"), None)
         tool_parts = [part for part in full_response.parts if isinstance(part, ToolCallPart)]
+
+        stream_metrics.first_chunk_ns = first_chunk_ns
+        stream_metrics.input_token_count = -1
+        stream_metrics.output_token_count = -1
+        stream_metrics.total_generation_ns = time_ns() - start_generation_ns
 
         output = text_part.content if text_part is not None else ""
         logprobs = []
@@ -283,15 +311,18 @@ def stream_assistant_response(
             else:
                 yield generator_chunk
 
-        # TODO: Looks like these are not working with Cirrascale
-        completed_stream_metrics = message_chunks_generator.value
-
         output, logprobs = create_output_from_chunks(chunks)
+        inference_stream_metrics: StreamMetrics = message_chunks_generator.value
 
-    gen = total_generation_ns
-    gen //= 1000000
+        stream_metrics.first_chunk_ns = inference_stream_metrics.first_chunk_ns
+        stream_metrics.input_token_count = inference_stream_metrics.input_token_count
+        stream_metrics.output_token_count = inference_stream_metrics.output_token_count
+        stream_metrics.total_generation_ns = inference_stream_metrics.total_generation_ns
 
     prompt = create_prompt_from_engine_input(message_chain)
+
+    gen = stream_metrics.total_generation_ns or 0
+    gen //= 1000000
 
     message_completion = None
     if not agent.is_anonymous_user:
@@ -304,8 +335,8 @@ def stream_assistant_response(
             tokenize_ms=-1,
             generation_ms=gen,
             queue_ms=0,
-            input_tokens=input_token_count,
-            output_tokens=output_token_count,
+            input_tokens=stream_metrics.input_token_count or -1,
+            output_tokens=stream_metrics.output_token_count or -1,
         )
 
     final_reply = dbc.message.finalize(

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 from pydantic_ai.messages import ToolCallPart
 
@@ -11,16 +11,21 @@ from src.message.create_message_request import (
 )
 
 
+def get_expiration_time(agent: Token):
+    return datetime.now(UTC) + timedelta(days=1) if agent.is_anonymous_user else None
+
+
 def setup_msg_thread(
     dbc: db.Client,
     model: ModelConfig,
     request: CreateMessageRequestWithFullMessages,
     agent: Token,
-    message_expiration_time: datetime | None,
     is_msg_harmful: bool | None = None,
 ) -> list[message.Message]:
     system_msg = None
     message_chain = []
+
+    message_expiration_time = get_expiration_time(agent)
 
     if request.parent is None and model.default_system_prompt is not None:
         system_msg = dbc.message.create(
@@ -61,9 +66,9 @@ def create_user_message(
     request: CreateMessageRequestWithFullMessages,
     parent: message.Message | None,
     agent: Token,
-    message_expiration_time: datetime | None,
     is_msg_harmful: bool | None = None,
 ):
+    message_expiration_time = get_expiration_time(agent)
     return dbc.message.create(
         content=request.content,
         creator=agent.client,
@@ -111,9 +116,9 @@ def create_assistant_message(
     model: ModelConfig,
     parent_message_id: str,
     root_message_id: str,
-    message_expiration_time: datetime | None,
     agent: Token,
 ):
+    message_expiration_time = get_expiration_time(agent)
     return dbc.message.create(
         content,
         agent.client,

@@ -1,7 +1,6 @@
 import dataclasses
 import os
 from collections.abc import Generator
-from datetime import UTC, datetime, timedelta
 from time import time_ns
 from typing import Any, cast
 
@@ -65,9 +64,8 @@ def create_new_message(
             error_message = "parent is required for creating assistant message"
             raise ValueError(error_message)
 
-        message_expiration_time = datetime.now(UTC) + timedelta(days=1) if agent.is_anonymous_user else None
         assistant_message = create_assistant_message(
-            dbc, request.content, request, model, request.parent.id, request.parent.root, message_expiration_time, agent
+            dbc, request.content, request, model, request.parent.id, request.parent.root, agent
         )
         final_message = dbc.message.finalize(assistant_message.id)
         if final_message is None:
@@ -102,7 +100,6 @@ def stream_new_message(
     is_message_harmful: bool | None = None,
 ) -> Generator[message.Message | message.MessageChunk | message.MessageStreamError | Chunk]:
     # We currently want anonymous users' messages to expire after 1 days
-    message_expiration_time = datetime.now(UTC) + timedelta(days=1) if agent.is_anonymous_user else None
 
     # TODO: We currently do not handling branching/ creating assistant message
     message_chain = setup_msg_thread(
@@ -110,7 +107,6 @@ def stream_new_message(
         model=model,
         request=request,
         agent=agent,
-        message_expiration_time=message_expiration_time,
         is_msg_harmful=is_message_harmful,
     )
     user_message = create_user_message(
@@ -118,7 +114,6 @@ def stream_new_message(
         parent=message_chain[-1] if len(message_chain) > 0 else None,
         request=request,
         agent=agent,
-        message_expiration_time=message_expiration_time,
         is_msg_harmful=is_message_harmful,
     )
     message_chain.append(user_message)
@@ -154,7 +149,6 @@ def stream_new_message(
             parent_message_id=message_chain[-1].id,
             root_message_id=message_chain[-1].root,
             agent=agent,
-            message_expiration_time=message_expiration_time,
         )
         message_chain.append(reply)
 

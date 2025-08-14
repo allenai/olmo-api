@@ -52,7 +52,9 @@ class TestAnonymousThreadEndpoints(base.IntegrationTest):
         assert first_yield["id"] is not None
 
         thread_messages = first_yield["messages"]
-        assert len(thread_messages) == 3  # / system message, user message and empty assistnat (no system prompt currently)
+        assert (
+            len(thread_messages) == 3
+        )  # / system message, user message and empty assistnat (no system prompt currently)
         assert thread_messages[0]["role"] == "system"
         assert thread_messages[1]["role"] == "user"
         assert thread_messages[2]["role"] == "assistant"

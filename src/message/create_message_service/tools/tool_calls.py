@@ -8,9 +8,6 @@ from pydantic_ai.tools import ToolDefinition
 
 from .internal_tools import CreateRandomNumber
 
-logging.basicConfig()
-logging.getLogger().setLevel(logging.NOTSET)
-
 TOOL_REGISTRY: list[Tool[Any]] = [CreateRandomNumber]
 
 
@@ -35,10 +32,9 @@ def call_tool_function(tool_call: ToolCallPart):
             return found_tool.function(parsed_args)  # type: ignore
         return "Tool setup incorrect"
 
-    except Exception:
-        logging.exception("tool call failed")
-
-        return "Failed to call tool"
+    except Exception as e:
+        logging.exception("Tool call failed")
+        return str(e)  # This returns the error to LLM
 
 
 def call_tool(tool_call: ToolCallPart) -> ToolReturnPart:

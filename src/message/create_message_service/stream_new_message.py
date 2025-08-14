@@ -121,7 +121,6 @@ def stream_new_message(
         yield prepare_yield_message_chain(message_chain, user_message)
 
         start_message_generation_ns = time_ns()
-        yield prepare_yield_message_chain(message_chain, user_message)
         yield from stream_assistant_response(
             request, dbc, message_chain, model, agent, blob_map, user_message, reply, stream_metrics
         )

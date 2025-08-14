@@ -59,9 +59,7 @@ def stream_new_message(
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     *,
     is_message_harmful: bool | None = None,
-) -> (
-    message.Message | Generator[message.Message | message.MessageChunk | message.MessageStreamError | Chunk, Any, None]
-):
+) -> Generator[message.Message | message.MessageChunk | message.MessageStreamError | Chunk]:
     # We currently want anonymous users' messages to expire after 1 days
     message_expiration_time = datetime.now(UTC) + timedelta(days=1) if agent.is_anonymous_user else None
 
@@ -155,8 +153,6 @@ def stream_new_message(
         tool_calls_made += 1
 
     yield StreamEndChunk(message=message_chain[0].id)
-    return None
-
 
 def log_create_message_stats(
     user_message: message.Message,

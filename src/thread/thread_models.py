@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import cast
+from typing import Any, cast
 
 from pydantic import AwareDatetime, Field, computed_field, field_validator
 
@@ -31,6 +31,12 @@ class LogProbResponse(APIInterface):
     logprob: float
 
 
+class ToolCall(APIInterface):
+    tool_name: str
+    args: str | dict[str, Any] | None = None
+    tool_call_id: str
+
+
 class FlatMessage(APIInterface):
     id: str
     content: str
@@ -55,6 +61,8 @@ class FlatMessage(APIInterface):
     expiration_time: AwareDatetime | None = Field(default=None)
     labels: list[LabelResponse] = Field(default_factory=list)
     file_urls: list[str] | None = Field(default=None)
+    tool_calls: list[ToolCall] | None = Field(default=None)
+    thinking: str | None = Field(default=None)
 
     @field_validator("children", mode="before")
     @classmethod
@@ -71,7 +79,7 @@ class FlatMessage(APIInterface):
 
     @computed_field  # type:ignore
     @property
-    def map_snippet(self) -> str:
+    def snippet(self) -> str:
         return text_snippet(self.content)
 
     @computed_field  # type:ignore

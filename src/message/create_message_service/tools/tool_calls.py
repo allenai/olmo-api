@@ -6,12 +6,12 @@ from pydantic_ai import Tool
 from pydantic_ai.messages import ToolCallPart, ToolReturnPart
 from pydantic_ai.tools import ToolDefinition
 
-from .internal_tools import MakePerson
+from .internal_tools import CreateRandomNumber
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.NOTSET)
 
-TOOL_REGISTRY: list[Tool[Any]] = [MakePerson]
+TOOL_REGISTRY: list[Tool[Any]] = [CreateRandomNumber]
 
 
 def get_tools() -> list[ToolDefinition]:
@@ -29,6 +29,9 @@ def call_tool_function(tool_call: ToolCallPart):
             parsed_args = arg_parse_helper(tool_call.args)
             if isinstance(parsed_args, dict):
                 return found_tool.function(**parsed_args)  # type: ignore
+            if parsed_args is None:
+                return found_tool.function()  # type: ignore
+
             return found_tool.function(parsed_args)  # type: ignore
         return "Tool setup incorrect"
 

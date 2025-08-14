@@ -134,7 +134,7 @@ def stream_new_message(
                 )
                 message_chain.append(tool_msg)
 
-        yield from finalize__messages(dbc, message_chain, user_message)
+        yield from finalize_messages(dbc, message_chain, user_message)
 
         log_create_message_stats(
             user_message,
@@ -185,7 +185,7 @@ def log_create_message_stats(
         )
 
 
-def finalize__messages(dbc: db.Client, message_chain: list[message.Message], user_message: message.Message):
+def finalize_messages(dbc: db.Client, message_chain: list[message.Message], user_message: message.Message):
     if message_chain[0].final is False and message_chain[0].role == message.Role.System:
         system_msg = message_chain[0]
         final_system_message = dbc.message.finalize(system_msg.id)

@@ -1,2 +1,2 @@
 from .add import Add as Add
-from .make_person import MakePerson as MakePerson
+from .create_random_number import CreateRandomNumber as CreateRandomNumber

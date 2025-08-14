@@ -12,7 +12,7 @@ from . import base
 
 default_model_options = {
     "host": (None, "test_backend"),
-    "model": (None, "test-model"),
+    "model": (None, "test-model-no-tools"),
 }
 
 
@@ -70,7 +70,7 @@ class TestAnonymousMessageEndpoints(BaseTestThreadEndpoints):
         )
         create_message_request.raise_for_status()
 
-        response_thread = Thread.model_validate_json(util.last_response_line(create_message_request))
+        response_thread = Thread.model_validate_json(util.second_to_last_response_line(create_message_request))
         self.add_messages_in_thread(response_thread, anonymous_user)
         first_message = response_thread.messages[0]
 
@@ -129,7 +129,7 @@ class TestThreadEndpoints(BaseTestThreadEndpoints):
         )
         r.raise_for_status()
 
-        thread = Thread.model_validate_json(util.last_response_line(r))
+        thread = Thread.model_validate_json(util.second_to_last_response_line(r))
         self.add_messages_in_thread(thread, user)
 
         root_message = thread.messages[0]
@@ -173,7 +173,7 @@ class TestThreadEndpoints(BaseTestThreadEndpoints):
             },
         )
         r.raise_for_status()
-        thread = Thread.model_validate_json(util.last_response_line(r))
+        thread = Thread.model_validate_json(util.second_to_last_response_line(r))
         self.add_messages_in_thread(thread, user)
 
         user_message = next(message for message in thread.messages if message.role == Role.User)

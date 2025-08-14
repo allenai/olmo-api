@@ -1,6 +1,8 @@
 from enum import StrEnum
 from typing import Any, Literal
 
+from pydantic import Field, computed_field, field_validator
+
 from src import obj
 from src.api_interface import APIInterface
 
@@ -9,6 +11,8 @@ class ChunkType(StrEnum):
     MODEL_RESPONSE = "modelResponse"
     TOOL_CALL = "toolCall"
     THINKING = "thinking"
+    START = "start"
+    END = "end"
 
 
 class BaseChunk(APIInterface):
@@ -16,12 +20,22 @@ class BaseChunk(APIInterface):
 
 
 class ModelResponseChunk(BaseChunk):
-    type: Literal[ChunkType.MODEL_RESPONSE] = ChunkType.MODEL_RESPONSE
+    type: Literal[ChunkType.MODEL_RESPONSE] = Field(default=ChunkType.MODEL_RESPONSE, init=False)
     content: str
+
+    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
+    @field_validator("type", mode="before")
+    @classmethod
+    def add_type(cls, _v):
+        return ChunkType.MODEL_RESPONSE
 
 
 class ToolCallChunk(BaseChunk):
-    type: Literal[ChunkType.TOOL_CALL] = ChunkType.TOOL_CALL
+    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
+    @computed_field  # type: ignore
+    @property
+    def type(self) -> Literal[ChunkType.TOOL_CALL]:
+        return ChunkType.TOOL_CALL
 
     tool_call_id: str
     """The tool call identifier, this is used by some models including OpenAI.
@@ -40,7 +54,11 @@ class ToolCallChunk(BaseChunk):
 
 
 class ThinkingChunk(BaseChunk):
-    type: Literal[ChunkType.THINKING] = ChunkType.THINKING
+    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
+    @computed_field  # type: ignore
+    @property
+    def type(self) -> Literal[ChunkType.THINKING]:
+        return ChunkType.THINKING
 
     content: str
     """The thinking content of the response."""
@@ -49,4 +67,20 @@ class ThinkingChunk(BaseChunk):
     """The identifier of the thinking part."""
 
 
-Chunk = ModelResponseChunk | ToolCallChunk | ThinkingChunk
+class StreamStartChunk(BaseChunk):
+    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
+    @computed_field  # type: ignore
+    @property
+    def type(self) -> Literal[ChunkType.START]:
+        return ChunkType.START
+
+
+class StreamEndChunk(BaseChunk):
+    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
+    @computed_field  # type: ignore
+    @property
+    def type(self) -> Literal[ChunkType.END]:
+        return ChunkType.END
+
+
+Chunk = ModelResponseChunk | ToolCallChunk | ThinkingChunk | StreamStartChunk | StreamEndChunk

@@ -1,11 +1,11 @@
 import dataclasses
 import os
 from collections.abc import Generator
-from datetime import UTC, datetime, timedelta
 from time import time_ns
 from typing import Any, cast
 
 from pydantic_ai.direct import model_request_stream_sync
+from pydantic_ai.messages import ToolCallPart
 from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.openai import OpenAIModelSettings
 
@@ -26,7 +26,7 @@ from src.message.create_message_request import (
 from src.message.create_message_service.files import FileUploadResult, upload_request_files
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.inference_logging import log_inference_timing
-from src.message.message_chunk import Chunk
+from src.message.message_chunk import Chunk, StreamEndChunk, StreamStartChunk
 from src.message.SafetyChecker import (
     SafetyCheckerType,
 )
@@ -35,14 +35,56 @@ from src.pydantic_inference.pydantic_ai_helpers import pydantic_map_chunk, pydan
 from src.pydantic_inference.pydantic_model_service import get_pydantic_model
 from src.util.generator_with_return_value import GeneratorWithReturnValue
 
-from .database import setup_msg_thread
-from .tools import get_tools
+from .database import create_assistant_message, create_tool_response_message, create_user_message, setup_msg_thread
+from .tools.tool_calls import call_tool, get_tools
+
+MAX_REPEATED_TOOL_CALLS = 10
 
 
 @dataclasses.dataclass
 class ParsedMessage:
     content: parse.MessageContent
     role: message.Role
+
+
+def create_new_message(
+    request: CreateMessageRequestWithFullMessages,
+    dbc: db.Client,
+    storage_client: GoogleCloudStorage,
+    model: ModelConfig,
+    safety_check_elapsed_time: float,
+    start_time_ns: int,
+    agent: Token,
+    checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
+    *,
+    is_message_harmful: bool | None = None,
+) -> message.Message | Generator[message.Message | message.MessageChunk | message.MessageStreamError | Chunk]:
+    if request.role == message.Role.Assistant:
+        if request.parent is None:
+            error_message = "parent is required for creating assistant message"
+            raise ValueError(error_message)
+
+        assistant_message = create_assistant_message(
+            dbc, request.content, request, model, request.parent.id, request.parent.root, agent
+        )
+        final_message = dbc.message.finalize(assistant_message.id)
+        if final_message is None:
+            final_message_error = RuntimeError(f"failed to finalize message {assistant_message.id}")
+            raise final_message_error
+
+        return final_message
+
+    return stream_new_message(
+        request,
+        dbc,
+        storage_client,
+        model,
+        safety_check_elapsed_time,
+        start_time_ns,
+        agent,
+        checker_type,
+        is_message_harmful=is_message_harmful,
+    )
 
 
 def stream_new_message(
@@ -56,130 +98,227 @@ def stream_new_message(
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     *,
     is_message_harmful: bool | None = None,
-) -> message.Message | Generator[message.Message | message.MessageChunk | message.MessageStreamError, Any, None]:
-    # Capture the SHA and logger, as the current_app context is lost in the generator.
-    sha = os.environ.get("SHA") or "DEV"
-
-    # We currently want anonymous users' messages to expire after 1 days
-    message_expiration_time = datetime.now(UTC) + timedelta(days=1) if agent.is_anonymous_user else None
-
-    msg, system_msg = setup_msg_thread(
+) -> Generator[message.Message | message.MessageChunk | message.MessageStreamError | Chunk]:
+    message_chain = setup_msg_thread(
         dbc=dbc,
         model=model,
         request=request,
         agent=agent,
-        message_expiration_time=message_expiration_time,
         is_msg_harmful=is_message_harmful,
     )
+    user_message = create_user_message(
+        dbc=dbc,
+        parent=message_chain[-1] if len(message_chain) > 0 else None,
+        request=request,
+        agent=agent,
+        is_msg_harmful=is_message_harmful,
+    )
+    message_chain.append(user_message)
 
-    # TODO: is this expected?
-    if msg.role == message.Role.Assistant:
-        return msg
-
-    # Resolve the message chain if we need to.
-    message_chain = [msg]
-    if request.root is not None:
-        msgs = message.Message.group_by_id(request.root.flatten())
-        while message_chain[-1].parent is not None:
-            message_chain.append(msgs[message_chain[-1].parent])
-
-    if system_msg is not None:
-        message_chain.append(system_msg)
-
-    message_chain.reverse()
+    yield StreamStartChunk(message=message_chain[0].id)
 
     file_uploads = upload_request_files(
         files=request.files,
-        message_id=msg.id,
+        message_id=user_message.id,
         storage_client=storage_client,
         root_message_id=message_chain[0].id,
         is_anonymous=agent.is_anonymous_user,
     )
     # TODO: https://github.com/allenai/playground-issues-repo/issues/9: Get this from the DB
     file_urls = [file.file_url for file in file_uploads or []]
-    msg.file_urls = file_urls
+    user_message.file_urls = file_urls
 
     blob_map: dict[str, FileUploadResult] = {}
     for file in file_uploads:
         blob_map[file.file_url] = file
 
-    # Create a message that will eventually capture the streamed response.
-    # TODO: should handle exceptions mid-stream by deleting and/or finalizing the message
-    reply = dbc.message.create(
-        "",
-        agent.client,
-        message.Role.Assistant,
-        msg.opts,
-        model_id=request.model,
-        model_host=request.host,
-        root=msg.root,
-        parent=msg.id,
-        final=False,
-        private=request.private,
-        model_type=model.model_type,
-        expiration_time=message_expiration_time,
-    )
+    # Finalize the messages and yield
+    tool_calls_made = 0
+    while tool_calls_made < MAX_REPEATED_TOOL_CALLS:
+        stream_metrics = StreamMetrics(
+            first_chunk_ns=None, input_token_count=None, output_token_count=None, total_generation_ns=None
+        )
+        reply = create_assistant_message(
+            dbc=dbc,
+            content="",
+            request=request,
+            model=model,
+            parent_message_id=message_chain[-1].id,
+            root_message_id=message_chain[-1].root,
+            agent=agent,
+        )
+        message_chain.append(reply)
 
-    # Update the parent message to include the reply.
-    msg = dataclasses.replace(msg, children=[reply])
+        yield prepare_yield_message_chain(message_chain, user_message)
 
-    # Update system prompt to include user message as a child.
-    if system_msg is not None:
-        system_msg = dataclasses.replace(system_msg, children=[msg])
+        start_message_generation_ns = time_ns()
+        yield from stream_assistant_response(
+            request, dbc, message_chain, model, agent, blob_map, user_message, reply, stream_metrics
+        )
 
-        # Yield the system prompt message if there is any
-    if system_msg is not None:
-        yield system_msg
-    # Yield the new user message
-    else:
-        yield msg
+        if reply.tool_calls is not None and len(reply.tool_calls) > 0:
+            last_msg = reply
+            for tool in reply.tool_calls:
+                tool_response = call_tool(tool)
+                tool_msg = create_tool_response_message(
+                    dbc=dbc, content=tool_response.content, parent_message=last_msg, source_tool=tool
+                )
+                message_chain.append(tool_msg)
 
+        yield from finalize_messages(dbc, message_chain, user_message)
+
+        log_create_message_stats(
+            user_message,
+            reply,
+            start_time_ns,
+            safety_check_elapsed_time,
+            model,
+            checker_type,
+            start_message_generation_ns,
+            stream_metrics,
+        )
+
+        yield prepare_yield_message_chain(message_chain, user_message)
+
+        if reply.tool_calls is None or len(reply.tool_calls) == 0:
+            break
+
+        tool_calls_made += 1
+
+    yield StreamEndChunk(message=message_chain[0].id)
+
+
+def log_create_message_stats(
+    user_message: message.Message,
+    reply: message.Message,
+    start_time_ns: int,
+    safety_check_elapsed_time: float,
+    model: ModelConfig,
+    checker_type: SafetyCheckerType,
+    start_message_generation_ns: int,
+    stream_metrics: StreamMetrics,
+):
+    end_all = time_ns()
+    if stream_metrics.first_chunk_ns or start_time_ns < 0:
+        log_inference_timing(
+            event_type="create_message",
+            ttft_ns=(stream_metrics.first_chunk_ns or 0 - start_message_generation_ns),
+            total_ns=(end_all - start_time_ns),
+            ttft_ms_including_checks=(stream_metrics.first_chunk_ns or 0 - start_time_ns) // 1e6,
+            safety_ms=safety_check_elapsed_time,
+            input_token_count=-1,
+            output_token_count=-1,
+            model=model.id,
+            safety_check_id=checker_type,
+            message_id=user_message.id,
+            reply_id=reply.id,
+        )
+
+
+def finalize_messages(dbc: db.Client, message_chain: list[message.Message], user_message: message.Message):
+    if message_chain[0].final is False and message_chain[0].role == message.Role.System:
+        system_msg = message_chain[0]
+        final_system_message = dbc.message.finalize(system_msg.id)
+        system_msg.final = True
+
+        if final_system_message is None:
+            final_system_message_error = RuntimeError(f"failed to finalize message {system_msg.id}")
+            yield message.MessageStreamError(
+                message=system_msg.id,
+                error=str(final_system_message_error),
+                reason="finalization failure",
+            )
+            raise final_system_message_error
+
+    if user_message.final is False:
+        final_message = dbc.message.finalize(user_message.id, file_urls=user_message.file_urls)
+        user_message.final = True
+        if final_message is None:
+            final_message_error = RuntimeError(f"failed to finalize message {user_message.id}")
+            yield message.MessageStreamError(
+                message=user_message.id, error=str(final_message_error), reason="finalization failure"
+            )
+            raise final_message_error
+
+
+def repair_children(msg_chain: list[message.Message]):
+    for i, msg in enumerate(msg_chain):
+        next_msg = msg_chain[i + 1] if i < len(msg_chain) - 1 else None
+        msg.children = [next_msg] if next_msg else None
+
+
+def stream_assistant_response(
+    request: CreateMessageRequestWithFullMessages,
+    dbc: db.Client,
+    message_chain: list[message.Message],
+    model: ModelConfig,
+    agent: Token,
+    blob_map: dict[str, FileUploadResult],
+    msg: message.Message,
+    reply: message.Message,
+    stream_metrics: StreamMetrics,
+) -> Generator[message.MessageChunk | message.MessageStreamError | Chunk, Any, None]:
+    """
+    Adds a new assistant message to the conversation, and streams the llm response to the api
+    """
+    # Capture the SHA and logger, as the current_app context is lost in the generator.
+    sha = os.environ.get("SHA") or "DEV"
+    start_generation_ns = time_ns()
+
+    tool_parts: list[ToolCallPart] = []
     # Now yield each chunk as it's returned.
     finish_reason: FinishReason | None = None
-    start_message_generation_ns = time_ns()
-    first_ns: int = 0
-    input_token_count: int = -1
-    output_token_count: int = -1
-    total_generation_ns: int = 0
-
     # We keep track of each chunk and the timing information per-chunk
     # so that we can manifest a completion at the end. This will go
     # away when InferD stores this I/O.
-    chunks: list[message.MessageChunk] | list[Chunk] = []
 
     if cfg.feature_flags.enable_pydantic_inference:
-        chunks = cast(list[Chunk], chunks)
+        pydantic_chunks: list[Chunk] = []
         pydantic_inference_engine = get_pydantic_model(model)
 
-        pydantic_messages = pydantic_map_messages(message_chain, blob_map)
+        first_chunk_ns: int | None = None
+        pydantic_messages = pydantic_map_messages(message_chain[:-1], blob_map)
         tools = get_tools() if model.can_call_tools else []
         with model_request_stream_sync(
             model=pydantic_inference_engine,
             messages=pydantic_messages,
             model_settings=OpenAIModelSettings(openai_reasoning_effort="low"),
-            model_request_parameters=ModelRequestParameters(function_tools=tools),
+            model_request_parameters=ModelRequestParameters(function_tools=tools, allow_text_output=True),
         ) as stream:
-            for chunk in stream:
-                pydantic_chunk = pydantic_map_chunk(chunk, message_id=reply.id)
-                chunks.append(pydantic_chunk)
+            for generator_chunk_pydantic in stream:
+                if first_chunk_ns is None:
+                    first_chunk_ns = time_ns()
+
+                pydantic_chunk = pydantic_map_chunk(generator_chunk_pydantic, message_id=reply.id)
+                pydantic_chunks.append(pydantic_chunk)
                 yield pydantic_chunk
 
         full_response = stream.get()
         text_part = next((part for part in full_response.parts if part.part_kind == "text"), None)
+        tool_parts = [part for part in full_response.parts if isinstance(part, ToolCallPart)]
+
+        stream_metrics.first_chunk_ns = first_chunk_ns
+        stream_metrics.input_token_count = -1
+        stream_metrics.output_token_count = -1
+        stream_metrics.total_generation_ns = time_ns() - start_generation_ns
+
         output = text_part.content if text_part is not None else ""
         logprobs = []
-
+        # TODO finish reason https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse.vendor_details should be here but isn't
     else:
-        chunks = cast(list[message.MessageChunk], chunks)
+        tool_parts = []
+        chunks: list[message.MessageChunk] = []
 
         chain: list[InferenceEngineMessage] = [
             InferenceEngineMessage(
                 role=message_in_chain.role,
                 content=message_in_chain.content,
                 # We only want to add the request files to the new message. The rest will have file urls associated with them
-                files=request.files if message_in_chain.id == msg.id else message_in_chain.file_urls,
+                files=request.files
+                if msg is not None and message_in_chain.id == msg.id
+                else message_in_chain.file_urls,
             )
-            for message_in_chain in message_chain
+            for message_in_chain in message_chain[:-1]
         ]
         inference_engine = get_engine(model)
         message_chunks_generator = GeneratorWithReturnValue(
@@ -192,49 +331,42 @@ def stream_new_message(
             )
         )
 
-        for chunk in message_chunks_generator:
-            if isinstance(chunk, InferenceEngineChunk):
-                mapped_chunk = map_chunk(chunk, message_id=reply.id)
+        for generator_chunk in message_chunks_generator:
+            if isinstance(generator_chunk, InferenceEngineChunk):
+                mapped_chunk = map_chunk(generator_chunk, message_id=reply.id)
                 yield mapped_chunk
-                finish_reason = chunk.finish_reason
+                finish_reason = generator_chunk.finish_reason
                 chunks.append(mapped_chunk)
             else:
-                yield chunk
+                yield generator_chunk
 
-        # TODO: Looks like these are not working with Cirrascale
-        stream_metrics: StreamMetrics = message_chunks_generator.value
-        first_ns = stream_metrics.first_chunk_ns or 0
-        input_token_count = stream_metrics.input_token_count or -1
-        output_token_count = stream_metrics.output_token_count or -1
-        total_generation_ns = stream_metrics.total_generation_ns or 0
         output, logprobs = create_output_from_chunks(chunks)
+        inference_stream_metrics: StreamMetrics = message_chunks_generator.value
 
-    gen = total_generation_ns
-    gen //= 1000000
+        stream_metrics.first_chunk_ns = inference_stream_metrics.first_chunk_ns
+        stream_metrics.input_token_count = inference_stream_metrics.input_token_count
+        stream_metrics.output_token_count = inference_stream_metrics.output_token_count
+        stream_metrics.total_generation_ns = inference_stream_metrics.total_generation_ns
 
     prompt = create_prompt_from_engine_input(message_chain)
+
+    gen = stream_metrics.total_generation_ns or 0
+    gen //= 1000000
 
     message_completion = None
     if not agent.is_anonymous_user:
         message_completion = dbc.completion.create(
             prompt,
             [completion.CompletionOutput(output, str(finish_reason), logprobs)],
-            msg.opts,
+            request.opts,
             model.model_id_on_host,
             sha,
             tokenize_ms=-1,
             generation_ms=gen,
             queue_ms=0,
-            input_tokens=input_token_count,
-            output_tokens=output_token_count,
+            input_tokens=stream_metrics.input_token_count or -1,
+            output_tokens=stream_metrics.output_token_count or -1,
         )
-
-    # Finalize the messages and yield
-    final_message = dbc.message.finalize(msg.id, file_urls=file_urls)
-    if final_message is None:
-        final_message_error = RuntimeError(f"failed to finalize message {msg.id}")
-        yield message.MessageStreamError(message=msg.id, error=str(final_message_error), reason="finalization failure")
-        raise final_message_error
 
     final_reply = dbc.message.finalize(
         reply.id,
@@ -242,47 +374,35 @@ def stream_new_message(
         logprobs,
         message_completion.id if message_completion is not None else None,
         finish_reason,
+        tool_calls=tool_parts,
     )
+
+    reply.content = output
+    reply.logprobs = logprobs
+    reply.finish_reason = finish_reason
+    reply.tool_calls = tool_parts
+    reply.final = True
+    reply.completion = message_completion.id if message_completion is not None else None
+
     if final_reply is None:
         final_reply_error = RuntimeError(f"failed to finalize message {reply.id}")
         yield message.MessageStreamError(message=reply.id, error=str(final_reply_error), reason="finalization failure")
         raise final_reply_error
 
-    final_message = dataclasses.replace(final_message, children=[final_reply])
 
-    if system_msg is not None:
-        finalSystemMessage = dbc.message.finalize(system_msg.id)
+def prepare_yield_message_chain(message_chain: list[message.Message], user_message: message.Message):
+    user_message_index = next((i for i, message in enumerate(message_chain) if message.id == user_message.id), -1)
 
-        if finalSystemMessage is None:
-            final_system_message_error = RuntimeError(f"failed to finalize message {system_msg.id}")
-            yield message.MessageStreamError(
-                message=system_msg.id,
-                error=str(final_system_message_error),
-                reason="finalization failure",
-            )
-            raise final_system_message_error
+    repair_children(message_chain)
 
-        finalSystemMessage = dataclasses.replace(finalSystemMessage, children=[final_message])
-        final_message = finalSystemMessage
+    if user_message_index == -1:
+        error_msg = "failed to find user message in chain"
+        raise RuntimeError(error_msg)
 
-    end_all = time_ns()
-    if first_ns > start_time_ns:
-        log_inference_timing(
-            event_type="create_message",
-            ttft_ns=(first_ns - start_message_generation_ns),
-            total_ns=(end_all - start_time_ns),
-            ttft_ms_including_checks=(first_ns - start_time_ns) // 1e6,
-            safety_ms=safety_check_elapsed_time,
-            input_token_count=input_token_count,
-            output_token_count=output_token_count,
-            model=model.id,
-            safety_check_id=checker_type,
-            message_id=msg.id,
-            reply_id=reply.id,
-        )
+    if user_message_index == 1 and message_chain[0].role == "system":
+        return message_chain[0]
 
-    yield final_message
-    return None
+    return message_chain[user_message_index]
 
 
 def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> message.MessageChunk:
@@ -292,13 +412,11 @@ def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> message.MessageCh
         for lp_list in chunk_logprobs
     ]
 
-    new_chunk = message.MessageChunk(
+    return message.MessageChunk(
         message=message_id,
         content=chunk.content,
         logprobs=mapped_logprobs,
     )
-
-    return new_chunk
 
 
 def create_prompt_from_engine_input(

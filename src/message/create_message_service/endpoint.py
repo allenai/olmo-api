@@ -18,7 +18,7 @@ from src.message.create_message_request import (
     CreateMessageRequestWithLists,
 )
 from src.message.create_message_service.safety import validate_message_security_and_safety
-from src.message.create_message_service.stream_new_message import stream_new_message
+from src.message.create_message_service.stream_new_message import create_new_message
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.SafetyChecker import (
     SafetyCheckerType,
@@ -91,7 +91,7 @@ def create_message_v4(
         user_agent=user_agent,
     )
 
-    return stream_new_message(
+    return create_new_message(
         mapped_request,
         dbc,
         model=model,

@@ -20,7 +20,7 @@ def get_openapi_spec() -> dict[str, Any]:
 
     # HACK: These are responses from the message streaming endpoint. OpenAPI doesn't support typing streamed responses so we need to add the types here
     chunks: list[tuple[type[BaseModel], JsonSchemaMode]] = [
-        (subclass, "validation") for subclass in BaseChunk.__subclasses__()
+        (subclass, "serialization") for subclass in BaseChunk.__subclasses__()
     ]
     _, top_level_schema = models_json_schema(chunks, ref_template=REF_TEMPLATE)
 

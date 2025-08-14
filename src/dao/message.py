@@ -23,6 +23,7 @@ class Role(StrEnum):
     User = "user"
     Assistant = "assistant"
     System = "system"
+    ToolResponse = "tool_call_result"
 
 
 @dataclass
@@ -105,7 +106,7 @@ def prepare_tool_calls(tool_calls: list[ToolCallPart] | None) -> list[Jsonb] | N
     if tool_calls is None:
         return None
 
-    return [Jsonb([asdict(tool_call) for tool_call in tool_calls])]
+    return [Jsonb(asdict(tool_call)) for tool_call in tool_calls]
 
 
 MessageRow = tuple[
@@ -240,7 +241,12 @@ class Message:
             expiration_time=r[20],
             file_urls=r[21],
             thinking=r[22],
-            tool_calls=r[23],
+            tool_calls=[
+                ToolCallPart(tool_name=tool["tool_name"], args=tool["args"], tool_call_id=tool["tool_call_id"])  # type: ignore
+                for tool in r[23]
+            ]
+            if r[23] is not None
+            else None,
             labels=labels,
         )
 
@@ -350,6 +356,8 @@ class Store:
                             model_host,
                             expiration_time,
                             file_urls,
+                            thinking,
+                            tool_calls,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -533,6 +541,8 @@ class Store:
         finish_reason: str | None = None,
         harmful: bool | None = None,
         file_urls: list[str] | None = None,
+        tool_calls: list[ToolCallPart] | None = None,
+        thinking: str | None = None,
     ) -> Message | None:
         """
         Used to finalize a Message produced via a streaming response.
@@ -549,6 +559,9 @@ class Store:
                             finish_reason = COALESCE(%(finish_reason)s, finish_reason),
                             harmful = COALESCE(%(harmful)s, harmful),
                             file_urls= COALESCE(%(file_urls)s, file_urls),
+                            tool_calls= COALESCE(%(tool_calls)s, tool_calls),
+                            thinking = COALESCE(%(content)s, content),
+ 
                             final = true
                         WHERE
                             id = %(id)s
@@ -597,6 +610,8 @@ class Store:
                         "harmful": harmful,
                         "file_urls": file_urls,
                         "id": id,
+                        "tool_calls": prepare_tool_calls(tool_calls),
+                        "thinking": thinking,
                     },
                 ).fetchone()
                 return Message.from_row(row) if row is not None else None

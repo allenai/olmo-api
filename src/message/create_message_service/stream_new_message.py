@@ -99,7 +99,6 @@ def stream_new_message(
     *,
     is_message_harmful: bool | None = None,
 ) -> Generator[message.Message | message.MessageChunk | message.MessageStreamError | Chunk]:
-
     message_chain = setup_msg_thread(
         dbc=dbc,
         model=model,

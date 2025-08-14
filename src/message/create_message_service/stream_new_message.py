@@ -48,6 +48,47 @@ class ParsedMessage:
     role: message.Role
 
 
+def create_new_message(
+    request: CreateMessageRequestWithFullMessages,
+    dbc: db.Client,
+    storage_client: GoogleCloudStorage,
+    model: ModelConfig,
+    safety_check_elapsed_time: float,
+    start_time_ns: int,
+    agent: Token,
+    checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
+    *,
+    is_message_harmful: bool | None = None,
+) -> message.Message | Generator[message.Message | message.MessageChunk | message.MessageStreamError | Chunk]:
+    if request.role == message.Role.Assistant:
+        if request.parent is None:
+            error_message = "parent is required for creating assistant message"
+            raise ValueError(error_message)
+
+        message_expiration_time = datetime.now(UTC) + timedelta(days=1) if agent.is_anonymous_user else None
+        assistant_message = create_assistant_message(
+            dbc, request.content, request, model, request.parent.id, request.parent.root, message_expiration_time, agent
+        )
+        final_message = dbc.message.finalize(assistant_message.id)
+        if final_message is None:
+            final_message_error = RuntimeError(f"failed to finalize message {assistant_message.id}")
+            raise final_message_error
+
+        return final_message
+
+    return stream_new_message(
+        request,
+        dbc,
+        storage_client,
+        model,
+        safety_check_elapsed_time,
+        start_time_ns,
+        agent,
+        checker_type,
+        is_message_harmful=is_message_harmful,
+    )
+
+
 def stream_new_message(
     request: CreateMessageRequestWithFullMessages,
     dbc: db.Client,
@@ -107,6 +148,7 @@ def stream_new_message(
         )
         reply = create_assistant_message(
             dbc=dbc,
+            content="",
             request=request,
             model=model,
             parent_message_id=message_chain[-1].id,
@@ -153,6 +195,7 @@ def stream_new_message(
         tool_calls_made += 1
 
     yield StreamEndChunk(message=message_chain[0].id)
+
 
 def log_create_message_stats(
     user_message: message.Message,

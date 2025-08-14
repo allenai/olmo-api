@@ -48,7 +48,7 @@ class TestAnonymousMessageEndpoints(base.IntegrationTest):
         )
         create_message_request.raise_for_status()
 
-        response_messages = [json.loads(util.last_response_line(create_message_request))]
+        response_messages = [json.loads(util.second_to_last_response_line(create_message_request))]
         first_message = response_messages[0]
         self.messages.append((first_message["id"], anonymous_user))
 
@@ -107,7 +107,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         )
         r.raise_for_status()
 
-        root_message_1 = json.loads(util.last_response_line(r))
+        root_message_1 = json.loads(util.second_to_last_response_line(r))
         self.messages.append((root_message_1["id"], u1))
         for c in root_message_1["children"]:
             c_tup = (c["id"], u1)
@@ -161,7 +161,7 @@ class TestMessageEndpoints(base.IntegrationTest):
             },
         )
         r.raise_for_status()
-        c2 = json.loads(util.last_response_line(r))
+        c2 = json.loads(util.second_to_last_response_line(r))
         c_tup = (c2["id"], u1)
         self.messages.append(c_tup)
         self.child_msgs.append(c_tup)
@@ -204,7 +204,7 @@ class TestMessageEndpoints(base.IntegrationTest):
             },
         )
         r.raise_for_status()
-        m2 = json.loads(util.last_response_line(r))
+        m2 = json.loads(util.second_to_last_response_line(r))
         self.messages.append((m2["id"], u2))
         for c in m2["children"]:
             c_tup = (c["id"], u2)
@@ -332,7 +332,7 @@ class TestMessageEndpoints(base.IntegrationTest):
                 files={"content": (None, content), **default_model_options},
             )
             r.raise_for_status()
-            snippet_test_message = json.loads(util.last_response_line(r))
+            snippet_test_message = json.loads(util.second_to_last_response_line(r))
             self.messages.append((snippet_test_message["id"], u1))
             assert snippet_test_message["children"][0]["snippet"] == snippet
 
@@ -397,7 +397,7 @@ class TestMessageValidation(base.IntegrationTest):
                     },
                 )
                 assert r.status_code == 200, f"Expected 200 for valid value {v} for {name}. Error {r.json()}"
-                msg = json.loads(util.last_response_line(r))
+                msg = json.loads(util.second_to_last_response_line(r))
                 self.messages.append((msg["id"], u3))
                 for default_name, default_value in default_options:
                     actual = msg["opts"][default_name]

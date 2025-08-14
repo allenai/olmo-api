@@ -46,6 +46,9 @@ class TestAnonymousThreadEndpoints(base.IntegrationTest):
         json_lines = [json.loads(line) for line in lines]
 
         first_yield = json_lines[0]
+        assert first_yield["type"] == "start"
+
+        first_yield = json_lines[1]
         assert first_yield["id"] is not None
 
         thread_messages = first_yield["messages"]
@@ -54,7 +57,7 @@ class TestAnonymousThreadEndpoints(base.IntegrationTest):
         assert thread_messages[1]["role"] == "assistant"
 
         # Test model always calls tools.
-        second_yield = json_lines[1]
+        second_yield = json_lines[2]
         assert second_yield["type"] == "toolCall"
 
         # Validate the first JSON line structure and content

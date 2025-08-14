@@ -106,6 +106,7 @@ def create_tool_response_message(
 
 def create_assistant_message(
     dbc: db.Client,
+    content: str,
     request: CreateMessageRequestWithFullMessages,
     model: ModelConfig,
     parent_message_id: str,
@@ -114,7 +115,7 @@ def create_assistant_message(
     agent: Token,
 ):
     return dbc.message.create(
-        "",
+        content,
         agent.client,
         message.Role.Assistant,
         request.opts,

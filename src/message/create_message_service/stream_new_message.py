@@ -31,7 +31,7 @@ from src.message.SafetyChecker import (
     SafetyCheckerType,
 )
 from src.message.stream_message import StreamMetrics, stream_message_chunks
-from src.pydantic_inference.pydantic_ai_helpers import pydantic_map_chunk, pydantic_map_messages
+from src.pydantic_inference.pydantic_ai_helpers import pydantic_map_chunk, pydantic_map_messages, pydantic_settings_map
 from src.pydantic_inference.pydantic_model_service import get_pydantic_model
 from src.util.generator_with_return_value import GeneratorWithReturnValue
 
@@ -279,10 +279,13 @@ def stream_assistant_response(
         first_chunk_ns: int | None = None
         pydantic_messages = pydantic_map_messages(message_chain[:-1], blob_map)
         tools = get_tools() if model.can_call_tools else []
+
+        settings = pydantic_settings_map(request.opts)
+
         with model_request_stream_sync(
             model=pydantic_inference_engine,
             messages=pydantic_messages,
-            model_settings=OpenAIModelSettings(openai_reasoning_effort="low"),
+            model_settings=OpenAIModelSettings(**settings, openai_reasoning_effort="low"),
             model_request_parameters=ModelRequestParameters(function_tools=tools, allow_text_output=True),
         ) as stream:
             for generator_chunk_pydantic in stream:

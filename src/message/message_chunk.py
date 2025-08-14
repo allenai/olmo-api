@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, computed_field, field_validator
 
 from src import obj
 from src.api_interface import APIInterface
@@ -27,11 +27,15 @@ class ModelResponseChunk(BaseChunk):
     @field_validator("type", mode="before")
     @classmethod
     def add_type(cls, _v):
-        cls.type = ChunkType.MODEL_RESPONSE
+        return ChunkType.MODEL_RESPONSE
 
 
 class ToolCallChunk(BaseChunk):
-    type: Literal[ChunkType.TOOL_CALL] = Field(default=ChunkType.TOOL_CALL, init=False)
+    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
+    @computed_field  # type: ignore
+    @property
+    def type(self) -> Literal[ChunkType.TOOL_CALL]:
+        return ChunkType.TOOL_CALL
 
     tool_call_id: str
     """The tool call identifier, this is used by some models including OpenAI.
@@ -48,15 +52,13 @@ class ToolCallChunk(BaseChunk):
     This is stored either as a JSON string or a Python dictionary depending on how data was received.
     """
 
-    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
-    @field_validator("type", mode="before")
-    @classmethod
-    def add_type(cls, _v):
-        cls.type = ChunkType.TOOL_CALL
-
 
 class ThinkingChunk(BaseChunk):
-    type: Literal[ChunkType.THINKING] = Field(default=ChunkType.THINKING, init=False)
+    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
+    @computed_field  # type: ignore
+    @property
+    def type(self) -> Literal[ChunkType.THINKING]:
+        return ChunkType.THINKING
 
     content: str
     """The thinking content of the response."""
@@ -64,31 +66,21 @@ class ThinkingChunk(BaseChunk):
     id: str | None = None
     """The identifier of the thinking part."""
 
-    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
-    @field_validator("type", mode="before")
-    @classmethod
-    def add_type(cls, _v):
-        cls.type = ChunkType.THINKING
-
 
 class StreamStartChunk(BaseChunk):
-    type: Literal[ChunkType.START] = Field(default=ChunkType.START, init=False)
-
     # HACK: This lets us make `type` required in the schema while also not requiring it in the init
-    @field_validator("type", mode="before")
-    @classmethod
-    def add_type(cls, _v):
-        cls.type = ChunkType.START
+    @computed_field  # type: ignore
+    @property
+    def type(self) -> Literal[ChunkType.START]:
+        return ChunkType.START
 
 
 class StreamEndChunk(BaseChunk):
-    type: Literal[ChunkType.END] = Field(default=ChunkType.END, init=False)
-
     # HACK: This lets us make `type` required in the schema while also not requiring it in the init
-    @field_validator("type", mode="before")
-    @classmethod
-    def add_type(cls, _v):
-        cls.type = ChunkType.END
+    @computed_field  # type: ignore
+    @property
+    def type(self) -> Literal[ChunkType.END]:
+        return ChunkType.END
 
 
 Chunk = ModelResponseChunk | ToolCallChunk | ThinkingChunk | StreamStartChunk | StreamEndChunk

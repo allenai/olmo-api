@@ -1,27 +1,24 @@
-from collections.abc import AsyncIterator, Iterable
+from collections.abc import AsyncIterable, AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import assert_never
+from typing import Any, cast
 
 from beaker import Beaker
-from beaker.beaker_pb2 import CreateQueueEntryResponse
 from beaker.config import Config as BeakerConfig
 from google.protobuf import json_format
+from openai.types.chat import ChatCompletionChunk
 from pydantic_ai.messages import (
     ImageUrl,
     ModelMessage,
     ModelRequest,
     ModelResponse,
-    ModelResponseStreamEvent,
-    PartDeltaEvent,
-    PartStartEvent,
     SystemPromptPart,
     TextPart,
-    TextPartDelta,
     UserPromptPart,
 )
-from pydantic_ai.models import Model, ModelRequestParameters, StreamedResponse, check_allow_model_requests
+from pydantic_ai.models import Model, ModelRequestParameters, check_allow_model_requests
+from pydantic_ai.models.openai import OpenAIStreamedResponse
 from pydantic_ai.settings import ModelSettings
 
 from src.config.get_config import get_config
@@ -69,29 +66,72 @@ class BeakerQueuesModel(Model):
         messages: list[ModelMessage],
         model_settings: ModelSettings | None,
         model_request_parameters: ModelRequestParameters,  # noqa: ARG002
-    ):
+    ) -> AsyncIterator[OpenAIStreamedResponse]:
         """Make a streaming request to the model."""
         check_allow_model_requests()  # Required for testing
+
+        response = self._completions_create(
+            messages=messages,
+            model_settings=cast(dict[str, Any], model_settings or {}),
+        )
+        result = OpenAIStreamedResponse(
+            _model_name=self._model_name,
+            _response=response,
+            _timestamp=datetime.now(UTC),
+        )
+        yield result
+
+    async def _completions_create(
+        self,
+        messages: list[ModelMessage],
+        model_settings: dict[str, Any],
+    ) -> AsyncIterable[ChatCompletionChunk]:
         q = self.beaker_client.queue.get(self._model_name)
 
-        # tools = model_request_parameters.function_tools
-
         new_messages = beaker_queues_map_pydantic_messages_to_dict(messages)
+
         queue_input = {
             "model": q.id,
             "messages": new_messages,
             "stream": True,
-            **(model_settings or {}),
+            **model_settings,
         }
 
         entry = self.beaker_client.queue.create_entry(q, input=queue_input, expires_in_sec=EXPIRES_IN)
 
-        stream = BeakerQueuesStreamedResponse(
+        index = 0
+        for resp in entry:
+            if resp.HasField("pending_entry"):
+                # TODO: handle this
+                continue
+            elif resp.HasField("result"):
+                result = json_format.MessageToDict(resp.result)
+                yield ChatCompletionChunk(
+                    id=result["id"],
+                    choices=result["choices"],
+                    created=result["created"],
+                    model=result["model"],
+                    object=result["object"],
+                )
+                index += 1
+            elif resp.HasField("finalized_entry"):
+                # TODO: maybe handle this?
+                continue
+
+    async def _process_streamed_response(self, response: AsyncIterable[ChatCompletionChunk]) -> OpenAIStreamedResponse:
+        return OpenAIStreamedResponse(
             _model_name=self._model_name,
-            _queue_entry=entry,
+            _response=response,
+            _timestamp=datetime.now(UTC),
         )
 
-        yield stream
+    # from openai, could be useful?
+    #
+    # def _get_tools(self, model_request_parameters: ModelRequestParameters) -> list[responses.FunctionToolParam]:
+    #     tools = [self._map_tool_definition(r) for r in model_request_parameters.function_tools]
+    #     if model_request_parameters.output_tools:
+    #         tools += [self._map_tool_definition(r) for r in model_request_parameters.output_tools]
+    #     return tools
 
     @property
     def model_name(self) -> str:
@@ -100,44 +140,6 @@ class BeakerQueuesModel(Model):
     @property
     def system(self) -> str:
         return self._system
-
-
-@dataclass
-class BeakerQueuesStreamedResponse(StreamedResponse):
-    """A stream response from Beaker Queues."""
-
-    _model_name: str
-    _queue_entry: Iterable[CreateQueueEntryResponse]
-    _timestamp: datetime = field(default_factory=lambda: datetime.now(UTC), init=False)
-
-    # Roughly from BeakerQueuesEngine
-    async def _get_event_iterator(self) -> AsyncIterator[ModelResponseStreamEvent]:
-        index = 0
-        for resp in self._queue_entry:
-            if resp.HasField("pending_entry"):
-                # Is this needed?
-                yield PartStartEvent(index=index, part=TextPart(content=""))
-                index += 1
-            elif resp.HasField("result"):
-                result = json_format.MessageToDict(resp.result)
-                # Only handling content
-                content = result["choices"][0]["delta"]["content"]
-                yield PartDeltaEvent(index=index, delta=TextPartDelta(content_delta=content))
-                index += 1
-            elif resp.HasField("finalized_entry"):
-                # Do something?
-                pass
-            else:
-                assert_never(resp)  # type: ignore
-
-    # Required properties on StreamedResponse(ABC)
-    @property
-    def model_name(self) -> str:
-        return self._model_name
-
-    @property
-    def timestamp(self) -> datetime:
-        return self._timestamp
 
 def beaker_queues_map_pydantic_messages_to_dict(model_messages: list[ModelMessage]) -> list[dict]:
     messages: list[dict] = []
@@ -154,6 +156,6 @@ def beaker_queues_map_pydantic_messages_to_dict(model_messages: list[ModelMessag
                             messages.append({"role": "system", "content": part.content})
             case ModelResponse():
                 content = "".join(part.content for part in msg.parts if isinstance(part, TextPart))
-                messages.append({ "role": "assistant", "content": content})
+                messages.append({"role": "assistant", "content": content})
 
     return messages

@@ -7,7 +7,7 @@ from . import base
 
 default_model_options = {
     "host": (None, "test_backend"),
-    "model": (None, "test"),
+    "model": (None, "test-model"),
     "files": (None, None),
 }
 
@@ -52,9 +52,10 @@ class TestAnonymousThreadEndpoints(base.IntegrationTest):
         assert first_yield["id"] is not None
 
         thread_messages = first_yield["messages"]
-        assert len(thread_messages) == 2  # /user message and empty assistnat (no system prompt currently)
-        assert thread_messages[0]["role"] == "user"
-        assert thread_messages[1]["role"] == "assistant"
+        assert len(thread_messages) == 3  # / system message, user message and empty assistnat (no system prompt currently)
+        assert thread_messages[0]["role"] == "system"
+        assert thread_messages[1]["role"] == "user"
+        assert thread_messages[2]["role"] == "assistant"
 
         # Test model always calls tools.
         second_yield = json_lines[2]

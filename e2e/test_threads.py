@@ -12,7 +12,7 @@ from . import base
 
 default_model_options = {
     "host": (None, "test_backend"),
-    "model": (None, "test-model"),
+    "model": (None, "test-model-no-tools"),
 }
 
 

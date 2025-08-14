@@ -12,6 +12,7 @@ from src.message.create_message_request import (
 
 
 def get_expiration_time(agent: Token):
+    # We currently want anonymous users' messages to expire after 1 days
     return datetime.now(UTC) + timedelta(days=1) if agent.is_anonymous_user else None
 
 

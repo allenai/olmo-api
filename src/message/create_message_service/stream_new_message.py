@@ -99,9 +99,7 @@ def stream_new_message(
     *,
     is_message_harmful: bool | None = None,
 ) -> Generator[message.Message | message.MessageChunk | message.MessageStreamError | Chunk]:
-    # We currently want anonymous users' messages to expire after 1 days
 
-    # TODO: We currently do not handling branching/ creating assistant message
     message_chain = setup_msg_thread(
         dbc=dbc,
         model=model,

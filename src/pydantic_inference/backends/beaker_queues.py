@@ -9,20 +9,23 @@ from beaker.beaker_pb2 import CreateQueueEntryResponse
 from beaker.config import Config as BeakerConfig
 from google.protobuf import json_format
 from pydantic_ai.messages import (
+    ImageUrl,
     ModelMessage,
+    ModelRequest,
     ModelResponse,
     ModelResponseStreamEvent,
     PartDeltaEvent,
     PartStartEvent,
+    SystemPromptPart,
     TextPart,
     TextPartDelta,
+    UserPromptPart,
 )
 from pydantic_ai.models import Model, ModelRequestParameters, StreamedResponse, check_allow_model_requests
 from pydantic_ai.settings import ModelSettings
 
 from src.config.get_config import get_config
 from src.dao.engine_models.model_config import ModelConfig
-from src.pydantic_inference.pydantic_ai_helpers import pydantic_reverse_map_messages
 
 EXPIRES_IN = 60 * 60 * 24 * 30  # 30 days
 
@@ -73,7 +76,7 @@ class BeakerQueuesModel(Model):
 
         # tools = model_request_parameters.function_tools
 
-        new_messages = pydantic_reverse_map_messages(messages)
+        new_messages = beaker_queues_map_pydantic_messages_to_dict(messages)
         queue_input = {
             "model": q.id,
             "messages": new_messages,
@@ -109,16 +112,18 @@ class BeakerQueuesStreamedResponse(StreamedResponse):
 
     # Roughly from BeakerQueuesEngine
     async def _get_event_iterator(self) -> AsyncIterator[ModelResponseStreamEvent]:
-        for index, resp in enumerate(self._queue_entry):
-
+        index = 0
+        for resp in self._queue_entry:
             if resp.HasField("pending_entry"):
                 # Is this needed?
                 yield PartStartEvent(index=index, part=TextPart(content=""))
+                index += 1
             elif resp.HasField("result"):
                 result = json_format.MessageToDict(resp.result)
                 # Only handling content
                 content = result["choices"][0]["delta"]["content"]
                 yield PartDeltaEvent(index=index, delta=TextPartDelta(content_delta=content))
+                index += 1
             elif resp.HasField("finalized_entry"):
                 # Do something?
                 pass
@@ -133,3 +138,22 @@ class BeakerQueuesStreamedResponse(StreamedResponse):
     @property
     def timestamp(self) -> datetime:
         return self._timestamp
+
+def beaker_queues_map_pydantic_messages_to_dict(model_messages: list[ModelMessage]) -> list[dict]:
+    messages: list[dict] = []
+    for msg in model_messages:
+        match msg:
+            case ModelRequest():
+                for part in msg.parts:
+                    match part:
+                        case UserPromptPart():
+                            content = "".join(c for c in part.content if isinstance(c, str))
+                            file_urls = [c.url for c in part.content if isinstance(c, ImageUrl)]
+                            messages.append({"role": "user", "content": content, "file_urls": file_urls})
+                        case SystemPromptPart():
+                            messages.append({"role": "system", "content": part.content})
+            case ModelResponse():
+                content = "".join(part.content for part in msg.parts if isinstance(part, TextPart))
+                messages.append({ "role": "assistant", "content": content})
+
+    return messages

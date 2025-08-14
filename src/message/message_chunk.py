@@ -20,7 +20,7 @@ class BaseChunk(APIInterface):
 
 
 class ModelResponseChunk(BaseChunk):
-    type: Literal[ChunkType.MODEL_RESPONSE] = Field(init=False)
+    type: Literal[ChunkType.MODEL_RESPONSE] = Field(default=ChunkType.MODEL_RESPONSE, init=False)
     content: str
 
     # HACK: This lets us make `type` required in the schema while also not requiring it in the init
@@ -31,7 +31,7 @@ class ModelResponseChunk(BaseChunk):
 
 
 class ToolCallChunk(BaseChunk):
-    type: Literal[ChunkType.TOOL_CALL] = Field(init=False)
+    type: Literal[ChunkType.TOOL_CALL] = Field(default=ChunkType.TOOL_CALL, init=False)
 
     tool_call_id: str
     """The tool call identifier, this is used by some models including OpenAI.
@@ -56,7 +56,7 @@ class ToolCallChunk(BaseChunk):
 
 
 class ThinkingChunk(BaseChunk):
-    type: Literal[ChunkType.THINKING] = Field(init=False)
+    type: Literal[ChunkType.THINKING] = Field(default=ChunkType.THINKING, init=False)
 
     content: str
     """The thinking content of the response."""
@@ -72,7 +72,7 @@ class ThinkingChunk(BaseChunk):
 
 
 class StreamStartChunk(BaseChunk):
-    type: Literal[ChunkType.START] = ChunkType.START
+    type: Literal[ChunkType.START] = Field(default=ChunkType.START, init=False)
 
     # HACK: This lets us make `type` required in the schema while also not requiring it in the init
     @field_validator("type", mode="before")
@@ -82,7 +82,7 @@ class StreamStartChunk(BaseChunk):
 
 
 class StreamEndChunk(BaseChunk):
-    type: Literal[ChunkType.END] = ChunkType.END
+    type: Literal[ChunkType.END] = Field(default=ChunkType.END, init=False)
 
     # HACK: This lets us make `type` required in the schema while also not requiring it in the init
     @field_validator("type", mode="before")

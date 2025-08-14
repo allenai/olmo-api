@@ -295,6 +295,7 @@ def stream_assistant_response(
 
         full_response = stream.get()
         text_part = next((part for part in full_response.parts if part.part_kind == "text"), None)
+        thinking_part = next((part for part in full_response.parts if part.part_kind == "thinking"), None)
         tool_parts = [part for part in full_response.parts if isinstance(part, ToolCallPart)]
 
         stream_metrics.first_chunk_ns = first_chunk_ns
@@ -303,10 +304,12 @@ def stream_assistant_response(
         stream_metrics.total_generation_ns = time_ns() - start_generation_ns
 
         output = text_part.content if text_part is not None else ""
+        thinking = thinking_part.content if thinking_part is not None else ""
         logprobs = []
         # TODO finish reason https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse.vendor_details should be here but isn't
     else:
         tool_parts = []
+        thinking = None
         chunks: list[message.MessageChunk] = []
 
         chain: list[InferenceEngineMessage] = [
@@ -375,6 +378,7 @@ def stream_assistant_response(
         message_completion.id if message_completion is not None else None,
         finish_reason,
         tool_calls=tool_parts,
+        thinking=thinking,
     )
 
     reply.content = output
@@ -383,6 +387,7 @@ def stream_assistant_response(
     reply.tool_calls = tool_parts
     reply.final = True
     reply.completion = message_completion.id if message_completion is not None else None
+    reply.thinking = thinking or None
 
     if final_reply is None:
         final_reply_error = RuntimeError(f"failed to finalize message {reply.id}")

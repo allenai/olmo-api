@@ -52,7 +52,12 @@ def pydantic_map_messages(messages: list[Message], blob_map: dict[str, FileUploa
 
             model_messages.append(ModelRequest([user_prompt_part]))
         elif message.role == Role.Assistant:
-            assistant_message_parts: list[ModelResponsePart] = [TextPart(content=message.content)]
+            assistant_message_parts: list[ModelResponsePart] = []
+
+            if message.thinking is not None:
+                assistant_message_parts.append(ThinkingPart(content=message.thinking))
+
+            assistant_message_parts.append(TextPart(content=message.content))
 
             if message.tool_calls:
                 assistant_message_parts.extend(message.tool_calls)

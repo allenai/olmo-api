@@ -560,7 +560,7 @@ class Store:
                             harmful = COALESCE(%(harmful)s, harmful),
                             file_urls= COALESCE(%(file_urls)s, file_urls),
                             tool_calls= COALESCE(%(tool_calls)s, tool_calls),
-                            thinking = COALESCE(%(content)s, content),
+                            thinking = COALESCE(%(thinking)s, thinking),
  
                             final = true
                         WHERE

@@ -146,9 +146,6 @@ class BeakerQueuesModel(Model):
                         match part:
                             case UserPromptPart():
                                 messages.append(self._map_user_prompt(part))
-                                # content = "".join(c for c in part.content if isinstance(c, str))
-                                # file_urls = [c.url for c in part.content if isinstance(c, ImageUrl)]
-                                # messages.append({"role": "user", "content": content, "file_urls": file_urls})
                             case SystemPromptPart():
                                 messages.append({"role": "system", "content": part.content})
                             case ToolReturnPart():
@@ -162,8 +159,6 @@ class BeakerQueuesModel(Model):
                             case _:
                                 assert_never(part)
                 case ModelResponse():
-                    # content = "".join(part.content for part in msg.parts if isinstance(part, TextPart))
-                    # messages.append({"role": "assistant", "content": content})
                     texts: list[str] = []
                     tool_calls: list[dict] = []
                     for item in msg.parts:
@@ -171,6 +166,7 @@ class BeakerQueuesModel(Model):
                             case TextPart():
                                 texts.append(item.content)
                             case ThinkingPart():
+                                # From OpenAIModel
                                 # NOTE: We don't send ThinkingPart to the providers yet. If you are unsatisfied with this,
                                 # please open an issue. The below code is the code to send thinking to the provider.
                                 # texts.append(f'<think>\n{item.content}\n</think>')
@@ -181,6 +177,7 @@ class BeakerQueuesModel(Model):
                                 assert_never(item)  # pragma: no cover
                     message_param: dict[str, Any] = {"role": "assistant"}
                     if texts:
+                        # From OpenAIModel
                         # Note: model responses from this model should only have one text item, so the following
                         # shouldn't merge multiple texts into one unless you switch models between runs:
                         message_param['content'] = '\n\n'.join(texts)
@@ -192,6 +189,7 @@ class BeakerQueuesModel(Model):
 
     @staticmethod
     def _map_tool_call(t: ToolCallPart) -> dict[str, Any]:
+        # From OpenAIModel, may not be the right format
         return {
             'id': t.tool_call_id,
             'type': 'function',
@@ -212,9 +210,10 @@ class BeakerQueuesModel(Model):
                 match item:
                     case str():
                         content += item
-                    case ImageUrl(), AudioUrl(), DocumentUrl(), VideoUrl():
+                    case ImageUrl() | AudioUrl() | DocumentUrl() | VideoUrl():
                         file_urls.append(item.url)
                     case BinaryContent():
+                        # Is this correct?
                         file_urls.append(f'data:{item.media_type};base64,{base64.b64encode(item.data).decode("utf-8")}')
                     case _:
                         assert_never(item)  # type: ignore
@@ -236,6 +235,7 @@ class BeakerQueuesModel(Model):
                 'parameters': f.parameters_json_schema,
             },
         }
+        # Needed?
         # if f.strict and OpenAIModelProfile.from_profile(self.profile).openai_supports_strict_tool_definition:
         #     tool_param['function']['strict'] = f.strict
         return tool_param

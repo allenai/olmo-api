@@ -268,4 +268,3 @@ class BeakerQueuesModel(Model):
         # if f.strict and OpenAIModelProfile.from_profile(self.profile).openai_supports_strict_tool_definition:
         #     tool_param['function']['strict'] = f.strict
         return tool_param  # noqa: RET504
-

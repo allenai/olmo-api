@@ -799,7 +799,7 @@ UPDATE alembic_version SET version_num='51ded224eed6' WHERE alembic_version.vers
 
 -- Running upgrade 51ded224eed6 -> 1b84a4e1d89e
 
-ALTER TABLE model_config ADD COLUMN can_think BOOLEAN DEFAULT 'False' NOT NULL;
+ALTER TABLE model_config ADD COLUMN can_think BOOLEAN DEFAULT 'false' NOT NULL;
 
 UPDATE alembic_version SET version_num='1b84a4e1d89e' WHERE alembic_version.version_num = '51ded224eed6';
 

@@ -125,7 +125,6 @@ class BeakerQueuesModel(Model):
 
         entry = self.beaker_client.queue.create_entry(q, input=queue_input, expires_in_sec=EXPIRES_IN)
 
-        index = 0
         for resp in entry:
             if resp.HasField("pending_entry"):
                 # TODO: handle this
@@ -139,7 +138,6 @@ class BeakerQueuesModel(Model):
                     model=result["model"],
                     object=result["object"],
                 )
-                index += 1
             elif resp.HasField("finalized_entry"):
                 # TODO: maybe handle this?
                 continue

@@ -7,7 +7,6 @@ from typing import Any, cast
 from pydantic_ai.direct import model_request_stream_sync
 from pydantic_ai.messages import ToolCallPart
 from pydantic_ai.models import ModelRequestParameters
-from pydantic_ai.models.openai import OpenAIModelSettings
 
 from src import db, parse
 from src.auth.token import Token
@@ -280,12 +279,10 @@ def stream_assistant_response(
         pydantic_messages = pydantic_map_messages(message_chain[:-1], blob_map)
         tools = get_tools() if model.can_call_tools else []
 
-        settings = pydantic_settings_map(request.opts)
-
         with model_request_stream_sync(
             model=pydantic_inference_engine,
             messages=pydantic_messages,
-            model_settings=OpenAIModelSettings(**settings, openai_reasoning_effort="low"),
+            model_settings=pydantic_settings_map(request.opts, model),
             model_request_parameters=ModelRequestParameters(function_tools=tools, allow_text_output=True),
         ) as stream:
             for generator_chunk_pydantic in stream:

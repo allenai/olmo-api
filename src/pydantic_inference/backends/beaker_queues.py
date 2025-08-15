@@ -114,17 +114,6 @@ class BeakerQueuesModel(Model):
     ) -> AsyncIterable[ChatCompletionChunk]:
         tools = self._get_tools(model_request_parameters)
 
-        if not tools:
-            tool_choice: Literal["none", "required", "auto"] | None = None
-        # elif (
-        #     not model_request_parameters.allow_text_output
-        #     and self._model_profile.XYZ_supports_tool_choice_required
-        #     # OpenAI ModelProfile (so for us, ModelConfig) allow setting a Model to require a tool choice
-        # ):
-        #     tool_choice = 'required'
-        else:
-            tool_choice = "auto"
-
         new_messages = self._map_messages(messages)
 
         q = self.beaker_client.queue.get(self._model_name)
@@ -133,9 +122,7 @@ class BeakerQueuesModel(Model):
             "model": q.id,
             "messages": new_messages,
             "stream": True,
-            # Beaker doesn't seem to like tools
-            # "tools": tools,
-            # "tool_choice": tool_choice,
+            "tools": tools,
             **model_settings,
         }
 

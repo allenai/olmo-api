@@ -3,7 +3,7 @@ from collections.abc import AsyncIterable, AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, assert_never, cast
+from typing import Any, Literal, assert_never, cast
 
 from beaker import Beaker
 from beaker.config import Config as BeakerConfig
@@ -88,16 +88,15 @@ class BeakerQueuesModel(Model):
         self,
         messages: list[ModelMessage],
         model_settings: ModelSettings | None,
-        model_request_parameters: ModelRequestParameters,  # noqa: ARG002
+        model_request_parameters: ModelRequestParameters,
     ) -> AsyncIterator[OpenAIStreamedResponse]:
         """Make a streaming request to the model."""
         check_allow_model_requests()  # Required for testing
 
-        # tools = self._get_tools(model_request_parameters)
-
         response = self._completions_create(
             messages=messages,
             model_settings=cast(dict[str, Any], model_settings or {}),
+            model_request_parameters=model_request_parameters,
         )
         result = OpenAIStreamedResponse(
             _model_profile=self._model_profile,
@@ -111,15 +110,31 @@ class BeakerQueuesModel(Model):
         self,
         messages: list[ModelMessage],
         model_settings: dict[str, Any],
+        model_request_parameters: ModelRequestParameters,
     ) -> AsyncIterable[ChatCompletionChunk]:
-        q = self.beaker_client.queue.get(self._model_name)
+        tools = self._get_tools(model_request_parameters)
+
+        if not tools:
+            tool_choice: Literal["none", "required", "auto"] | None = None
+        # elif (
+        #     not model_request_parameters.allow_text_output
+        #     and self._model_profile.XYZ_supports_tool_choice_required
+        #     # OpenAI ModelProfile (so for us, ModelConfig) allow setting a Model to require a tool choice
+        # ):
+        #     tool_choice = 'required'
+        else:
+            tool_choice = "auto"
 
         new_messages = self._map_messages(messages)
+
+        q = self.beaker_client.queue.get(self._model_name)
 
         queue_input = {
             "model": q.id,
             "messages": new_messages,
             "stream": True,
+            "tools": tools,
+            "tool_choice": tool_choice,
             **model_settings,
         }
 

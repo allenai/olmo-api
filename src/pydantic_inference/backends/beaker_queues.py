@@ -8,7 +8,6 @@ from typing import Any, assert_never, cast
 from beaker import Beaker
 from beaker.config import Config as BeakerConfig
 from google.protobuf import json_format
-from openai.types import chat
 from openai.types.chat import ChatCompletionChunk
 from pydantic_ai.messages import (
     AudioUrl,
@@ -39,8 +38,10 @@ EXPIRES_IN = 60 * 60 * 24 * 30  # 30 days
 
 MODEL_NO_RESPONSE_ERROR = "No response received from model"
 
+
 def get_beaker_queues_model(model_config: ModelConfig) -> Model:
     return BeakerQueuesModel(model=model_config.model_id_on_host)
+
 
 @dataclass(init=False)
 class BeakerQueuesModel(Model):
@@ -152,12 +153,20 @@ class BeakerQueuesModel(Model):
                                 messages.append({"role": "system", "content": part.content})
                             case ToolReturnPart():
                                 # openapi guard tool_call_id, if its None, it generates a uuid based new one
-                                messages.append({"role": "tool", "tool_call_id": part.tool_call_id, "content": part.model_response_str()})
+                                messages.append({
+                                    "role": "tool",
+                                    "tool_call_id": part.tool_call_id,
+                                    "content": part.model_response_str(),
+                                })
                             case RetryPromptPart():
                                 if part.tool_name is None:
                                     messages.append({"role": "user", "content": part.model_response()})
                                 else:
-                                    messages.append({"role": "tool", "tool_call_id": part.tool_call_id, "content": part.model_response()})
+                                    messages.append({
+                                        "role": "tool",
+                                        "tool_call_id": part.tool_call_id,
+                                        "content": part.model_response(),
+                                    })
                             case _:
                                 assert_never(part)
                 case ModelResponse():
@@ -182,9 +191,9 @@ class BeakerQueuesModel(Model):
                         # From OpenAIModel
                         # Note: model responses from this model should only have one text item, so the following
                         # shouldn't merge multiple texts into one unless you switch models between runs:
-                        message_param['content'] = '\n\n'.join(texts)
+                        message_param["content"] = "\n\n".join(texts)
                     if tool_calls:
-                        message_param['tool_calls'] = tool_calls
+                        message_param["tool_calls"] = tool_calls
                     messages.append(message_param)
 
         return messages
@@ -193,20 +202,20 @@ class BeakerQueuesModel(Model):
     def _map_tool_call(t: ToolCallPart) -> dict[str, Any]:
         # From OpenAIModel, may not be the right format
         return {
-            'id': t.tool_call_id,
-            'type': 'function',
-            'function': {'name': t.tool_name, 'arguments': t.args_as_json_str()},
+            "id": t.tool_call_id,
+            "type": "function",
+            "function": {"name": t.tool_name, "arguments": t.args_as_json_str()},
         }
 
     @staticmethod
     def _map_user_prompt(part: UserPromptPart) -> dict[str, Any]:
         prompt: dict[str, Any] = {
-            'role': 'user',
+            "role": "user",
         }
         if isinstance(part.content, str):
-            prompt['content'] = part.content
+            prompt["content"] = part.content
         elif isinstance(part.content, list):
-            content = ''
+            content = ""
             file_urls = []
             for item in part.content:
                 match item:
@@ -216,13 +225,13 @@ class BeakerQueuesModel(Model):
                         file_urls.append(item.url)
                     case BinaryContent():
                         # Is this correct?
-                        file_urls.append(f'data:{item.media_type};base64,{base64.b64encode(item.data).decode("utf-8")}')
+                        file_urls.append(f"data:{item.media_type};base64,{base64.b64encode(item.data).decode('utf-8')}")
                     case _:
                         assert_never(item)  # type: ignore
             if file_urls:
-                prompt['file_urls'] = file_urls
+                prompt["file_urls"] = file_urls
             if content:
-                prompt['content'] = content
+                prompt["content"] = content
         else:
             assert_never(part.content)  # type: ignore
         return prompt
@@ -238,11 +247,11 @@ class BeakerQueuesModel(Model):
     @staticmethod
     def _map_tool_definition(f: ToolDefinition) -> dict[str, Any]:
         tool_param = {
-            'type': 'function',
-            'function': {
-                'name': f.name,
-                'description': f.description or '',
-                'parameters': f.parameters_json_schema,
+            "type": "function",
+            "function": {
+                "name": f.name,
+                "description": f.description or "",
+                "parameters": f.parameters_json_schema,
             },
         }
         # Needed?

@@ -18,10 +18,18 @@ from pydantic_ai.messages import (
     UserContent,
     UserPromptPart,
 )
+from pydantic_ai.settings import ModelSettings
 
-from src.dao.message import Message, Role
+from src.dao.message import InferenceOpts, Message, Role
 from src.message.create_message_service.files import FileUploadResult
 from src.message.message_chunk import Chunk, ModelResponseChunk, ThinkingChunk, ToolCallChunk
+
+
+def pydantic_settings_map(ops: InferenceOpts) -> ModelSettings:
+    # Not mapping "N" from InferenceOpts
+    return ModelSettings(
+        max_tokens=ops.max_tokens, temperature=ops.temperature, top_p=ops.top_p, stop_sequences=ops.stop or []
+    )
 
 
 def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent, message_id: str) -> Chunk:
@@ -52,7 +60,12 @@ def pydantic_map_messages(messages: list[Message], blob_map: dict[str, FileUploa
 
             model_messages.append(ModelRequest([user_prompt_part]))
         elif message.role == Role.Assistant:
-            assistant_message_parts: list[ModelResponsePart] = [TextPart(content=message.content)]
+            assistant_message_parts: list[ModelResponsePart] = []
+
+            if message.thinking is not None:
+                assistant_message_parts.append(ThinkingPart(content=message.thinking))
+
+            assistant_message_parts.append(TextPart(content=message.content))
 
             if message.tool_calls:
                 assistant_message_parts.extend(message.tool_calls)

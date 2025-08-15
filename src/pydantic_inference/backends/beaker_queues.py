@@ -89,6 +89,8 @@ class BeakerQueuesModel(Model):
         """Make a streaming request to the model."""
         check_allow_model_requests()  # Required for testing
 
+        # tools = self._get_tools(model_request_parameters)
+
         response = self._completions_create(
             messages=messages,
             model_settings=cast(dict[str, Any], model_settings or {}),
@@ -225,9 +227,17 @@ class BeakerQueuesModel(Model):
             assert_never(part.content)  # type: ignore
         return prompt
 
+    # Unused, but maybe need in future
+
+    def _get_tools(self, model_request_parameters: ModelRequestParameters) -> list[dict[str, Any]]:
+        tools = [self._map_tool_definition(r) for r in model_request_parameters.function_tools]
+        if model_request_parameters.output_tools:
+            tools += [self._map_tool_definition(r) for r in model_request_parameters.output_tools]
+        return tools
+
     @staticmethod
-    def _map_tool_definition(f: ToolDefinition) -> chat.ChatCompletionToolParam:
-        tool_param: chat.ChatCompletionToolParam = {
+    def _map_tool_definition(f: ToolDefinition) -> dict[str, Any]:
+        tool_param = {
             'type': 'function',
             'function': {
                 'name': f.name,
@@ -238,4 +248,4 @@ class BeakerQueuesModel(Model):
         # Needed?
         # if f.strict and OpenAIModelProfile.from_profile(self.profile).openai_supports_strict_tool_definition:
         #     tool_param['function']['strict'] = f.strict
-        return tool_param
+        return tool_param  # noqa: RET504

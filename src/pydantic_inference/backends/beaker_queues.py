@@ -184,15 +184,26 @@ class BeakerQueuesModel(Model):
                                 # From OpenAIModel
                                 # NOTE: We don't send ThinkingPart to the providers yet. If you are unsatisfied with this,
                                 # please open an issue. The below code is the code to send thinking to the provider.
-                                # texts.append(f'<think>\n{item.content}\n</think>')
+                                # if last_thinking_part_idx is not None:
+                                #     reasoning_item = cast(responses.ResponseReasoningItemParam, openai_messages[last_thinking_part_idx])
+                                #     if item.id == reasoning_item['id']:
+                                #         assert isinstance(reasoning_item['summary'], list)
+                                #         reasoning_item['summary'].append(Summary(text=item.content, type='summary_text'))
+                                #         continue
+                                # last_thinking_part_idx = len(openai_messages)
+                                # openai_messages.append(
+                                #     responses.ResponseReasoningItemParam(
+                                #         id=item.id or generate_tool_call_id(),
+                                #         summary=[Summary(text=item.content, type='summary_text')],
+                                #         type='reasoning',
+                                #     )
+                                # )
                                 pass
                             case ToolCallPart():
                                 tool_calls.append(self._map_tool_call(item))
-                            case BuiltinToolCallPart():
-                                # TODO: !!
-                                pass
-                            case BuiltinToolReturnPart():
-                                # TODO: !!
+                            case BuiltinToolCallPart() | BuiltinToolReturnPart():
+                                # OpenAI doesn't return built-in tool calls
+                                # TBD what we do here
                                 pass
                             case _:
                                 assert_never(item)  # pragma: no cover

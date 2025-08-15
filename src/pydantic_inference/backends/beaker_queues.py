@@ -12,6 +12,8 @@ from openai.types.chat import ChatCompletionChunk
 from pydantic_ai.messages import (
     AudioUrl,
     BinaryContent,
+    BuiltinToolCallPart,
+    BuiltinToolReturnPart,
     DocumentUrl,
     ImageUrl,
     ModelMessage,
@@ -28,6 +30,7 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.models import Model, ModelRequestParameters, check_allow_model_requests
 from pydantic_ai.models.openai import OpenAIStreamedResponse
+from pydantic_ai.profiles import ModelProfile
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.tools import ToolDefinition
 
@@ -40,26 +43,26 @@ MODEL_NO_RESPONSE_ERROR = "No response received from model"
 
 
 def get_beaker_queues_model(model_config: ModelConfig) -> Model:
-    return BeakerQueuesModel(model=model_config.model_id_on_host)
+    return BeakerQueuesModel(model_config=model_config)
 
 
 @dataclass(init=False)
 class BeakerQueuesModel(Model):
     """Beaker Queues Model for Pydantic AI."""
 
-    model: str
     beaker_client: Beaker
+    _model_profile: ModelProfile
     _model_name: str = field(init=False)
     _system: str = field(default="ai2", init=False)
 
-    def __init__(self, model: str, beaker_config: BeakerConfig | None = None) -> None:
+    def __init__(self, model_config: ModelConfig, beaker_config: BeakerConfig | None = None) -> None:
         """Initialize the model with a beaker client."""
         if not beaker_config:
             cfg = get_config()
             beaker_config = BeakerConfig(rpc_address=cfg.beaker.address, user_token=cfg.beaker.user_token)
 
-        self.model = model
-        self._model_name = model
+        self._model_name = model_config.model_id_on_host
+        self._model_profile = ModelProfile(supports_tools=model_config.can_call_tools)
         self.beaker_client = Beaker(beaker_config)
 
     @property
@@ -97,6 +100,7 @@ class BeakerQueuesModel(Model):
             model_settings=cast(dict[str, Any], model_settings or {}),
         )
         result = OpenAIStreamedResponse(
+            _model_profile=self._model_profile,
             _model_name=self._model_name,
             _response=response,
             _timestamp=datetime.now(UTC),
@@ -184,6 +188,12 @@ class BeakerQueuesModel(Model):
                                 pass
                             case ToolCallPart():
                                 tool_calls.append(self._map_tool_call(item))
+                            case BuiltinToolCallPart():
+                                # TODO: !!
+                                pass
+                            case BuiltinToolReturnPart():
+                                # TODO: !!
+                                pass
                             case _:
                                 assert_never(item)  # pragma: no cover
                     message_param: dict[str, Any] = {"role": "assistant"}
@@ -258,3 +268,4 @@ class BeakerQueuesModel(Model):
         # if f.strict and OpenAIModelProfile.from_profile(self.profile).openai_supports_strict_tool_definition:
         #     tool_param['function']['strict'] = f.strict
         return tool_param  # noqa: RET504
+

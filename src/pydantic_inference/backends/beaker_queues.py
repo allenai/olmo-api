@@ -133,8 +133,9 @@ class BeakerQueuesModel(Model):
             "model": q.id,
             "messages": new_messages,
             "stream": True,
-            "tools": tools,
-            "tool_choice": tool_choice,
+            # Beaker doesn't seem to like tools
+            # "tools": tools,
+            # "tool_choice": tool_choice,
             **model_settings,
         }
 

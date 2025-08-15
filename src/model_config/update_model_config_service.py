@@ -45,6 +45,7 @@ def update_model_config(
         model_to_update.deprecation_time = request.root.deprecation_time
         model_to_update.prompt_type = request.root.prompt_type
         model_to_update.can_call_tools = request.root.can_call_tools
+        model_to_update.can_think = request.can_think
 
         if isinstance(model_to_update, MultiModalModelConfig):
             multi_modal_request = cast(UpdateMultiModalModelConfigRequest, request.root)

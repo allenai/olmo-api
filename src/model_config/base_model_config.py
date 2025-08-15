@@ -19,6 +19,7 @@ class BaseModelConfigRequest(APIInterface):
     available_time: AwareDatetime | None = Field(default=None)
     deprecation_time: AwareDatetime | None = Field(default=None)
     can_call_tools: bool = Field(default=False)
+    can_think: bool = Field(default=False)
 
 
 class BaseTextOnlyModelConfigRequest(BaseModelConfigRequest):

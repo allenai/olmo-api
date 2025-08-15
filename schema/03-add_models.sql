@@ -23,7 +23,8 @@ VALUES (
         'CirrascaleBackend',
         'TEXT_ONLY',
         false
-    );
+    ) ON CONFLICT DO
+UPDATE;
 
 INSERT INTO model_config(
         id,
@@ -50,7 +51,8 @@ VALUES (
         'InferD',
         'TEXT_ONLY',
         false
-    );
+    ) ON CONFLICT DO
+UPDATE;
 
 INSERT INTO model_config(
         id,
@@ -77,7 +79,8 @@ VALUES (
         'Modal',
         'MULTI_MODAL',
         false
-    );
+    ) ON CONFLICT DO
+UPDATE;
 
 INSERT INTO multi_modal_model_config(
         id,
@@ -92,7 +95,8 @@ VALUES (
         1,
         'FirstMessage',
         'false'
-    );
+    ) ON CONFLICT DO
+UPDATE;
 
 
 
@@ -121,7 +125,8 @@ VALUES (
         'Modal',
         'FILES_ONLY',
         true
-    );
+    ) ON CONFLICT DO
+UPDATE;
 
 INSERT INTO multi_modal_model_config(
         id,
@@ -136,7 +141,8 @@ VALUES (
         1,
         'AllMessages',
         'false'
-    );
+    ) ON CONFLICT DO
+UPDATE;
 
 INSERT INTO model_config(
         id,
@@ -165,7 +171,8 @@ VALUES (
         'TEXT_ONLY',
         true,
         true
-    );
+    ) ON CONFLICT DO
+UPDATE;
 
 INSERT INTO model_config(
         id,
@@ -194,7 +201,8 @@ VALUES (
         'TEXT_ONLY',
         true,
         true
-    );
+    ) ON CONFLICT DO
+UPDATE;
 
 
 INSERT INTO model_config(
@@ -224,4 +232,5 @@ VALUES (
         'TEXT_ONLY',
         true,
         false
-    );
+    ) ON CONFLICT DO
+UPDATE;

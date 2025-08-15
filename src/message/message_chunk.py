@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import Field, computed_field, field_validator
+from pydantic import computed_field
 
 from src import obj
 from src.api_interface import APIInterface
@@ -20,14 +20,13 @@ class BaseChunk(APIInterface):
 
 
 class ModelResponseChunk(BaseChunk):
-    type: Literal[ChunkType.MODEL_RESPONSE] = Field(default=ChunkType.MODEL_RESPONSE, init=False)
-    content: str
-
     # HACK: This lets us make `type` required in the schema while also not requiring it in the init
-    @field_validator("type", mode="before")
-    @classmethod
-    def add_type(cls, _v):
+    @computed_field  # type: ignore
+    @property
+    def type(self) -> Literal[ChunkType.MODEL_RESPONSE]:
         return ChunkType.MODEL_RESPONSE
+
+    content: str
 
 
 class ToolCallChunk(BaseChunk):

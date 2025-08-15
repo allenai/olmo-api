@@ -1,25 +1,36 @@
+import base64
 from collections.abc import AsyncIterable, AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, cast
+from typing import Any, assert_never, cast
 
 from beaker import Beaker
 from beaker.config import Config as BeakerConfig
 from google.protobuf import json_format
+from openai.types import chat
 from openai.types.chat import ChatCompletionChunk
 from pydantic_ai.messages import (
+    AudioUrl,
+    BinaryContent,
+    DocumentUrl,
     ImageUrl,
     ModelMessage,
     ModelRequest,
     ModelResponse,
+    RetryPromptPart,
     SystemPromptPart,
     TextPart,
+    ThinkingPart,
+    ToolCallPart,
+    ToolReturnPart,
     UserPromptPart,
+    VideoUrl,
 )
 from pydantic_ai.models import Model, ModelRequestParameters, check_allow_model_requests
 from pydantic_ai.models.openai import OpenAIStreamedResponse
 from pydantic_ai.settings import ModelSettings
+from pydantic_ai.tools import ToolDefinition
 
 from src.config.get_config import get_config
 from src.dao.engine_models.model_config import ModelConfig
@@ -50,7 +61,15 @@ class BeakerQueuesModel(Model):
         self._model_name = model
         self.beaker_client = Beaker(beaker_config)
 
-    # non streaming, not implemented 
+    @property
+    def model_name(self) -> str:
+        return self._model_name
+
+    @property
+    def system(self) -> str:
+        return self._system
+
+    # non streaming, not implemented
     async def request(
         self,
         messages: list[ModelMessage],
@@ -88,7 +107,7 @@ class BeakerQueuesModel(Model):
     ) -> AsyncIterable[ChatCompletionChunk]:
         q = self.beaker_client.queue.get(self._model_name)
 
-        new_messages = beaker_queues_map_pydantic_messages_to_dict(messages)
+        new_messages = self._map_messages(messages)
 
         queue_input = {
             "model": q.id,
@@ -118,44 +137,105 @@ class BeakerQueuesModel(Model):
                 # TODO: maybe handle this?
                 continue
 
-    async def _process_streamed_response(self, response: AsyncIterable[ChatCompletionChunk]) -> OpenAIStreamedResponse:
-        return OpenAIStreamedResponse(
-            _model_name=self._model_name,
-            _response=response,
-            _timestamp=datetime.now(UTC),
-        )
+    def _map_messages(self, model_messages: list[ModelMessage]) -> list[dict]:
+        messages: list[dict] = []
+        for msg in model_messages:
+            match msg:
+                case ModelRequest():
+                    for part in msg.parts:
+                        match part:
+                            case UserPromptPart():
+                                messages.append(self._map_user_prompt(part))
+                                # content = "".join(c for c in part.content if isinstance(c, str))
+                                # file_urls = [c.url for c in part.content if isinstance(c, ImageUrl)]
+                                # messages.append({"role": "user", "content": content, "file_urls": file_urls})
+                            case SystemPromptPart():
+                                messages.append({"role": "system", "content": part.content})
+                            case ToolReturnPart():
+                                # openapi guard tool_call_id, if its None, it generates a uuid based new one
+                                messages.append({"role": "tool", "tool_call_id": part.tool_call_id, "content": part.model_response_str()})
+                            case RetryPromptPart():
+                                if part.tool_name is None:
+                                    messages.append({"role": "user", "content": part.model_response()})
+                                else:
+                                    messages.append({"role": "tool", "tool_call_id": part.tool_call_id, "content": part.model_response()})
+                            case _:
+                                assert_never(part)
+                case ModelResponse():
+                    # content = "".join(part.content for part in msg.parts if isinstance(part, TextPart))
+                    # messages.append({"role": "assistant", "content": content})
+                    texts: list[str] = []
+                    tool_calls: list[dict] = []
+                    for item in msg.parts:
+                        match item:
+                            case TextPart():
+                                texts.append(item.content)
+                            case ThinkingPart():
+                                # NOTE: We don't send ThinkingPart to the providers yet. If you are unsatisfied with this,
+                                # please open an issue. The below code is the code to send thinking to the provider.
+                                # texts.append(f'<think>\n{item.content}\n</think>')
+                                pass
+                            case ToolCallPart():
+                                tool_calls.append(self._map_tool_call(item))
+                            case _:
+                                assert_never(item)  # pragma: no cover
+                    message_param: dict[str, Any] = {"role": "assistant"}
+                    if texts:
+                        # Note: model responses from this model should only have one text item, so the following
+                        # shouldn't merge multiple texts into one unless you switch models between runs:
+                        message_param['content'] = '\n\n'.join(texts)
+                    if tool_calls:
+                        message_param['tool_calls'] = tool_calls
+                    messages.append(message_param)
 
-    # from openai, could be useful?
-    #
-    # def _get_tools(self, model_request_parameters: ModelRequestParameters) -> list[responses.FunctionToolParam]:
-    #     tools = [self._map_tool_definition(r) for r in model_request_parameters.function_tools]
-    #     if model_request_parameters.output_tools:
-    #         tools += [self._map_tool_definition(r) for r in model_request_parameters.output_tools]
-    #     return tools
+        return messages
 
-    @property
-    def model_name(self) -> str:
-        return self._model_name
+    @staticmethod
+    def _map_tool_call(t: ToolCallPart) -> dict[str, Any]:
+        return {
+            'id': t.tool_call_id,
+            'type': 'function',
+            'function': {'name': t.tool_name, 'arguments': t.args_as_json_str()},
+        }
 
-    @property
-    def system(self) -> str:
-        return self._system
+    @staticmethod
+    def _map_user_prompt(part: UserPromptPart) -> dict[str, Any]:
+        prompt: dict[str, Any] = {
+            'role': 'user',
+        }
+        if isinstance(part.content, str):
+            prompt['content'] = part.content
+        elif isinstance(part.content, list):
+            content = ''
+            file_urls = []
+            for item in part.content:
+                match item:
+                    case str():
+                        content += item
+                    case ImageUrl(), AudioUrl(), DocumentUrl(), VideoUrl():
+                        file_urls.append(item.url)
+                    case BinaryContent():
+                        file_urls.append(f'data:{item.media_type};base64,{base64.b64encode(item.data).decode("utf-8")}')
+                    case _:
+                        assert_never(item)  # type: ignore
+            if file_urls:
+                prompt['file_urls'] = file_urls
+            if content:
+                prompt['content'] = content
+        else:
+            assert_never(part.content)  # type: ignore
+        return prompt
 
-def beaker_queues_map_pydantic_messages_to_dict(model_messages: list[ModelMessage]) -> list[dict]:
-    messages: list[dict] = []
-    for msg in model_messages:
-        match msg:
-            case ModelRequest():
-                for part in msg.parts:
-                    match part:
-                        case UserPromptPart():
-                            content = "".join(c for c in part.content if isinstance(c, str))
-                            file_urls = [c.url for c in part.content if isinstance(c, ImageUrl)]
-                            messages.append({"role": "user", "content": content, "file_urls": file_urls})
-                        case SystemPromptPart():
-                            messages.append({"role": "system", "content": part.content})
-            case ModelResponse():
-                content = "".join(part.content for part in msg.parts if isinstance(part, TextPart))
-                messages.append({"role": "assistant", "content": content})
-
-    return messages
+    @staticmethod
+    def _map_tool_definition(f: ToolDefinition) -> chat.ChatCompletionToolParam:
+        tool_param: chat.ChatCompletionToolParam = {
+            'type': 'function',
+            'function': {
+                'name': f.name,
+                'description': f.description or '',
+                'parameters': f.parameters_json_schema,
+            },
+        }
+        # if f.strict and OpenAIModelProfile.from_profile(self.profile).openai_supports_strict_tool_definition:
+        #     tool_param['function']['strict'] = f.strict
+        return tool_param

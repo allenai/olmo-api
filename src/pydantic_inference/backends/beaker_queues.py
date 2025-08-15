@@ -50,7 +50,7 @@ class BeakerQueuesModel(Model):
     model: str
     beaker_client: Beaker
     _model_name: str = field(init=False)
-    _system: str = field(default="system", init=False)
+    _system: str = field(default="ai2", init=False)
 
     def __init__(self, model: str, beaker_config: BeakerConfig | None = None) -> None:
         """Initialize the model with a beaker client."""

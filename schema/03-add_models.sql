@@ -151,7 +151,7 @@ INSERT INTO model_config(
         prompt_type,
         internal,
         can_call_tools,
-        thinking_level
+        can_think
     )
 VALUES (
         'qwen3-openai',

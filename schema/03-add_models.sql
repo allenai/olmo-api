@@ -150,7 +150,8 @@ INSERT INTO model_config(
         host,
         prompt_type,
         internal,
-        can_call_tools
+        can_call_tools,
+        thinking_level
     )
 VALUES (
         'qwen3-openai',
@@ -163,6 +164,7 @@ VALUES (
         NULL,
         'ModalOpenAI',
         'TEXT_ONLY',
+        true,
         true,
         true
     ) ON CONFLICT DO NOTHING;

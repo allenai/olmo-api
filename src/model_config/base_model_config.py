@@ -3,7 +3,13 @@ from typing import Literal
 from pydantic import AwareDatetime, ByteSize, Field
 
 from src.api_interface import APIInterface
-from src.dao.engine_models.model_config import FileRequiredToPromptOption, ModelHost, ModelType, PromptType
+from src.dao.engine_models.model_config import (
+    FileRequiredToPromptOption,
+    ModelHost,
+    ModelType,
+    PromptType,
+
+)
 
 
 class BaseModelConfigRequest(APIInterface):
@@ -19,6 +25,7 @@ class BaseModelConfigRequest(APIInterface):
     available_time: AwareDatetime | None = Field(default=None)
     deprecation_time: AwareDatetime | None = Field(default=None)
     can_call_tools: bool = Field(default=False)
+    can_think: bool = Field(default=False)
 
 
 class BaseTextOnlyModelConfigRequest(BaseModelConfigRequest):

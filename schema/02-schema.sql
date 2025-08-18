@@ -797,5 +797,11 @@ ALTER TABLE message ALTER COLUMN tool_calls TYPE JSONB[];
 
 UPDATE alembic_version SET version_num='51ded224eed6' WHERE alembic_version.version_num = 'ba2462b3122c';
 
+-- Running upgrade 51ded224eed6 -> a48c549f771e
+
+ALTER TABLE model_config ADD COLUMN can_think BOOLEAN DEFAULT 'false' NOT NULL;
+
+UPDATE alembic_version SET version_num='a48c549f771e' WHERE alembic_version.version_num = '51ded224eed6';
+
 COMMIT;
 

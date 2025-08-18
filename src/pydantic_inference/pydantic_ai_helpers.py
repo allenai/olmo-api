@@ -18,17 +18,23 @@ from pydantic_ai.messages import (
     UserContent,
     UserPromptPart,
 )
-from pydantic_ai.settings import ModelSettings
+from pydantic_ai.models.openai import OpenAIModelSettings
 
+from src.dao.engine_models.model_config import ModelConfig
 from src.dao.message import InferenceOpts, Message, Role
 from src.message.create_message_service.files import FileUploadResult
 from src.message.message_chunk import Chunk, ModelResponseChunk, ThinkingChunk, ToolCallChunk
 
 
-def pydantic_settings_map(ops: InferenceOpts) -> ModelSettings:
+def pydantic_settings_map(ops: InferenceOpts, model_config: ModelConfig) -> OpenAIModelSettings:
     # Not mapping "N" from InferenceOpts
-    return ModelSettings(
-        max_tokens=ops.max_tokens, temperature=ops.temperature, top_p=ops.top_p, stop_sequences=ops.stop or []
+
+    return OpenAIModelSettings(
+        max_tokens=ops.max_tokens,
+        temperature=ops.temperature,
+        top_p=ops.top_p,
+        stop_sequences=ops.stop or [],
+        openai_reasoning_effort="low" if model_config.can_think else None,
     )
 
 

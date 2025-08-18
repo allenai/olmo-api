@@ -26,6 +26,7 @@ class BaseResponseModel(APIInterface):
     order: int
     default_system_prompt: str | None = Field(default=None)
     can_call_tools: bool
+    can_think: bool
 
     @computed_field  # type:ignore
     @property

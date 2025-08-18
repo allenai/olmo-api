@@ -34,7 +34,7 @@ def pydantic_settings_map(ops: InferenceOpts, model_config: ModelConfig) -> Open
         temperature=ops.temperature,
         top_p=ops.top_p,
         stop_sequences=ops.stop or [],
-        openai_reasoning_effort='low' if model_config.can_think else None,
+        openai_reasoning_effort="low" if model_config.can_think else None,
     )
 
 

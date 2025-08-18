@@ -133,6 +133,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
             model_type=ModelType.Chat,
             host=ModelHost.InferD,
             prompt_type=PromptType.TEXT_ONLY,
+            can_think=True,
         )
 
         create_response = self.create_model(create_model_request)
@@ -141,6 +142,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         created_model = create_response.json()
         assert created_model.get("createdTime") is not None
         assert created_model.get("modelType") == "chat"
+        assert created_model.get("canThink") is True
 
         get_models_response = requests.get(self.model_config_endpoint, headers=self.auth(self.client))
         get_models_response.raise_for_status()
@@ -306,6 +308,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
             host=ModelHost.Modal,
             prompt_type=PromptType.TEXT_ONLY,
             can_call_tools=True,
+            can_think=True,
         )
         update_model_response = requests.put(
             self.model_config_endpoint + "/" + model_id,
@@ -327,6 +330,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert updated_model.get("name") == "updated model made for testing"
         assert updated_model.get("modelType") == "base"
         assert updated_model.get("canCallTools") is True
+        assert updated_model.get("canThink") is True
 
     def test_should_update_a_multi_modal_model(self):
         model_id = "test-model-" + str(uuid4())

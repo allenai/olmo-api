@@ -12,7 +12,6 @@ import src.dao.message.message_models as message
 from src import db, parse
 from src.auth.token import Token
 from src.config.get_config import cfg
-from src.dao import completion
 from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import ModelConfig
 from src.dao.engine_models.tool_call import ToolCall
@@ -262,7 +261,7 @@ def repair_children(msg_chain: list[Message]):
 
 def stream_assistant_response(
     request: CreateMessageRequestWithFullMessages,
-    dbc: db.Client,
+    message_repository: BaseMessageRepository,
     message_chain: list[Message],
     model: ModelConfig,
     agent: Token,
@@ -376,37 +375,30 @@ def stream_assistant_response(
 
     message_completion = None
     if not agent.is_anonymous_user:
-        message_completion = dbc.completion.create(
-            prompt,
-            [completion.CompletionOutput(output, str(finish_reason), logprobs)],
-            request.opts,
-            model.model_id_on_host,
-            sha,
-            tokenize_ms=-1,
-            generation_ms=gen,
-            queue_ms=0,
-            input_tokens=stream_metrics.input_token_count or -1,
-            output_tokens=stream_metrics.output_token_count or -1,
-        )
-
-    # TODO move to new stuff...
-    final_reply = dbc.message.finalize(
-        reply.id,
-        output,
-        logprobs,
-        message_completion.id if message_completion is not None else None,
-        finish_reason,
-        tool_calls=tool_parts,
-        thinking=thinking,
-    )
+        pass
+        # TODO Fix
+        # message_completion = dbc.completion.create(
+        #     prompt,
+        #     [completion.CompletionOutput(output, str(finish_reason), logprobs)],
+        #     request.opts,
+        #     model.model_id_on_host,
+        #     sha,
+        #     tokenize_ms=-1,
+        #     generation_ms=gen,
+        #     queue_ms=0,
+        #     input_tokens=stream_metrics.input_token_count or -1,
+        #     output_tokens=stream_metrics.output_token_count or -1,
+        # )
 
     reply.content = output
-    reply.logprobs = logprobs
+    #   reply.logprobs = logprobs # TODO Figure out log props
     reply.finish_reason = finish_reason
     reply.tool_calls = tool_parts
     reply.final = True
     reply.completion = message_completion.id if message_completion is not None else None
     reply.thinking = thinking or None
+
+    final_reply = message_repository.update(reply)
 
     if final_reply is None:
         final_reply_error = RuntimeError(f"failed to finalize message {reply.id}")

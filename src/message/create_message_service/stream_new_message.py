@@ -13,7 +13,10 @@ from src import db, parse
 from src.auth.token import Token
 from src.config.get_config import cfg
 from src.dao import completion
+from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import ModelConfig
+from src.dao.engine_models.tool_call import ToolCall
+from src.dao.message.message_repository import BaseMessageRepository
 from src.inference.inference_service import get_engine
 from src.inference.InferenceEngine import (
     FinishReason,
@@ -31,7 +34,12 @@ from src.message.SafetyChecker import (
     SafetyCheckerType,
 )
 from src.message.stream_message import StreamMetrics, stream_message_chunks
-from src.pydantic_inference.pydantic_ai_helpers import pydantic_map_chunk, pydantic_map_messages, pydantic_settings_map
+from src.pydantic_inference.pydantic_ai_helpers import (
+    map_pydantic_tool_to_db_tool,
+    pydantic_map_chunk,
+    pydantic_map_messages,
+    pydantic_settings_map,
+)
 from src.pydantic_inference.pydantic_model_service import get_pydantic_model
 from src.util.generator_with_return_value import GeneratorWithReturnValue
 
@@ -55,17 +63,18 @@ def create_new_message(
     safety_check_elapsed_time: float,
     start_time_ns: int,
     agent: Token,
+    message_repository: BaseMessageRepository,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     *,
     is_message_harmful: bool | None = None,
-) -> message.Message | Generator[message.Message | message.MessageChunk | message.MessageStreamError | Chunk]:
+) -> message.Message | Generator[Message | message.MessageChunk | message.MessageStreamError | Chunk]:
     if request.role == message.Role.Assistant:
         if request.parent is None:
             error_message = "parent is required for creating assistant message"
             raise ValueError(error_message)
 
         assistant_message = create_assistant_message(
-            dbc, request.content, request, model, request.parent.id, request.parent.root, agent
+            message_repository, request.content, request, model, request.parent.id, request.parent.root, agent
         )
         final_message = dbc.message.finalize(assistant_message.id)
         if final_message is None:
@@ -82,6 +91,7 @@ def create_new_message(
         safety_check_elapsed_time,
         start_time_ns,
         agent,
+        message_repository,
         checker_type,
         is_message_harmful=is_message_harmful,
     )
@@ -95,22 +105,24 @@ def stream_new_message(
     safety_check_elapsed_time: float,
     start_time_ns: int,
     agent: Token,
+    message_repository: BaseMessageRepository,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     *,
     is_message_harmful: bool | None = None,
-) -> Generator[message.Message | message.MessageChunk | message.MessageStreamError | Chunk]:
+) -> Generator[Message | message.MessageChunk | message.MessageStreamError | Chunk]:
     message_chain = setup_msg_thread(
-        dbc=dbc,
+        message_repository,
         model=model,
         request=request,
         agent=agent,
         is_msg_harmful=is_message_harmful,
     )
     user_message = create_user_message(
-        dbc=dbc,
+        message_repository,
         parent=message_chain[-1] if len(message_chain) > 0 else None,
         request=request,
         agent=agent,
+        model=model,
         is_msg_harmful=is_message_harmful,
     )
     message_chain.append(user_message)
@@ -139,7 +151,7 @@ def stream_new_message(
             first_chunk_ns=None, input_token_count=None, output_token_count=None, total_generation_ns=None
         )
         reply = create_assistant_message(
-            dbc=dbc,
+            message_repository,
             content="",
             request=request,
             model=model,
@@ -161,7 +173,7 @@ def stream_new_message(
             for tool in reply.tool_calls:
                 tool_response = call_tool(tool)
                 tool_msg = create_tool_response_message(
-                    dbc=dbc, content=tool_response.content, parent_message=last_msg, source_tool=tool
+                    message_repository, content=tool_response.content, parent_message=last_msg, source_tool=tool
                 )
                 message_chain.append(tool_msg)
 
@@ -189,8 +201,8 @@ def stream_new_message(
 
 
 def log_create_message_stats(
-    user_message: message.Message,
-    reply: message.Message,
+    user_message: Message,
+    reply: Message,
     start_time_ns: int,
     safety_check_elapsed_time: float,
     model: ModelConfig,
@@ -215,7 +227,7 @@ def log_create_message_stats(
         )
 
 
-def finalize_messages(dbc: db.Client, message_chain: list[message.Message], user_message: message.Message):
+def finalize_messages(dbc: db.Client, message_chain: list[Message], user_message: Message):
     if message_chain[0].final is False and message_chain[0].role == message.Role.System:
         system_msg = message_chain[0]
         final_system_message = dbc.message.finalize(system_msg.id)
@@ -241,7 +253,8 @@ def finalize_messages(dbc: db.Client, message_chain: list[message.Message], user
             raise final_message_error
 
 
-def repair_children(msg_chain: list[message.Message]):
+def repair_children(msg_chain: list[Message]):
+    # TODO check if we still need this...
     for i, msg in enumerate(msg_chain):
         next_msg = msg_chain[i + 1] if i < len(msg_chain) - 1 else None
         msg.children = [next_msg] if next_msg else None
@@ -250,12 +263,12 @@ def repair_children(msg_chain: list[message.Message]):
 def stream_assistant_response(
     request: CreateMessageRequestWithFullMessages,
     dbc: db.Client,
-    message_chain: list[message.Message],
+    message_chain: list[Message],
     model: ModelConfig,
     agent: Token,
     blob_map: dict[str, FileUploadResult],
-    msg: message.Message,
-    reply: message.Message,
+    msg: Message,
+    reply: Message,
     stream_metrics: StreamMetrics,
 ) -> Generator[message.MessageChunk | message.MessageStreamError | Chunk, Any, None]:
     """
@@ -265,7 +278,7 @@ def stream_assistant_response(
     sha = os.environ.get("SHA") or "DEV"
     start_generation_ns = time_ns()
 
-    tool_parts: list[ToolCallPart] = []
+    tool_parts: list[ToolCall] = []
     # Now yield each chunk as it's returned.
     finish_reason: FinishReason | None = None
     # We keep track of each chunk and the timing information per-chunk
@@ -297,7 +310,11 @@ def stream_assistant_response(
         full_response = stream.get()
         text_part = next((part for part in full_response.parts if part.part_kind == "text"), None)
         thinking_part = next((part for part in full_response.parts if part.part_kind == "thinking"), None)
-        tool_parts = [part for part in full_response.parts if isinstance(part, ToolCallPart)]
+        tool_parts = [
+            map_pydantic_tool_to_db_tool(reply.id, part)
+            for part in full_response.parts
+            if isinstance(part, ToolCallPart)
+        ]
 
         stream_metrics.first_chunk_ns = first_chunk_ns
         stream_metrics.input_token_count = -1
@@ -372,6 +389,7 @@ def stream_assistant_response(
             output_tokens=stream_metrics.output_token_count or -1,
         )
 
+    # TODO move to new stuff...
     final_reply = dbc.message.finalize(
         reply.id,
         output,
@@ -396,7 +414,7 @@ def stream_assistant_response(
         raise final_reply_error
 
 
-def prepare_yield_message_chain(message_chain: list[message.Message], user_message: message.Message):
+def prepare_yield_message_chain(message_chain: list[Message], user_message: Message):
     user_message_index = next((i for i, message in enumerate(message_chain) if message.id == user_message.id), -1)
 
     repair_children(message_chain)
@@ -426,7 +444,7 @@ def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> message.MessageCh
 
 
 def create_prompt_from_engine_input(
-    input_list: list[message.Message],
+    input_list: list[Message],
 ) -> str:
     return "\n".join([f"<|{m.role}|>\n{m.content}" for m in input_list])
 

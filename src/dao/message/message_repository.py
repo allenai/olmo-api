@@ -22,6 +22,13 @@ class BaseMessageRepository(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
+    def get_message_by_id(
+        self,
+        message_id: obj.ID,
+    ) -> Message | None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def update(self, message: Message) -> Message:
         raise NotImplementedError
 
@@ -64,6 +71,19 @@ class MessageRepository(BaseMessageRepository):
         )
 
         return self.session.scalars(query).unique().all()
+
+    def get_message_by_id(
+        self,
+        message_id: obj.ID,
+    ):
+        query = (
+            select(Message)
+            .where(Message.root == message_id)
+            .where(or_(Message.expiration_time == None, Message.expiration_time > func.now()))  # noqa: E711
+        )
+
+        results = self.session.scalars(query).unique().all()
+        return results[0]
 
     def update(self, message: Message) -> Message:
         message_to_update = self.session.get_one(Message, message.id)

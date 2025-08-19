@@ -12,8 +12,9 @@ from sqlalchemy.orm import Session, sessionmaker
 import src.dao.message.message_models as message
 from src import db
 from src.api_interface import APIInterface
-from src.auth.resource_protectors import anonymous_auth_protector
 from src.auth.auth_service import authn
+from src.auth.resource_protectors import anonymous_auth_protector
+from src.dao.engine_models.message import Message
 from src.dao.flask_sqlalchemy_session import current_session
 from src.dao.message.message_repository import MessageRepository
 from src.error import handle_validation_error
@@ -30,7 +31,7 @@ from src.thread.thread_models import Thread
 
 
 def format_messages(
-    stream_generator: Generator[message.Message | message.MessageChunk | message.MessageStreamError | Chunk],
+    stream_generator: Generator[Message | message.MessageChunk | message.MessageStreamError | Chunk],
 ) -> Generator[str, Any, None]:
     try:
         for stream_message in stream_generator:
@@ -92,6 +93,7 @@ def create_threads_blueprint(
                 dbc,
                 storage_client=storage_client,
                 session_maker=session_maker,
+                message_repository=MessageRepository(current_session),
             )
             if isinstance(stream_response, Generator):
                 return Response(stream_with_context(format_messages(stream_response)), mimetype="application/jsonl")

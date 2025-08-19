@@ -802,9 +802,9 @@ UPDATE alembic_version SET version_num='51ded224eed6' WHERE alembic_version.vers
 ALTER TABLE model_config ADD COLUMN can_think BOOLEAN DEFAULT 'false' NOT NULL;
 
 UPDATE alembic_version SET version_num='a48c549f771e' WHERE alembic_version.version_num = '51ded224eed6';
--- Running upgrade 51ded224eed6 -> 87f54c8af836
 
--- TODO fix order of upgrades
+-- Running upgrade a48c549f771e -> 4d2a2b90d61d
+
 CREATE TABLE tool_call (
     tool_call_id VARCHAR NOT NULL, 
     tool_name VARCHAR NOT NULL, 
@@ -814,11 +814,11 @@ CREATE TABLE tool_call (
     FOREIGN KEY(message_id) REFERENCES message (id)
 );
 
-ALTER TABLE message DROP COLUMN tool_calls;
-
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE tool_call TO app;
 
-UPDATE alembic_version SET version_num='87f54c8af836' WHERE alembic_version.version_num = '51ded224eed6';
+ALTER TABLE message DROP COLUMN tool_calls;
+
+UPDATE alembic_version SET version_num='4d2a2b90d61d' WHERE alembic_version.version_num = 'a48c549f771e';
 
 COMMIT;
 

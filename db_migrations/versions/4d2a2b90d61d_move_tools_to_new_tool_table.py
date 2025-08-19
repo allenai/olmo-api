@@ -1,8 +1,8 @@
-"""add a tool call table
+"""move tools to new tool table
 
-Revision ID: 87f54c8af836
-Revises: 51ded224eed6
-Create Date: 2025-08-12 09:37:16.332693
+Revision ID: 4d2a2b90d61d
+Revises: a48c549f771e
+Create Date: 2025-08-19 15:23:10.136744
 
 """
 
@@ -13,8 +13,8 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "87f54c8af836"
-down_revision: str | None = "51ded224eed6"
+revision: str = "4d2a2b90d61d"
+down_revision: str | None = "a48c549f771e"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -34,8 +34,8 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("tool_call_id"),
     )
-    op.drop_column("message", "tool_calls")
     op.execute(sqltext="GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE tool_call TO app")
+    op.drop_column("message", "tool_calls")
 
     # ### end Alembic commands ###
 

@@ -36,7 +36,7 @@ def format_messages(
     try:
         for stream_message in stream_generator:
             match stream_message:
-                case message.Message():
+                case Message():
                     flat_messages = Thread.from_message(stream_message)
 
                     yield format_message(flat_messages)

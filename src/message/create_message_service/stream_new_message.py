@@ -84,7 +84,6 @@ def create_new_message(
 
     return stream_new_message(
         request,
-        dbc,
         storage_client,
         model,
         safety_check_elapsed_time,
@@ -98,7 +97,6 @@ def create_new_message(
 
 def stream_new_message(
     request: CreateMessageRequestWithFullMessages,
-    dbc: db.Client,
     storage_client: GoogleCloudStorage,
     model: ModelConfig,
     safety_check_elapsed_time: float,
@@ -164,7 +162,7 @@ def stream_new_message(
 
         start_message_generation_ns = time_ns()
         yield from stream_assistant_response(
-            request, dbc, message_chain, model, agent, blob_map, user_message, reply, stream_metrics
+            request, message_repository, message_chain, model, agent, blob_map, user_message, reply, stream_metrics
         )
 
         if reply.tool_calls is not None and len(reply.tool_calls) > 0:
@@ -176,7 +174,7 @@ def stream_new_message(
                 )
                 message_chain.append(tool_msg)
 
-        yield from finalize_messages(dbc, message_chain, user_message)
+        yield from finalize_messages(message_repository, message_chain, user_message)
 
         log_create_message_stats(
             user_message,
@@ -226,11 +224,11 @@ def log_create_message_stats(
         )
 
 
-def finalize_messages(dbc: db.Client, message_chain: list[Message], user_message: Message):
+def finalize_messages(message_repository: BaseMessageRepository, message_chain: list[Message], user_message: Message):
     if message_chain[0].final is False and message_chain[0].role == message.Role.System:
         system_msg = message_chain[0]
-        final_system_message = dbc.message.finalize(system_msg.id)
         system_msg.final = True
+        final_system_message = message_repository.update(system_msg)
 
         if final_system_message is None:
             final_system_message_error = RuntimeError(f"failed to finalize message {system_msg.id}")
@@ -242,8 +240,8 @@ def finalize_messages(dbc: db.Client, message_chain: list[Message], user_message
             raise final_system_message_error
 
     if user_message.final is False:
-        final_message = dbc.message.finalize(user_message.id, file_urls=user_message.file_urls)
         user_message.final = True
+        final_message = message_repository.update(user_message)
         if final_message is None:
             final_message_error = RuntimeError(f"failed to finalize message {user_message.id}")
             yield message.MessageStreamError(
@@ -254,6 +252,7 @@ def finalize_messages(dbc: db.Client, message_chain: list[Message], user_message
 
 def repair_children(msg_chain: list[Message]):
     # TODO check if we still need this...
+    return
     for i, msg in enumerate(msg_chain):
         next_msg = msg_chain[i + 1] if i < len(msg_chain) - 1 else None
         msg.children = [next_msg] if next_msg else None

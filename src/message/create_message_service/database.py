@@ -48,6 +48,8 @@ def setup_msg_thread(
             private=request.private,
             harmful=is_msg_harmful,
             expiration_time=message_expiration_time,
+            tool_calls=[],
+            file_urls=[],
         )
 
         message_repository.add(system_msg)
@@ -99,6 +101,8 @@ def create_user_message(
         private=request.private,
         harmful=is_msg_harmful,
         expiration_time=message_expiration_time,
+        tool_calls=[],
+        file_urls=[],
     )
     return message_repository.add(message)
 
@@ -123,6 +127,7 @@ def create_tool_response_message(
         harmful=False,
         expiration_time=parent_message.expiration_time,
         tool_calls=[source_tool],
+        file_urls=[],
     )
     return message_repository.add(message)
 
@@ -150,5 +155,7 @@ def create_assistant_message(
         private=request.private,
         model_type=model.model_type,
         expiration_time=message_expiration_time,
+        tool_calls=[],
+        file_urls=[],
     )
     return message_repository.add(message)

@@ -5,7 +5,6 @@ from typing import Any
 from psycopg import errors
 from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool
-from pydantic_ai.messages import ToolCallPart
 from werkzeug import exceptions
 
 from src import obj
@@ -22,13 +21,6 @@ def prepare_logprobs(
     # TODO: logprobs is a JSONB[] field now, but should probably be JSONB[][]; though this only
     # matters if we decide we want to query by index, which seems unlikely.
     return [Jsonb([asdict(lp) for lp in lps]) for lps in logprobs]
-
-
-def prepare_tool_calls(tool_calls: list[ToolCallPart] | None) -> list[Jsonb] | None:
-    if tool_calls is None:
-        return None
-
-    return [Jsonb(asdict(tool_call)) for tool_call in tool_calls]
 
 
 class Store:
@@ -90,7 +82,6 @@ class Store:
                             expiration_time,
                             file_urls,
                             thinking,
-                            tool_calls,
                             -- The trailing NULLs are for labels that wouldn't make sense to try
                             -- to JOIN. This simplifies the code for unpacking things.
                             NULL,
@@ -271,7 +262,6 @@ class Store:
         finish_reason: str | None = None,
         harmful: bool | None = None,
         file_urls: list[str] | None = None,
-        tool_calls: list[ToolCallPart] | None = None,
         thinking: str | None = None,
     ) -> Message | None:
         """
@@ -289,7 +279,6 @@ class Store:
                             finish_reason = COALESCE(%(finish_reason)s, finish_reason),
                             harmful = COALESCE(%(harmful)s, harmful),
                             file_urls= COALESCE(%(file_urls)s, file_urls),
-                            tool_calls= COALESCE(%(tool_calls)s, tool_calls),
                             thinking = COALESCE(%(thinking)s, thinking),
  
                             final = true
@@ -339,7 +328,6 @@ class Store:
                         "harmful": harmful,
                         "file_urls": file_urls,
                         "id": id,
-                        "tool_calls": prepare_tool_calls(tool_calls),
                         "thinking": thinking,
                     },
                 ).fetchone()

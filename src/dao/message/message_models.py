@@ -178,7 +178,6 @@ class Message:
     labels: list[label.Label] = field(default_factory=list)
     file_urls: list[str] | None = None
     thinking: str | None = None
-    tool_calls: list[ToolCall] = field(default_factory=list)
 
     def flatten(self) -> list["Message"]:
         if self.children is None:
@@ -193,7 +192,7 @@ class Message:
     def from_row(r: MessageRow) -> "Message":
         labels = []
         # If the label id is not None, unpack the label.
-        label_row = 24
+        label_row = 23
         if r[label_row] is not None:
             labels = [label.Label.from_row(cast(label.LabelRow, r[label_row:]))]
 

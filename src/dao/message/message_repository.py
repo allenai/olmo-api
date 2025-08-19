@@ -58,10 +58,11 @@ class MessageRepository(BaseMessageRepository):
     def add(self, message: Message) -> Message:
         self.session.add(message)
         self.session.flush()
+        self.session.commit()
 
         return self.session.get_one(Message, message.id)
 
-    def get(self, message_id: obj.ID, user_id: str) -> Sequence[Message] | None:
+    def get_messages_by_root(self, message_id: obj.ID, user_id: str) -> Sequence[Message] | None:
         query = (
             select(Message)
             .where(Message.root == message_id)
@@ -92,6 +93,7 @@ class MessageRepository(BaseMessageRepository):
             setattr(message_to_update, var, value) if value else None
 
         self.session.flush()
+        self.session.commit()
         return message_to_update
 
     def soft_delete(self, message_id: obj.ID) -> Message | None:
@@ -134,5 +136,6 @@ class MessageRepository(BaseMessageRepository):
             .values(creator=new_user_id, expiration_time=None, private=False)
         ).rowcount
         self.session.flush()
+        self.session.commit()
 
         return count

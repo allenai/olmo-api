@@ -18,7 +18,7 @@ class BaseMessageRepository(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get(self, message_id: obj.ID, user_id: str) -> Sequence[Message] | None:
+    def get_messages_by_root(self, message_id: obj.ID, user_id: str) -> Sequence[Message] | None:
         raise NotImplementedError
 
     @abc.abstractmethod

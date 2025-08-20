@@ -47,7 +47,7 @@ class Message(Base, kw_only=True):
         Index("message_root_fkey_ix", "root"),
     )
 
-    id: Mapped[str] = mapped_column(Text, primary_key=True, default=obj.NewID("msg"))
+    id: Mapped[str] = mapped_column(Text, primary_key=True, default_factory=obj.new_id_generator("msg"))
     content: Mapped[str] = mapped_column(Text, nullable=False)
     creator: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(Text, nullable=False)

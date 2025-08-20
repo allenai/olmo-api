@@ -79,7 +79,7 @@ class MessageRepository(BaseMessageRepository):
     ):
         query = (
             select(Message)
-            .where(Message.root == message_id)
+            .where(Message.id == message_id)
             .where(or_(Message.expiration_time == None, Message.expiration_time > func.now()))  # noqa: E711
         )
 

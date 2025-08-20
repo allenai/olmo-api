@@ -61,7 +61,11 @@ def setup_msg_thread(
         message_chain.append(parent)
 
     if request.root is not None:
-        msgs = Message.group_by_id(request.root.flatten())
+        messages = message_repository.get_messages_by_root(request.root.id, agent.client) or []
+        msgs: dict[str, Message] = {}
+        for message in messages:
+            msgs[message.id] = message
+
         while message_chain[-1].parent is not None:
             message_chain.append(msgs[message_chain[-1].parent])
 
@@ -142,6 +146,7 @@ def create_assistant_message(
     agent: Token,
 ):
     message_expiration_time = get_expiration_time(agent)
+
     message = Message(
         content=content,
         creator=agent.client,

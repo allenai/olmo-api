@@ -9,6 +9,8 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
 from src import db
+from src.dao.flask_sqlalchemy_session import current_session
+from src.dao.message.message_repository import MessageRepository
 from src.error import handle_validation_error
 from src.message.create_message_request import (
     CreateMessageRequest,
@@ -48,7 +50,11 @@ def create_v4_message_blueprint(
             )
 
             stream_response = create_message_v4(
-                create_message_request_with_lists, dbc, storage_client=storage_client, session_maker=session_maker
+                create_message_request_with_lists,
+                dbc,
+                storage_client=storage_client,
+                session_maker=session_maker,
+                message_repository=MessageRepository(current_session),
             )
             if isinstance(stream_response, Generator):
                 return Response(stream_with_context(format_messages(stream_response)), mimetype="application/jsonl")

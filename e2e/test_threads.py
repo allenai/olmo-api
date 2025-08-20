@@ -4,7 +4,7 @@ from typing import Any
 import requests
 
 from e2e import util
-from src.dao.message import Role
+from src.dao.message.message import Role
 from src.thread.get_threads_service import GetThreadsResponse
 from src.thread.thread_models import Thread
 

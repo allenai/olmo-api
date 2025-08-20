@@ -25,12 +25,6 @@ from src.dao.engine_models.tool_call import ToolCall
 from .base import Base
 
 
-def root_default(context):
-    msg_id = context.get_current_parameters()["id"]
-    root_id = context.get_current_parameters()["root"]
-    return root_id if root_id is not None else msg_id
-
-
 # Generated using sqlacodegen
 class Message(Base, kw_only=True):
     __tablename__ = "message"
@@ -52,7 +46,7 @@ class Message(Base, kw_only=True):
     creator: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(Text, nullable=False)
     opts: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    root: Mapped[str] = mapped_column(Text, nullable=False, default=root_default)
+    root: Mapped[str] = mapped_column(Text, nullable=False)
     created: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()"), default=func.now()
     )
@@ -66,7 +60,9 @@ class Message(Base, kw_only=True):
     logprobs: Mapped[Optional[list[dict]]] = mapped_column(ARRAY(JSONB()), default=None)
     completion: Mapped[Optional[str]] = mapped_column(Text, default=None)
     original: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    model_type: Mapped[Optional[str]] = mapped_column(Enum("base", "chat", "image_prompt", name="model_type"))
+    model_type: Mapped[Optional[str]] = mapped_column(
+        Enum("base", "chat", "image_prompt", name="model_type"), default=None
+    )
     finish_reason: Mapped[Optional[str]] = mapped_column(Text, default=None)
     harmful: Mapped[Optional[bool]] = mapped_column(Boolean, default=None)
     expiration_time: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))

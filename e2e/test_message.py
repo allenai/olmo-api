@@ -218,6 +218,7 @@ class TestMessageEndpoints(base.IntegrationTest):
         assert msglist["meta"]["total"] > 0
         assert msglist["meta"]["offset"] == 0
         assert msglist["meta"]["limit"] == 10
+        print(msglist)
         ids = [m["id"] for m in msglist["messages"]]
         assert root_message_1["id"] in ids
         assert m2["id"] in ids

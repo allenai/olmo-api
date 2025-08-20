@@ -57,16 +57,14 @@ def create_threads_blueprint(
     @pydantic_api(name="Get messages", tags=["v4", "threads"])
     def list_threads(request: GetThreadsRequest) -> GetThreadsResponse:
         authn()
-        return get_threads(dbc, request, message_repository=MessageRepository(current_session))
+        return get_threads(request, message_repository=MessageRepository(current_session))
 
     @threads_blueprint.get("/<thread_id>")
     @anonymous_auth_protector()
     @pydantic_api(name="Get message", tags=["v4", "threads"])
     def get_single_thread(thread_id: str) -> Thread:
         agent = authn()
-        return get_thread(
-            thread_id, user_id=agent.client, dbc=dbc, message_repository=MessageRepository(current_session)
-        )
+        return get_thread(thread_id, user_id=agent.client, message_repository=MessageRepository(current_session))
 
     @threads_blueprint.post("/")
     @anonymous_auth_protector()

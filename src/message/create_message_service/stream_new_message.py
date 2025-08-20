@@ -3,19 +3,19 @@ import os
 from collections.abc import Generator
 from dataclasses import asdict
 from time import time_ns
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
+from pydantic_ai.direct import model_request_stream_sync
 from pydantic_ai.messages import ToolCallPart
 from pydantic_ai.models import ModelRequestParameters
 
-import src.dao.message.message_models as message
 from src import db, parse
 from src.auth.token import Token
 from src.config.get_config import cfg
 from src.dao.completion import CompletionOutput
 from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import ModelConfig
-from src.dao.engine_models.tool_call import ToolCall
+from src.dao.message.message_models import MessageChunk, MessageStreamError, Role, TokenLogProbs
 from src.dao.message.message_repository import BaseMessageRepository
 from src.inference.inference_service import get_engine
 from src.inference.InferenceEngine import (
@@ -46,13 +46,16 @@ from src.util.generator_with_return_value import GeneratorWithReturnValue
 from .database import create_assistant_message, create_tool_response_message, create_user_message, setup_msg_thread
 from .tools.tool_calls import call_tool, get_tools
 
+if TYPE_CHECKING:
+    from src.dao.engine_models.tool_call import ToolCall
+
 MAX_REPEATED_TOOL_CALLS = 10
 
 
 @dataclasses.dataclass
 class ParsedMessage:
     content: parse.MessageContent
-    role: message.Role
+    role: Role
 
 
 def create_new_message(
@@ -67,8 +70,8 @@ def create_new_message(
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     *,
     is_message_harmful: bool | None = None,
-) -> message.Message | Generator[Message | message.MessageChunk | message.MessageStreamError | Chunk]:
-    if request.role == message.Role.Assistant:
+) -> Message | Generator[Message | MessageChunk | MessageStreamError | Chunk]:
+    if request.role == Role.Assistant:
         if request.parent is None:
             error_message = "parent is required for creating assistant message"
             raise ValueError(error_message)
@@ -76,12 +79,10 @@ def create_new_message(
         assistant_message = create_assistant_message(
             message_repository, request.content, request, model, request.parent.id, request.parent.root, agent
         )
-        final_message = dbc.message.finalize(assistant_message.id)
-        if final_message is None:
-            final_message_error = RuntimeError(f"failed to finalize message {assistant_message.id}")
-            raise final_message_error
+        assistant_message.final = True
+        message_repository.update(assistant_message)
 
-        return final_message
+        return assistant_message
 
     return stream_new_message(
         request,
@@ -109,7 +110,7 @@ def stream_new_message(
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     *,
     is_message_harmful: bool | None = None,
-) -> Generator[Message | message.MessageChunk | message.MessageStreamError | Chunk]:
+) -> Generator[Message | MessageChunk | MessageStreamError | Chunk]:
     message_chain = setup_msg_thread(
         message_repository,
         model=model,
@@ -228,14 +229,14 @@ def log_create_message_stats(
 
 
 def finalize_messages(message_repository: BaseMessageRepository, message_chain: list[Message], user_message: Message):
-    if message_chain[0].final is False and message_chain[0].role == message.Role.System:
+    if message_chain[0].final is False and message_chain[0].role == Role.System:
         system_msg = message_chain[0]
         system_msg.final = True
         final_system_message = message_repository.update(system_msg)
 
         if final_system_message is None:
             final_system_message_error = RuntimeError(f"failed to finalize message {system_msg.id}")
-            yield message.MessageStreamError(
+            yield MessageStreamError(
                 message=system_msg.id,
                 error=str(final_system_message_error),
                 reason="finalization failure",
@@ -247,7 +248,7 @@ def finalize_messages(message_repository: BaseMessageRepository, message_chain: 
         final_message = message_repository.update(user_message)
         if final_message is None:
             final_message_error = RuntimeError(f"failed to finalize message {user_message.id}")
-            yield message.MessageStreamError(
+            yield MessageStreamError(
                 message=user_message.id, error=str(final_message_error), reason="finalization failure"
             )
             raise final_message_error
@@ -264,7 +265,7 @@ def stream_assistant_response(
     msg: Message,
     reply: Message,
     stream_metrics: StreamMetrics,
-) -> Generator[message.MessageChunk | message.MessageStreamError | Chunk, Any, None]:
+) -> Generator[MessageChunk | MessageStreamError | Chunk, Any, None]:
     """
     Adds a new assistant message to the conversation, and streams the llm response to the api
     """
@@ -275,7 +276,7 @@ def stream_assistant_response(
     tool_parts: list[ToolCall] = []
     # Now yield each chunk as it's returned.
     finish_reason: FinishReason | None = None
-    logprobs: list[list[message.TokenLogProbs]] = []
+    logprobs: list[list[TokenLogProbs]] = []
     # We keep track of each chunk and the timing information per-chunk
     # so that we can manifest a completion at the end. This will go
     # away when InferD stores this I/O.
@@ -322,7 +323,7 @@ def stream_assistant_response(
     else:
         tool_parts = []
         thinking = None
-        chunks: list[message.MessageChunk] = []
+        chunks: list[MessageChunk] = []
 
         chain: list[InferenceEngineMessage] = [
             InferenceEngineMessage(
@@ -399,7 +400,7 @@ def stream_assistant_response(
 
     if final_reply is None:
         final_reply_error = RuntimeError(f"failed to finalize message {reply.id}")
-        yield message.MessageStreamError(message=reply.id, error=str(final_reply_error), reason="finalization failure")
+        yield MessageStreamError(message=reply.id, error=str(final_reply_error), reason="finalization failure")
         raise final_reply_error
 
 
@@ -416,14 +417,14 @@ def prepare_yield_message_chain(message_chain: list[Message], user_message: Mess
     return message_chain[user_message_index]
 
 
-def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> message.MessageChunk:
+def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> MessageChunk:
     chunk_logprobs = chunk.logprobs if chunk.logprobs is not None else []
     mapped_logprobs = [
-        [message.TokenLogProbs(token_id=lp.token_id, text=lp.text, logprob=lp.logprob) for lp in lp_list]
+        [TokenLogProbs(token_id=lp.token_id, text=lp.text, logprob=lp.logprob) for lp in lp_list]
         for lp_list in chunk_logprobs
     ]
 
-    return message.MessageChunk(
+    return MessageChunk(
         message=message_id,
         content=chunk.content,
         logprobs=mapped_logprobs,
@@ -436,11 +437,11 @@ def create_prompt_from_engine_input(
     return "\n".join([f"<|{m.role}|>\n{m.content}" for m in input_list])
 
 
-def create_output_from_chunks(chunks: list[message.MessageChunk]):
+def create_output_from_chunks(chunks: list[MessageChunk]):
     output = ""
-    logprobs: list[list[message.TokenLogProbs]] = []
+    logprobs: list[list[TokenLogProbs]] = []
 
-    for chunk in cast(list[message.MessageChunk], chunks):
+    for chunk in cast(list[MessageChunk], chunks):
         output += chunk.content
         if chunk.logprobs is not None and len(chunk.logprobs) > 0:
             logprobs.append(*chunk.logprobs)

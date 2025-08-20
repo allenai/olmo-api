@@ -5,7 +5,6 @@ from dataclasses import asdict
 from time import time_ns
 from typing import Any, cast
 
-from pydantic_ai.direct import model_request_stream_sync
 from pydantic_ai.messages import ToolCallPart
 from pydantic_ai.models import ModelRequestParameters
 
@@ -13,6 +12,7 @@ import src.dao.message.message_models as message
 from src import db, parse
 from src.auth.token import Token
 from src.config.get_config import cfg
+from src.dao.completion import CompletionOutput
 from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import ModelConfig
 from src.dao.engine_models.tool_call import ToolCall
@@ -85,6 +85,7 @@ def create_new_message(
 
     return stream_new_message(
         request,
+        dbc,
         storage_client,
         model,
         safety_check_elapsed_time,
@@ -98,6 +99,7 @@ def create_new_message(
 
 def stream_new_message(
     request: CreateMessageRequestWithFullMessages,
+    dbc: db.Client,
     storage_client: GoogleCloudStorage,
     model: ModelConfig,
     safety_check_elapsed_time: float,
@@ -163,7 +165,7 @@ def stream_new_message(
 
         start_message_generation_ns = time_ns()
         yield from stream_assistant_response(
-            request, message_repository, message_chain, model, agent, blob_map, user_message, reply, stream_metrics
+            request, dbc, message_repository, message_chain, model, agent, blob_map, user_message, reply, stream_metrics
         )
 
         if reply.tool_calls is not None and len(reply.tool_calls) > 0:
@@ -253,6 +255,7 @@ def finalize_messages(message_repository: BaseMessageRepository, message_chain: 
 
 def stream_assistant_response(
     request: CreateMessageRequestWithFullMessages,
+    dbc: db.Client,
     message_repository: BaseMessageRepository,
     message_chain: list[Message],
     model: ModelConfig,
@@ -366,21 +369,20 @@ def stream_assistant_response(
     gen //= 1000000
 
     message_completion = None
+
     if not agent.is_anonymous_user:
-        pass
-        # TODO Fix
-        # message_completion = dbc.completion.create(
-        #     prompt,
-        #     [completion.CompletionOutput(output, str(finish_reason), logprobs)],
-        #     request.opts,
-        #     model.model_id_on_host,
-        #     sha,
-        #     tokenize_ms=-1,
-        #     generation_ms=gen,
-        #     queue_ms=0,
-        #     input_tokens=stream_metrics.input_token_count or -1,
-        #     output_tokens=stream_metrics.output_token_count or -1,
-        # )
+        message_completion = dbc.completion.create(
+            prompt,
+            [CompletionOutput(output, str(finish_reason), logprobs)],
+            request.opts,
+            model.model_id_on_host,
+            sha,
+            tokenize_ms=-1,
+            generation_ms=gen,
+            queue_ms=0,
+            input_tokens=stream_metrics.input_token_count or -1,
+            output_tokens=stream_metrics.output_token_count or -1,
+        )
     new_log_props: list[list[dict]] = []
     for log_prop_set in logprobs:
         new_log_props.append([asdict(log_prop) for log_prop in log_prop_set])

@@ -66,12 +66,12 @@ class Message(Base, kw_only=True):
     finish_reason: Mapped[Optional[str]] = mapped_column(Text, default=None)
     harmful: Mapped[Optional[bool]] = mapped_column(Boolean, default=None)
     expiration_time: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
-    file_urls: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text()), default=None)
+    file_urls: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text()), nullable=True, default=None)
 
     thinking: Mapped[str | None] = mapped_column(default=None)
 
     tool_calls: Mapped[list[ToolCall] | None] = relationship(
-        back_populates="message", cascade="all, delete", lazy="joined", default=None
+        back_populates="message", cascade="all, delete", lazy="joined", default_factory=list
     )
 
     completion_: Mapped[Completion | None] = relationship("Completion", back_populates="message", init=False)

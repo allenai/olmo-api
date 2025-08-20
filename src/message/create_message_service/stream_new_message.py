@@ -1,6 +1,7 @@
 import dataclasses
 import os
 from collections.abc import Generator
+from dataclasses import asdict
 from time import time_ns
 from typing import Any, cast
 
@@ -250,14 +251,6 @@ def finalize_messages(message_repository: BaseMessageRepository, message_chain: 
             raise final_message_error
 
 
-def repair_children(msg_chain: list[Message]):
-    # TODO check if we still need this...
-    return
-    for i, msg in enumerate(msg_chain):
-        next_msg = msg_chain[i + 1] if i < len(msg_chain) - 1 else None
-        msg.children = [next_msg] if next_msg else None
-
-
 def stream_assistant_response(
     request: CreateMessageRequestWithFullMessages,
     message_repository: BaseMessageRepository,
@@ -279,6 +272,7 @@ def stream_assistant_response(
     tool_parts: list[ToolCall] = []
     # Now yield each chunk as it's returned.
     finish_reason: FinishReason | None = None
+    logprobs: list[list[message.TokenLogProbs]] = []
     # We keep track of each chunk and the timing information per-chunk
     # so that we can manifest a completion at the end. This will go
     # away when InferD stores this I/O.
@@ -321,7 +315,6 @@ def stream_assistant_response(
 
         output = text_part.content if text_part is not None else ""
         thinking = thinking_part.content if thinking_part is not None else ""
-        logprobs = []
         # TODO finish reason https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse.vendor_details should be here but isn't
     else:
         tool_parts = []
@@ -388,9 +381,12 @@ def stream_assistant_response(
         #     input_tokens=stream_metrics.input_token_count or -1,
         #     output_tokens=stream_metrics.output_token_count or -1,
         # )
+    new_log_props: list[list[dict]] = []
+    for log_prop_set in logprobs:
+        new_log_props.append([asdict(log_prop) for log_prop in log_prop_set])
 
     reply.content = output
-    #   reply.logprobs = logprobs # TODO Figure out log props
+    reply.logprobs = new_log_props
     reply.finish_reason = finish_reason
     reply.tool_calls = tool_parts
     reply.final = True
@@ -407,8 +403,6 @@ def stream_assistant_response(
 
 def prepare_yield_message_chain(message_chain: list[Message], user_message: Message):
     user_message_index = next((i for i, message in enumerate(message_chain) if message.id == user_message.id), -1)
-
-    repair_children(message_chain)
 
     if user_message_index == -1:
         error_msg = "failed to find user message in chain"

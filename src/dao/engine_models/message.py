@@ -57,7 +57,7 @@ class Message(Base, kw_only=True):
     deleted: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True), default=None)
     parent: Mapped[Optional[str]] = mapped_column(Text)
     template: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    logprobs: Mapped[Optional[list[dict]]] = mapped_column(ARRAY(JSONB()), default=None)
+    logprobs: Mapped[Optional[list[list[dict]]]] = mapped_column(ARRAY(JSONB()), default=None)
     completion: Mapped[Optional[str]] = mapped_column(Text, default=None)
     original: Mapped[Optional[str]] = mapped_column(Text, default=None)
     model_type: Mapped[Optional[str]] = mapped_column(

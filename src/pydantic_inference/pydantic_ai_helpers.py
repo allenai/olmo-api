@@ -148,7 +148,8 @@ def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDel
 
 def map_pydantic_tool_to_db_tool(msg_id: str, tool_part: ToolCallPart):
     if isinstance(tool_part.args, str):
-        raise "unsupported arg type"
+        msg = "String args not supported currently"
+        raise NotImplementedError(msg)
 
     return ToolCall(
         tool_call_id=tool_part.tool_call_id, tool_name=tool_part.tool_name, args=tool_part.args, message_id=msg_id

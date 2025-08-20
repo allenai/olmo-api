@@ -1,5 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
+from werkzeug import exceptions
+
 from src import obj
 from src.auth.token import Token
 from src.dao.engine_models.message import Message
@@ -56,7 +58,7 @@ def setup_msg_thread(
     if request.parent:
         parent = message_repository.get_message_by_id(request.parent.id)
         if parent is None:
-            raise "parent not found"
+            raise exceptions.NotFound
         message_chain.append(parent)
 
     if request.root is not None:

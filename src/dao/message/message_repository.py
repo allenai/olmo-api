@@ -1,15 +1,20 @@
 import abc
 from collections.abc import Sequence
+from typing import cast
 
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.orm import Session, joinedload
 
 from src import obj
+from src.dao import label as old_label
 from src.dao import paged
 from src.dao.engine_models.label import Label
 from src.dao.engine_models.message import Message
-from src.dao.message.message_models import ThreadList
+from src.dao.engine_models.model_config import ModelType
+from src.dao.message.message_models import InferenceOpts, Role, ThreadList
+from src.dao.message.message_models import Message as OldMessage
 from src.dao.paged import Opts
+from src.message.map_text_snippet import text_snippet
 
 
 class BaseMessageRepository(abc.ABC):
@@ -139,3 +144,73 @@ class MessageRepository(BaseMessageRepository):
         self.session.commit()
 
         return count
+
+
+def map_sqla_to_old(message: Message) -> OldMessage:
+    # Map message.role to old Role enum; default to user if unknown
+    try:
+        mapped_role = Role(message.role)
+    except Exception:
+        mapped_role = Role.User
+
+    # Map model_type to old enum when possible
+    try:
+        mapped_model_type = ModelType(message.model_type) if message.model_type is not None else None
+    except Exception:
+        mapped_model_type = None
+
+    # Build InferenceOpts without re-validation
+    mapped_opts = InferenceOpts.model_construct(**message.opts)
+
+    # We don't currently expose logprobs from ORM messages in v4 stream
+    mapped_logprobs = None
+
+    # Map labels to old label dataclass if present
+    mapped_labels: list[old_label.Label] = []
+    if getattr(message, "labels", None):
+        for lbl in cast(list, message.labels):
+            mapped_labels.append(
+                old_label.Label(
+                    id=lbl.id,
+                    message=lbl.message,
+                    rating=old_label.Rating(lbl.rating),
+                    creator=lbl.creator,
+                    comment=lbl.comment,
+                    created=lbl.created,
+                    deleted=lbl.deleted,
+                )
+            )
+
+    # Map children recursively if present
+    mapped_children: list[OldMessage] | None = None
+    if getattr(message, "children", None):
+        mapped_children = [map_sqla_to_old(child) for child in cast(list[Message], message.children)]
+
+    return OldMessage(
+        id=message.id,
+        content=message.content,
+        snippet=text_snippet(message.content),
+        creator=message.creator,
+        role=mapped_role,
+        opts=mapped_opts,
+        root=message.root,
+        created=message.created,
+        model_id=message.model_id,
+        model_host=message.model_host,
+        deleted=message.deleted,
+        parent=message.parent,
+        template=message.template,
+        logprobs=mapped_logprobs,
+        children=mapped_children,
+        completion=message.completion,
+        final=message.final,
+        original=message.original,
+        private=message.private,
+        model_type=mapped_model_type,
+        finish_reason=message.finish_reason,
+        harmful=message.harmful,
+        expiration_time=message.expiration_time,
+        labels=mapped_labels,
+        file_urls=message.file_urls,
+        thinking=message.thinking,
+    )

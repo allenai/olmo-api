@@ -27,6 +27,10 @@ class BaseMessageRepository(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
+    def get_message_with_children(self, message_id: obj.ID, user_id: str) -> Sequence[Message] | None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def get_message_by_id(
         self,
         message_id: obj.ID,
@@ -77,6 +81,27 @@ class MessageRepository(BaseMessageRepository):
         )
 
         return self.session.scalars(query).unique().all()
+
+    def get_message_with_children(self, message_id: obj.ID, user_id: str) -> Sequence[Message] | None:
+        query = (
+            select(Message)
+            .where(Message.id == message_id)
+            .where(or_(Message.expiration_time == None, Message.expiration_time > func.now()))  # noqa: E711
+            .options(joinedload(Message.labels.and_(Label.deleted == None, Label.creator == user_id)))  # noqa: E711
+            .order_by(Message.created.asc())
+        )
+
+        result = self.session.scalars(query).unique().all()
+        if len(result) == 0:
+            return None
+
+        return self.flatten_message_children(result[0])
+
+    def flatten_message_children(self, message: Message):
+        result = [message]
+        for child in message.children or []:
+            result.extend(self.flatten_message_children(child))
+        return result
 
     def get_message_by_id(
         self,

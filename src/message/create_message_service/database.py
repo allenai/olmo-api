@@ -126,8 +126,15 @@ def create_tool_response_message(
         private=parent_message.private,
         harmful=False,
         expiration_time=parent_message.expiration_time,
-        tool_calls=[source_tool],
     )
+    clone_tool = ToolCall(
+        tool_call_id=source_tool.tool_call_id,
+        args=source_tool.args,
+        tool_name=source_tool.tool_name,
+        message_id=message.id,
+    )
+    message.tool_calls = [clone_tool]
+
     return message_repository.add(message)
 
 

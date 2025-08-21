@@ -405,6 +405,7 @@ def stream_assistant_response(
 
 
 def prepare_yield_message_chain(message_chain: list[Message], user_message: Message):
+    repair_children(message_chain)
     user_message_index = next((i for i, message in enumerate(message_chain) if message.id == user_message.id), -1)
 
     if user_message_index == -1:
@@ -415,6 +416,12 @@ def prepare_yield_message_chain(message_chain: list[Message], user_message: Mess
         return message_chain[0]
 
     return message_chain[user_message_index]
+
+
+def repair_children(msg_chain: list[Message]):
+    for i, msg in enumerate(msg_chain):
+        next_msg = msg_chain[i + 1] if i < len(msg_chain) - 1 else None
+        msg.children = [next_msg] if next_msg else []
 
 
 def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> MessageChunk:

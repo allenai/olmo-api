@@ -111,13 +111,12 @@ class Server(Blueprint):
 
     def messages(self):
         agent = authn()
-        thread_list = self.dbc.message.get_list(
+        message_list = self.dbc.message.get_list(
             creator=request.args.get("creator"),
             deleted="deleted" in request.args,
             opts=paged.parse_opts_from_querystring(request),
             agent=agent.client,
         )
-        message_list = message.MessageList(meta=thread_list.meta, messages=thread_list.threads)  # type: ignore
         return jsonify(message_list)
 
     def models(self):

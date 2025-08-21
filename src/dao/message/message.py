@@ -10,7 +10,7 @@ from werkzeug import exceptions
 from src import obj
 from src.config.Model import ModelType
 from src.dao import paged
-from src.dao.message.message_models import InferenceOpts, Message, Role, ThreadList, TokenLogProbs
+from src.dao.message.message_models import InferenceOpts, Message, MessageList, Role, TokenLogProbs
 
 
 def prepare_logprobs(
@@ -468,7 +468,7 @@ class Store:
         deleted: bool = False,
         opts: paged.Opts = paged.Opts(),
         agent: str | None = None,
-    ) -> "ThreadList":
+    ) -> MessageList:
         """
         Returns messages from the database. If agent is set, both private messages
         and labels belonging to that user will be returned.
@@ -583,16 +583,16 @@ class Store:
                 args["offset"] = 0
                 row = cur.execute(q, args).fetchone()
                 total = row[0] if row is not None else 0
-                return ThreadList(
-                    threads=[],
+                return MessageList(
+                    messages=[],
                     meta=paged.ListMeta(total, opts.offset, opts.limit, opts.sort),
                 )
 
             total = rows[0][0]
             tree_roots, _ = Message.tree(Message.group_by_id([Message.from_row(r[1:]) for r in rows]))
 
-            return ThreadList(
-                threads=tree_roots,
+            return MessageList(
+                messages=tree_roots,
                 meta=paged.ListMeta(total, opts.offset, opts.limit),
             )
 

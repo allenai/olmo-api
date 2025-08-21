@@ -10,7 +10,6 @@ from sqlalchemy import (
     Index,
     PrimaryKeyConstraint,
     Text,
-    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -48,7 +47,7 @@ class Message(Base, kw_only=True):
     opts: Mapped[dict] = mapped_column(JSONB, nullable=False)
     root: Mapped[str] = mapped_column(Text, nullable=False)
     created: Mapped[datetime.datetime] = mapped_column(
-        DateTime(True), nullable=False, server_default=text("now()"), default=func.now()
+        DateTime(True), nullable=False, server_default=text("now()"), init=False
     )
     final: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"), default=False)
     private: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"), default=False)

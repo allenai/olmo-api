@@ -40,6 +40,13 @@ To run them, execute:
 docker compose exec api pytest
 ```
 
+### Type check
+To check all types run:
+
+```bash
+mypy . --config ./pyproject.toml
+```
+
 ## More Documentation
 
 - [Database Access](./docs/db.md)

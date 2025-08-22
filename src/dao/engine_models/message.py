@@ -1,8 +1,7 @@
 import datetime
-from dataclasses import dataclass
-from enum import StrEnum
 from typing import Optional
 
+from pydantic_ai.tools import ToolDefinition
 from sqlalchemy import (
     ARRAY,
     Boolean,
@@ -24,32 +23,6 @@ from src.dao.engine_models.prompt_template import PromptTemplate
 from src.dao.engine_models.tool_call import ToolCall
 
 from .base import Base
-
-
-class ToolSource(StrEnum):
-    # where did this tool come from
-    INTERNAL = "internal"
-    USER_DEFINED = "user_defined"
-
-
-@dataclass
-class PropertiesType:
-    property_type: str
-    description: str
-
-
-@dataclass
-class ParameterDef:
-    param_type: str
-    properties: dict[str, PropertiesType]
-
-
-@dataclass
-class ToolDef:
-    name: str
-    description: str
-    paramters: ParameterDef
-    source: ToolSource
 
 
 # Generated using sqlacodegen
@@ -95,9 +68,11 @@ class Message(Base, kw_only=True):
     expiration_time: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
     file_urls: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text()), nullable=True, default=None)
 
-    available_tools: Mapped[Optional[list[ToolDef]]] = mapped_column(JSONB, nullable=True)
-
     thinking: Mapped[str | None] = mapped_column(default=None)
+
+    tool_definitions: Mapped[list[ToolDefinition] | None] = relationship(
+        back_populates="message", cascade="all, delete", lazy="joined", default_factory=list
+    )
 
     tool_calls: Mapped[list[ToolCall] | None] = relationship(
         back_populates="message", cascade="all, delete", lazy="joined", default_factory=list

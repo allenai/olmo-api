@@ -13,7 +13,7 @@ from src import db, parse
 from src.auth.token import Token
 from src.config.get_config import cfg
 from src.dao.completion import CompletionOutput
-from src.dao.engine_models.message import Message
+from src.dao.engine_models.message import Message, ToolSource
 from src.dao.engine_models.model_config import ModelConfig
 from src.dao.engine_models.tool_call import ToolCall
 from src.dao.message.message_models import MessageChunk, MessageStreamError, Role, TokenLogProbs
@@ -170,11 +170,13 @@ def stream_new_message(
         if reply.tool_calls is not None and len(reply.tool_calls) > 0:
             last_msg = reply
             for tool in reply.tool_calls:
-                tool_response = call_tool(tool)
-                tool_msg = create_tool_response_message(
-                    message_repository, content=tool_response.content, parent_message=last_msg, source_tool=tool
-                )
-                message_chain.append(tool_msg)
+                user_tool = is_user_tool(tool, reply)
+                if user_tool is False:
+                    tool_response = call_tool(tool)
+                    tool_msg = create_tool_response_message(
+                        message_repository, content=tool_response.content, parent_message=last_msg, source_tool=tool
+                    )
+                    message_chain.append(tool_msg)
 
         yield from finalize_messages(message_repository, message_chain, user_message)
 
@@ -191,7 +193,11 @@ def stream_new_message(
 
         yield prepare_yield_message_chain(message_chain, user_message)
 
-        if reply.tool_calls is None or len(reply.tool_calls) == 0 or has_user_tools(reply):
+        if (
+            reply.tool_calls is None
+            or len(reply.tool_calls) == 0
+            or any(is_user_tool(tool, reply) for tool in reply.tool_calls)
+        ):
             break
 
         tool_calls_made += 1
@@ -200,12 +206,18 @@ def stream_new_message(
 
 
 def is_user_tool(tool_call: ToolCall, reply: Message):
-    # find tool def for call.
-    # todo fix
+    """
+    Given a tool find defintion and check if it came from user.
+    """
     if reply.available_tools is None:
         return False
 
-    return any(tool_def.name == tool_call.tool_name for tool_def in reply.available_tools)
+    tool = next(tool_def for tool_def in reply.available_tools if tool_def.name == tool_call.tool_name)
+
+    if tool is None:
+        return False
+
+    return tool.source == ToolSource.USER_DEFINED
 
 
 def log_create_message_stats(

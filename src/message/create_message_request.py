@@ -37,6 +37,7 @@ class BaseCreateMessageRequest(APIInterface):
     template: str | None = Field(default=None)
     model: str
     host: str
+    tool_call_id: str | None = Field(default=None)
     captcha_token: Annotated[str | None, AfterValidator(captcha_token_required_if_captcha_enabled)] = Field(
         default=None
     )

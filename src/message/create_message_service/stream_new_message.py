@@ -3,7 +3,7 @@ import os
 from collections.abc import Generator
 from dataclasses import asdict
 from time import time_ns
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 from pydantic_ai.direct import model_request_stream_sync
 from pydantic_ai.messages import ToolCallPart
@@ -15,6 +15,7 @@ from src.config.get_config import cfg
 from src.dao.completion import CompletionOutput
 from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import ModelConfig
+from src.dao.engine_models.tool_call import ToolCall
 from src.dao.message.message_models import MessageChunk, MessageStreamError, Role, TokenLogProbs
 from src.dao.message.message_repository import BaseMessageRepository
 from src.inference.inference_service import get_engine
@@ -45,9 +46,6 @@ from src.util.generator_with_return_value import GeneratorWithReturnValue
 
 from .database import create_assistant_message, create_tool_response_message, create_user_message, setup_msg_thread
 from .tools.tool_calls import call_tool, get_tools
-
-if TYPE_CHECKING:
-    from src.dao.engine_models.tool_call import ToolCall
 
 MAX_REPEATED_TOOL_CALLS = 10
 
@@ -193,12 +191,21 @@ def stream_new_message(
 
         yield prepare_yield_message_chain(message_chain, user_message)
 
-        if reply.tool_calls is None or len(reply.tool_calls) == 0:
+        if reply.tool_calls is None or len(reply.tool_calls) == 0 or has_user_tools(reply):
             break
 
         tool_calls_made += 1
 
     yield StreamEndChunk(message=message_chain[0].id)
+
+
+def is_user_tool(tool_call: ToolCall, reply: Message):
+    # find tool def for call.
+    # todo fix
+    if reply.available_tools is None:
+        return False
+
+    return any(tool_def.name == tool_call.tool_name for tool_def in reply.available_tools)
 
 
 def log_create_message_stats(
@@ -262,7 +269,7 @@ def stream_assistant_response(
     model: ModelConfig,
     agent: Token,
     blob_map: dict[str, FileUploadResult],
-    msg: Message,
+    user_message: Message,
     reply: Message,
     stream_metrics: StreamMetrics,
 ) -> Generator[MessageChunk | MessageStreamError | Chunk, Any, None]:
@@ -287,7 +294,7 @@ def stream_assistant_response(
 
         first_chunk_ns: int | None = None
         pydantic_messages = pydantic_map_messages(message_chain[:-1], blob_map)
-        tools = get_tools() if model.can_call_tools else []
+        tools = get_tools(user_message) if model.can_call_tools else []
 
         with model_request_stream_sync(
             model=pydantic_inference_engine,
@@ -331,7 +338,7 @@ def stream_assistant_response(
                 content=message_in_chain.content,
                 # We only want to add the request files to the new message. The rest will have file urls associated with them
                 files=request.files
-                if msg is not None and message_in_chain.id == msg.id
+                if user_message is not None and message_in_chain.id == user_message.id
                 else message_in_chain.file_urls,
             )
             for message_in_chain in message_chain[:-1]

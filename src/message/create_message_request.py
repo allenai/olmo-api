@@ -27,6 +27,11 @@ def captcha_token_required_if_captcha_enabled(value: str | None):
     return value
 
 
+class CreateToolDefinition(BaseModel):
+    name: str
+    description: str
+
+
 class BaseCreateMessageRequest(APIInterface):
     # TODO: Validate that the parent role is different from this role and that it exists
     parent: str | None = Field(default=None)
@@ -38,6 +43,8 @@ class BaseCreateMessageRequest(APIInterface):
     model: str
     host: str
     tool_call_id: str | None = Field(default=None)
+    tool_definition: CreateToolDefinition | None = Field(default=None)
+
     captcha_token: Annotated[str | None, AfterValidator(captcha_token_required_if_captcha_enabled)] = Field(
         default=None
     )

@@ -1,8 +1,8 @@
 import datetime
-from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Dict
 
+from pydantic import BaseModel
 from sqlalchemy import JSONB, DateTime, Enum, ForeignKey, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -20,16 +20,14 @@ class ToolSource(StrEnum):
     USER_DEFINED = "user_defined"
 
 
-@dataclass
-class PropertiesType:
+class PropertiesType(BaseModel):
     property_type: str
     description: str
 
 
-@dataclass
-class ParameterDef:
+class ParameterDef(BaseModel):
     param_type: str
-    properties: dict[str, PropertiesType]
+    properties: Dict[str, PropertiesType]
 
 
 class ToolDefinition(Base, kw_only=True):

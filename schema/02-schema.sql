@@ -803,5 +803,23 @@ ALTER TABLE model_config ADD COLUMN can_think BOOLEAN DEFAULT 'false' NOT NULL;
 
 UPDATE alembic_version SET version_num='a48c549f771e' WHERE alembic_version.version_num = '51ded224eed6';
 
+-- Running upgrade a48c549f771e -> c0a6e48866a2
+
+CREATE TABLE tool_call (
+    id TEXT NOT NULL, 
+    tool_call_id TEXT NOT NULL, 
+    tool_name VARCHAR NOT NULL, 
+    args JSONB, 
+    message_id TEXT NOT NULL, 
+    PRIMARY KEY (id), 
+    FOREIGN KEY(message_id) REFERENCES message (id)
+);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE tool_call TO app;
+
+ALTER TABLE message DROP COLUMN tool_calls;
+
+UPDATE alembic_version SET version_num='c0a6e48866a2' WHERE alembic_version.version_num = 'a48c549f771e';
+
 COMMIT;
 

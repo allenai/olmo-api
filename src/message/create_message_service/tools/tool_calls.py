@@ -3,8 +3,10 @@ import logging
 from typing import Any
 
 from pydantic_ai import Tool
-from pydantic_ai.messages import ToolCallPart, ToolReturnPart
+from pydantic_ai.messages import ToolReturnPart
 from pydantic_ai.tools import ToolDefinition
+
+from src.dao.engine_models.tool_call import ToolCall
 
 from .internal_tools import CreateRandomNumber
 
@@ -15,7 +17,7 @@ def get_tools() -> list[ToolDefinition]:
     return [tool.tool_def for tool in TOOL_REGISTRY]
 
 
-def call_tool_function(tool_call: ToolCallPart):
+def call_tool_function(tool_call: ToolCall):
     found_tool = next((tool for tool in TOOL_REGISTRY if tool_call.tool_name == tool.name), None)
 
     if found_tool is None:
@@ -37,7 +39,7 @@ def call_tool_function(tool_call: ToolCallPart):
         return str(e)  # This returns the error to LLM
 
 
-def call_tool(tool_call: ToolCallPart) -> ToolReturnPart:
+def call_tool(tool_call: ToolCall) -> ToolReturnPart:
     tool_response = call_tool_function(tool_call)
 
     return ToolReturnPart(tool_name=tool_call.tool_name, content=tool_response, tool_call_id=tool_call.tool_call_id)

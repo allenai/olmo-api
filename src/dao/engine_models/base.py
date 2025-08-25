@@ -1,7 +1,8 @@
 import datetime
 from typing import Optional
 
-from sqlalchemy import JSON, DateTime, Dialect, TypeDecorator
+from sqlalchemy import DateTime, Dialect, TypeDecorator
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, MappedAsDataclass
 
 
@@ -36,4 +37,4 @@ class DateTimeUTC(TypeDecorator[datetime.datetime]):
 
 
 class Base(MappedAsDataclass, DeclarativeBase):
-    type_annotation_map = {datetime.datetime: DateTimeUTC, dict: JSON}
+    type_annotation_map = {datetime.datetime: DateTimeUTC, dict: JSONB}

@@ -63,7 +63,19 @@ class TestAnonymousThreadEndpoints(base.IntegrationTest):
         second_yield = json_lines[2]
         assert second_yield["type"] == "toolCall"
 
-        # Validate the first JSON line structure and content
+        final_thread = json_lines[-2]
+        assert final_thread["id"] is not None
+        assert len(final_thread["messages"]) == 5
+        final_message = final_thread["messages"]
+
+        assert final_message[0]["role"] == "system"
+        assert final_message[1]["role"] == "user"
+        assert final_message[2]["role"] == "assistant"
+        assert final_message[3]["role"] == "tool_call_result"
+        assert final_message[4]["role"] == "assistant"
+
+        last_yield = json_lines[-1]
+        assert last_yield["type"] == "end"
 
     def tearDown(self):
         # Since the delete operation cascades, we have to find all child messages

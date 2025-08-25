@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, cast
 
@@ -7,7 +8,7 @@ from src.api_interface import APIInterface
 from src.dao.engine_models.message import Message as SQLAMessage
 from src.dao.engine_models.model_config import ModelType
 from src.dao.label import Rating
-from src.dao.message import InferenceOpts, Message, Role
+from src.dao.message.message_models import InferenceOpts, Message, Role
 from src.inference.InferenceEngine import FinishReason
 from src.message.map_text_snippet import text_snippet
 
@@ -97,6 +98,10 @@ class FlatMessage(APIInterface):
     def from_message(message: Message | SQLAMessage) -> "FlatMessage":
         return FlatMessage.model_validate(message)
 
+    @staticmethod
+    def from_message_with_children(message: Message | SQLAMessage) -> list["FlatMessage"]:
+        return _map_messages(message)
+
 
 def _map_messages(message: Message | SQLAMessage) -> list[FlatMessage]:
     messages = [FlatMessage.from_message(message)]
@@ -113,7 +118,13 @@ class Thread(APIInterface):
     messages: list[FlatMessage]
 
     @staticmethod
-    def from_message(message: Message | SQLAMessage):
-        messages = _map_messages(message)
+    def from_message(message: Message | SQLAMessage) -> "Thread":
+        messages = FlatMessage.from_message_with_children(message)
 
         return Thread(id=message.id, messages=messages)
+
+    @staticmethod
+    def from_messages(messages: Sequence[SQLAMessage]) -> "Thread":
+        mapped_messages = [FlatMessage.from_message(message) for message in messages]
+
+        return Thread(id=mapped_messages[0].id, messages=mapped_messages)

@@ -7,12 +7,13 @@ from flask import request as flask_request
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
 
+import src.dao.message.message_models as message
 from src import db, util
 from src.auth.auth_service import authn
 from src.config.get_config import cfg
 from src.config.get_models import get_model_by_host_and_id
-from src.dao import message
 from src.dao.engine_models.model_config import PromptType
+from src.dao.message.message_repository import BaseMessageRepository
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
     CreateMessageRequestWithLists,
@@ -37,6 +38,7 @@ def create_message_v4(
     dbc: db.Client,
     storage_client: GoogleCloudStorage,
     session_maker: sessionmaker[Session],
+    message_repository: BaseMessageRepository,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
 ):
     agent = authn()
@@ -101,6 +103,7 @@ def create_message_v4(
         is_message_harmful=is_message_harmful,
         start_time_ns=start_time_ns,
         agent=agent,
+        message_repository=message_repository,
     )
 
 

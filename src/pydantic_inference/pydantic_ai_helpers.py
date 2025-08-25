@@ -20,8 +20,10 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.models.openai import OpenAIModelSettings
 
+from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import ModelConfig
-from src.dao.message import InferenceOpts, Message, Role
+from src.dao.engine_models.tool_call import ToolCall
+from src.dao.message.message_models import InferenceOpts, Role
 from src.message.create_message_service.files import FileUploadResult
 from src.message.message_chunk import Chunk, ModelResponseChunk, ThinkingChunk, ToolCallChunk
 
@@ -74,7 +76,7 @@ def pydantic_map_messages(messages: list[Message], blob_map: dict[str, FileUploa
             assistant_message_parts.append(TextPart(content=message.content))
 
             if message.tool_calls:
-                assistant_message_parts.extend(message.tool_calls)
+                assistant_message_parts.extend([map_db_tool_to_pydantic_tool(tool) for tool in message.tool_calls])
 
             model_messages.append(
                 ModelResponse(
@@ -142,3 +144,17 @@ def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDel
                 tool_name=part.tool_name_delta or "",
                 args=part.args_delta,
             )
+
+
+def map_pydantic_tool_to_db_tool(msg_id: str, tool_part: ToolCallPart):
+    if isinstance(tool_part.args, str):
+        msg = "String args not supported currently"
+        raise NotImplementedError(msg)
+
+    return ToolCall(
+        tool_call_id=tool_part.tool_call_id, tool_name=tool_part.tool_name, args=tool_part.args, message_id=msg_id
+    )
+
+
+def map_db_tool_to_pydantic_tool(tool: ToolCall):
+    return ToolCallPart(tool_name=tool.tool_name, tool_call_id=tool.tool_call_id, args=tool.args)

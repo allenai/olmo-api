@@ -17,3 +17,10 @@ def NewID(prefix: str) -> ID:
         id += string.ascii_uppercase[secrets.randbelow(len(string.ascii_uppercase))]
         id += string.digits[secrets.randbelow(len(string.digits))]
     return f"{prefix}_{id}"
+
+
+def new_id_generator(prefix: str):
+    def generator():
+        return NewID(prefix)
+
+    return generator

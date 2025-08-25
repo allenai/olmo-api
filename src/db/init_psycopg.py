@@ -3,7 +3,8 @@ from typing import Self
 from psycopg_pool import ConnectionPool
 
 from src.config.Config import Database
-from src.dao import completion, datachip, label, message, template, user
+from src.dao import completion, datachip, label, template, user
+from src.dao.message import message
 from src.db.connection_pool import create_connection_pool
 
 

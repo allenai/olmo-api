@@ -3,7 +3,7 @@ import dataclasses
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
-from src.dao import message
+import src.dao.message.message_models as message
 from src.inference.InferenceEngine import FinishReason
 
 

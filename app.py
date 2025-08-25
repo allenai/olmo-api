@@ -8,6 +8,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src import db, error, util, v3
 from src.config import get_config
+from src.dao.flask_sqlalchemy_session import flask_scoped_session
 from src.db.init_sqlalchemy import make_db_engine
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.openapi import openapi_blueprint
@@ -25,6 +26,7 @@ def create_app():
     dbc = db.Client.from_config(cfg.db)
     db_engine = make_db_engine(cfg.db, pool=dbc.pool)
     session_maker = sessionmaker(db_engine, expire_on_commit=False, autoflush=True)
+    flask_scoped_session(session_maker, app=app)
 
     atexit.register(dbc.close)
 

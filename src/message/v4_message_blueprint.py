@@ -9,6 +9,9 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
 from src import db
+from src.dao.engine_models.message import Message as SQLAMessage
+from src.dao.flask_sqlalchemy_session import current_session
+from src.dao.message.message_repository import MessageRepository, map_sqla_to_old
 from src.error import handle_validation_error
 from src.message.create_message_request import (
     CreateMessageRequest,
@@ -20,7 +23,12 @@ from src.message.GoogleCloudStorage import GoogleCloudStorage
 
 def format_messages(stream_generator: Generator) -> Generator[str, Any, None]:
     for message in stream_generator:
-        yield format_message(message)
+        match message:
+            case SQLAMessage():
+                # map Message to old messsage...
+                yield format_message(map_sqla_to_old(message))
+            case _:
+                yield format_message(message)
 
 
 def create_v4_message_blueprint(
@@ -48,7 +56,11 @@ def create_v4_message_blueprint(
             )
 
             stream_response = create_message_v4(
-                create_message_request_with_lists, dbc, storage_client=storage_client, session_maker=session_maker
+                create_message_request_with_lists,
+                dbc,
+                storage_client=storage_client,
+                session_maker=session_maker,
+                message_repository=MessageRepository(current_session),
             )
             if isinstance(stream_response, Generator):
                 return Response(stream_with_context(format_messages(stream_response)), mimetype="application/jsonl")

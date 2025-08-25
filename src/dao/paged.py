@@ -1,8 +1,8 @@
-from dataclasses import dataclass
 from enum import StrEnum
 
 from flask import Request
 from pydantic import BaseModel, Field
+from pydantic.dataclasses import dataclass
 from werkzeug import exceptions
 
 

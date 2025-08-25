@@ -171,7 +171,7 @@ def stream_new_message(
         if reply.tool_calls is not None and len(reply.tool_calls) > 0:
             last_msg = reply
             for tool in reply.tool_calls:
-                user_tool = is_user_tool(tool, reply)
+                user_tool = is_user_tool(tool, user_message)
                 if user_tool is False:
                     tool_response = call_tool(tool)
                     tool_msg = create_tool_response_message(
@@ -206,19 +206,21 @@ def stream_new_message(
     yield StreamEndChunk(message=message_chain[0].id)
 
 
-def is_user_tool(tool_call: ToolCall, reply: Message):
+def is_user_tool(tool_call: ToolCall, user_message: Message):
     """
     Given a tool find defintion and check if it came from user.
     """
-    if reply.tool_definitions is None:
+    if user_message.tool_definitions is None:
         return False
 
-    tool = next((tool_def for tool_def in reply.tool_definitions if tool_def.name == tool_call.tool_name), None)
+    tool = next(
+        (tool_def for tool_def in user_message.tool_definitions if tool_def.tool_name == tool_call.tool_name), None
+    )
 
     if tool is None:
         return False
 
-    return tool.source == ToolSource.USER_DEFINED
+    return tool.tool_source == ToolSource.USER_DEFINED
 
 
 def log_create_message_stats(

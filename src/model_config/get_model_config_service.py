@@ -41,6 +41,8 @@ def map_model(model: ModelConfig) -> MultiModalModel | Model:
             allow_files_in_followups=model.allow_files_in_followups or False,
             internal=model.internal,
             prompt_type=model.prompt_type,  # type: ignore
+            can_think=model.can_think,
+            can_call_tools=model.can_call_tools,
         )
 
     return Model(
@@ -56,6 +58,8 @@ def map_model(model: ModelConfig) -> MultiModalModel | Model:
         available_time=model.available_time,
         deprecation_time=model.deprecation_time,
         internal=model.internal,
+        can_think=model.can_think,
+        can_call_tools=model.can_call_tools,
     )
 
 

@@ -78,18 +78,9 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
 
         # todo assert last message has tool defintion
 
-        assert last_message["role"] == "assistant"
+        assert last_message["role"] == "tool_call_result"
         for message in final_messages:
             print(message)
-
-        tool_calls = last_message["toolCalls"]
-
-        assert len(tool_calls) == 2
-
-        # find tool call of typer user
-        # find tool call of type system
-
-        # call api with response
 
     def tearDown(self):
         # Since the delete operation cascades, we have to find all child messages

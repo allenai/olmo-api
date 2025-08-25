@@ -1,9 +1,10 @@
 import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
-from sqlalchemy import JSONB, DateTime, Enum, ForeignKey, Text, text
+from sqlalchemy import DateTime, Enum, ForeignKey, Text, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src import obj
@@ -27,7 +28,8 @@ class PropertiesType(BaseModel):
 
 class ParameterDef(BaseModel):
     param_type: str
-    properties: Dict[str, PropertiesType]
+    properties: dict[str, PropertiesType]
+    required: list[str] | None
 
 
 class ToolDefinition(Base, kw_only=True):

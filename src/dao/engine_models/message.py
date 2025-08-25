@@ -1,7 +1,6 @@
 import datetime
 from typing import Optional
 
-from pydantic_ai.tools import ToolDefinition
 from sqlalchemy import (
     ARRAY,
     Boolean,
@@ -21,6 +20,7 @@ from src.dao.engine_models.completion import Completion
 from src.dao.engine_models.label import Label
 from src.dao.engine_models.prompt_template import PromptTemplate
 from src.dao.engine_models.tool_call import ToolCall
+from src.dao.engine_models.tool_definitions import ToolDefinition
 
 from .base import Base
 

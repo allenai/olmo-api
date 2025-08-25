@@ -36,8 +36,8 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
             headers=self.auth(anonymous_user),
             files={
                 "content": (None, user_content),
-                "tool_definition": "",
                 **default_model_options,
+                "tool_definitions": '[{ name: "test", description: "yolo" }]',
             },
         )
         create_message_request.raise_for_status()
@@ -74,13 +74,14 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
 
         final_messages = final_thread["messages"]
 
-        last_message = final_messages[0]
+        last_message = final_messages[-1]
 
         # todo assert last message has tool defintion
 
         assert last_message["role"] == "assistant"
+        print(final_messages)
 
-        tool_calls = last_message["role"]
+        tool_calls = last_message["toolCalls"]
 
         assert len(tool_calls) == 2
 

@@ -13,9 +13,10 @@ from src import db, parse
 from src.auth.token import Token
 from src.config.get_config import cfg
 from src.dao.completion import CompletionOutput
-from src.dao.engine_models.message import Message, ToolSource
+from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import ModelConfig
 from src.dao.engine_models.tool_call import ToolCall
+from src.dao.engine_models.tool_definitions import ToolSource
 from src.dao.message.message_models import MessageChunk, MessageStreamError, Role, TokenLogProbs
 from src.dao.message.message_repository import BaseMessageRepository
 from src.inference.inference_service import get_engine
@@ -209,10 +210,10 @@ def is_user_tool(tool_call: ToolCall, reply: Message):
     """
     Given a tool find defintion and check if it came from user.
     """
-    if reply.available_tools is None:
+    if reply.tool_definitions is None:
         return False
 
-    tool = next(tool_def for tool_def in reply.available_tools if tool_def.name == tool_call.tool_name)
+    tool = next((tool_def for tool_def in reply.tool_definitions if tool_def.name == tool_call.tool_name), None)
 
     if tool is None:
         return False

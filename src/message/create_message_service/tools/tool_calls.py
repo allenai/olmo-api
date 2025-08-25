@@ -6,8 +6,9 @@ from pydantic_ai import Tool
 from pydantic_ai.messages import ToolReturnPart
 from pydantic_ai.tools import ToolDefinition
 
-from src.dao.engine_models.message import Message, ToolDef
+from src.dao.engine_models.message import Message
 from src.dao.engine_models.tool_call import ToolCall
+from src.dao.engine_models.tool_definitions import ToolDefinition as ToolDef
 
 from .internal_tools import CreateRandomNumber
 
@@ -24,8 +25,8 @@ def map_tool_def_to_pydantic(tool: ToolDef):
 
 def get_tools(message: Message) -> list[ToolDefinition]:
     dynamic_tools = (
-        [map_tool_def_to_pydantic(tool_def) for tool_def in message.available_tools]
-        if message.available_tools is not None
+        [map_tool_def_to_pydantic(tool_def) for tool_def in message.tool_definitions]
+        if message.tool_definitions is not None
         else []
     )
 
@@ -33,9 +34,7 @@ def get_tools(message: Message) -> list[ToolDefinition]:
 
 
 def call_tool_function(tool_call: ToolCall):
-    found_tool = next(
-        (tool for tool in TOOL_REGISTRY if tool_call.tool_name == tool.name), None
-    )
+    found_tool = next((tool for tool in TOOL_REGISTRY if tool_call.tool_name == tool.name), None)
 
     if found_tool is None:
         return "Could not find tool"

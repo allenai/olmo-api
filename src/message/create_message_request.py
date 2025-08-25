@@ -43,7 +43,7 @@ class BaseCreateMessageRequest(APIInterface):
     model: str
     host: str
     tool_call_id: str | None = Field(default=None)
-    tool_definition: CreateToolDefinition | None = Field(default=None)
+    tool_definition: str | None = Field(default=None)
 
     captcha_token: Annotated[str | None, AfterValidator(captcha_token_required_if_captcha_enabled)] = Field(
         default=None
@@ -92,6 +92,7 @@ class CreateMessageRequest(BaseCreateMessageRequest):
 class CreateMessageRequestWithLists(CreateMessageRequest):
     stop: list[str] | None = Field(default=None)
     files: list[UploadedFile] | None = Field(default=None)
+    tool_definitions: CreateToolDefinition | None = Field(default=None)
 
 
 class CreateMessageRequestWithFullMessages(BaseModel):

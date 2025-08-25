@@ -73,7 +73,7 @@ class FlatMessage(APIInterface):
     tool_calls: list[ToolCall] | None = Field(default=None)
     thinking: str | None = Field(default=None)
 
-    tool_definition: list[ToolDefinition] | None = Field(default=None)
+    tool_definitions: list[ToolDefinition] | None = Field(default=None)
 
     @field_validator("children", mode="before")
     @classmethod

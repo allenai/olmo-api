@@ -79,7 +79,8 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
         # todo assert last message has tool defintion
 
         assert last_message["role"] == "assistant"
-        print(final_messages)
+        for message in final_messages:
+            print(message)
 
         tool_calls = last_message["toolCalls"]
 

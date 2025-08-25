@@ -6,7 +6,7 @@ from flask import Blueprint, Response, jsonify, request, stream_with_context
 from flask.typing import ResponseReturnValue
 from flask_pydantic_api.api_wrapper import pydantic_api
 from flask_pydantic_api.utils import UploadedFile
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
 import src.dao.message.message_models as message
@@ -18,10 +18,7 @@ from src.dao.engine_models.message import Message
 from src.dao.flask_sqlalchemy_session import current_session
 from src.dao.message.message_repository import MessageRepository
 from src.error import handle_validation_error
-from src.message.create_message_request import (
-    CreateMessageRequest,
-    CreateMessageRequestWithLists,
-)
+from src.message.create_message_request import CreateMessageRequest, CreateMessageRequestWithLists, CreateToolDefinition
 from src.message.create_message_service.endpoint import create_message_v4, format_message
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.message_chunk import Chunk
@@ -79,11 +76,21 @@ def create_threads_blueprint(
 
         stop_words = request.form.getlist("stop")
 
+        adapter = TypeAdapter(list[CreateToolDefinition])
+        tool_definitions = (
+            adapter.validate_json(create_message_request.tool_definitions)
+            if create_message_request.tool_definitions is not None
+            else None
+        )
+
         try:
             # HACK: flask-pydantic-api has poor support for lists in form data
             # Making a separate class that handles lists works for now
             create_message_request_with_lists = CreateMessageRequestWithLists(
-                **create_message_request.model_dump(), files=files, stop=stop_words
+                **create_message_request.model_dump(),
+                files=files,
+                stop=stop_words,
+                create_tool_definitions=tool_definitions,
             )
 
             stream_response = create_message_v4(
@@ -98,6 +105,7 @@ def create_threads_blueprint(
             return jsonify(stream_response)
 
         except ValidationError as e:
+            print(e)
             return handle_validation_error(e)
 
     return threads_blueprint

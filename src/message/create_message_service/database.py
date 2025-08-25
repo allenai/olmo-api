@@ -7,6 +7,7 @@ from src.auth.token import Token
 from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import ModelConfig
 from src.dao.engine_models.tool_call import ToolCall
+from src.dao.engine_models.tool_definitions import ToolDefinition, ToolSource
 from src.dao.message.message_models import Role
 from src.dao.message.message_repository import BaseMessageRepository
 from src.message.create_message_request import (
@@ -86,6 +87,19 @@ def create_user_message(
 ):
     message_expiration_time = get_expiration_time(agent)
 
+    # make message with tools from last message, if tools in request, wipe and replace
+    tools_created = [
+        ToolDefinition(
+            message_id="",
+            tool_name=tool_def.name,
+            description=tool_def.description,
+            parameters=tool_def.parameters.model_dump(),
+            tool_source=ToolSource.USER_DEFINED,
+        )
+        for tool_def in (request.create_tool_definitions if request.create_tool_definitions is not None else [])
+    ]
+    tools_from_parent = []
+
     msg_id = obj.NewID("msg")
     message = Message(
         id=msg_id,
@@ -103,6 +117,7 @@ def create_user_message(
         private=request.private,
         harmful=is_msg_harmful,
         expiration_time=message_expiration_time,
+        tool_definitions=tools_created + tools_from_parent,
     )
     return message_repository.add(message)
 

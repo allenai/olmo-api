@@ -17,9 +17,9 @@ TOOL_REGISTRY: list[Tool[Any]] = [CreateRandomNumber]
 
 def map_tool_def_to_pydantic(tool: ToolDef):
     return ToolDefinition(
-        name=tool.name,
+        name=tool.tool_name,
         description=tool.description,
-        parameters_json_schema=tool.paramters.properties,
+        parameters_json_schema=tool.parameters or {},
     )
 
 

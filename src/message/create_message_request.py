@@ -7,6 +7,7 @@ from werkzeug import exceptions
 
 from src.api_interface import APIInterface
 from src.config.get_config import get_config
+from src.dao.engine_models.tool_definitions import ParameterDef
 from src.dao.message.message_models import (
     InferenceOpts,
     Message,
@@ -27,11 +28,6 @@ def captcha_token_required_if_captcha_enabled(value: str | None):
     return value
 
 
-class CreateToolDefinition(BaseModel):
-    name: str
-    description: str
-
-
 class BaseCreateMessageRequest(APIInterface):
     # TODO: Validate that the parent role is different from this role and that it exists
     parent: str | None = Field(default=None)
@@ -43,7 +39,7 @@ class BaseCreateMessageRequest(APIInterface):
     model: str
     host: str
     tool_call_id: str | None = Field(default=None)
-    tool_definition: str | None = Field(default=None)
+    tool_definitions: str | None = Field(default=None)
 
     captcha_token: Annotated[str | None, AfterValidator(captcha_token_required_if_captcha_enabled)] = Field(
         default=None
@@ -89,10 +85,16 @@ class CreateMessageRequest(BaseCreateMessageRequest):
     )
 
 
+class CreateToolDefinition(BaseModel):
+    name: str
+    description: str
+    parameters: ParameterDef
+
+
 class CreateMessageRequestWithLists(CreateMessageRequest):
     stop: list[str] | None = Field(default=None)
     files: list[UploadedFile] | None = Field(default=None)
-    tool_definitions: CreateToolDefinition | None = Field(default=None)
+    create_tool_definitions: list[CreateToolDefinition] | None = Field(default=None)
 
 
 class CreateMessageRequestWithFullMessages(BaseModel):
@@ -110,6 +112,9 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     files: Sequence[UploadedFile] | None = Field(default=None)
     client: str
     captcha_token: str | None = Field()
+
+    tool_call_id: str | None = Field(default=None)
+    create_tool_definitions: list[CreateToolDefinition] | None = Field(default=None)
 
     model_config = ConfigDict(validate_assignment=True)
 

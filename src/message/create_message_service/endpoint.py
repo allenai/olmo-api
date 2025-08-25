@@ -69,6 +69,8 @@ def create_message_v4(
         client=agent.client,
         files=request.files,
         captcha_token=request.captcha_token,
+        tool_call_id=request.tool_call_id,
+        create_tool_definitions=request.create_tool_definitions,
     )
 
     model = get_model_by_host_and_id(mapped_request.host, mapped_request.model, session_maker=session_maker)

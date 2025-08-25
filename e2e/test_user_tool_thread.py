@@ -5,12 +5,13 @@ import requests
 
 from . import base
 
+tool_def = '[{ "name": "get weather", "description": "get the weather", "parameters": {"type": "object", "properties": {"city": {"type": "string", "description": "the city name"} } } }]'
+
 default_model_options = {
     "host": (None, "test_backend"),
+    "tool_definitions": (None, tool_def),
     "model": (None, "test-model"),
-    "files": (None, None),
 }
-
 
 default_options: list[tuple[str, Any]] = [
     ("max_tokens", 2048),
@@ -37,7 +38,6 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
             files={
                 "content": (None, user_content),
                 **default_model_options,
-                "tool_definitions": '[{ name: "test", description: "yolo" }]',
             },
         )
         create_message_request.raise_for_status()

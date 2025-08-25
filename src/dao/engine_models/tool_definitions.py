@@ -22,14 +22,13 @@ class ToolSource(StrEnum):
 
 
 class PropertiesType(BaseModel):
-    property_type: str
+    type: str
     description: str
 
 
 class ParameterDef(BaseModel):
-    param_type: str
+    type: str
     properties: dict[str, PropertiesType]
-    required: list[str] | None
 
 
 class ToolDefinition(Base, kw_only=True):
@@ -40,9 +39,9 @@ class ToolDefinition(Base, kw_only=True):
     tool_name: Mapped[str]
     description: Mapped[str]
 
-    param: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None)
+    parameters: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None)  # TODO: change to required
 
-    tool_source: Mapped[ToolSource] = mapped_column(Enum(ToolSource))
+    tool_source: Mapped[ToolSource] = mapped_column(Enum(ToolSource), nullable=False)
 
     created: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()"), init=False

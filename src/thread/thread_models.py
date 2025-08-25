@@ -42,7 +42,7 @@ class ToolCall(APIInterface):
 class ToolDefinition(APIInterface):
     tool_name: str
     description: str
-    param: ParameterDef
+    parameters: ParameterDef
     tool_source: ToolSource
 
 
@@ -72,7 +72,6 @@ class FlatMessage(APIInterface):
     file_urls: list[str] | None = Field(default=None)
     tool_calls: list[ToolCall] | None = Field(default=None)
     thinking: str | None = Field(default=None)
-
     tool_definitions: list[ToolDefinition] | None = Field(default=None)
 
     @field_validator("children", mode="before")

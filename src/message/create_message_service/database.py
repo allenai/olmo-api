@@ -13,6 +13,7 @@ from src.dao.message.message_repository import BaseMessageRepository
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
+from src.message.create_message_service.tools.tool_calls import get_internal_tools
 
 
 def get_expiration_time(agent: Token):
@@ -99,6 +100,8 @@ def create_user_message(
         for tool_def in (request.create_tool_definitions if request.create_tool_definitions is not None else [])
     ]
 
+    internal_tools = get_internal_tools(model) if request.parent is None else []
+
     msg_id = obj.NewID("msg")
     message = Message(
         id=msg_id,
@@ -116,14 +119,16 @@ def create_user_message(
         private=request.private,
         harmful=is_msg_harmful,
         expiration_time=message_expiration_time,
-        tool_definitions=tools_created,
+        tool_definitions=tools_created
+        + clone_tool_definitions(parent.tool_definitions if parent is not None else None)
+        + internal_tools,
     )
     return message_repository.add(message)
 
 
 def create_tool_response_message(
     message_repository: BaseMessageRepository,
-    parent_message: Message,
+    parent: Message,
     content: str,
     source_tool: ToolCall,
     creator: str,
@@ -131,28 +136,22 @@ def create_tool_response_message(
     message = Message(
         content=content,
         role=Role.ToolResponse,
-        opts=parent_message.opts,
-        model_id=parent_message.model_id,
-        model_host=parent_message.model_host,
-        model_type=parent_message.model_type,
-        root=parent_message.root,
-        parent=parent_message.id,
+        opts=parent.opts,
+        model_id=parent.model_id,
+        model_host=parent.model_host,
+        model_type=parent.model_type,
+        root=parent.root,
+        parent=parent.id,
         template=None,
         final=True,
         original=None,
-        private=parent_message.private,
+        private=parent.private,
         harmful=False,
-        expiration_time=parent_message.expiration_time,
+        expiration_time=parent.expiration_time,
         creator=creator,
+        tool_calls=[clone_tool_call(source_tool)],
+        tool_definitions=clone_tool_definitions(parent.tool_definitions),
     )
-    clone_tool = ToolCall(
-        tool_call_id=source_tool.tool_call_id,
-        args=source_tool.args,
-        tool_name=source_tool.tool_name,
-        message_id=message.id,
-        tool_source=source_tool.tool_source,
-    )
-    message.tool_calls = [clone_tool]
 
     return message_repository.add(message)
 
@@ -160,17 +159,38 @@ def create_tool_response_message(
 def create_assistant_message(
     message_repository: BaseMessageRepository,
     content: str,
-    request: CreateMessageRequestWithFullMessages,
+    parent: Message,
     model: ModelConfig,
-    parent_message_id: str,
-    root_message_id: str,
     agent: Token,
-    tool_defs: list[ToolDefinition],
 ):
     message_expiration_time = get_expiration_time(agent)
 
     # TODO: Remove this. should move to a many to many relationship
-    cloned_tool_def = [
+    cloned_tool_def = clone_tool_definitions(parent.tool_definitions)
+
+    message = Message(
+        content=content,
+        creator=agent.client,
+        role=Role.Assistant,
+        opts=parent.opts,
+        model_id=model.id,
+        model_host=model.host,
+        root=parent.root,
+        parent=parent.id,
+        final=False,
+        private=parent.private,
+        model_type=model.model_type,
+        expiration_time=message_expiration_time,
+        tool_definitions=cloned_tool_def,
+    )
+    return message_repository.add(message)
+
+
+def clone_tool_definitions(tool_defs: list[ToolDefinition] | None):
+    if tool_defs is None:
+        return []
+
+    return [
         ToolDefinition(
             message_id="",
             tool_name=tool_def.tool_name,
@@ -181,19 +201,12 @@ def create_assistant_message(
         for tool_def in tool_defs
     ]
 
-    message = Message(
-        content=content,
-        creator=agent.client,
-        role=Role.Assistant,
-        opts=request.opts.model_dump(),
-        model_id=request.model,
-        model_host=request.host,
-        root=root_message_id,
-        parent=parent_message_id,
-        final=False,
-        private=request.private,
-        model_type=model.model_type,
-        expiration_time=message_expiration_time,
-        tool_definitions=cloned_tool_def,
+
+def clone_tool_call(source_tool: ToolCall):
+    return ToolCall(
+        tool_call_id=source_tool.tool_call_id,
+        args=source_tool.args,
+        tool_name=source_tool.tool_name,
+        message_id="",
+        tool_source=source_tool.tool_source,
     )
-    return message_repository.add(message)

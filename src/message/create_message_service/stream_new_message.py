@@ -51,7 +51,7 @@ from .database import (
     create_user_message,
     setup_msg_thread,
 )
-from .tools.tool_calls import call_tool, get_tools
+from .tools.tool_calls import call_tool, get_pydantic_tool_defs
 
 MAX_REPEATED_TOOL_CALLS = 10
 
@@ -75,6 +75,8 @@ def create_new_message(
     *,
     is_message_harmful: bool | None = None,
 ) -> Message | Generator[Message | MessageChunk | MessageStreamError | Chunk]:
+    is_new_thread = request.parent is None
+
     message_chain = setup_msg_thread(
         message_repository,
         model=model,
@@ -84,19 +86,17 @@ def create_new_message(
     )
 
     if request.role == Role.Assistant:
-        if request.parent is None:
+        parent = message_repository.get_message_by_id(request.parent_id)
+        if parent is None:
             error_message = "parent is required for creating assistant message"
             raise ValueError(error_message)
 
         assistant_message = create_assistant_message(
             message_repository,
             request.content,
-            request,
+            parent,
             model,
-            request.parent.id,
-            request.parent.root,
             agent,
-            tool_defs=[],
         )
         assistant_message.final = True
         message_repository.update(assistant_message)
@@ -181,7 +181,7 @@ def create_new_message(
 
         tool_message = create_tool_response_message(
             message_repository,
-            parent_message=message_chain[-1],
+            parent=message_chain[-1],
             content=request.content,
             source_tool=source_tool,
             creator=agent.client,
@@ -229,12 +229,9 @@ def stream_new_message(
         reply = create_assistant_message(
             message_repository,
             content="",
-            request=request,
+            parent=parent,
             model=model,
-            parent_message_id=parent.id,
-            root_message_id=parent.root,
             agent=agent,
-            tool_defs=parent.tool_definitions or [],
         )
         message_chain.append(reply)
 
@@ -262,7 +259,7 @@ def stream_new_message(
                     tool_msg = create_tool_response_message(
                         message_repository,
                         content=tool_response.content,
-                        parent_message=last_msg,
+                        parent=last_msg,
                         source_tool=tool,
                         creator=agent.client,
                     )
@@ -381,7 +378,7 @@ def stream_assistant_response(
 
         first_chunk_ns: int | None = None
         pydantic_messages = pydantic_map_messages(message_chain[:-1], blob_map)
-        tools = get_tools(user_message) if model.can_call_tools else []
+        tools = get_pydantic_tool_defs(user_message) if model.can_call_tools else []
 
         with model_request_stream_sync(
             model=pydantic_inference_engine,

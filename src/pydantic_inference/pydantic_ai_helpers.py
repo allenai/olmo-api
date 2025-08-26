@@ -23,7 +23,6 @@ from pydantic_ai.models.openai import OpenAIModelSettings
 from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import ModelConfig
 from src.dao.engine_models.tool_call import ToolCall
-from src.dao.engine_models.tool_definitions import ToolSource
 from src.dao.message.message_models import InferenceOpts, Role
 from src.message.create_message_service.files import FileUploadResult
 from src.message.message_chunk import Chunk, ModelResponseChunk, ThinkingChunk, ToolCallChunk
@@ -112,8 +111,6 @@ def pydantic_map_messages(messages: list[Message], blob_map: dict[str, FileUploa
 
 
 def pydantic_map_part(part: ModelResponsePart, message: Message) -> Chunk:
-    tool_def = next((tool_def for tool_def in message.tool_definitions if tool_def.tool_name == part.tool_name), None)
-
     match part:
         case TextPart():
             return ModelResponseChunk(
@@ -126,6 +123,14 @@ def pydantic_map_part(part: ModelResponsePart, message: Message) -> Chunk:
                 content=part.content or "",
             )
         case ToolCallPart():
+            tool_def = next(
+                (tool_def for tool_def in message.tool_definitions or [] if tool_def.tool_name == part.tool_name), None
+            )
+
+            if tool_def is None:
+                msg = "could not find tool in message"
+                raise RuntimeError(msg)
+
             return ToolCallChunk(
                 message=message.id,
                 tool_call_id=part.tool_call_id,
@@ -139,14 +144,21 @@ def pydantic_map_part(part: ModelResponsePart, message: Message) -> Chunk:
 
 
 def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDelta, message: Message) -> Chunk:
-    tool_def = next((tool_def for tool_def in message.tool_definitions if tool_def.tool_name == part.tool_name), None)
-
     match part:
         case TextPartDelta():
             return ModelResponseChunk(message=message.id, content=part.content_delta or "")
         case ThinkingPartDelta():
-            return ThinkingChunk(message=message, content=part.content_delta or "")
+            return ThinkingChunk(message=message.id, content=part.content_delta or "")
         case ToolCallPartDelta():
+            tool_def = next(
+                (tool_def for tool_def in message.tool_definitions or [] if tool_def.tool_name == part.tool_name_delta),
+                None,
+            )
+
+            if tool_def is None:
+                msg = "could not find tool in message"
+                raise RuntimeError(msg)
+
             return ToolCallChunk(
                 message=message.id,
                 tool_call_id=part.tool_call_id or "",
@@ -162,8 +174,12 @@ def map_pydantic_tool_to_db_tool(message: Message, tool_part: ToolCallPart):
         raise NotImplementedError(msg)
 
     tool_def = next(
-        (tool_def for tool_def in message.tool_definitions if tool_def.tool_name == tool_part.tool_name), None
+        (tool_def for tool_def in message.tool_definitions or [] if tool_def.tool_name == tool_part.tool_name), None
     )
+
+    if tool_def is None:
+        msg = "could not find tool in message"
+        raise RuntimeError(msg)
 
     return ToolCall(
         tool_call_id=tool_part.tool_call_id,

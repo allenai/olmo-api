@@ -39,7 +39,7 @@ class ToolDefinition(Base, kw_only=True):
     tool_name: Mapped[str]
     description: Mapped[str]
 
-    parameters: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None)  # TODO: change to required
+    parameters: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
     tool_source: Mapped[ToolSource] = mapped_column(Enum(ToolSource), nullable=False)
 

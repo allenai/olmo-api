@@ -111,7 +111,6 @@ def create_new_message(
             model=model,
             is_msg_harmful=is_message_harmful,
         )
-
         message_chain.append(user_message)
 
         file_uploads = upload_request_files(
@@ -121,7 +120,6 @@ def create_new_message(
             root_message_id=message_chain[0].id,
             is_anonymous=agent.is_anonymous_user,
         )
-        # TODO: https://github.com/allenai/playground-issues-repo/issues/9: Get this from the DB
         file_urls = [file.file_url for file in file_uploads or []]
         user_message.file_urls = file_urls
 
@@ -188,14 +186,14 @@ def create_new_message(
             message_id="",
         )
 
-        user_message = create_tool_response_message(
+        tool_message = create_tool_response_message(
             message_repository,
             parent_message=message_chain[-1],
             content=request.content,
             source_tool=source_tool,
             creator=agent.client,
         )
-        message_chain.append(user_message)
+        message_chain.append(tool_message)
 
         return stream_new_message(
             request,
@@ -266,8 +264,7 @@ def stream_new_message(
         if reply.tool_calls is not None and len(reply.tool_calls) > 0:
             last_msg = reply
             for tool in reply.tool_calls:
-                user_tool = is_user_tool(tool, reply)
-                if user_tool is False:
+                if tool.tool_source is not ToolSource.USER_DEFINED:
                     tool_response = call_tool(tool)
                     tool_msg = create_tool_response_message(
                         message_repository,
@@ -296,30 +293,13 @@ def stream_new_message(
         if (
             reply.tool_calls is None
             or len(reply.tool_calls) == 0
-            or any(is_user_tool(tool, reply) for tool in reply.tool_calls)
+            or any(tool.tool_source == ToolSource.USER_DEFINED for tool in reply.tool_calls)
         ):
             break
 
         tool_calls_made += 1
 
     yield StreamEndChunk(message=message_chain[0].id)
-
-
-def is_user_tool(tool_call: ToolCall, user_message: Message):
-    """
-    Given a tool find defintion and check if it came from user.
-    """
-    if user_message.tool_definitions is None:
-        return False
-
-    tool = next(
-        (tool_def for tool_def in user_message.tool_definitions if tool_def.tool_name == tool_call.tool_name), None
-    )
-
-    if tool is None:
-        return False
-
-    return tool.tool_source == ToolSource.USER_DEFINED
 
 
 def log_create_message_stats(

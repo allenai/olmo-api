@@ -112,6 +112,8 @@ def pydantic_map_messages(messages: list[Message], blob_map: dict[str, FileUploa
 
 
 def pydantic_map_part(part: ModelResponsePart, message: Message) -> Chunk:
+    tool_def = next((tool_def for tool_def in message.tool_definitions if tool_def.tool_name == part.tool_name), None)
+
     match part:
         case TextPart():
             return ModelResponseChunk(
@@ -129,7 +131,7 @@ def pydantic_map_part(part: ModelResponsePart, message: Message) -> Chunk:
                 tool_call_id=part.tool_call_id,
                 tool_name=part.tool_name,
                 args=part.args,
-                tool_source=ToolSource.USER_DEFINED,  # TODO: make dyanmic
+                tool_source=tool_def.tool_source,
             )
         case _:
             msg = "unsupported response part"
@@ -137,6 +139,8 @@ def pydantic_map_part(part: ModelResponsePart, message: Message) -> Chunk:
 
 
 def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDelta, message: Message) -> Chunk:
+    tool_def = next((tool_def for tool_def in message.tool_definitions if tool_def.tool_name == part.tool_name), None)
+
     match part:
         case TextPartDelta():
             return ModelResponseChunk(message=message.id, content=part.content_delta or "")
@@ -148,7 +152,7 @@ def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDel
                 tool_call_id=part.tool_call_id or "",
                 tool_name=part.tool_name_delta or "",
                 args=part.args_delta,
-                tool_source=ToolSource.USER_DEFINED,  # TODO: make dyanmic
+                tool_source=tool_def.tool_source,
             )
 
 
@@ -157,12 +161,16 @@ def map_pydantic_tool_to_db_tool(message: Message, tool_part: ToolCallPart):
         msg = "String args not supported currently"
         raise NotImplementedError(msg)
 
+    tool_def = next(
+        (tool_def for tool_def in message.tool_definitions if tool_def.tool_name == tool_part.tool_name), None
+    )
+
     return ToolCall(
         tool_call_id=tool_part.tool_call_id,
         tool_name=tool_part.tool_name,
         args=tool_part.args,
         message_id=message.id,
-        tool_source=ToolSource.USER_DEFINED,  # TODO: make dyanmic
+        tool_source=tool_def.tool_source,
     )
 
 

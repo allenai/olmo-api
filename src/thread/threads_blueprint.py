@@ -105,7 +105,6 @@ def create_threads_blueprint(
             return jsonify(stream_response)
 
         except ValidationError as e:
-            print(e)
             return handle_validation_error(e)
 
     return threads_blueprint

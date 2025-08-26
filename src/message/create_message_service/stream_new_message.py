@@ -75,8 +75,6 @@ def create_new_message(
     *,
     is_message_harmful: bool | None = None,
 ) -> Message | Generator[Message | MessageChunk | MessageStreamError | Chunk]:
-    is_new_thread = request.parent is None
-
     message_chain = setup_msg_thread(
         message_repository,
         model=model,
@@ -555,12 +553,15 @@ def has_pending_tool_calls(chain: list[Message]) -> bool:
         return False
 
     for tool_call in last_assistant_message.tool_calls or []:
-        tool_response = find_last_matching(
-            chain,
-            lambda m, tool_call=tool_call: m.role == Role.ToolResponse
-            and m.tool_calls is not None
-            and m.tool_calls[0].tool_call_id == tool_call.id,
-        )
+
+        def find_tool_response(m: Message, tool_call: ToolCall) -> bool:
+            return (
+                m.role == Role.ToolResponse
+                and m.tool_calls is not None
+                and m.tool_calls[0].tool_call_id == tool_call.id
+            )
+
+        tool_response = next((m for m in chain if find_tool_response(m, tool_call)), None)
         if tool_response is None:
             return True
 

@@ -98,7 +98,6 @@ def create_user_message(
         )
         for tool_def in (request.create_tool_definitions if request.create_tool_definitions is not None else [])
     ]
-    tools_from_parent = []
 
     msg_id = obj.NewID("msg")
     message = Message(
@@ -117,7 +116,7 @@ def create_user_message(
         private=request.private,
         harmful=is_msg_harmful,
         expiration_time=message_expiration_time,
-        tool_definitions=tools_created + tools_from_parent,
+        tool_definitions=tools_created,
     )
     return message_repository.add(message)
 
@@ -147,6 +146,7 @@ def create_tool_response_message(
         args=source_tool.args,
         tool_name=source_tool.tool_name,
         message_id=message.id,
+        tool_source=source_tool.tool_source,
     )
     message.tool_calls = [clone_tool]
 
@@ -161,6 +161,7 @@ def create_assistant_message(
     parent_message_id: str,
     root_message_id: str,
     agent: Token,
+    tool_def: list[ToolDefinition],
 ):
     message_expiration_time = get_expiration_time(agent)
 
@@ -177,5 +178,6 @@ def create_assistant_message(
         private=request.private,
         model_type=model.model_type,
         expiration_time=message_expiration_time,
+        tool_definitions=tool_def,
     )
     return message_repository.add(message)

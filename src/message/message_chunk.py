@@ -5,6 +5,7 @@ from pydantic import computed_field
 
 from src import obj
 from src.api_interface import APIInterface
+from src.dao.engine_models.tool_definitions import ToolSource
 
 
 class ChunkType(StrEnum):
@@ -48,8 +49,11 @@ class ToolCallChunk(BaseChunk):
     args: str | dict[str, Any] | None = None
     """The arguments to pass to the tool.
 
+
     This is stored either as a JSON string or a Python dictionary depending on how data was received.
     """
+
+    tool_source: ToolSource
 
 
 class ThinkingChunk(BaseChunk):

@@ -9,7 +9,6 @@ tool_def = '[{ "name": "get weather", "description": "get the weather", "paramet
 
 default_model_options = {
     "host": (None, "test_backend"),
-    "tool_definitions": (None, tool_def),
     "model": (None, "test-model"),
 }
 
@@ -37,6 +36,7 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
             headers=self.auth(anonymous_user),
             files={
                 "content": (None, user_content),
+                "tool_definitions": (None, tool_def),
                 **default_model_options,
             },
         )
@@ -74,13 +74,28 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
 
         final_messages = final_thread["messages"]
 
+        last_assistant_message = final_messages[-2]
         last_message = final_messages[-1]
 
         # todo assert last message has tool defintion
 
         assert last_message["role"] == "tool_call_result"
-        for message in final_messages:
-            print(message)
+
+        assert last_assistant_message["role"] == "assistant"
+        assert len(last_assistant_message["toolCalls"]) == 2
+
+        create_tool_response = requests.post(
+            f"{self.origin}/v4/threads/",
+            headers=self.auth(anonymous_user),
+            files={
+                "content": (None, "weather is good"),
+                "role": (None, "tool_call_result"),
+                **default_model_options,
+            },
+        )
+        create_tool_response.raise_for_status()
+
+        # todo send in tool response message
 
     def tearDown(self):
         # Since the delete operation cascades, we have to find all child messages

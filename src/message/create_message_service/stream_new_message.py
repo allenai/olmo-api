@@ -45,7 +45,12 @@ from src.pydantic_inference.pydantic_ai_helpers import (
 from src.pydantic_inference.pydantic_model_service import get_pydantic_model
 from src.util.generator_with_return_value import GeneratorWithReturnValue
 
-from .database import create_assistant_message, create_tool_response_message, create_user_message, setup_msg_thread
+from .database import (
+    create_assistant_message,
+    create_tool_response_message,
+    create_user_message,
+    setup_msg_thread,
+)
 from .tools.tool_calls import call_tool, get_tools
 
 MAX_REPEATED_TOOL_CALLS = 10
@@ -83,7 +88,7 @@ def create_new_message(
             request.parent.id,
             request.parent.root,
             agent,
-            tool_def=[],
+            tool_defs=[],
         )
         assistant_message.final = True
         message_repository.update(assistant_message)
@@ -127,7 +132,6 @@ def create_new_message(
         return stream_new_message(
             request,
             dbc,
-            storage_client,
             model,
             safety_check_elapsed_time,
             start_time_ns,
@@ -136,13 +140,17 @@ def create_new_message(
             message_chain,
             user_message,
             checker_type,
+            blob_map,
         )
 
     if request.role == Role.ToolResponse:
-        if request.parent is None:
+        if request.parent_id is None:
             msg = "Can not create a tool response as a root message"
             raise RuntimeError(msg)
 
+        if request.tool_call_id is None:
+            msg = "Can not create a tool response without tool_call_id"
+            raise RuntimeError(msg)
         message_chain = setup_msg_thread(
             message_repository,
             model=model,
@@ -150,20 +158,48 @@ def create_new_message(
             agent=agent,
             is_msg_harmful=is_message_harmful,
         )
-        user_message = create_user_message(
+
+        # the parent might not be the assistant message, it could be a different tool call response
+        last_assistant_message = find_last_matching(message_chain, lambda m: m.role == Role.Assistant)
+
+        if last_assistant_message is None:
+            msg = f"Can not create a tool response. Parent {request.parent_id} not found"
+            raise RuntimeError(msg)
+
+        if last_assistant_message.tool_calls is None:
+            msg = "Can not create a tool response. Parent has no tools"
+            raise RuntimeError(msg)
+
+        tool_call_from_assistant = next(
+            (tool for tool in last_assistant_message.tool_calls if tool.tool_call_id == request.tool_call_id), None
+        )
+
+        if tool_call_from_assistant is None:
+            msg = "Coult not find tool id in last assistant message"
+            raise RuntimeError(msg)
+
+        # TODO also ensure tool has not been answered
+
+        source_tool: ToolCall = ToolCall(
+            tool_call_id=tool_call_from_assistant.tool_call_id,
+            tool_name=tool_call_from_assistant.tool_name,
+            args=tool_call_from_assistant.args,
+            tool_source=tool_call_from_assistant.tool_source,
+            message_id="",
+        )
+
+        user_message = create_tool_response_message(
             message_repository,
-            parent=message_chain[-1] if len(message_chain) > 0 else None,
-            request=request,
-            agent=agent,
-            model=model,
-            is_msg_harmful=is_message_harmful,
+            parent_message=message_chain[-1],
+            content=request.content,
+            source_tool=source_tool,
+            creator=agent.client,
         )
         message_chain.append(user_message)
 
         return stream_new_message(
             request,
             dbc,
-            storage_client,
             model,
             safety_check_elapsed_time,
             start_time_ns,
@@ -180,7 +216,6 @@ def create_new_message(
 def stream_new_message(
     request: CreateMessageRequestWithFullMessages,
     dbc: db.Client,
-    storage_client: GoogleCloudStorage,
     model: ModelConfig,
     safety_check_elapsed_time: float,
     start_time_ns: int,
@@ -208,7 +243,7 @@ def stream_new_message(
             parent_message_id=parent.id,
             root_message_id=parent.root,
             agent=agent,
-            tool_def=parent.tool_definitions or [],
+            tool_defs=parent.tool_definitions or [],
         )
         message_chain.append(reply)
 
@@ -235,7 +270,11 @@ def stream_new_message(
                 if user_tool is False:
                     tool_response = call_tool(tool)
                     tool_msg = create_tool_response_message(
-                        message_repository, content=tool_response.content, parent_message=last_msg, source_tool=tool
+                        message_repository,
+                        content=tool_response.content,
+                        parent_message=last_msg,
+                        source_tool=tool,
+                        creator=agent.client,
                     )
                     message_chain.append(tool_msg)
 

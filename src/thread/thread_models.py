@@ -37,6 +37,7 @@ class ToolCall(APIInterface):
     tool_name: str
     args: str | dict[str, Any] | None = None
     tool_call_id: str
+    tool_source: str
 
 
 class ToolDefinition(APIInterface):

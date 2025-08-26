@@ -86,12 +86,19 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
         assert last_assistant_message["role"] == "assistant"
         assert len(last_assistant_message["toolCalls"]) == 2
 
+        # Find user call
+        user_tool_call = next(
+            tool for tool in last_assistant_message["toolCalls"] if tool["toolSource"] == "user_defined"
+        )
+
         create_tool_response = requests.post(
             f"{self.origin}/v4/threads/",
             headers=self.auth(anonymous_user),
             files={
                 "content": (None, "weather is good"),
                 "role": (None, "tool_call_result"),
+                "tool_call_id": (None, user_tool_call["toolCallId"]),
+                "parent": (None, final_messages[-1]["id"]),
                 **default_model_options,
             },
         )

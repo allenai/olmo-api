@@ -104,7 +104,7 @@ def create_user_message(
         id=msg_id,
         content=request.content,
         creator=agent.client,
-        role=request.role,
+        role=Role.User,
         opts=request.opts.model_dump(),
         model_id=model.id,
         model_host=model.host,
@@ -122,11 +122,14 @@ def create_user_message(
 
 
 def create_tool_response_message(
-    message_repository: BaseMessageRepository, parent_message: Message, content: str, source_tool: ToolCall
+    message_repository: BaseMessageRepository,
+    parent_message: Message,
+    content: str,
+    source_tool: ToolCall,
+    creator: str,
 ):
     message = Message(
         content=content,
-        creator=parent_message.creator,
         role=Role.ToolResponse,
         opts=parent_message.opts,
         model_id=parent_message.model_id,
@@ -140,6 +143,7 @@ def create_tool_response_message(
         private=parent_message.private,
         harmful=False,
         expiration_time=parent_message.expiration_time,
+        creator=creator,
     )
     clone_tool = ToolCall(
         tool_call_id=source_tool.tool_call_id,
@@ -161,9 +165,21 @@ def create_assistant_message(
     parent_message_id: str,
     root_message_id: str,
     agent: Token,
-    tool_def: list[ToolDefinition],
+    tool_defs: list[ToolDefinition],
 ):
     message_expiration_time = get_expiration_time(agent)
+
+    # TODO: Remove this. should move to a many to many relationship
+    cloned_tool_def = [
+        ToolDefinition(
+            message_id="",
+            tool_name=tool_def.tool_name,
+            tool_source=tool_def.tool_source,
+            description=tool_def.description,
+            parameters=tool_def.parameters,
+        )
+        for tool_def in tool_defs
+    ]
 
     message = Message(
         content=content,
@@ -178,6 +194,6 @@ def create_assistant_message(
         private=request.private,
         model_type=model.model_type,
         expiration_time=message_expiration_time,
-        tool_definitions=tool_def,
+        tool_definitions=cloned_tool_def,
     )
     return message_repository.add(message)

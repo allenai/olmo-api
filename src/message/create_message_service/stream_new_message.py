@@ -75,6 +75,14 @@ def create_new_message(
     *,
     is_message_harmful: bool | None = None,
 ) -> Message | Generator[Message | MessageChunk | MessageStreamError | Chunk]:
+    message_chain = setup_msg_thread(
+        message_repository,
+        model=model,
+        request=request,
+        agent=agent,
+        is_msg_harmful=is_message_harmful,
+    )
+
     if request.role == Role.Assistant:
         if request.parent is None:
             error_message = "parent is required for creating assistant message"
@@ -96,13 +104,6 @@ def create_new_message(
         return assistant_message
 
     if request.role == Role.User:
-        message_chain = setup_msg_thread(
-            message_repository,
-            model=model,
-            request=request,
-            agent=agent,
-            is_msg_harmful=is_message_harmful,
-        )
         user_message = create_user_message(
             message_repository,
             parent=message_chain[-1] if len(message_chain) > 0 else None,
@@ -149,14 +150,6 @@ def create_new_message(
         if request.tool_call_id is None:
             msg = "Can not create a tool response without tool_call_id"
             raise RuntimeError(msg)
-        message_chain = setup_msg_thread(
-            message_repository,
-            model=model,
-            request=request,
-            agent=agent,
-            is_msg_harmful=is_message_harmful,
-        )
-
         # the parent might not be the assistant message, it could be a different tool call response
         last_assistant_message = find_last_matching(message_chain, lambda m: m.role == Role.Assistant)
 
@@ -204,7 +197,7 @@ def create_new_message(
             agent,
             message_repository,
             message_chain,
-            user_message,
+            tool_message,
             checker_type,
         )
     msg = "Unsupported role"

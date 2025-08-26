@@ -1,4 +1,5 @@
 import json
+import pprint
 from typing import Any
 
 import requests
@@ -79,6 +80,7 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
 
         # todo assert last message has tool defintion
 
+        pprint.pp(final_messages)
         assert last_message["role"] == "tool_call_result"
 
         assert last_assistant_message["role"] == "assistant"

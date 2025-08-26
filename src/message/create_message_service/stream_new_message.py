@@ -536,7 +536,7 @@ def create_output_from_chunks(chunks: list[MessageChunk]):
     return output, logprobs
 
 
-def check_for_pending_tool_calls(chain: list[Message]) -> bool:
+def has_pending_tool_calls(chain: list[Message]) -> bool:
     # find the last assistant message in the list...
     # find the current tool responses...
     # if we haven't answered them all return false
@@ -545,7 +545,7 @@ def check_for_pending_tool_calls(chain: list[Message]) -> bool:
     if last_assistant_message is None:
         return False
 
-    for tool_call in last_assistant_message.tool_calls:
+    for tool_call in last_assistant_message.tool_calls or []:
         tool_response = find_last_matching(
             chain,
             lambda m, tool_call=tool_call: m.role == Role.ToolResponse

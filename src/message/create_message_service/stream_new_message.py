@@ -197,7 +197,7 @@ def stream_new_message(
         if (
             reply.tool_calls is None
             or len(reply.tool_calls) == 0
-            or any(is_user_tool(tool, reply) for tool in reply.tool_calls)
+            or any(is_user_tool(tool, user_message) for tool in reply.tool_calls)
         ):
             break
 

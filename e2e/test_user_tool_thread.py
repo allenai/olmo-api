@@ -90,7 +90,6 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
             tool for tool in last_assistant_message["toolCalls"] if tool["toolSource"] == "user_defined"
         )
 
-        pprint.pp(final_messages)
         create_tool_response = requests.post(
             f"{self.origin}/v4/threads/",
             headers=self.auth(anonymous_user),
@@ -104,7 +103,7 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
         )
         create_tool_response.raise_for_status()
 
-        lines = list(create_message_request.text.splitlines())
+        lines = list(create_tool_response.text.splitlines())
 
         json_lines = [json.loads(line) for line in lines]
 
@@ -115,7 +114,9 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
 
         thread_messages = final_yield["messages"]
 
-        pprint.pp(thread_messages)
+        assert len(thread_messages[-1]["toolDefinitions"]) == 2
+        assert thread_messages[0]["role"] == "tool_call_result"
+        assert thread_messages[1]["role"] == "assistant"
 
     def tearDown(self):
         # Since the delete operation cascades, we have to find all child messages

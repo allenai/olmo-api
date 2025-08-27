@@ -8,12 +8,13 @@ from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import ModelConfig
 from src.dao.engine_models.tool_call import ToolCall
 from src.dao.engine_models.tool_definitions import ToolDefinition, ToolSource
+from src.dao.flask_sqlalchemy_session import current_session
 from src.dao.message.message_models import Role
 from src.dao.message.message_repository import BaseMessageRepository
+from src.dao.tool_definitions.tool_definitions_repository import ToolDefinitionsRepository
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
-from src.message.create_message_service.tools.tool_calls import get_internal_tools
 
 
 def get_expiration_time(agent: Token):
@@ -103,8 +104,10 @@ def create_user_message(
             else []  # currently we only allow tool creation in new messages. We don't add them if they come in later..
         )
     ]
-
-    internal_tools: list[ToolDefinition] = get_internal_tools(model) if request.parent is None else []
+    tool_def_repo = ToolDefinitionsRepository(current_session)
+    internal_tools: list[ToolDefinition] = (
+        tool_def_repo.get_active_internal_tool_definitions() if is_new_message else []
+    )
 
     parent_tools: list[ToolDefinition] = (
         parent.tool_definitions if parent is not None and parent.tool_definitions is not None else []

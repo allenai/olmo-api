@@ -2,7 +2,7 @@ import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import DateTime, Enum, ForeignKey, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -23,7 +23,7 @@ class ToolSource(StrEnum):
 
 class PropertiesType(BaseModel):
     type: str
-    description: str
+    description: str | None = Field(default=None)
 
 
 class ParameterDef(BaseModel):

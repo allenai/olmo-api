@@ -164,10 +164,8 @@ def create_new_message(
         )
 
         if tool_call_from_assistant is None:
-            msg = "Coult not find tool id in last assistant message"
+            msg = "Could not find tool id in last assistant message"
             raise RuntimeError(msg)
-
-        # TODO also ensure tool has not been answered
 
         source_tool: ToolCall = ToolCall(
             tool_call_id=tool_call_from_assistant.tool_call_id,

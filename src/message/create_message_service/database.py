@@ -106,7 +106,7 @@ def create_user_message(
     ]
     tool_def_repo = ToolDefinitionsRepository(current_session)
     internal_tools: list[ToolDefinition] = (
-        tool_def_repo.get_active_internal_tool_definitions() if is_new_message else []
+        tool_def_repo.get_active_internal_tool_definitions() if is_new_message and model.can_call_tools else []
     )
 
     parent_tools: list[ToolDefinition] = (

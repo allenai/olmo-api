@@ -1,5 +1,4 @@
 import json
-import pprint
 from typing import Any
 
 import requests
@@ -7,6 +6,7 @@ import requests
 from . import base
 
 tool_def = '[{ "name": "get weather", "description": "get the weather", "parameters": {"type": "object", "properties": {"city": {"type": "string", "description": "the city name"} } } }]'
+tool_def_two = '[{ "name": "get weather two", "description": "get the weather again", "parameters": {"type": "object", "properties": {"city": {"type": "string", "description": "the city name"} } } }]'
 
 default_model_options = {
     "host": (None, "test_backend"),
@@ -98,6 +98,7 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
                 "role": (None, "tool_call_result"),
                 "tool_call_id": (None, user_tool_call["toolCallId"]),
                 "parent": (None, final_messages[-1]["id"]),
+                "tool_definitions": (None, tool_def),  # currently we should ignore this new tool that is passed in
                 **default_model_options,
             },
         )

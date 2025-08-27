@@ -86,6 +86,7 @@ def create_user_message(
     model: ModelConfig,
     is_msg_harmful: bool | None = None,
 ):
+    is_new_message = request.parent is None
     message_expiration_time = get_expiration_time(agent)
 
     # make message with tools from last message, if tools in request, wipe and replace
@@ -96,14 +97,25 @@ def create_user_message(
             parameters=tool_def.parameters.model_dump(),
             tool_source=ToolSource.USER_DEFINED,
         )
-        for tool_def in (request.create_tool_definitions if request.create_tool_definitions is not None else [])
+        for tool_def in (
+            request.create_tool_definitions
+            if is_new_message and request.create_tool_definitions is not None
+            else []  # currently we only allow tool creation in new messages. We don't add them if they come in later..
+        )
     ]
 
     internal_tools: list[ToolDefinition] = get_internal_tools(model) if request.parent is None else []
 
     parent_tools: list[ToolDefinition] = (
-        parent.tool_definitions if parent is not None and parent.tool_definitions is not None else []
+        parent.tool_definitions if is_new_message and parent.tool_definitions is not None else []
     )
+
+    tool_list = tools_created + parent_tools + internal_tools  # check tools are unique
+    tool_names = [obj.name for obj in tool_list]
+
+    if len(tool_names) != len(set(tool_names)):
+        msg = f"tool name conflict detected for name in list {tool_names}"
+        raise RuntimeError(msg)
 
     msg_id = obj.NewID("msg")
     message = Message(
@@ -122,7 +134,7 @@ def create_user_message(
         private=request.private,
         harmful=is_msg_harmful,
         expiration_time=message_expiration_time,
-        tool_definitions=tools_created + parent_tools + internal_tools,
+        tool_definitions=tool_list,
     )
     return message_repository.add(message)
 

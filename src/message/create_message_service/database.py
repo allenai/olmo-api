@@ -91,7 +91,6 @@ def create_user_message(
     # make message with tools from last message, if tools in request, wipe and replace
     tools_created = [
         ToolDefinition(
-            message_id="",
             tool_name=tool_def.name,
             description=tool_def.description,
             parameters=tool_def.parameters.model_dump(),
@@ -192,7 +191,6 @@ def clone_tool_definitions(tool_defs: list[ToolDefinition] | None):
 
     return [
         ToolDefinition(
-            message_id="",
             tool_name=tool_def.tool_name,
             tool_source=tool_def.tool_source,
             description=tool_def.description,

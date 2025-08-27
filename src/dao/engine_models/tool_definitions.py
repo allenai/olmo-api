@@ -3,7 +3,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
-from sqlalchemy import DateTime, Enum, ForeignKey, Text, text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -31,6 +31,20 @@ class ParameterDef(BaseModel):
     properties: dict[str, PropertiesType]
 
 
+# Association table for many-to-many relationship
+class MessageToolDefinition(Base, kw_only=True):
+    __tablename__ = "message_tool_definition_association"
+
+    message_id: Mapped[str] = mapped_column(Text, ForeignKey("message.id"), primary_key=True)
+    tool_definition_id: Mapped[str] = mapped_column(Text, ForeignKey("tool_definition.id"), primary_key=True)
+
+    created: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()"), init=False
+    )
+    message: Mapped["Message"] = relationship(back_populates="tool_definitions_associations")
+    # tool_definition: Mapped["ToolDefinition"] = relationship(back_populates="messages")
+
+
 class ToolDefinition(Base, kw_only=True):
     __tablename__ = "tool_definition"
 
@@ -39,6 +53,8 @@ class ToolDefinition(Base, kw_only=True):
     tool_name: Mapped[str]
     description: Mapped[str]
 
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+
     parameters: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
     tool_source: Mapped[ToolSource] = mapped_column(Enum(ToolSource), nullable=False)
@@ -46,6 +62,3 @@ class ToolDefinition(Base, kw_only=True):
     created: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()"), init=False
     )
-
-    message_id: Mapped[str] = mapped_column(ForeignKey("message.id"))
-    message: Mapped["Message"] = relationship(back_populates="tool_definitions", init=False)

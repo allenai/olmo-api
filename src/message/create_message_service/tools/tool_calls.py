@@ -33,7 +33,6 @@ def get_internal_tools(
     return [
         Ai2ToolDefinition(
             tool_name=tool.name,
-            message_id="",
             tool_source=ToolSource.INTERNAL,
             description=tool.description or "",
             parameters=tool.tool_def.parameters_json_schema or {},

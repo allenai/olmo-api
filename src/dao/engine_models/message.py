@@ -20,7 +20,7 @@ from src.dao.engine_models.completion import Completion
 from src.dao.engine_models.label import Label
 from src.dao.engine_models.prompt_template import PromptTemplate
 from src.dao.engine_models.tool_call import ToolCall
-from src.dao.engine_models.tool_definitions import ToolDefinition
+from src.dao.engine_models.tool_definitions import ToolDefinition, MessageToolDefinition
 
 from .base import Base
 
@@ -70,8 +70,19 @@ class Message(Base, kw_only=True):
 
     thinking: Mapped[str | None] = mapped_column(default=None)
 
+    # tool_definitions: Mapped[list[ToolDefinition] | None] = relationship(
+    #     back_populates="message", cascade="all, delete", lazy="joined", default_factory=list
+    # )
+
     tool_definitions: Mapped[list[ToolDefinition] | None] = relationship(
-        back_populates="message", cascade="all, delete", lazy="joined", default_factory=list
+        secondary="message_tool_definition_association",
+        cascade="all, delete",
+        lazy="joined",
+        default_factory=list,
+    )
+
+    tool_definitions_associations: Mapped[list[MessageToolDefinition] | None] = relationship(
+        back_populates="message", default_factory=list
     )
 
     tool_calls: Mapped[list[ToolCall] | None] = relationship(

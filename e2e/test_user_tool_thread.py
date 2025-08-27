@@ -52,7 +52,7 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
 
         first_yield = json_lines[1]
         assert first_yield["id"] is not None
-
+        thread_id = first_yield["id"]
         thread_messages = first_yield["messages"]
         assert (
             len(thread_messages) == 3
@@ -117,6 +117,17 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
         assert len(thread_messages[-1]["toolDefinitions"]) == 2
         assert thread_messages[0]["role"] == "tool_call_result"
         assert thread_messages[1]["role"] == "assistant"
+
+        # load thead and verify content...
+
+        r = requests.get(f"{self.origin}/v4/threads/{thread_id}", headers=self.auth(anonymous_user))
+        r.raise_for_status()
+
+        thread = r.json()
+
+        for item in thread["messages"]:
+            if item["role"] != "system":
+                assert len(item["toolDefinitions"]) == 2
 
     def tearDown(self):
         # Since the delete operation cascades, we have to find all child messages

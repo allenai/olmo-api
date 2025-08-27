@@ -41,8 +41,6 @@ class MessageToolDefinition(Base, kw_only=True):
     created: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()"), init=False
     )
-    message: Mapped["Message"] = relationship(back_populates="tool_definitions_associations")
-    # tool_definition: Mapped["ToolDefinition"] = relationship(back_populates="messages")
 
 
 class ToolDefinition(Base, kw_only=True):

@@ -107,7 +107,7 @@ def create_user_message(
     internal_tools: list[ToolDefinition] = get_internal_tools(model) if request.parent is None else []
 
     parent_tools: list[ToolDefinition] = (
-        parent.tool_definitions if is_new_message and parent.tool_definitions is not None else []
+        parent.tool_definitions if parent is not None and parent.tool_definitions is not None else []
     )
 
     tool_list = tools_created + parent_tools + internal_tools  # check tools are unique

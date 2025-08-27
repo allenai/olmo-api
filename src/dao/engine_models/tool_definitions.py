@@ -1,18 +1,15 @@
 import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from src import obj
 
 from .base import Base
-
-if TYPE_CHECKING:
-    from src.dao.engine_models.message import Message
 
 
 class ToolSource(StrEnum):

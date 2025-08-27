@@ -48,7 +48,7 @@ class ToolDefinition(Base, kw_only=True):
 
     id: Mapped[str] = mapped_column(Text, primary_key=True, default_factory=obj.new_id_generator("td"))
 
-    tool_name: Mapped[str]
+    name: Mapped[str]
     description: Mapped[str]
 
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")

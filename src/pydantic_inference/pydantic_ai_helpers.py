@@ -124,7 +124,7 @@ def pydantic_map_part(part: ModelResponsePart, message: Message) -> Chunk:
             )
         case ToolCallPart():
             tool_def = next(
-                (tool_def for tool_def in message.tool_definitions or [] if tool_def.tool_name == part.tool_name), None
+                (tool_def for tool_def in message.tool_definitions or [] if tool_def.name == part.tool_name), None
             )
 
             if tool_def is None:
@@ -151,7 +151,7 @@ def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDel
             return ThinkingChunk(message=message.id, content=part.content_delta or "")
         case ToolCallPartDelta():
             tool_def = next(
-                (tool_def for tool_def in message.tool_definitions or [] if tool_def.tool_name == part.tool_name_delta),
+                (tool_def for tool_def in message.tool_definitions or [] if tool_def.name == part.tool_name_delta),
                 None,
             )
 
@@ -174,7 +174,7 @@ def map_pydantic_tool_to_db_tool(message: Message, tool_part: ToolCallPart):
         raise NotImplementedError(msg)
 
     tool_def = next(
-        (tool_def for tool_def in message.tool_definitions or [] if tool_def.tool_name == tool_part.tool_name), None
+        (tool_def for tool_def in message.tool_definitions or [] if tool_def.name == tool_part.tool_name), None
     )
 
     if tool_def is None:

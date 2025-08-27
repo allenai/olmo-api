@@ -89,9 +89,9 @@ def create_user_message(
     message_expiration_time = get_expiration_time(agent)
 
     # make message with tools from last message, if tools in request, wipe and replace
-    tools_created = [
+    tools_created: list[ToolDefinition] = [
         ToolDefinition(
-            tool_name=tool_def.name,
+            name=tool_def.name,
             description=tool_def.description,
             parameters=tool_def.parameters.model_dump(),
             tool_source=ToolSource.USER_DEFINED,
@@ -99,7 +99,11 @@ def create_user_message(
         for tool_def in (request.create_tool_definitions if request.create_tool_definitions is not None else [])
     ]
 
-    internal_tools = get_internal_tools(model) if request.parent is None else []
+    internal_tools: list[ToolDefinition] = get_internal_tools(model) if request.parent is None else []
+
+    parent_tools: list[ToolDefinition] = (
+        parent.tool_definitions if parent is not None and parent.tool_definitions is not None else []
+    )
 
     msg_id = obj.NewID("msg")
     message = Message(
@@ -118,9 +122,7 @@ def create_user_message(
         private=request.private,
         harmful=is_msg_harmful,
         expiration_time=message_expiration_time,
-        tool_definitions=tools_created
-        + clone_tool_definitions(parent.tool_definitions if parent is not None else None)
-        + internal_tools,
+        tool_definitions=tools_created + parent_tools + internal_tools,
     )
     return message_repository.add(message)
 
@@ -149,7 +151,7 @@ def create_tool_response_message(
         expiration_time=parent.expiration_time,
         creator=creator,
         tool_calls=[clone_tool_call(source_tool)],
-        tool_definitions=clone_tool_definitions(parent.tool_definitions),
+        tool_definitions=parent.tool_definitions,
     )
 
     return message_repository.add(message)
@@ -164,9 +166,6 @@ def create_assistant_message(
 ):
     message_expiration_time = get_expiration_time(agent)
 
-    # TODO: Remove this. should move to a many to many relationship
-    cloned_tool_def = clone_tool_definitions(parent.tool_definitions)
-
     message = Message(
         content=content,
         creator=agent.client,
@@ -180,24 +179,9 @@ def create_assistant_message(
         private=parent.private,
         model_type=model.model_type,
         expiration_time=message_expiration_time,
-        tool_definitions=cloned_tool_def,
+        tool_definitions=parent.tool_definitions,
     )
     return message_repository.add(message)
-
-
-def clone_tool_definitions(tool_defs: list[ToolDefinition] | None):
-    if tool_defs is None:
-        return []
-
-    return [
-        ToolDefinition(
-            tool_name=tool_def.tool_name,
-            tool_source=tool_def.tool_source,
-            description=tool_def.description,
-            parameters=tool_def.parameters,
-        )
-        for tool_def in tool_defs
-    ]
 
 
 def clone_tool_call(source_tool: ToolCall):

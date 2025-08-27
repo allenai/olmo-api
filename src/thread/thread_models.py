@@ -41,7 +41,7 @@ class ToolCall(APIInterface):
 
 
 class ToolDefinition(APIInterface):
-    tool_name: str
+    name: str
     description: str
     parameters: ParameterDef
     tool_source: ToolSource

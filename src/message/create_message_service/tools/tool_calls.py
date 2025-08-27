@@ -6,10 +6,11 @@ from pydantic_ai import Tool
 from pydantic_ai.messages import ToolReturnPart
 from pydantic_ai.tools import ToolDefinition
 
-from src.dao.engine_models.model_config import ModelConfig
 from src.dao.engine_models.message import Message
+from src.dao.engine_models.model_config import ModelConfig
 from src.dao.engine_models.tool_call import ToolCall
-from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefinition, ToolSource
+from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefinition
+from src.dao.engine_models.tool_definitions import ToolSource
 
 from .internal_tools import CreateRandomNumber
 
@@ -18,7 +19,7 @@ TOOL_REGISTRY: list[Tool[Any]] = [CreateRandomNumber]
 
 def map_tool_def_to_pydantic(tool: Ai2ToolDefinition):
     return ToolDefinition(
-        name=tool.tool_name,
+        name=tool.name,
         description=tool.description,
         parameters_json_schema=tool.parameters or {},
     )
@@ -32,7 +33,7 @@ def get_internal_tools(
 
     return [
         Ai2ToolDefinition(
-            tool_name=tool.name,
+            name=tool.name,
             tool_source=ToolSource.INTERNAL,
             description=tool.description or "",
             parameters=tool.tool_def.parameters_json_schema or {},

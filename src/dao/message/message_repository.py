@@ -33,7 +33,7 @@ class BaseMessageRepository(abc.ABC):
     @abc.abstractmethod
     def get_message_by_id(
         self,
-        message_id: str | obj.ID | None,
+        message_id: obj.ID,
     ) -> Message | None:
         raise NotImplementedError
 
@@ -103,13 +103,7 @@ class MessageRepository(BaseMessageRepository):
             result.extend(self.flatten_message_children(child))
         return result
 
-    def get_message_by_id(
-        self,
-        message_id: str | obj.ID | None,
-    ):
-        if message_id is None:
-            return None
-
+    def get_message_by_id(self, message_id: obj.ID):
         query = (
             select(Message)
             .where(Message.id == message_id)

@@ -84,15 +84,14 @@ def create_new_message(
     )
 
     if request.role == Role.Assistant:
-        parent = message_repository.get_message_by_id(request.parent_id)
-        if parent is None:
+        if request.parent is None:
             error_message = "parent is required for creating assistant message"
             raise ValueError(error_message)
 
         assistant_message = create_assistant_message(
             message_repository,
             request.content,
-            parent,
+            request.parent,
             model,
             agent,
         )

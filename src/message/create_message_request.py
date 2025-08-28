@@ -181,3 +181,11 @@ class CreateMessageRequestWithFullMessages(BaseModel):
             raise ValueError(msg)
 
         return self
+
+    @model_validator(mode="after")
+    def parent_and_child_have_different_roles(self) -> Self:
+        if self.parent is not None and self.parent.role != Role.ToolResponse and self.parent.role == self.role:
+            msg = "Parent and child must have different roles"
+            raise ValueError(msg)
+
+        return self

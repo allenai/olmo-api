@@ -48,6 +48,16 @@ def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent, message: Message)
             return pydantic_map_delta(chunk.delta, message)
 
 
+def find_tool_def_by_name(message: Message, tool_name: str):
+    tool_def = next((tool_def for tool_def in message.tool_definitions or [] if tool_def.name == tool_name), None)
+
+    if tool_def is None:
+        msg = f"Could not find tool '{tool_name}' in message"
+        raise RuntimeError(msg)
+
+    return tool_def
+
+
 def pydantic_map_messages(messages: list[Message], blob_map: dict[str, FileUploadResult] | None) -> list[ModelMessage]:
     model_messages: list[ModelMessage] = []
     for message in messages:
@@ -123,13 +133,7 @@ def pydantic_map_part(part: ModelResponsePart, message: Message) -> Chunk:
                 content=part.content or "",
             )
         case ToolCallPart():
-            tool_def = next(
-                (tool_def for tool_def in message.tool_definitions or [] if tool_def.name == part.tool_name), None
-            )
-
-            if tool_def is None:
-                msg = "could not find tool in message"
-                raise RuntimeError(msg)
+            tool_def = find_tool_def_by_name(message, part.tool_name)
 
             return ToolCallChunk(
                 message=message.id,
@@ -150,13 +154,10 @@ def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDel
         case ThinkingPartDelta():
             return ThinkingChunk(message=message.id, content=part.content_delta or "")
         case ToolCallPartDelta():
-            tool_def = next(
-                (tool_def for tool_def in message.tool_definitions or [] if tool_def.name == part.tool_name_delta),
-                None,
-            )
+            tool_def = find_tool_def_by_name(message, part.tool_name_delta) if part.tool_name_delta else None
 
             if tool_def is None:
-                msg = "could not find tool in message"
+                msg = "Missing tool name in tool call delta"
                 raise RuntimeError(msg)
 
             return ToolCallChunk(
@@ -173,13 +174,7 @@ def map_pydantic_tool_to_db_tool(message: Message, tool_part: ToolCallPart):
         msg = "String args not supported currently"
         raise NotImplementedError(msg)
 
-    tool_def = next(
-        (tool_def for tool_def in message.tool_definitions or [] if tool_def.name == tool_part.tool_name), None
-    )
-
-    if tool_def is None:
-        msg = "could not find tool in message"
-        raise RuntimeError(msg)
+    tool_def = find_tool_def_by_name(message, tool_part.tool_name)
 
     return ToolCall(
         tool_call_id=tool_part.tool_call_id,

@@ -18,14 +18,13 @@ class ToolSource(StrEnum):
     USER_DEFINED = "user_defined"
 
 
-class PropertiesType(BaseModel):
-    type: str
-    description: str | None = Field(default=None)
-
-
 class ParameterDef(BaseModel):
     type: str
-    properties: dict[str, PropertiesType]
+    properties: dict[str, "ParameterDef"] | None = Field(default=None)
+    description: str | None = Field(default=None)
+    required: list[str] | None = Field(default=[])
+    property_ordering: list[str] | None = Field(default=None)
+    default: dict[str, str] | None = Field(default=None)
 
 
 # Association table for many-to-many relationship

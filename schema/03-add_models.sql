@@ -228,16 +228,3 @@ VALUES (
         false
     ) ON CONFLICT DO NOTHING;
 
-
-INSERT INTO tool_definition(
-id, description, parameters, tool_source,  name, active
-    )
-VALUES (
-        'get-random-number',
-        'Get a random number',
-        '{"type":"object","properties":{},"additionalProperties":false}',
-        'INTERNAL',
-        'create_random_number',
-        true
-
-    ) ON CONFLICT DO NOTHING;

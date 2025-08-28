@@ -28,7 +28,6 @@ def upgrade() -> None:
         sa.Column("id", sa.Text(), nullable=False),
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("description", sa.String(), nullable=False),
-        sa.Column("active", sa.Boolean(), server_default="true", nullable=False),
         sa.Column("parameters", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column(
             "tool_source",

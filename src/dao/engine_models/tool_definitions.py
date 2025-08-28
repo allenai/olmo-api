@@ -3,7 +3,7 @@ from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Text, text
+from sqlalchemy import DateTime, Enum, ForeignKey, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -46,8 +46,6 @@ class ToolDefinition(Base, kw_only=True):
 
     name: Mapped[str]
     description: Mapped[str]
-
-    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
     parameters: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 

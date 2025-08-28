@@ -141,14 +141,6 @@ def create_new_message(
         )
 
     if request.role == Role.ToolResponse:
-        if request.parent_id is None:
-            msg = "Can not create a tool response as a root message"
-            raise RuntimeError(msg)
-
-        if request.tool_call_id is None:
-            msg = "Can not create a tool response without tool_call_id"
-            raise RuntimeError(msg)
-        # the parent might not be the assistant message, it could be a different tool call response
         last_assistant_message = find_last_matching(message_chain, lambda m: m.role == Role.Assistant)
 
         if last_assistant_message is None:

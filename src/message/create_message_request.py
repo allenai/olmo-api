@@ -5,10 +5,9 @@ from flask_pydantic_api.utils import UploadedFile
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 from werkzeug import exceptions
 
-from src.dao.engine_models.message import Message
-
 from src.api_interface import APIInterface
 from src.config.get_config import get_config
+from src.dao.engine_models.message import Message
 from src.dao.engine_models.tool_definitions import ParameterDef
 from src.dao.message.message_models import (
     InferenceOpts,
@@ -164,5 +163,21 @@ class CreateMessageRequestWithFullMessages(BaseModel):
         # Only the creator of a thread can create follow-up prompts
         if self.root is not None and self.root.creator != self.client:
             raise exceptions.Forbidden
+
+        return self
+
+    @model_validator(mode="after")
+    def tool_response_creation_can_not_be_root(self) -> Self:
+        if self.parent is None and self.role == Role.ToolResponse:
+            msg = "Tool response must have parent"
+            raise ValueError(msg)
+
+        return self
+
+    @model_validator(mode="after")
+    def tool_response_creation_must_have_tool_id(self) -> Self:
+        if self.role == Role.ToolResponse and self.tool_call_id is None:
+            msg = "Tool response must have tool call id"
+            raise ValueError(msg)
 
         return self

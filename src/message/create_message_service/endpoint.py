@@ -12,6 +12,7 @@ from src import db, util
 from src.auth.auth_service import authn
 from src.config.get_config import cfg
 from src.config.get_models import get_model_by_host_and_id
+from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import PromptType
 from src.dao.message.message_repository import BaseMessageRepository
 from src.message.create_message_request import (
@@ -27,7 +28,6 @@ from src.message.SafetyChecker import (
 from src.message.validate_message_files_from_config import (
     validate_message_files_from_config,
 )
-from src.dao.engine_models.message import Message
 
 
 def format_message(obj) -> str:

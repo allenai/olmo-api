@@ -27,6 +27,7 @@ from src.message.SafetyChecker import (
 from src.message.validate_message_files_from_config import (
     validate_message_files_from_config,
 )
+from src.dao.engine_models.message import Message
 
 
 def format_message(obj) -> str:
@@ -44,7 +45,7 @@ def create_message_v4(
     agent = authn()
 
     parent_message, root_message, private = get_parent_and_root_messages_and_private(
-        request.parent, dbc, request.private, is_anonymous_user=agent.is_anonymous_user
+        request.parent, message_repository, request.private, is_anonymous_user=agent.is_anonymous_user
     )
 
     mapped_request = CreateMessageRequestWithFullMessages(
@@ -111,12 +112,12 @@ def create_message_v4(
 
 def get_parent_and_root_messages_and_private(
     parent_message_id: str | None,
-    dbc: db.Client,
+    message_repository: BaseMessageRepository,
     request_private: bool | None,
     is_anonymous_user: bool,
-) -> tuple[message.Message | None, message.Message | None, bool]:
-    parent_message = dbc.message.get(parent_message_id) if parent_message_id is not None else None
-    root_message = dbc.message.get(parent_message.root) if parent_message is not None else None
+) -> tuple[Message | None, Message | None, bool]:
+    parent_message = message_repository.get_message_by_id(parent_message_id) if parent_message_id is not None else None
+    root_message = message_repository.get_message_by_id(parent_message.root) if parent_message is not None else None
 
     private = (
         # Anonymous users aren't allowed to share messages

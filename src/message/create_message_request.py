@@ -5,12 +5,13 @@ from flask_pydantic_api.utils import UploadedFile
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 from werkzeug import exceptions
 
+from src.dao.engine_models.message import Message
+
 from src.api_interface import APIInterface
 from src.config.get_config import get_config
 from src.dao.engine_models.tool_definitions import ParameterDef
 from src.dao.message.message_models import (
     InferenceOpts,
-    Message,
     Role,
     logprobs,
     max_tokens,

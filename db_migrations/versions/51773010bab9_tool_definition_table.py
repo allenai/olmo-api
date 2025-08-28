@@ -61,6 +61,7 @@ def upgrade() -> None:
             "tool_source",
             postgresql.ENUM("INTERNAL", "USER_DEFINED", name="toolsource", create_type=False),
             nullable=False,
+            server_default="USER_DEFINED",
         ),
     )
     # ### end Alembic commands ###

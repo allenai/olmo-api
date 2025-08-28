@@ -206,6 +206,13 @@ def stream_new_message(
 ) -> Generator[Message | MessageChunk | MessageStreamError | Chunk]:
     yield StreamStartChunk(message=message_chain[0].id)
 
+    if has_pending_tool_calls(message_chain):
+        # if we have pending tool calls we should not get an assistant message
+        yield prepare_yield_message_chain(message_chain, created_message)
+        yield from finalize_messages(message_repository, message_chain, created_message)
+        yield StreamEndChunk(message=message_chain[0].id)
+        return
+
     # Finalize the messages and yield
     tool_calls_made = 0
     while tool_calls_made < MAX_REPEATED_TOOL_CALLS:
@@ -535,26 +542,18 @@ def create_output_from_chunks(chunks: list[MessageChunk]):
 def has_pending_tool_calls(chain: list[Message]) -> bool:
     # find the last assistant message in the list...
     # find the current tool responses...
-    # if we haven't answered them all return false
+    # if we haven't answered them all return true
     last_assistant_message = find_last_matching(chain, lambda m: m.role == Role.Assistant)
 
     if last_assistant_message is None:
         return False
 
-    for tool_call in last_assistant_message.tool_calls or []:
+    tool_responses = list(filter(lambda msg: msg.role == Role.ToolResponse, chain))
+    tool_responses_ids = [tool.tool_calls[0].tool_call_id if tool.tool_calls else None for tool in tool_responses]
 
-        def find_tool_response(m: Message, tool_call: ToolCall) -> bool:
-            return (
-                m.role == Role.ToolResponse
-                and m.tool_calls is not None
-                and m.tool_calls[0].tool_call_id == tool_call.id
-            )
-
-        tool_response = next((m for m in chain if find_tool_response(m, tool_call)), None)
-        if tool_response is None:
-            return True
-
-    return False
+    return any(
+        tool_call.tool_call_id not in tool_responses_ids for tool_call in last_assistant_message.tool_calls or []
+    )
 
 
 def find_last_matching(arr: list[Message], condition: Callable[[Message], bool]):

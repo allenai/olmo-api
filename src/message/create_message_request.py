@@ -85,7 +85,7 @@ class CreateMessageRequest(BaseCreateMessageRequest):
     )
 
 
-class CreateToolDefinition(BaseModel):
+class CreateToolDefinition(APIInterface):
     name: str
     description: str
     parameters: ParameterDef

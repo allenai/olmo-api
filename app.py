@@ -24,7 +24,7 @@ def create_app():
     cfg = get_config.Config.load(os.environ.get("FLASK_CONFIG_PATH", get_config.DEFAULT_CONFIG_PATH))
 
     dbc = db.Client.from_config(cfg.db)
-    db_engine = make_db_engine(cfg.db, pool=dbc.pool)
+    db_engine = make_db_engine(cfg.db, pool=dbc.pool, sql_alchemy=cfg.sql_alchemy)
     session_maker = sessionmaker(db_engine, expire_on_commit=False, autoflush=True)
     flask_scoped_session(session_maker, app=app)
 

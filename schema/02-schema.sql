@@ -856,7 +856,7 @@ UPDATE alembic_version SET version_num='51773010bab9' WHERE alembic_version.vers
 
 ALTER TABLE tool_call DROP CONSTRAINT tool_call_message_id_fkey;
 
-ALTER TABLE tool_call ADD FOREIGN KEY(message_id) REFERENCES message (id) ON DELETE CASCADE;
+ALTER TABLE tool_call ADD CONSTRAINT tool_call_message_id_fkey FOREIGN KEY(message_id) REFERENCES message (id) ON DELETE CASCADE;
 
 UPDATE alembic_version SET version_num='ebc55c241155' WHERE alembic_version.version_num = '51773010bab9';
 

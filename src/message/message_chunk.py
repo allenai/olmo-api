@@ -53,7 +53,7 @@ class ToolCallChunk(BaseChunk):
     This is stored either as a JSON string or a Python dictionary depending on how data was received.
     """
 
-    tool_source: ToolSource
+    tool_source: ToolSource | None
 
 
 class ThinkingChunk(BaseChunk):

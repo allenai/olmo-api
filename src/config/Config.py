@@ -19,6 +19,7 @@ class Database:
 @dataclass
 class SQLAlchemyConfig:
     pool_size: int
+    max_overflow: int
 
 
 @dataclass

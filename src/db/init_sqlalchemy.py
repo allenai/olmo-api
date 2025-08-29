@@ -11,4 +11,6 @@ def make_psycopg3_url(conninfo) -> URL:
 def make_db_engine(config: Database, pool: ConnectionPool, sql_alchemy: SQLAlchemyConfig) -> Engine:
     url = make_psycopg3_url(config.conninfo)
 
-    return create_engine(url, creator=pool.getconn, pool_size=sql_alchemy.pool_size)
+    return create_engine(
+        url, creator=pool.getconn, pool_size=sql_alchemy.pool_size, max_overflow=sql_alchemy.max_overflow
+    )

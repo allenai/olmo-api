@@ -1,3 +1,5 @@
+import json
+
 from pydantic_ai.messages import (
     BinaryContent,
     ImageUrl,
@@ -156,21 +158,18 @@ def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDel
         case ToolCallPartDelta():
             tool_def = find_tool_def_by_name(message, part.tool_name_delta) if part.tool_name_delta else None
 
-            if tool_def is None:
-                msg = "Missing tool name in tool call delta"
-                raise RuntimeError(msg)
-
             return ToolCallChunk(
                 message=message.id,
                 tool_call_id=part.tool_call_id or "",
                 tool_name=part.tool_name_delta or "",
                 args=part.args_delta,
-                tool_source=tool_def.tool_source,
+                tool_source=tool_def.tool_source if tool_def else None,
             )
 
 
 def map_pydantic_tool_to_db_tool(message: Message, tool_part: ToolCallPart):
-    if isinstance(tool_part.args, str):
+    args = try_parse_to_json(tool_part.args) if isinstance(tool_part.args, str) else tool_part.args
+    if isinstance(args, str):
         msg = "String args not supported currently"
         raise NotImplementedError(msg)
 
@@ -179,7 +178,7 @@ def map_pydantic_tool_to_db_tool(message: Message, tool_part: ToolCallPart):
     return ToolCall(
         tool_call_id=tool_part.tool_call_id,
         tool_name=tool_part.tool_name,
-        args=tool_part.args,
+        args=args,
         message_id=message.id,
         tool_source=tool_def.tool_source,
     )
@@ -187,3 +186,10 @@ def map_pydantic_tool_to_db_tool(message: Message, tool_part: ToolCallPart):
 
 def map_db_tool_to_pydantic_tool(tool: ToolCall):
     return ToolCallPart(tool_name=tool.tool_name, tool_call_id=tool.tool_call_id, args=tool.args)
+
+
+def try_parse_to_json(data: str) -> dict | str:
+    try:
+        return json.loads(data)
+    except json.JSONDecodeError:
+        return data

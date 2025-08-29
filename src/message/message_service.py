@@ -4,6 +4,8 @@ from werkzeug import exceptions
 
 from src import db
 from src.auth.auth_service import authn
+from src.dao.flask_sqlalchemy_session import current_session
+from src.dao.message.message_repository import MessageRepository
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 
 
@@ -45,9 +47,11 @@ def delete_message(id: str, dbc: db.Client, storage_client: GoogleCloudStorage):
 
     storage_client.delete_multiple_files_by_url(files_to_delete)
 
+    message_repository = MessageRepository(current_session)
     # Remove messages
-    msg_ids = [m.id for m in message_list]
-    dbc.message.remove(msg_ids)
+
+    for m in message_list:
+        message_repository.delete(m.id)
 
     # Remove related rows in Completion table
     related_cpl_ids = [id for id in [m.completion for m in message_list] if id is not None]

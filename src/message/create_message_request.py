@@ -189,3 +189,6 @@ class CreateMessageRequestWithFullMessages(BaseModel):
             raise ValueError(msg)
 
         return self
+
+
+CreateMessageRequestWithFullMessages.model_rebuild()

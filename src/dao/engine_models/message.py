@@ -71,15 +71,11 @@ class Message(Base, kw_only=True):
     thinking: Mapped[str | None] = mapped_column(default=None)
 
     tool_definitions: Mapped[list[ToolDefinition] | None] = relationship(
+        "ToolDefinition",
         secondary="message_tool_definition_association",
         lazy="joined",
         default_factory=list,
-    )
-
-    tool_definition_associations: Mapped[list[MessageToolDefinition] | None] = relationship(
-        viewonly=True,
         cascade="all, delete",
-        default_factory=list,
     )
 
     tool_calls: Mapped[list[ToolCall] | None] = relationship(

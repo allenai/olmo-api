@@ -347,7 +347,7 @@ def stream_assistant_response(
     model: ModelConfig,
     agent: Token,
     blob_map: dict[str, FileUploadResult] | None,
-    user_message: Message,
+    input_message: Message,
     reply: Message,
     stream_metrics: StreamMetrics,
 ) -> Generator[MessageChunk | MessageStreamError | Chunk, Any, None]:
@@ -372,7 +372,7 @@ def stream_assistant_response(
 
         first_chunk_ns: int | None = None
         pydantic_messages = pydantic_map_messages(message_chain[:-1], blob_map)
-        tools = get_pydantic_tool_defs(user_message) if model.can_call_tools else []
+        tools = get_pydantic_tool_defs(input_message) if model.can_call_tools else []
 
         with model_request_stream_sync(
             model=pydantic_inference_engine,
@@ -414,7 +414,7 @@ def stream_assistant_response(
                 content=message_in_chain.content,
                 # We only want to add the request files to the new message. The rest will have file urls associated with them
                 files=request.files
-                if user_message is not None and message_in_chain.id == user_message.id
+                if input_message is not None and message_in_chain.id == input_message.id
                 else message_in_chain.file_urls,
             )
             for message_in_chain in message_chain[:-1]

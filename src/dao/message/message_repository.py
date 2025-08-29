@@ -2,7 +2,7 @@ import abc
 from collections.abc import Sequence
 from typing import cast
 
-from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session, joinedload
 
 from src import obj
@@ -42,11 +42,11 @@ class BaseMessageRepository(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def soft_delete(self, message_id: obj.ID) -> Message | None:
+    def soft_delete(self, message_id: obj.ID) -> None | Message:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def delete(self, message_id: obj.ID) -> Message | None:
+    def delete(self, message_id: obj.ID) -> None:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -103,7 +103,7 @@ class MessageRepository(BaseMessageRepository):
             result.extend(self.flatten_message_children(child))
         return result
 
-    def get_message_by_id(self, message_id: obj.ID):
+    def get_message_by_id(self, message_id: obj.ID) -> Message | None:
         query = (
             select(Message)
             .where(Message.id == message_id)
@@ -111,6 +111,8 @@ class MessageRepository(BaseMessageRepository):
         )
 
         results = self.session.scalars(query).unique().all()
+        if len(results) == 0:
+            return None
         return results[0]
 
     def update(self, message: Message) -> Message:
@@ -123,13 +125,19 @@ class MessageRepository(BaseMessageRepository):
         self.session.commit()
         return message_to_update
 
-    def soft_delete(self, message_id: obj.ID) -> Message | None:
-        return self.session.execute(
+    def soft_delete(self, message_id: obj.ID) -> None | Message:
+        msg = self.session.execute(
             update(Message).where(Message.id == message_id).values(deleted=func.now()).returning(Message)
         ).scalar()
+        self.session.commit()
+        return msg
 
-    def delete(self, message_id: obj.ID) -> Message | None:
-        return self.session.execute(delete(Message).where(Message.id == message_id).returning(Message)).scalar()
+    def delete(self, message_id: obj.ID) -> None:
+        message = self.get_message_by_id(message_id)
+        if message is None:
+            return
+        self.session.delete(message)
+        self.session.commit()
 
     def get_threads_for_user(self, user_id: str, sort_opts: Opts) -> ThreadList:
         thread_conditions = [

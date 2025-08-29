@@ -1,13 +1,16 @@
 import datetime
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy import DateTime, Enum, ForeignKey, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src import obj
+
+if TYPE_CHECKING:
+    from src.dao.engine_models.message import Message
 
 from .base import Base
 
@@ -53,4 +56,11 @@ class ToolDefinition(Base, kw_only=True):
 
     created: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()"), init=False
+    )
+
+    messages: Mapped[list["Message"] | None] = relationship(
+        "Message",
+        back_populates="tool_definitions",
+        secondary="message_tool_definition_association",
+        default_factory=list,
     )

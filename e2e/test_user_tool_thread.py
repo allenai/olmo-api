@@ -3,6 +3,9 @@ from typing import Any
 
 import requests
 
+from e2e import util
+from src.thread.thread_models import Thread
+
 from . import base
 
 tool_def = '{ "name": "get weather", "description": "get the weather", "parameters": {"type": "object", "properties": {"city": {"type": "string", "description": "the city name"} } } }'
@@ -104,6 +107,7 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
         assert first_yield["id"] is not None
         thread_id = first_yield["id"]
         thread_messages = first_yield["messages"]
+        self.messages.append((thread_id, anonymous_user))
         assert (
             len(thread_messages) == 3
         )  # / system message, user message and empty assistnat (no system prompt currently)
@@ -128,12 +132,12 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
         last_assistant_message = final_messages[-2]
         last_message = final_messages[-1]
 
-        # todo assert last message has tool defintion
-
         assert last_message["role"] == "tool_call_result"
 
         assert last_assistant_message["role"] == "assistant"
         assert len(last_assistant_message["toolCalls"]) == 2
+
+        assert len(last_assistant_message["toolDefinitions"]) == 2
 
         # Find user call
         user_tool_call = next(
@@ -180,7 +184,22 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
             if item["role"] != "system":
                 assert len(item["toolDefinitions"]) == 2
 
-    def test_complex_tool_def(self):
+    def tearDown(self):
+        # Since the delete operation cascades, we have to find all child messages
+        # and remove them from self.messages. Otherwise, we'll run into 404 errors
+        # when executing r.raise_for_status()
+        messages_to_delete = [msg for msg in self.messages if msg not in self.child_msgs]
+
+        for id, user in messages_to_delete:
+            r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
+            r.raise_for_status()
+
+
+class TestUserComplexToolDefThreadEndpoints(base.IntegrationTest):
+    messages: list[tuple[str, base.AuthenticatedClient]] = []
+    child_msgs: list[tuple[str, base.AuthenticatedClient]] = []
+
+    def runTest(self):
         anonymous_user = self.user(anonymous=True)
 
         user_content = "I'm a magical labrador named Murphy, who are you?"
@@ -195,8 +214,25 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
             },
         )
         create_message_request.raise_for_status()
+        response_thread = Thread.model_validate_json(util.second_to_last_response_line(create_message_request))
+        self.messages.append((response_thread.id, anonymous_user))
 
-    def test_multiple_user_tool_calls(self):
+    def tearDown(self):
+        # Since the delete operation cascades, we have to find all child messages
+        # and remove them from self.messages. Otherwise, we'll run into 404 errors
+        # when executing r.raise_for_status()
+        messages_to_delete = [msg for msg in self.messages if msg not in self.child_msgs]
+
+        for id, user in messages_to_delete:
+            r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
+            r.raise_for_status()
+
+
+class TestMultipleUserToolCallsThreadEndpoints(base.IntegrationTest):
+    messages: list[tuple[str, base.AuthenticatedClient]] = []
+    child_msgs: list[tuple[str, base.AuthenticatedClient]] = []
+
+    def runTest(self):
         anonymous_user = self.user(anonymous=True)
 
         user_content = "I'm a magical labrador named Murphy, who are you?"
@@ -221,6 +257,8 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
 
         first_yield = json_lines[1]
         assert first_yield["id"] is not None
+
+        self.messages.append((first_yield["id"], anonymous_user))
         thread_messages = first_yield["messages"]
         assert (
             len(thread_messages) == 3
@@ -245,8 +283,6 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
 
         last_assistant_message = final_messages[-2]
         last_message = final_messages[-1]
-
-        # todo assert last message has tool defintion
 
         assert last_message["role"] == "tool_call_result"
 

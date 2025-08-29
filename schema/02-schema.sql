@@ -852,5 +852,13 @@ ALTER TABLE tool_call ADD COLUMN tool_source toolsource DEFAULT 'USER_DEFINED' N
 
 UPDATE alembic_version SET version_num='51773010bab9' WHERE alembic_version.version_num = 'c0a6e48866a2';
 
+-- Running upgrade 51773010bab9 -> ebc55c241155
+
+ALTER TABLE tool_call DROP CONSTRAINT tool_call_message_id_fkey;
+
+ALTER TABLE tool_call ADD FOREIGN KEY(message_id) REFERENCES message (id) ON DELETE CASCADE;
+
+UPDATE alembic_version SET version_num='ebc55c241155' WHERE alembic_version.version_num = '51773010bab9';
+
 COMMIT;
 

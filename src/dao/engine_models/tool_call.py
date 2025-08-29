@@ -23,5 +23,5 @@ class ToolCall(Base, kw_only=True):
     tool_source: Mapped[ToolSource] = mapped_column(Enum(ToolSource), nullable=False)
     args: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None)
 
-    message_id: Mapped[str] = mapped_column(ForeignKey("message.id"))
+    message_id: Mapped[str] = mapped_column(ForeignKey("message.id", ondelete="CASCADE"))
     message: Mapped["Message"] = relationship("Message", back_populates="tool_calls", init=False)

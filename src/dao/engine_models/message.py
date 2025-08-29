@@ -78,7 +78,12 @@ class Message(Base, kw_only=True):
         default_factory=list,
     )
 
-    tool_calls: Mapped[list[ToolCall] | None] = relationship("ToolCall", back_populates="message", default_factory=list)
+    tool_calls: Mapped[list[ToolCall] | None] = relationship(
+        "ToolCall",
+        back_populates="message",
+        default_factory=list,
+        cascade="all, delete",
+    )
 
     completion_: Mapped[Completion | None] = relationship("Completion", back_populates="message", init=False)
 

@@ -113,6 +113,17 @@ class ModalOpenAI:
     api_key: SecretStr
 
 
+@dataclass
+class McpServer:
+    url: str
+    headers: dict[str, str]
+
+
+@dataclass
+class Mcp:
+    servers: list[McpServer]
+
+
 DEFAULT_CONFIG_PATH = "/secret/cfg/config.json"
 
 
@@ -134,6 +145,7 @@ class Config:
     cirrascale_backend: CirrascaleBackend
     cirrascale: Cirrascale
     modal_openai: ModalOpenAI
+    mcp: Mcp
 
     @classmethod
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
@@ -214,5 +226,10 @@ class Config:
                 beaker=Beaker(
                     address=data.get("beaker", {}).get("address"),
                     user_token=data.get("beaker", {}).get("user_token"),
+                ),
+                mcp=Mcp(
+                    servers=[
+                        McpServer(url=server["url"], headers=server["headers"]) for server in data["mcp"]["servers"]
+                    ]
                 ),
             )

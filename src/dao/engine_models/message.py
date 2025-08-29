@@ -73,14 +73,12 @@ class Message(Base, kw_only=True):
     tool_definitions: Mapped[list[ToolDefinition] | None] = relationship(
         "ToolDefinition",
         secondary="message_tool_definition_association",
-        lazy="joined",
-        default_factory=list,
         cascade="all, delete",
+        back_populates="messages",
+        default_factory=list,
     )
 
-    tool_calls: Mapped[list[ToolCall] | None] = relationship(
-        back_populates="message", cascade="all, delete", lazy="joined", default_factory=list
-    )
+    tool_calls: Mapped[list[ToolCall] | None] = relationship("ToolCall", back_populates="message", default_factory=list)
 
     completion_: Mapped[Completion | None] = relationship("Completion", back_populates="message", init=False)
 

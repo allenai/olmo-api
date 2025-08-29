@@ -13,6 +13,7 @@ from src.dao.message.message_repository import BaseMessageRepository
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
+from src.message.create_message_service.tools.mcp import get_mcp_tools
 from src.message.create_message_service.tools.tool_calls import get_internal_tools
 
 
@@ -109,6 +110,7 @@ def create_user_message(
         parent.tool_definitions if parent is not None and parent.tool_definitions is not None else []
     )
 
+    mcp_tools = get_mcp_tools()
     tool_list = tools_created + parent_tools + internal_tools  # check tools are unique
     tool_names = [obj.name for obj in tool_list]
 

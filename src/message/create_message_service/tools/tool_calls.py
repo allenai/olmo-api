@@ -13,6 +13,7 @@ from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefi
 from src.dao.engine_models.tool_definitions import ToolSource
 
 from .internal_tools import CreateRandomNumber
+from .mcp import call_mcp_tool
 
 TOOL_REGISTRY: list[Tool[Any]] = [CreateRandomNumber]
 
@@ -30,7 +31,6 @@ def get_internal_tools(
 ):
     if model.can_call_tools is False:
         return []
-
     return [
         Ai2ToolDefinition(
             name=tool.name,
@@ -73,7 +73,16 @@ def call_tool_function(tool_call: ToolCall):
 
 
 def call_tool(tool_call: ToolCall) -> ToolReturnPart:
-    tool_response = call_tool_function(tool_call)
+    if tool_call.tool_source == ToolSource.INTERNAL:
+        tool_response = call_tool_function(tool_call)
+
+        return ToolReturnPart(
+            tool_name=tool_call.tool_name,
+            content=tool_response,
+            tool_call_id=tool_call.tool_call_id,
+        )
+
+    tool_response = call_mcp_tool(tool_call)
 
     return ToolReturnPart(
         tool_name=tool_call.tool_name,

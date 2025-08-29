@@ -6,8 +6,9 @@ COPY vendor vendor
 COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache pip install -r requirements.txt
 
+RUN apt-get update -qq && apt-get install ffmpeg -y
+
 COPY . .
 
-RUN apt-get update -qq && apt-get install ffmpeg -y
 
 ENTRYPOINT [ "/api/start.sh" ]

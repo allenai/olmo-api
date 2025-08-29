@@ -106,12 +106,13 @@ def create_user_message(
     ]
     internal_tools: list[ToolDefinition] = get_internal_tools(model) if is_new_message and model.can_call_tools else []
 
+    mcp_tools: list[ToolDefinition] = get_mcp_tools() if is_new_message and model.can_call_tools else []
+
     parent_tools: list[ToolDefinition] = (
         parent.tool_definitions if parent is not None and parent.tool_definitions is not None else []
     )
 
-    mcp_tools = get_mcp_tools()
-    tool_list = tools_created + parent_tools + internal_tools  # check tools are unique
+    tool_list = tools_created + parent_tools + internal_tools + mcp_tools  # check tools are unique
     tool_names = [obj.name for obj in tool_list]
 
     if len(tool_names) != len(set(tool_names)):

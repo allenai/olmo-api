@@ -43,7 +43,7 @@ class ToolCall(APIInterface):
 class ToolDefinition(APIInterface):
     name: str
     description: str
-    parameters: ParameterDef
+    parameters: dict[str, Any] | None = None
     tool_source: ToolSource
 
 

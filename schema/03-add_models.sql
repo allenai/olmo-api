@@ -227,3 +227,4 @@ VALUES (
         true,
         false
     ) ON CONFLICT DO NOTHING;
+

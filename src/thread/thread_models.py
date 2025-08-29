@@ -7,6 +7,7 @@ from pydantic import AwareDatetime, Field, computed_field, field_validator
 from src.api_interface import APIInterface
 from src.dao.engine_models.message import Message as SQLAMessage
 from src.dao.engine_models.model_config import ModelType
+from src.dao.engine_models.tool_definitions import ParameterDef, ToolSource
 from src.dao.label import Rating
 from src.dao.message.message_models import InferenceOpts, Message, Role
 from src.inference.InferenceEngine import FinishReason
@@ -36,6 +37,14 @@ class ToolCall(APIInterface):
     tool_name: str
     args: str | dict[str, Any] | None = None
     tool_call_id: str
+    tool_source: ToolSource
+
+
+class ToolDefinition(APIInterface):
+    name: str
+    description: str
+    parameters: ParameterDef
+    tool_source: ToolSource
 
 
 class FlatMessage(APIInterface):
@@ -64,6 +73,7 @@ class FlatMessage(APIInterface):
     file_urls: list[str] | None = Field(default=None)
     tool_calls: list[ToolCall] | None = Field(default=None)
     thinking: str | None = Field(default=None)
+    tool_definitions: list[ToolDefinition] | None = Field(default=None)
 
     @field_validator("children", mode="before")
     @classmethod

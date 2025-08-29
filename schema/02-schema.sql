@@ -821,5 +821,44 @@ ALTER TABLE message DROP COLUMN tool_calls;
 
 UPDATE alembic_version SET version_num='c0a6e48866a2' WHERE alembic_version.version_num = 'a48c549f771e';
 
+-- Running upgrade c0a6e48866a2 -> 51773010bab9
+
+CREATE TYPE toolsource AS ENUM ('INTERNAL', 'USER_DEFINED');
+
+CREATE TABLE tool_definition (
+    id TEXT NOT NULL, 
+    name VARCHAR NOT NULL, 
+    description VARCHAR NOT NULL, 
+    parameters JSONB, 
+    tool_source toolsource NOT NULL, 
+    created TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
+    PRIMARY KEY (id)
+);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE tool_definition TO app;
+
+CREATE TABLE message_tool_definition_association (
+    message_id TEXT NOT NULL, 
+    tool_definition_id TEXT NOT NULL, 
+    created TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
+    PRIMARY KEY (message_id, tool_definition_id), 
+    FOREIGN KEY(message_id) REFERENCES message (id), 
+    FOREIGN KEY(tool_definition_id) REFERENCES tool_definition (id)
+);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE message_tool_definition_association TO app;
+
+ALTER TABLE tool_call ADD COLUMN tool_source toolsource DEFAULT 'USER_DEFINED' NOT NULL;
+
+UPDATE alembic_version SET version_num='51773010bab9' WHERE alembic_version.version_num = 'c0a6e48866a2';
+
+-- Running upgrade 51773010bab9 -> ebc55c241155
+
+ALTER TABLE tool_call DROP CONSTRAINT tool_call_message_id_fkey;
+
+ALTER TABLE tool_call ADD CONSTRAINT tool_call_message_id_fkey FOREIGN KEY(message_id) REFERENCES message (id) ON DELETE CASCADE;
+
+UPDATE alembic_version SET version_num='ebc55c241155' WHERE alembic_version.version_num = '51773010bab9';
+
 COMMIT;
 

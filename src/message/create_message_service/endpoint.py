@@ -12,6 +12,7 @@ from src import db, util
 from src.auth.auth_service import authn
 from src.config.get_config import cfg
 from src.config.get_models import get_model_by_host_and_id
+from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import PromptType
 from src.dao.message.message_repository import BaseMessageRepository
 from src.message.create_message_request import (
@@ -44,7 +45,7 @@ def create_message_v4(
     agent = authn()
 
     parent_message, root_message, private = get_parent_and_root_messages_and_private(
-        request.parent, dbc, request.private, is_anonymous_user=agent.is_anonymous_user
+        request.parent, message_repository, request.private, is_anonymous_user=agent.is_anonymous_user
     )
 
     mapped_request = CreateMessageRequestWithFullMessages(
@@ -69,6 +70,8 @@ def create_message_v4(
         client=agent.client,
         files=request.files,
         captcha_token=request.captcha_token,
+        tool_call_id=request.tool_call_id,
+        create_tool_definitions=request.create_tool_definitions,
     )
 
     model = get_model_by_host_and_id(mapped_request.host, mapped_request.model, session_maker=session_maker)
@@ -109,12 +112,12 @@ def create_message_v4(
 
 def get_parent_and_root_messages_and_private(
     parent_message_id: str | None,
-    dbc: db.Client,
+    message_repository: BaseMessageRepository,
     request_private: bool | None,
     is_anonymous_user: bool,
-) -> tuple[message.Message | None, message.Message | None, bool]:
-    parent_message = dbc.message.get(parent_message_id) if parent_message_id is not None else None
-    root_message = dbc.message.get(parent_message.root) if parent_message is not None else None
+) -> tuple[Message | None, Message | None, bool]:
+    parent_message = message_repository.get_message_by_id(parent_message_id) if parent_message_id is not None else None
+    root_message = message_repository.get_message_by_id(parent_message.root) if parent_message is not None else None
 
     private = (
         # Anonymous users aren't allowed to share messages

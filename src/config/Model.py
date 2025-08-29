@@ -24,6 +24,8 @@ class ModelBase(BaseModel):
     available_time: AwareDatetime | None = Field(default=None, exclude=True)
     deprecation_time: AwareDatetime | None = Field(default=None, exclude=True)
     accepts_files: bool = Field(default=False)
+    can_call_tools: bool = Field(default=False)
+    can_think: bool = Field(default=False)
 
     @computed_field  # type: ignore[prop-decorator]
     @property

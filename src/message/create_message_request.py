@@ -7,9 +7,10 @@ from werkzeug import exceptions
 
 from src.api_interface import APIInterface
 from src.config.get_config import get_config
+from src.dao.engine_models.message import Message
+from src.dao.engine_models.tool_definitions import ParameterDef
 from src.dao.message.message_models import (
     InferenceOpts,
-    Message,
     Role,
     logprobs,
     max_tokens,
@@ -37,6 +38,9 @@ class BaseCreateMessageRequest(APIInterface):
     template: str | None = Field(default=None)
     model: str
     host: str
+    tool_call_id: str | None = Field(default=None)
+    tool_definitions: str | None = Field(default=None)
+
     captcha_token: Annotated[str | None, AfterValidator(captcha_token_required_if_captcha_enabled)] = Field(
         default=None
     )
@@ -81,9 +85,16 @@ class CreateMessageRequest(BaseCreateMessageRequest):
     )
 
 
+class CreateToolDefinition(APIInterface):
+    name: str
+    description: str
+    parameters: ParameterDef
+
+
 class CreateMessageRequestWithLists(CreateMessageRequest):
     stop: list[str] | None = Field(default=None)
     files: list[UploadedFile] | None = Field(default=None)
+    create_tool_definitions: list[CreateToolDefinition] | None = Field(default=None)
 
 
 class CreateMessageRequestWithFullMessages(BaseModel):
@@ -101,6 +112,9 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     files: Sequence[UploadedFile] | None = Field(default=None)
     client: str
     captcha_token: str | None = Field()
+
+    tool_call_id: str | None = Field(default=None)
+    create_tool_definitions: list[CreateToolDefinition] | None = Field(default=None)
 
     model_config = ConfigDict(validate_assignment=True)
 
@@ -129,14 +143,6 @@ class CreateMessageRequestWithFullMessages(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def parent_and_child_have_different_roles(self) -> Self:
-        if self.parent is not None and self.parent.role == self.role:
-            msg = "Parent and child must have different roles"
-            raise ValueError(msg)
-
-        return self
-
-    @model_validator(mode="after")
     def original_message_and_parent_are_different(self) -> Self:
         if self.original is not None and self.parent_id is not None and self.original == self.parent_id:
             msg = "Original and parent messages must be different"
@@ -159,3 +165,30 @@ class CreateMessageRequestWithFullMessages(BaseModel):
             raise exceptions.Forbidden
 
         return self
+
+    @model_validator(mode="after")
+    def tool_response_creation_can_not_be_root(self) -> Self:
+        if self.parent is None and self.role == Role.ToolResponse:
+            msg = "Tool response must have parent"
+            raise ValueError(msg)
+
+        return self
+
+    @model_validator(mode="after")
+    def tool_response_creation_must_have_tool_id(self) -> Self:
+        if self.role == Role.ToolResponse and self.tool_call_id is None:
+            msg = "Tool response must have tool call id"
+            raise ValueError(msg)
+
+        return self
+
+    @model_validator(mode="after")
+    def parent_and_child_have_different_roles(self) -> Self:
+        if self.parent is not None and self.parent.role != Role.ToolResponse and self.parent.role == self.role:
+            msg = "Parent and child must have different roles"
+            raise ValueError(msg)
+
+        return self
+
+
+CreateMessageRequestWithFullMessages.model_rebuild()

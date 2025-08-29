@@ -11,7 +11,11 @@ local=$(cat <<EOF
   "db": {
     "conninfo": "postgres://app:llmz@db:5432/llmx?sslmode=disable",
     "min_size": 1,
-    "max_size": 2
+    "max_size": 10
+  },
+  "sql_alchemy": {
+    "pool_size": 3,
+    "max_overflow": 3
   },
   "server": {
     "proxies": 1,

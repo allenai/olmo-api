@@ -1,9 +1,9 @@
 import dataclasses
 import os
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from dataclasses import asdict
 from time import time_ns
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 from pydantic_ai.direct import model_request_stream_sync
 from pydantic_ai.messages import ToolCallPart
@@ -15,6 +15,8 @@ from src.config.get_config import cfg
 from src.dao.completion import CompletionOutput
 from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import ModelConfig
+from src.dao.engine_models.tool_call import ToolCall
+from src.dao.engine_models.tool_definitions import ToolSource
 from src.dao.message.message_models import MessageChunk, MessageStreamError, Role, TokenLogProbs
 from src.dao.message.message_repository import BaseMessageRepository
 from src.inference.inference_service import get_engine
@@ -43,11 +45,13 @@ from src.pydantic_inference.pydantic_ai_helpers import (
 from src.pydantic_inference.pydantic_model_service import get_pydantic_model
 from src.util.generator_with_return_value import GeneratorWithReturnValue
 
-from .database import create_assistant_message, create_tool_response_message, create_user_message, setup_msg_thread
-from .tools.tool_calls import call_tool, get_tools
-
-if TYPE_CHECKING:
-    from src.dao.engine_models.tool_call import ToolCall
+from .database import (
+    create_assistant_message,
+    create_tool_response_message,
+    create_user_message,
+    setup_msg_thread,
+)
+from .tools.tool_calls import call_tool, get_pydantic_tool_defs
 
 MAX_REPEATED_TOOL_CALLS = 10
 
@@ -71,46 +75,6 @@ def create_new_message(
     *,
     is_message_harmful: bool | None = None,
 ) -> Message | Generator[Message | MessageChunk | MessageStreamError | Chunk]:
-    if request.role == Role.Assistant:
-        if request.parent is None:
-            error_message = "parent is required for creating assistant message"
-            raise ValueError(error_message)
-
-        assistant_message = create_assistant_message(
-            message_repository, request.content, request, model, request.parent.id, request.parent.root, agent
-        )
-        assistant_message.final = True
-        message_repository.update(assistant_message)
-
-        return assistant_message
-
-    return stream_new_message(
-        request,
-        dbc,
-        storage_client,
-        model,
-        safety_check_elapsed_time,
-        start_time_ns,
-        agent,
-        message_repository,
-        checker_type,
-        is_message_harmful=is_message_harmful,
-    )
-
-
-def stream_new_message(
-    request: CreateMessageRequestWithFullMessages,
-    dbc: db.Client,
-    storage_client: GoogleCloudStorage,
-    model: ModelConfig,
-    safety_check_elapsed_time: float,
-    start_time_ns: int,
-    agent: Token,
-    message_repository: BaseMessageRepository,
-    checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
-    *,
-    is_message_harmful: bool | None = None,
-) -> Generator[Message | MessageChunk | MessageStreamError | Chunk]:
     message_chain = setup_msg_thread(
         message_repository,
         model=model,
@@ -118,32 +82,136 @@ def stream_new_message(
         agent=agent,
         is_msg_harmful=is_message_harmful,
     )
-    user_message = create_user_message(
-        message_repository,
-        parent=message_chain[-1] if len(message_chain) > 0 else None,
-        request=request,
-        agent=agent,
-        model=model,
-        is_msg_harmful=is_message_harmful,
-    )
-    message_chain.append(user_message)
 
+    if request.role == Role.Assistant:
+        if request.parent is None:
+            error_message = "parent is required for creating assistant message"
+            raise ValueError(error_message)
+
+        assistant_message = create_assistant_message(
+            message_repository,
+            request.content,
+            request.parent,
+            model,
+            agent,
+        )
+        assistant_message.final = True
+        message_repository.update(assistant_message)
+
+        return assistant_message
+
+    if request.role == Role.User:
+        user_message = create_user_message(
+            message_repository,
+            parent=message_chain[-1] if len(message_chain) > 0 else None,
+            request=request,
+            agent=agent,
+            model=model,
+            is_msg_harmful=is_message_harmful,
+        )
+        message_chain.append(user_message)
+
+        file_uploads = upload_request_files(
+            files=request.files,
+            message_id=user_message.id,
+            storage_client=storage_client,
+            root_message_id=message_chain[0].id,
+            is_anonymous=agent.is_anonymous_user,
+        )
+        file_urls = [file.file_url for file in file_uploads or []]
+        user_message.file_urls = file_urls
+
+        blob_map: dict[str, FileUploadResult] = {}
+        for file in file_uploads:
+            blob_map[file.file_url] = file
+
+        return stream_new_message(
+            request,
+            dbc,
+            model,
+            safety_check_elapsed_time,
+            start_time_ns,
+            agent,
+            message_repository,
+            message_chain,
+            user_message,
+            checker_type,
+            blob_map,
+        )
+
+    if request.role == Role.ToolResponse:
+        last_assistant_message = find_last_matching(message_chain, lambda m: m.role == Role.Assistant)
+
+        if last_assistant_message is None:
+            msg = f"Can not create a tool response. Parent {request.parent_id} not found"
+            raise RuntimeError(msg)
+
+        if last_assistant_message.tool_calls is None:
+            msg = "Can not create a tool response. Parent has no tools"
+            raise RuntimeError(msg)
+
+        tool_call_from_assistant = next(
+            (tool for tool in last_assistant_message.tool_calls if tool.tool_call_id == request.tool_call_id), None
+        )
+
+        if tool_call_from_assistant is None:
+            msg = "Could not find tool id in last assistant message"
+            raise RuntimeError(msg)
+
+        source_tool: ToolCall = ToolCall(
+            tool_call_id=tool_call_from_assistant.tool_call_id,
+            tool_name=tool_call_from_assistant.tool_name,
+            args=tool_call_from_assistant.args,
+            tool_source=tool_call_from_assistant.tool_source,
+            message_id="",
+        )
+
+        tool_message = create_tool_response_message(
+            message_repository,
+            parent=message_chain[-1],
+            content=request.content,
+            source_tool=source_tool,
+            creator=agent.client,
+        )
+        message_chain.append(tool_message)
+
+        return stream_new_message(
+            request,
+            dbc,
+            model,
+            safety_check_elapsed_time,
+            start_time_ns,
+            agent,
+            message_repository,
+            message_chain,
+            tool_message,
+            checker_type,
+        )
+    msg = "Unsupported role"
+    raise RuntimeError(msg)
+
+
+def stream_new_message(
+    request: CreateMessageRequestWithFullMessages,
+    dbc: db.Client,
+    model: ModelConfig,
+    safety_check_elapsed_time: float,
+    start_time_ns: int,
+    agent: Token,
+    message_repository: BaseMessageRepository,
+    message_chain: list[Message],
+    created_message: Message,
+    checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
+    blob_map: dict[str, FileUploadResult] | None = None,
+) -> Generator[Message | MessageChunk | MessageStreamError | Chunk]:
     yield StreamStartChunk(message=message_chain[0].id)
 
-    file_uploads = upload_request_files(
-        files=request.files,
-        message_id=user_message.id,
-        storage_client=storage_client,
-        root_message_id=message_chain[0].id,
-        is_anonymous=agent.is_anonymous_user,
-    )
-    # TODO: https://github.com/allenai/playground-issues-repo/issues/9: Get this from the DB
-    file_urls = [file.file_url for file in file_uploads or []]
-    user_message.file_urls = file_urls
-
-    blob_map: dict[str, FileUploadResult] = {}
-    for file in file_uploads:
-        blob_map[file.file_url] = file
+    if has_pending_tool_calls(message_chain):
+        # if we have pending tool calls we should not get an assistant message
+        yield prepare_yield_message_chain(message_chain, created_message)
+        yield from finalize_messages(message_repository, message_chain, created_message)
+        yield StreamEndChunk(message=message_chain[0].id)
+        return
 
     # Finalize the messages and yield
     tool_calls_made = 0
@@ -151,37 +219,50 @@ def stream_new_message(
         stream_metrics = StreamMetrics(
             first_chunk_ns=None, input_token_count=None, output_token_count=None, total_generation_ns=None
         )
+        parent = message_chain[-1]
         reply = create_assistant_message(
             message_repository,
             content="",
-            request=request,
+            parent=parent,
             model=model,
-            parent_message_id=message_chain[-1].id,
-            root_message_id=message_chain[-1].root,
             agent=agent,
         )
         message_chain.append(reply)
 
-        yield prepare_yield_message_chain(message_chain, user_message)
+        yield prepare_yield_message_chain(message_chain, created_message)
 
         start_message_generation_ns = time_ns()
         yield from stream_assistant_response(
-            request, dbc, message_repository, message_chain, model, agent, blob_map, user_message, reply, stream_metrics
+            request,
+            dbc,
+            message_repository,
+            message_chain,
+            model,
+            agent,
+            blob_map,
+            created_message,
+            reply,
+            stream_metrics,
         )
 
         if reply.tool_calls is not None and len(reply.tool_calls) > 0:
             last_msg = reply
             for tool in reply.tool_calls:
-                tool_response = call_tool(tool)
-                tool_msg = create_tool_response_message(
-                    message_repository, content=tool_response.content, parent_message=last_msg, source_tool=tool
-                )
-                message_chain.append(tool_msg)
+                if tool.tool_source is not ToolSource.USER_DEFINED:
+                    tool_response = call_tool(tool)
+                    tool_msg = create_tool_response_message(
+                        message_repository,
+                        content=tool_response.content,
+                        parent=last_msg,
+                        source_tool=tool,
+                        creator=agent.client,
+                    )
+                    message_chain.append(tool_msg)
 
-        yield from finalize_messages(message_repository, message_chain, user_message)
+        yield from finalize_messages(message_repository, message_chain, created_message)
 
         log_create_message_stats(
-            user_message,
+            created_message,
             reply,
             start_time_ns,
             safety_check_elapsed_time,
@@ -191,9 +272,13 @@ def stream_new_message(
             stream_metrics,
         )
 
-        yield prepare_yield_message_chain(message_chain, user_message)
+        yield prepare_yield_message_chain(message_chain, created_message)
 
-        if reply.tool_calls is None or len(reply.tool_calls) == 0:
+        if (
+            reply.tool_calls is None
+            or len(reply.tool_calls) == 0
+            or any(tool.tool_source == ToolSource.USER_DEFINED for tool in reply.tool_calls)
+        ):
             break
 
         tool_calls_made += 1
@@ -261,8 +346,8 @@ def stream_assistant_response(
     message_chain: list[Message],
     model: ModelConfig,
     agent: Token,
-    blob_map: dict[str, FileUploadResult],
-    msg: Message,
+    blob_map: dict[str, FileUploadResult] | None,
+    input_message: Message,
     reply: Message,
     stream_metrics: StreamMetrics,
 ) -> Generator[MessageChunk | MessageStreamError | Chunk, Any, None]:
@@ -287,7 +372,7 @@ def stream_assistant_response(
 
         first_chunk_ns: int | None = None
         pydantic_messages = pydantic_map_messages(message_chain[:-1], blob_map)
-        tools = get_tools() if model.can_call_tools else []
+        tools = get_pydantic_tool_defs(input_message) if model.can_call_tools else []
 
         with model_request_stream_sync(
             model=pydantic_inference_engine,
@@ -299,7 +384,7 @@ def stream_assistant_response(
                 if first_chunk_ns is None:
                     first_chunk_ns = time_ns()
 
-                pydantic_chunk = pydantic_map_chunk(generator_chunk_pydantic, message_id=reply.id)
+                pydantic_chunk = pydantic_map_chunk(generator_chunk_pydantic, message=reply)
                 pydantic_chunks.append(pydantic_chunk)
                 yield pydantic_chunk
 
@@ -307,9 +392,7 @@ def stream_assistant_response(
         text_part = next((part for part in full_response.parts if part.part_kind == "text"), None)
         thinking_part = next((part for part in full_response.parts if part.part_kind == "thinking"), None)
         tool_parts = [
-            map_pydantic_tool_to_db_tool(reply.id, part)
-            for part in full_response.parts
-            if isinstance(part, ToolCallPart)
+            map_pydantic_tool_to_db_tool(reply, part) for part in full_response.parts if isinstance(part, ToolCallPart)
         ]
 
         stream_metrics.first_chunk_ns = first_chunk_ns
@@ -331,7 +414,7 @@ def stream_assistant_response(
                 content=message_in_chain.content,
                 # We only want to add the request files to the new message. The rest will have file urls associated with them
                 files=request.files
-                if msg is not None and message_in_chain.id == msg.id
+                if input_message is not None and message_in_chain.id == input_message.id
                 else message_in_chain.file_urls,
             )
             for message_in_chain in message_chain[:-1]
@@ -454,3 +537,27 @@ def create_output_from_chunks(chunks: list[MessageChunk]):
             logprobs.append(*chunk.logprobs)
 
     return output, logprobs
+
+
+def has_pending_tool_calls(chain: list[Message]) -> bool:
+    # find the last assistant message in the list...
+    # find the current tool responses...
+    # if we haven't answered them all return true
+    last_assistant_message = find_last_matching(chain, lambda m: m.role == Role.Assistant)
+
+    if last_assistant_message is None:
+        return False
+
+    tool_responses = list(filter(lambda msg: msg.role == Role.ToolResponse, chain))
+    tool_responses_ids = [tool.tool_calls[0].tool_call_id if tool.tool_calls else None for tool in tool_responses]
+
+    return any(
+        tool_call.tool_call_id not in tool_responses_ids for tool_call in last_assistant_message.tool_calls or []
+    )
+
+
+def find_last_matching(arr: list[Message], condition: Callable[[Message], bool]):
+    for item in reversed(arr):
+        if condition(item):
+            return item
+    return None  # or raise an exception if not found

@@ -45,7 +45,7 @@ class ToolDefinition(Base, kw_only=True):
 
     tool_source: Mapped[ToolSource] = mapped_column(Enum(ToolSource), nullable=False)
 
-    mcp_server_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    mcp_server_id: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
 
     created: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()"), init=False

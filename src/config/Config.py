@@ -118,6 +118,7 @@ class McpServer:
     url: str
     headers: dict[str, str]
     name: str
+    id: str
     enabled: bool
 
 
@@ -232,7 +233,11 @@ class Config:
                 mcp=Mcp(
                     servers=[
                         McpServer(
-                            url=server["url"], headers=server["headers"], name=server["name"], enabled=server["enabled"]
+                            url=server["url"],
+                            headers=server["headers"],
+                            name=server["name"],
+                            id=server["id"],
+                            enabled=server["enabled"],
                         )
                         for server in data["mcp"]["servers"]
                     ]

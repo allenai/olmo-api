@@ -30,7 +30,11 @@ def get_pydantic_tool_defs(message: Message) -> list[ToolDefinition]:
 def get_available_tools(
     model: ModelConfig,
 ):
-    internal_tools = get_internal_tools(model)
+
+    if model.can_call_tools is False:
+        return []
+
+    internal_tools = get_internal_tools()
     mcp_tools = get_mcp_tools()
 
     return internal_tools + mcp_tools

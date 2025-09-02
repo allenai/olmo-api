@@ -7,7 +7,7 @@ from src.dao.engine_models.tool_call import ToolCall
 from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 from src.dao.engine_models.tool_definitions import ToolSource
 
-from .internal import call_internal_tool_function, get_internal_tools
+from .internal import call_internal_tool, get_internal_tools
 from .mcp import call_mcp_tool, get_mcp_tools
 
 
@@ -38,7 +38,7 @@ def get_available_tools(
 
 def call_tool(tool_call: ToolCall) -> ToolReturnPart:
     if tool_call.tool_source == ToolSource.INTERNAL:
-        tool_response = call_internal_tool_function(tool_call)
+        tool_response = call_internal_tool(tool_call)
 
         return ToolReturnPart(
             tool_name=tool_call.tool_name,

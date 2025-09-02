@@ -1,5 +1,6 @@
 import asyncio
 import json
+from logging import getLogger
 from typing import Any
 
 from mcp import Tool as MCPTool
@@ -23,7 +24,7 @@ def get_mcp_tools():
             name=tool.name,
             tool_source=ToolSource.MCP,
             description=tool.description or "",
-            parameters=arg_parse_helper(tool.inputSchema) or {},
+            parameters=tool.inputSchema,
         )
         for tool in tool_list
     ]
@@ -40,8 +41,12 @@ def arg_parse_helper(args: str | dict[str, Any] | None) -> str | dict[str, Any] 
 
 
 def call_mcp_tool(tool_call: ToolCall):
-    server = MCPServerStreamableHTTP(
-        url=cfg.mcp.servers[0].url,
-        headers=cfg.mcp.servers[0].headers,
-    )
-    return str(asyncio.run(server.direct_call_tool(name=tool_call.tool_name, args=tool_call.args or {})))
+    try:
+        server = MCPServerStreamableHTTP(
+            url=cfg.mcp.servers[0].url,
+            headers=cfg.mcp.servers[0].headers,
+        )
+        return str(asyncio.run(server.direct_call_tool(name=tool_call.tool_name, args=tool_call.args or {})))
+    except Exception as _e:
+        getLogger().exception("Failed to call mcp tool.", extra={"tool_name": tool_call.tool_name})
+        return f"Failed to call remote tool {tool_call.tool_name}"

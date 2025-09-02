@@ -2,6 +2,7 @@ from pydantic_ai.messages import ToolReturnPart
 from pydantic_ai.tools import ToolDefinition
 
 from src.dao.engine_models.message import Message
+from src.dao.engine_models.model_config import ModelConfig
 from src.dao.engine_models.tool_call import ToolCall
 from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 from src.dao.engine_models.tool_definitions import ToolSource

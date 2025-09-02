@@ -104,8 +104,10 @@ def create_user_message(
         )
     ]
 
+    parent_tool_calls = parent.tool_definitions if parent is not None else []
+
     tool_list: list[ToolDefinition] = (
-        get_available_tools(model) + tools_created if is_new_thread else parent.tool_definitions or []
+        get_available_tools(model) + tools_created if is_new_thread else parent_tool_calls or []
     )
 
     tool_names = [obj.name for obj in tool_list]

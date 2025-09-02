@@ -117,6 +117,8 @@ class ModalOpenAI:
 class McpServer:
     url: str
     headers: dict[str, str]
+    name: str
+    enabled: bool
 
 
 @dataclass
@@ -229,7 +231,10 @@ class Config:
                 ),
                 mcp=Mcp(
                     servers=[
-                        McpServer(url=server["url"], headers=server["headers"]) for server in data["mcp"]["servers"]
+                        McpServer(
+                            url=server["url"], headers=server["headers"], name=server["name"], enabled=server["enabled"]
+                        )
+                        for server in data["mcp"]["servers"]
                     ]
                 ),
             )

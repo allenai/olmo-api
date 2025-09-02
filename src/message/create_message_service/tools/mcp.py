@@ -2,24 +2,13 @@ import asyncio
 import json
 from typing import Any
 
+from mcp import Tool as MCPTool
 from pydantic_ai.mcp import MCPServerStreamableHTTP
-from pydantic_ai.models.test import TestModel
-from pydantic_ai.tools import RunContext
-from pydantic_ai.usage import Usage
 
 from src.config.get_config import cfg
 from src.dao.engine_models.tool_call import ToolCall
 from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 from src.dao.engine_models.tool_definitions import ToolSource
-
-from mcp import Tool as MCPTool
-
-
-def build_fake_run_context():
-    model = TestModel()
-    usage = Usage()
-
-    return RunContext(None, model, usage)
 
 
 def get_mcp_tools():
@@ -55,4 +44,4 @@ def call_mcp_tool(tool_call: ToolCall):
         url=cfg.mcp.servers[0].url,
         headers=cfg.mcp.servers[0].headers,
     )
-    return str(asyncio.run(server.direct_call_tool(name=tool_call.tool_name, args=tool_call.args)))
+    return str(asyncio.run(server.direct_call_tool(name=tool_call.tool_name, args=tool_call.args or {})))

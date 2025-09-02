@@ -27,10 +27,7 @@ def get_pydantic_tool_defs(message: Message) -> list[ToolDefinition]:
     )
 
 
-def get_available_tools(
-    model: ModelConfig,
-):
-
+def get_available_tools(model: ModelConfig):
     if model.can_call_tools is False:
         return []
 
@@ -41,19 +38,23 @@ def get_available_tools(
 
 
 def call_tool(tool_call: ToolCall) -> ToolReturnPart:
-    if tool_call.tool_source == ToolSource.INTERNAL:
-        tool_response = call_internal_tool(tool_call)
+    match tool_call.tool_source:
+        case ToolSource.INTERNAL:
+            tool_response = call_internal_tool(tool_call)
 
-        return ToolReturnPart(
-            tool_name=tool_call.tool_name,
-            content=tool_response,
-            tool_call_id=tool_call.tool_call_id,
-        )
+            return ToolReturnPart(
+                tool_name=tool_call.tool_name,
+                content=tool_response,
+                tool_call_id=tool_call.tool_call_id,
+            )
+        case ToolSource.MCP:
+            tool_response = call_mcp_tool(tool_call)
 
-    tool_response = call_mcp_tool(tool_call)
-
-    return ToolReturnPart(
-        tool_name=tool_call.tool_name,
-        content=tool_response,
-        tool_call_id=tool_call.tool_call_id,
-    )
+            return ToolReturnPart(
+                tool_name=tool_call.tool_name,
+                content=tool_response,
+                tool_call_id=tool_call.tool_call_id,
+            )
+        case _:
+            msg = f"Invalid tool source: {tool_call.tool_source}"
+            raise ValueError(msg)

@@ -1,15 +1,16 @@
 import asyncio
-import json
 from logging import getLogger
-from typing import Any
+from typing import TYPE_CHECKING
 
-from mcp import Tool as MCPTool
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 
 from src.config.get_config import cfg
 from src.dao.engine_models.tool_call import ToolCall
 from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 from src.dao.engine_models.tool_definitions import ToolSource
+
+if TYPE_CHECKING:
+    from mcp import Tool as MCPTool
 
 
 def get_mcp_tools():
@@ -35,16 +36,6 @@ def get_mcp_tools():
         mcp_tools.extend(mapped_tools)
 
     return mcp_tools
-
-
-def arg_parse_helper(args: str | dict[str, Any] | None) -> str | dict[str, Any] | None:
-    if isinstance(args, str):
-        try:
-            return json.loads(args)
-        except (json.JSONDecodeError, TypeError):
-            pass
-
-    return args
 
 
 def call_mcp_tool(tool_call: ToolCall):

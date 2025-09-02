@@ -2,7 +2,6 @@ import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field
 from sqlalchemy import DateTime, Enum, ForeignKey, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -20,15 +19,6 @@ class ToolSource(StrEnum):
     INTERNAL = "internal"
     USER_DEFINED = "user_defined"
     MCP = "model_context_protocol"
-
-
-class ParameterDef(BaseModel):
-    type: str
-    properties: dict[str, "ParameterDef"] | None = Field(default=None)
-    description: str | None = Field(default=None)
-    required: list[str] | None = Field(default=[])
-    property_ordering: list[str] | None = Field(default=None)
-    default: dict[str, str] | None = Field(default=None)
 
 
 # Association table for many-to-many relationship

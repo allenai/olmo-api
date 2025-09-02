@@ -8,7 +8,6 @@ from werkzeug import exceptions
 from src.api_interface import APIInterface
 from src.config.get_config import get_config
 from src.dao.engine_models.message import Message
-from src.dao.engine_models.tool_definitions import ParameterDef
 from src.dao.message.message_models import (
     InferenceOpts,
     Role,
@@ -83,6 +82,15 @@ class CreateMessageRequest(BaseCreateMessageRequest):
         le=logprobs.max,
         multiple_of=logprobs.step,
     )
+
+
+class ParameterDef(APIInterface):
+    type: str
+    properties: dict[str, "ParameterDef"] | None = Field(default=None)
+    description: str | None = Field(default=None)
+    required: list[str] | None = Field(default=[])
+    property_ordering: list[str] | None = Field(default=None)
+    default: dict[str, str] | None = Field(default=None)
 
 
 class CreateToolDefinition(APIInterface):

@@ -18,4 +18,4 @@ jobs:
 
             - name: Execute tests in the running services
               run: |
-                  docker compose exec pytest
+                  docker compose exec api pytest

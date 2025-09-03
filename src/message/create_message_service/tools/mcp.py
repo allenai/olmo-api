@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 
+from src.config.Config import McpServer
 from src.config.get_config import cfg
 from src.dao.engine_models.tool_call import ToolCall
 from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefinition
@@ -38,11 +39,24 @@ def get_mcp_tools():
     return mcp_tools
 
 
-def call_mcp_tool(tool_call: ToolCall):
+def find_mcp_config_by_id(mcp_id: str | None) -> McpServer | None:
+    if mcp_id is None:
+        return None
+
+    return next((config for config in cfg.mcp.servers if config.id == mcp_id), None)
+
+
+def call_mcp_tool(tool_call: ToolCall, tool_definition: Ai2ToolDefinition):
+    mcp_config = find_mcp_config_by_id(tool_definition.mcp_server_id)
+
+    if mcp_config is None:
+        msg = "Could not find mcp config."
+        raise RuntimeError(msg)
+
     try:
         server = MCPServerStreamableHTTP(
-            url=cfg.mcp.servers[0].url,
-            headers=cfg.mcp.servers[0].headers,
+            url=mcp_config.url,
+            headers=mcp_config.headers,
         )
         return str(asyncio.run(server.direct_call_tool(name=tool_call.tool_name, args=tool_call.args or {})))
     except Exception as _e:

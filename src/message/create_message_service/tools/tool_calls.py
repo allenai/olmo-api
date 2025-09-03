@@ -37,7 +37,7 @@ def get_available_tools(model: ModelConfig):
     return internal_tools + mcp_tools
 
 
-def call_tool(tool_call: ToolCall) -> ToolReturnPart:
+def call_tool(tool_call: ToolCall, tool_definition: Ai2ToolDefinition) -> ToolReturnPart:
     match tool_call.tool_source:
         case ToolSource.INTERNAL:
             tool_response = call_internal_tool(tool_call)
@@ -48,7 +48,7 @@ def call_tool(tool_call: ToolCall) -> ToolReturnPart:
                 tool_call_id=tool_call.tool_call_id,
             )
         case ToolSource.MCP:
-            tool_response = call_mcp_tool(tool_call)
+            tool_response = call_mcp_tool(tool_call, tool_definition)
 
             return ToolReturnPart(
                 tool_name=tool_call.tool_name,

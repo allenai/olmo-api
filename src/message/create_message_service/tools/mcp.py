@@ -53,6 +53,10 @@ def call_mcp_tool(tool_call: ToolCall, tool_definition: Ai2ToolDefinition):
         msg = "Could not find mcp config."
         raise RuntimeError(msg)
 
+    if mcp_config.enabled is False:
+        msg = "the selected mcp server is not enabled"
+        raise RuntimeError(msg)
+
     try:
         server = MCPServerStreamableHTTP(
             url=mcp_config.url,

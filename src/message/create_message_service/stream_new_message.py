@@ -37,6 +37,7 @@ from src.message.SafetyChecker import (
 )
 from src.message.stream_message import StreamMetrics, stream_message_chunks
 from src.pydantic_inference.pydantic_ai_helpers import (
+    find_tool_def_by_name,
     map_pydantic_tool_to_db_tool,
     pydantic_map_chunk,
     pydantic_map_messages,
@@ -249,7 +250,8 @@ def stream_new_message(
             last_msg = reply
             for tool in reply.tool_calls:
                 if tool.tool_source is not ToolSource.USER_DEFINED:
-                    tool_response = call_tool(tool)
+                    tool_definition = find_tool_def_by_name(reply, tool.tool_name)
+                    tool_response = call_tool(tool, tool_definition)
                     tool_msg = create_tool_response_message(
                         message_repository,
                         content=tool_response.content,

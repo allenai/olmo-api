@@ -32,5 +32,6 @@ alembic-postgresql-enum==1.7.0
 pydub==0.25.1
 openai==1.93.0
 pydantic-ai==0.6.2
+mcp==1.13.1
 # beaker-py==2.2.1
 ./vendor/beaker_py-2.2.1-py3-none-any.whl

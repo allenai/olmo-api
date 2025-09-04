@@ -8,8 +8,14 @@ import pytest
 from flask_pydantic_api.utils import UploadedFile
 from pydantic import ValidationError
 
-from src.config.ModelConfig import FileRequiredToPromptOption, ModelHost, ModelType
-from src.dao.engine_models.model_config import ModelConfig, MultiModalModelConfig, PromptType
+from src.dao.engine_models.model_config import (
+    FileRequiredToPromptOption,
+    ModelConfig,
+    ModelHost,
+    ModelType,
+    MultiModalModelConfig,
+    PromptType,
+)
 from src.message.validate_message_files_from_config import validate_message_files_from_config
 
 

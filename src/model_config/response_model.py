@@ -5,8 +5,7 @@ from typing import Annotated, Literal
 from pydantic import AwareDatetime, ByteSize, Field, RootModel, computed_field
 
 from src.api_interface import APIInterface
-from src.config.ModelConfig import FileRequiredToPromptOption, ModelHost, ModelType
-from src.dao.engine_models.model_config import PromptType
+from src.dao.engine_models.model_config import FileRequiredToPromptOption, ModelHost, ModelType, PromptType
 
 
 class ModelAvailability(StrEnum):

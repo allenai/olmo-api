@@ -6,8 +6,12 @@ from flask_pydantic_api.utils import UploadedFile
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from src.config.Model import MultiModalModel
-from src.config.ModelConfig import FileRequiredToPromptOption
-from src.dao.engine_models.model_config import ModelConfig, MultiModalModelConfig, PromptType
+from src.dao.engine_models.model_config import (
+    FileRequiredToPromptOption,
+    ModelConfig,
+    MultiModalModelConfig,
+    PromptType,
+)
 from src.message.file_validation.check_is_file_in_allowed_file_types import check_is_file_in_allowed_file_types
 from src.model_config.response_model import MultiModalResponseModel, ResponseModel, TextOnlyResponseModel
 

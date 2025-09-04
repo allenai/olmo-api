@@ -1,18 +1,14 @@
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
 
 import time_machine
 
-from src.config.Model import map_model_from_config
+from src.config.Model import Model
 from src.dao.engine_models.model_config import ModelHost, ModelType, PromptType
-
-if TYPE_CHECKING:
-    from src.config.ModelConfig import ModelConfig
 
 
 @time_machine.travel(datetime(2025, 1, 1, tzinfo=UTC))
 def test_is_not_visible_when_not_available_yet() -> None:
-    test_model_config: ModelConfig = {
+    model = Model.model_validate({
         "id": "foo",
         "name": "foo",
         "host": ModelHost.Modal,
@@ -26,9 +22,7 @@ def test_is_not_visible_when_not_available_yet() -> None:
         "deprecation_time": None,
         "internal": False,
         "prompt_type": PromptType.TEXT_ONLY,
-    }
-
-    model = map_model_from_config(test_model_config)
+    })
 
     assert model.is_deprecated is True
     assert model.is_visible is False
@@ -36,7 +30,7 @@ def test_is_not_visible_when_not_available_yet() -> None:
 
 @time_machine.travel(datetime(2025, 1, 1, tzinfo=UTC))
 def test_is_not_visible_when_past_deprecated_time() -> None:
-    test_model_config: ModelConfig = {
+    model = Model.model_validate({
         "id": "foo",
         "name": "foo",
         "host": ModelHost.Modal,
@@ -50,9 +44,7 @@ def test_is_not_visible_when_past_deprecated_time() -> None:
         "deprecation_time": datetime(2024, 1, 1).astimezone(UTC).isoformat(),
         "internal": False,
         "prompt_type": PromptType.TEXT_ONLY,
-    }
-
-    model = map_model_from_config(test_model_config)
+    })
 
     assert model.is_deprecated is True
     assert model.is_visible is False
@@ -60,7 +52,7 @@ def test_is_not_visible_when_past_deprecated_time() -> None:
 
 @time_machine.travel(datetime(2025, 1, 1, tzinfo=UTC))
 def test_is_not_visible_when_past_deprecated_time_and_available_time() -> None:
-    test_model_config: ModelConfig = {
+    model = Model.model_validate({
         "id": "foo",
         "name": "foo",
         "host": ModelHost.Modal,
@@ -74,9 +66,7 @@ def test_is_not_visible_when_past_deprecated_time_and_available_time() -> None:
         "deprecation_time": datetime(2024, 1, 1).astimezone(UTC).isoformat(),
         "internal": False,
         "prompt_type": PromptType.TEXT_ONLY,
-    }
-
-    model = map_model_from_config(test_model_config)
+    })
 
     assert model.is_deprecated is True
     assert model.is_visible is False
@@ -84,7 +74,7 @@ def test_is_not_visible_when_past_deprecated_time_and_available_time() -> None:
 
 @time_machine.travel(datetime(2025, 1, 1, tzinfo=UTC))
 def test_is_visible_when_past_available_time() -> None:
-    test_model_config: ModelConfig = {
+    model = Model.model_validate({
         "id": "foo",
         "name": "foo",
         "host": ModelHost.Modal,
@@ -98,9 +88,7 @@ def test_is_visible_when_past_available_time() -> None:
         "deprecation_time": None,
         "internal": False,
         "prompt_type": PromptType.TEXT_ONLY,
-    }
-
-    model = map_model_from_config(test_model_config)
+    })
 
     assert model.is_deprecated is False
     assert model.is_visible is True
@@ -108,7 +96,7 @@ def test_is_visible_when_past_available_time() -> None:
 
 @time_machine.travel(datetime(2025, 1, 1, tzinfo=UTC))
 def test_is_visible_when_no_available_time() -> None:
-    test_model_config: ModelConfig = {
+    model = Model.model_validate({
         "id": "foo",
         "name": "foo",
         "host": ModelHost.Modal,
@@ -122,9 +110,7 @@ def test_is_visible_when_no_available_time() -> None:
         "deprecation_time": None,
         "internal": False,
         "prompt_type": PromptType.TEXT_ONLY,
-    }
-
-    model = map_model_from_config(test_model_config)
+    })
 
     assert model.is_deprecated is False
     assert model.is_visible is True
@@ -132,7 +118,7 @@ def test_is_visible_when_no_available_time() -> None:
 
 @time_machine.travel(datetime(2025, 1, 1, tzinfo=UTC))
 def test_is_visible_when_deprecation_time_is_in_the_future() -> None:
-    test_model_config: ModelConfig = {
+    model = Model.model_validate({
         "id": "foo",
         "name": "foo",
         "host": ModelHost.Modal,
@@ -146,9 +132,7 @@ def test_is_visible_when_deprecation_time_is_in_the_future() -> None:
         "deprecation_time": datetime(2026, 1, 1).astimezone(UTC).isoformat(),
         "internal": False,
         "prompt_type": PromptType.TEXT_ONLY,
-    }
-
-    model = map_model_from_config(test_model_config)
+    })
 
     assert model.is_deprecated is False
     assert model.is_visible is True

@@ -1,4 +1,3 @@
-import logging
 from pathlib import Path
 
 import pytest
@@ -10,9 +9,6 @@ from src import db
 from src.config import get_config
 from src.dao.message.message_repository import MessageRepository
 from src.db.init_sqlalchemy import make_db_engine
-
-LOGGER = logging.getLogger(__name__)
-
 
 postgresql_proc = factories.postgresql_proc(
     load=[

@@ -924,5 +924,13 @@ ALTER TABLE tool_definition ADD COLUMN mcp_server_id TEXT;
 
 UPDATE alembic_version SET version_num='5018e6967549' WHERE alembic_version.version_num = '5e909ac87a6c';
 
+-- Running upgrade 5018e6967549 -> 277d02390564
+
+CREATE TYPE availableinfinigramindexid AS ENUM ('OLMOE_0125_1B_7B', 'OLMO_2_0325_32B', 'OLMO_2_1124_13B', 'PILEVAL_LLAMA', 'TULU_3_8B', 'TULU_3_70B', 'TULU_3_405B');
+
+ALTER TABLE model_config ADD COLUMN infini_gram_index availableinfinigramindexid;
+
+UPDATE alembic_version SET version_num='277d02390564' WHERE alembic_version.version_num = '5018e6967549';
+
 COMMIT;
 

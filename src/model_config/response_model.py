@@ -28,7 +28,7 @@ class BaseResponseModel(APIInterface):
     can_call_tools: bool
     can_think: bool
 
-    infini_gram_index: AvailableInfiniGramIndexId | None
+    infini_gram_index: AvailableInfiniGramIndexId | None = Field(default=None)
 
     @computed_field  # type:ignore
     @property

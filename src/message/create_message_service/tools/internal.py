@@ -25,7 +25,7 @@ def get_internal_tools():
     ]
 
 
-def call_internal_tool(tool_call: ToolCall):
+def call_internal_tool(tool_call: ToolCall) -> str:
     found_tool = next((tool for tool in TOOL_REGISTRY if tool_call.tool_name == tool.name), None)
 
     if found_tool is None:
@@ -39,7 +39,7 @@ def call_internal_tool(tool_call: ToolCall):
             if parsed_args is None:
                 return str(found_tool.function())  # type: ignore
 
-            return found_tool.function(parsed_args)  # type: ignore
+            return str(found_tool.function(parsed_args))  # type: ignore
         return "Tool setup incorrect"
 
     except Exception as e:

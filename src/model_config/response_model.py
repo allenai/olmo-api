@@ -5,6 +5,7 @@ from typing import Annotated, Literal
 from pydantic import AwareDatetime, ByteSize, Field, RootModel, computed_field
 
 from src.api_interface import APIInterface
+from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
 from src.dao.engine_models.model_config import FileRequiredToPromptOption, ModelHost, ModelType, PromptType
 
 
@@ -26,6 +27,8 @@ class BaseResponseModel(APIInterface):
     default_system_prompt: str | None = Field(default=None)
     can_call_tools: bool
     can_think: bool
+
+    infini_gram_index: AvailableInfiniGramIndexId | None
 
     @computed_field  # type:ignore
     @property

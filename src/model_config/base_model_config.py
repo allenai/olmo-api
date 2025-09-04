@@ -3,6 +3,7 @@ from typing import Literal
 from pydantic import AwareDatetime, ByteSize, Field
 
 from src.api_interface import APIInterface
+from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
 from src.dao.engine_models.model_config import (
     FileRequiredToPromptOption,
     ModelHost,
@@ -25,6 +26,7 @@ class BaseModelConfigRequest(APIInterface):
     deprecation_time: AwareDatetime | None = Field(default=None)
     can_call_tools: bool = Field(default=False)
     can_think: bool = Field(default=False)
+    infini_gram_index: AvailableInfiniGramIndexId | None = Field(default=None)
 
 
 class BaseTextOnlyModelConfigRequest(BaseModelConfigRequest):

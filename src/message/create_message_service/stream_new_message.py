@@ -435,8 +435,8 @@ def stream_assistant_response(
                 },
             )
 
-            err = f"Unkown Error {e}"
-            yield MessageStreamError(message=reply.id, error=err, reason="Unkown error")
+            err = f"Unknown Error {e}"
+            yield MessageStreamError(message=reply.id, error=err, reason="Unknown error")
             raise
     else:
         tool_parts = []

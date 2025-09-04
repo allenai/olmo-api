@@ -6,7 +6,6 @@ from typing import Self
 from pydantic import SecretStr
 
 from src.config.InfiniGramSource import InfiniGramSource, map_infinigram_sources
-from src.config.Model import Model, MultiModalModel, map_model_from_config
 
 
 @dataclass
@@ -142,7 +141,6 @@ class Config:
     infini_gram: InfiniGram
     hubspot: Hubspot
     google_cloud_services: GoogleCloudServices
-    models: list[Model | MultiModalModel]
     feature_flags: FeatureFlags
     beaker: Beaker
     cirrascale_backend: CirrascaleBackend
@@ -225,7 +223,6 @@ class Config:
                     ),
                     enable_pydantic_inference=data.get("feature_flags", {}).get("enable_pydantic_inference", False),
                 ),
-                models=[map_model_from_config(model_config) for model_config in data["models"]],
                 beaker=Beaker(
                     address=data.get("beaker", {}).get("address"),
                     user_token=data.get("beaker", {}).get("user_token"),

@@ -37,4 +37,7 @@ class DateTimeUTC(TypeDecorator[datetime.datetime]):
 
 
 class Base(MappedAsDataclass, DeclarativeBase):
-    type_annotation_map = {datetime.datetime: DateTimeUTC, dict: JSONB}
+    type_annotation_map = {
+        datetime.datetime: DateTimeUTC,
+        dict: JSONB,
+    }

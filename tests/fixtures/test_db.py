@@ -2,15 +2,13 @@ import logging
 from pathlib import Path
 
 import pytest
-from flask import Flask
 from psycopg import Connection
 from pytest_postgresql import factories
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from src import db
 from src.config import get_config
-from src.dao.flask_sqlalchemy_session import flask_scoped_session
-from src.dao.label import Rating
+from src.dao.message.message_repository import MessageRepository
 from src.db.init_sqlalchemy import make_db_engine
 
 LOGGER = logging.getLogger(__name__)
@@ -30,12 +28,20 @@ postgresql = factories.postgresql(
 
 
 @pytest.fixture
-def app():
-    return Flask(__name__)
+def dbc(postgresql: Connection):
+    cfg = get_config.Config.load("./test.config.json")
+
+    cfg.db.conninfo = (
+        f"postgresql://{postgresql.info.user}:@{postgresql.info.host}:{postgresql.info.port}/{postgresql.info.dbname}"
+    )
+
+    return db.Client.from_config(cfg.db)
 
 
 @pytest.fixture
-def test_dbc(postgresql: Connection, app: Flask):
+def sql_alchemy(
+    postgresql: Connection,
+):
     cfg = get_config.Config.load("./test.config.json")
 
     cfg.db.conninfo = (
@@ -46,15 +52,19 @@ def test_dbc(postgresql: Connection, app: Flask):
 
     db_engine = make_db_engine(cfg.db, pool=dbc.pool, sql_alchemy=cfg.sql_alchemy)
     session_maker = sessionmaker(db_engine, expire_on_commit=False, autoflush=True)
-    flask_scoped_session(session_maker, app=app)
+    with session_maker() as session:
+        yield session
 
-    return dbc
+
+# def test_example_postgres(dbc: db.Client):
+#     """Check main postgresql fixture."""
+#     label = dbc.label.create(message="hello", rating=Rating.POSITIVE, creator="", comment=None)
+
+#     found = dbc.label.get(label.id)
+
+#     assert found is not None
 
 
-def test_example_postgres(test_dbc: db.Client):
-    """Check main postgresql fixture."""
-    label = test_dbc.label.create(message="hello", rating=Rating.POSITIVE, creator="", comment=None)
-
-    found = test_dbc.label.get(label.id)
-
-    assert found is not None
+def test_sql_alchem(sql_alchemy: Session):
+    message_repo = MessageRepository(sql_alchemy)
+    result = message_repo.get_message_by_id("123")

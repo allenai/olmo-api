@@ -39,7 +39,10 @@ load_dotenv(env_file)
 conninfo = os.getenv("MIGRATION_CONNINFO")
 db_username = os.getenv("MIGRATION_USERNAME")
 db_password = os.getenv("MIGRATION_PASSWORD")
-db_url = make_psycopg3_url(conninfo).set(username=db_username, password=db_password)
+db_url = (
+    # For some reason "autosave" works in the main application but not in alembic
+    make_psycopg3_url(conninfo).set(username=db_username, password=db_password).difference_update_query(["autosave"])
+)
 
 
 def include_enum_name(name: str) -> bool:

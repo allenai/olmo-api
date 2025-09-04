@@ -1,8 +1,8 @@
 """add infini-gram index column to model configs
 
-Revision ID: 702da94dd19f
+Revision ID: 277d02390564
 Revises: 5018e6967549
-Create Date: 2025-09-04 14:09:28.808757
+Create Date: 2025-09-04 16:08:31.486232
 
 """
 
@@ -13,7 +13,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "702da94dd19f"
+revision: str = "277d02390564"
 down_revision: str | None = "5018e6967549"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -30,7 +30,7 @@ def upgrade() -> None:
         "TULU_3_8B",
         "TULU_3_70B",
         "TULU_3_405B",
-        name="infini_gram_index_id",
+        name="availableinfinigramindexid",
     ).create(op.get_bind())
     op.add_column(
         "model_config",
@@ -44,7 +44,7 @@ def upgrade() -> None:
                 "TULU_3_8B",
                 "TULU_3_70B",
                 "TULU_3_405B",
-                name="infini_gram_index_id",
+                name="availableinfinigramindexid",
                 create_type=False,
             ),
             nullable=True,
@@ -65,6 +65,6 @@ def downgrade() -> None:
         "TULU_3_8B",
         "TULU_3_70B",
         "TULU_3_405B",
-        name="infini_gram_index_id",
+        name="availableinfinigramindexid",
     ).drop(op.get_bind())
     # ### end Alembic commands ###

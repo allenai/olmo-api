@@ -1,12 +1,9 @@
 import datetime
 from typing import Optional
 
-import sqlalchemy
 from sqlalchemy import DateTime, Dialect, TypeDecorator
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, MappedAsDataclass
-
-from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
 
 
 # Taken from https://github.com/litestar-org/advanced-alchemy/blob/27f6f7e48aff36f4ee80b50f7e8268790b1acb4d/advanced_alchemy/types/datetime.py
@@ -43,5 +40,4 @@ class Base(MappedAsDataclass, DeclarativeBase):
     type_annotation_map = {
         datetime.datetime: DateTimeUTC,
         dict: JSONB,
-        AvailableInfiniGramIndexId: sqlalchemy.Enum(AvailableInfiniGramIndexId, name="infini_gram_index_id"),
     }

@@ -10,6 +10,8 @@ from src.dao.engine_models.tool_definitions import ToolSource
 from .internal import call_internal_tool, get_internal_tools
 from .mcp import call_mcp_tool, get_mcp_tools
 
+MAX_TOOL_RESPONSE_LENGTH = 20000
+
 
 def map_tool_def_to_pydantic(tool: Ai2ToolDefinition):
     return ToolDefinition(
@@ -38,23 +40,25 @@ def get_available_tools(model: ModelConfig):
 
 
 def call_tool(tool_call: ToolCall, tool_definition: Ai2ToolDefinition) -> ToolReturnPart:
+    tool_response: str
     match tool_call.tool_source:
         case ToolSource.INTERNAL:
             tool_response = call_internal_tool(tool_call)
-
-            return ToolReturnPart(
-                tool_name=tool_call.tool_name,
-                content=tool_response,
-                tool_call_id=tool_call.tool_call_id,
-            )
         case ToolSource.MCP:
             tool_response = call_mcp_tool(tool_call, tool_definition)
-
-            return ToolReturnPart(
-                tool_name=tool_call.tool_name,
-                content=tool_response,
-                tool_call_id=tool_call.tool_call_id,
-            )
         case _:
             msg = f"Invalid tool source: {tool_call.tool_source}"
             raise ValueError(msg)
+
+    return ToolReturnPart(
+        tool_name=tool_call.tool_name,
+        content=check_response_length(tool_response),
+        tool_call_id=tool_call.tool_call_id,
+    )
+
+
+def check_response_length(response: str) -> str:
+    if len(response) > MAX_TOOL_RESPONSE_LENGTH:
+        return f"Tool Response was {len(response)} characters long the limit is {MAX_TOOL_RESPONSE_LENGTH}. Try adjusting the number of results returned."
+
+    return response

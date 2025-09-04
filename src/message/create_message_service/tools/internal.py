@@ -35,9 +35,9 @@ def call_internal_tool(tool_call: ToolCall):
         if found_tool.takes_ctx is False:
             parsed_args = arg_parse_helper(tool_call.args)
             if isinstance(parsed_args, dict):
-                return found_tool.function(**parsed_args)  # type: ignore
+                return str(found_tool.function(**parsed_args))  # type: ignore
             if parsed_args is None:
-                return found_tool.function()  # type: ignore
+                return str(found_tool.function())  # type: ignore
 
             return found_tool.function(parsed_args)  # type: ignore
         return "Tool setup incorrect"

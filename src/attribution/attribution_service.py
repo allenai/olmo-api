@@ -33,6 +33,7 @@ from .flatten_spans import (
     FlattenedSpan,
     FlattenedSpanDocument,
     IntermediateAttributionDocument,
+    IntermediateAttributionSpan,
     flatten_spans,
 )
 from .infini_gram_api_client import Client
@@ -178,6 +179,53 @@ def update_mapped_document(
         )
 
 
+def get_bm25_scores(prompt: str, model_response: str, docs: list[str]):
+    tokenized_corpus = [doc.split(" ") for doc in docs]
+    bm25 = BM25Okapi(tokenized_corpus)
+
+    return bm25.get_scores((prompt + " " + model_response).split(" "))
+
+
+def map_to_spans_with_relevance(
+    prompt: str, model_response: str, spans: list[AttributionSpan]
+) -> list[IntermediateAttributionSpan]:
+    # populate BM25 relevance scores; truncate excessive context
+    docs = [doc.text for span in spans for doc in span.documents]
+    intermediate_spans: list[IntermediateAttributionSpan] = []
+    if len(docs) > 0:
+        doc_scores = get_bm25_scores(prompt, model_response, docs)
+
+        i = 0
+        for span_to_rank in spans:
+            intermediate_documents: list[IntermediateAttributionDocument] = []
+            for doc in span_to_rank.documents:
+                IntermediateAttributionDocument(
+                    document_index=doc.document_index,
+                    document_length=doc.document_length,
+                    display_length=doc.display_length,
+                    needle_offset=doc.needle_offset,
+                    metadata=doc.metadata,
+                    token_ids=doc.token_ids,
+                    text=doc.text,
+                    display_length_long=doc.display_length_long,
+                    needle_offset_long=doc.needle_offset_long,
+                    text_long=doc.text_long,
+                    display_offset_snippet=doc.display_offset_snippet,
+                    needle_offset_snippet=doc.needle_offset_snippet,
+                    text_snippet=doc.text_snippet,
+                    relevance_score=doc_scores[i],
+                )
+                i += 1
+
+            intermediate_spans.append(
+                IntermediateAttributionSpan(**span_to_rank.to_dict(), intermediate_documents=intermediate_documents)
+            )
+
+        return intermediate_spans
+
+    return [IntermediateAttributionSpan(**span.to_dict(), intermediate_documents=[]) for span in spans]
+
+
 def get_attribution(
     request: GetAttributionRequest,
     infini_gram_client: Client,
@@ -246,9 +294,8 @@ def get_attribution(
     # populate BM25 relevance scores; truncate excessive context
     docs = [doc.text for span in filtered_spans for doc in span.documents]
     if len(docs) > 0:
-        tokenized_corpus = [doc.split(" ") for doc in docs]
-        bm25 = BM25Okapi(tokenized_corpus)
-        doc_scores = bm25.get_scores((request.prompt + " " + request.model_response).split(" "))
+        doc_scores = get_bm25_scores(request.prompt, request.model_response, docs)
+
         i = 0
         for span_to_rank in filtered_spans:
             for j in range(len(span_to_rank.documents)):

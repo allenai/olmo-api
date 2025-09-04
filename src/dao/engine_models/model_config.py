@@ -4,6 +4,8 @@ from enum import StrEnum
 from sqlalchemy import ARRAY, ForeignKey, Integer, Sequence, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
+
 from .base import Base
 
 
@@ -62,6 +64,8 @@ class ModelConfig(Base, kw_only=True):
 
     can_call_tools: Mapped[bool] = mapped_column(default=False)
     can_think: Mapped[bool] = mapped_column(default=False, server_default="false")
+
+    infini_gram_index: Mapped[AvailableInfiniGramIndexId | None] = mapped_column(default=None)
 
     __mapper_args__ = {
         "polymorphic_identity": PromptType.TEXT_ONLY,

@@ -1,7 +1,9 @@
+import os
 from pathlib import Path
 
 import pytest
 from psycopg import Connection
+from psycopg_pool import ConnectionPool
 from pytest_postgresql import factories
 from sqlalchemy.orm import sessionmaker
 
@@ -35,8 +37,16 @@ def cfg(postgresql: Connection):
 
 
 @pytest.fixture
-def dbc(cfg: Config):
-    dbc = Client.from_config(cfg.db)
+def dbc(cfg: Config, postgresql: Connection):
+    pool: ConnectionPool = ConnectionPool(
+        conninfo=f"postgresql://{postgresql.info.user}:@{postgresql.info.host}:{postgresql.info.port}/{postgresql.info.dbname}",
+        min_size=cfg.db.min_size,
+        max_size=cfg.db.max_size,
+        check=ConnectionPool.check_connection,
+        kwargs={"application_name": f"olmo-api:{os.getenv('SHA') or ''}"},
+    )
+
+    dbc = Client(pool=pool)
     yield dbc
     dbc.close()
 

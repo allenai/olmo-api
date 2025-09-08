@@ -32,8 +32,11 @@ local=$(cat <<EOF
   },
   "infini_gram": {
     "api_url": "https://infinigram-api.allen.ai"
+  },
+  "mcp": {
+    "servers": []
   }
-}
+ }
 EOF
 )
 

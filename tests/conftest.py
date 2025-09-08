@@ -4,11 +4,10 @@ from pathlib import Path
 import pytest
 from psycopg import Connection
 from pytest_postgresql import factories
-from sqlalchemy.orm import Session as SessionMaker
 from sqlalchemy.orm import sessionmaker
 
-from src.db import Client
 from src.config import get_config
+from src.db import Client
 from src.db.init_sqlalchemy import make_db_engine
 
 LOGGER = logging.getLogger(__name__)

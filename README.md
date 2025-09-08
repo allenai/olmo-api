@@ -37,7 +37,7 @@ docker compose down --volumes && docker compose up --build
 To run them, execute:
 
 ```
-docker compose exec api pytest
+docker compose exec -u testuser api pytest
 ```
 
 ### Type check

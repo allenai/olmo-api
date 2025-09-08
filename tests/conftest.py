@@ -2,9 +2,8 @@ import logging
 from pathlib import Path
 
 import pytest
+from psycopg import Connection
 from pytest_postgresql import factories
-from pytest_postgresql.executor import PostgreSQLExecutor
-from pytest_postgresql.janitor import DatabaseJanitor
 from sqlalchemy.orm import Session as SessionMaker
 from sqlalchemy.orm import sessionmaker
 
@@ -22,33 +21,17 @@ postgresql_proc = factories.postgresql_proc(
     ],
 )
 
-postgresql = factories.postgresql(
+postgressql = factories.postgresql(
     "postgresql_proc",
 )
 
 
 @pytest.fixture
-def database_setup(postgresql_proc: PostgreSQLExecutor):
-    logging.getLogger().error("Setting up DB")
-    with DatabaseJanitor(
-        user=postgresql_proc.user,
-        host=postgresql_proc.host,
-        port=postgresql_proc.port,
-        dbname=postgresql_proc.dbname,
-        version=postgresql_proc.version,
-        template_dbname=postgresql_proc.template_dbname,
-    ):
-        yield
-
-
-@pytest.fixture
-def sql_alchemy_session_maker(database_setup, postgresql_proc: PostgreSQLExecutor):
+def sql_alchemy_session_maker(postgressql: Connection):
     logging.getLogger().error("Starting up SQL Alchemy session maker")
     cfg = get_config.Config.load("./test.config.json")
 
-    cfg.db.conninfo = (
-        f"postgresql://{postgresql_proc.user}:@{postgresql_proc.host}:{postgresql_proc.port}/{postgresql_proc.dbname}"
-    )
+    cfg.db.conninfo = f"postgresql://{postgressql.info.user}:@{postgressql.info.host}:{postgressql.info.port}/{postgressql.info.dbname}"
     dbc = db.Client.from_config(cfg.db)
 
     db_engine = make_db_engine(cfg.db, pool=dbc.pool, sql_alchemy=cfg.sql_alchemy)
@@ -61,12 +44,10 @@ def sql_alchemy_session_maker(database_setup, postgresql_proc: PostgreSQLExecuto
 
 
 @pytest.fixture
-def dbc(database_setup, postgresql_proc: PostgreSQLExecutor):
+def dbc(postgressql: Connection):
     cfg = get_config.Config.load("./test.config.json")
 
-    cfg.db.conninfo = (
-        f"postgresql://{postgresql_proc.user}:@{postgresql_proc.host}:{postgresql_proc.port}/{postgresql_proc.dbname}"
-    )
+    cfg.db.conninfo = f"postgresql://{postgressql.info.user}:@{postgressql.info.host}:{postgressql.info.port}/{postgressql.info.dbname}"
 
     dbc = db.Client.from_config(cfg.db)
     yield dbc

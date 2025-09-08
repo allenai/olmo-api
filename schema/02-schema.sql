@@ -860,5 +860,77 @@ ALTER TABLE tool_call ADD CONSTRAINT tool_call_message_id_fkey FOREIGN KEY(messa
 
 UPDATE alembic_version SET version_num='ebc55c241155' WHERE alembic_version.version_num = '51773010bab9';
 
+-- Running upgrade ebc55c241155 -> 5e909ac87a6c
+
+ALTER TYPE "public"."toolsource" RENAME TO toolsource_old;
+
+CREATE TYPE "public"."toolsource" AS ENUM('INTERNAL', 'USER_DEFINED', 'MCP');
+
+CREATE FUNCTION new_old_not_equals(
+                new_enum_val "public"."toolsource", old_enum_val "public"."toolsource_old"
+            )
+            RETURNS boolean AS $$
+                SELECT new_enum_val::text != old_enum_val::text;
+            $$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OPERATOR != (
+            leftarg = "public"."toolsource",
+            rightarg = "public"."toolsource_old",
+            procedure = new_old_not_equals
+        );
+
+CREATE FUNCTION new_old_equals(
+                new_enum_val "public"."toolsource", old_enum_val "public"."toolsource_old"
+            )
+            RETURNS boolean AS $$
+                SELECT new_enum_val::text = old_enum_val::text;
+            $$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OPERATOR = (
+            leftarg = "public"."toolsource",
+            rightarg = "public"."toolsource_old",
+            procedure = new_old_equals
+        );
+
+ALTER TABLE "public"."tool_call"
+             ALTER COLUMN "tool_source" DROP DEFAULT;
+
+ALTER TABLE "public"."tool_call" 
+                ALTER COLUMN "tool_source" TYPE "public"."toolsource" 
+                USING "tool_source"::text::"public"."toolsource";
+
+ALTER TABLE "public"."tool_call"
+            ALTER COLUMN "tool_source" SET DEFAULT 'USER_DEFINED'::public.toolsource;
+
+ALTER TABLE "public"."tool_definition" 
+                ALTER COLUMN "tool_source" TYPE "public"."toolsource" 
+                USING "tool_source"::text::"public"."toolsource";
+
+DROP FUNCTION new_old_not_equals(
+            new_enum_val "public"."toolsource", old_enum_val "public"."toolsource_old"
+        ) CASCADE;
+
+DROP FUNCTION new_old_equals(
+            new_enum_val "public"."toolsource", old_enum_val "public"."toolsource_old"
+        ) CASCADE;
+
+DROP TYPE "public"."toolsource_old";
+
+UPDATE alembic_version SET version_num='5e909ac87a6c' WHERE alembic_version.version_num = 'ebc55c241155';
+
+-- Running upgrade 5e909ac87a6c -> 5018e6967549
+
+ALTER TABLE tool_definition ADD COLUMN mcp_server_id TEXT;
+
+UPDATE alembic_version SET version_num='5018e6967549' WHERE alembic_version.version_num = '5e909ac87a6c';
+
+-- Running upgrade 5018e6967549 -> 277d02390564
+
+CREATE TYPE availableinfinigramindexid AS ENUM ('OLMOE_0125_1B_7B', 'OLMO_2_0325_32B', 'OLMO_2_1124_13B', 'PILEVAL_LLAMA', 'TULU_3_8B', 'TULU_3_70B', 'TULU_3_405B');
+
+ALTER TABLE model_config ADD COLUMN infini_gram_index availableinfinigramindexid;
+
+UPDATE alembic_version SET version_num='277d02390564' WHERE alembic_version.version_num = '5018e6967549';
+
 COMMIT;
 

@@ -2,6 +2,7 @@ from uuid import uuid4
 
 import requests
 
+from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
 from src.dao.engine_models.model_config import ModelHost, ModelType, PromptType
 from src.model_config.create_model_config_service import (
     BaseCreateModelConfigRequest,
@@ -15,27 +16,6 @@ from src.model_config.update_model_config_service import (
 )
 
 from . import base
-
-
-class TestModelEndpoints(base.IntegrationTest):
-    client: base.AuthenticatedClient
-
-    def runTest(self):
-        self.client = self.user(anonymous=True)
-        self.shouldGetAListOfModels()
-
-    def shouldGetAListOfModels(self):
-        r = requests.get(f"{self.origin}/v3/models", headers=self.auth(self.client))
-        r.raise_for_status()
-
-        response = r.json()
-        assert len(response) > 0
-
-        entity = response.pop()
-        assert "is_visible" in entity
-        assert "host" in entity
-        assert "compute_source_id" not in entity
-        assert "available_time" not in entity
 
 
 class BaseTestV4ModelEndpoints(base.IntegrationTest):
@@ -213,6 +193,38 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert test_model is not None, "The test model wasn't returned from the GET request"
         assert test_model.get("canCallTools") is True
 
+    def test_should_create_a_model_with_an_infini_gram_index(self):
+        model_id = "test-tool-model-" + str(uuid4())
+        create_model_request = CreateTextOnlyModelConfigRequest(
+            id=model_id,
+            name="model made for testing",
+            description="This model is made for testing",
+            model_id_on_host="test-model-id",
+            model_type=ModelType.Chat,
+            host=ModelHost.InferD,
+            prompt_type=PromptType.TEXT_ONLY,
+            infini_gram_index=AvailableInfiniGramIndexId.OLMO_2_0325_32B,
+        )
+
+        create_response = self.create_model(create_model_request)
+        create_response.raise_for_status()
+
+        created_model = ResponseModel.model_validate(create_response.json()).root
+        assert created_model.created_time is not None
+        assert created_model.model_type == "chat"
+        assert created_model.infini_gram_index == AvailableInfiniGramIndexId.OLMO_2_0325_32B
+
+        get_models_response = requests.get(self.model_config_endpoint, headers=self.auth(self.client))
+        get_models_response.raise_for_status()
+
+        available_models = get_models_response.json()
+
+        test_model = ResponseModel.model_validate(
+            next((model for model in available_models if model.get("id") == model_id), None)
+        ).root
+        assert test_model is not None, "The test model wasn't returned from the GET request"
+        assert created_model.infini_gram_index == AvailableInfiniGramIndexId.OLMO_2_0325_32B
+
     def test_should_delete_a_model(self):
         model_id = "test-model-" + str(uuid4())
 
@@ -309,6 +321,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
             prompt_type=PromptType.TEXT_ONLY,
             can_call_tools=True,
             can_think=True,
+            infini_gram_index=AvailableInfiniGramIndexId.OLMO_2_0325_32B,
         )
         update_model_response = requests.put(
             self.model_config_endpoint + "/" + model_id,
@@ -325,12 +338,13 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         get_models_response.raise_for_status()
         available_models = get_models_response.json()
 
-        updated_model = next(filter(lambda model: model.get("id") == model_id, available_models))
+        updated_model = ResponseModel(next(filter(lambda model: model.get("id") == model_id, available_models))).root
         assert updated_model is not None, "Updated model not returned from models endpoint"
-        assert updated_model.get("name") == "updated model made for testing"
-        assert updated_model.get("modelType") == "base"
-        assert updated_model.get("canCallTools") is True
-        assert updated_model.get("canThink") is True
+        assert updated_model.name == "updated model made for testing"
+        assert updated_model.model_type == "base"
+        assert updated_model.can_call_tools is True
+        assert updated_model.can_think is True
+        assert updated_model.infini_gram_index == AvailableInfiniGramIndexId.OLMO_2_0325_32B
 
     def test_should_update_a_multi_modal_model(self):
         model_id = "test-model-" + str(uuid4())

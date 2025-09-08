@@ -50,6 +50,14 @@ class TestAnonymousMessageEndpoints(base.IntegrationTest):
 
         response_messages = [json.loads(util.second_to_last_response_line(create_message_request))]
         first_message = response_messages[0]
+
+        r = requests.post(
+            f"{self.origin}/v3/label",
+            headers=self.auth(anonymous_user),
+            json={"rating": 1, "message": first_message["id"]},
+        )
+        r.raise_for_status()
+
         self.messages.append((first_message["id"], anonymous_user))
 
         for child in first_message["children"]:

@@ -6,7 +6,6 @@ from typing import Self
 from pydantic import SecretStr
 
 from src.config.InfiniGramSource import InfiniGramSource, map_infinigram_sources
-from src.config.Model import Model, MultiModalModel, map_model_from_config
 
 
 @dataclass
@@ -113,6 +112,20 @@ class ModalOpenAI:
     api_key: SecretStr
 
 
+@dataclass
+class McpServer:
+    url: str
+    headers: dict[str, str]
+    name: str
+    id: str
+    enabled: bool
+
+
+@dataclass
+class Mcp:
+    servers: list[McpServer]
+
+
 DEFAULT_CONFIG_PATH = "/secret/cfg/config.json"
 
 
@@ -128,12 +141,12 @@ class Config:
     infini_gram: InfiniGram
     hubspot: Hubspot
     google_cloud_services: GoogleCloudServices
-    models: list[Model | MultiModalModel]
     feature_flags: FeatureFlags
     beaker: Beaker
     cirrascale_backend: CirrascaleBackend
     cirrascale: Cirrascale
     modal_openai: ModalOpenAI
+    mcp: Mcp
 
     @classmethod
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
@@ -210,9 +223,20 @@ class Config:
                     ),
                     enable_pydantic_inference=data.get("feature_flags", {}).get("enable_pydantic_inference", False),
                 ),
-                models=[map_model_from_config(model_config) for model_config in data["models"]],
                 beaker=Beaker(
                     address=data.get("beaker", {}).get("address"),
                     user_token=data.get("beaker", {}).get("user_token"),
+                ),
+                mcp=Mcp(
+                    servers=[
+                        McpServer(
+                            url=server["url"],
+                            headers=server["headers"],
+                            name=server["name"],
+                            id=server["id"],
+                            enabled=server["enabled"],
+                        )
+                        for server in data["mcp"]["servers"]
+                    ]
                 ),
             )

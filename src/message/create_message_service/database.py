@@ -13,7 +13,7 @@ from src.dao.message.message_repository import BaseMessageRepository
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
-from src.message.create_message_service.tools.tool_calls import get_internal_tools
+from src.message.create_message_service.tools.tool_calls import get_available_tools
 
 
 def get_expiration_time(agent: Token):
@@ -86,7 +86,7 @@ def create_user_message(
     model: ModelConfig,
     is_msg_harmful: bool | None = None,
 ):
-    is_new_message = request.parent is None
+    is_new_thread = request.parent is None
     message_expiration_time = get_expiration_time(agent)
 
     # make message with tools from last message, if tools in request, wipe and replace
@@ -99,17 +99,17 @@ def create_user_message(
         )
         for tool_def in (
             request.create_tool_definitions
-            if is_new_message and request.create_tool_definitions is not None
+            if is_new_thread and request.create_tool_definitions is not None
             else []  # currently we only allow tool creation in new messages. We don't add them if they come in later..
         )
     ]
-    internal_tools: list[ToolDefinition] = get_internal_tools(model) if is_new_message and model.can_call_tools else []
 
-    parent_tools: list[ToolDefinition] = (
-        parent.tool_definitions if parent is not None and parent.tool_definitions is not None else []
+    parent_tool_calls = parent.tool_definitions if parent is not None else []
+
+    tool_list: list[ToolDefinition] = (
+        get_available_tools(model) + tools_created if is_new_thread else parent_tool_calls or []
     )
 
-    tool_list = tools_created + parent_tools + internal_tools  # check tools are unique
     tool_names = [obj.name for obj in tool_list]
 
     if len(tool_names) != len(set(tool_names)):

@@ -3,10 +3,6 @@ from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ByteSize, Field, computed_field
 
-from src.config.ModelConfig import (
-    ModelConfig,
-    MultiModalModelConfig,
-)
 from src.dao.engine_models.model_config import FileRequiredToPromptOption, ModelHost, ModelType, PromptType
 
 
@@ -86,17 +82,3 @@ class MultiModalModel(ModelBase):
         default=False,
         description="Defines if a user is allowed to send files with follow-up prompts. To require a file to prompt, use require_file_to_prompt",
     )
-
-
-def map_model_from_config(model_config: ModelConfig | MultiModalModelConfig):
-    if model_config.get("internal") is None:
-        model_config["internal"] = False
-
-    if model_config.get("prompt_type") is None:
-        accepts_files = model_config.get("accepts_files", False)
-        model_config["prompt_type"] = PromptType.MULTI_MODAL if accepts_files else PromptType.TEXT_ONLY
-
-    if model_config.get("accepts_files") is True:
-        return MultiModalModel.model_validate(model_config)
-
-    return Model.model_validate(model_config)

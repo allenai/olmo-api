@@ -1,7 +1,7 @@
 {
     "version": "0.2.0",
     "configurations": [
-       {
+        {
             "name": "Python Debugger: Flask",
             "type": "debugpy",
             "request": "launch",
@@ -10,13 +10,10 @@
                 "FLASK_APP": "app.py",
                 "FLASK_DEBUG": "1",
                 "FLASK_CONFIG_PATH": "config.json",
-                "MODAL_CONFIG_PATH": ".modal.toml"
+                "MODAL_CONFIG_PATH": ".modal.toml",
+                "GOOGLE_APPLICATION_CREDENTIALS": "service_account.json"
             },
-            "args": [
-                "run",
-                "--no-debugger",
-                "-p 8000"
-            ],
+            "args": ["run", "--no-debugger", "-p 8000"],
             "jinja": true,
             "justMyCode": true
         },
@@ -27,6 +24,6 @@
             "module": "alembic",
             "args": ["revision", "-m", "\"debug\"", "--autogenerate"],
             "envFile": "${workspaceFolder}/.env.local"
-          }
+        }
     ]
 }

@@ -5,8 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectin_polymorphic, sessionmaker
 
 from src.config.Model import Model, MultiModalModel
-from src.config.ModelConfig import FileRequiredToPromptOption
 from src.dao.engine_models.model_config import (
+    FileRequiredToPromptOption,
     FilesOnlyModelConfig,
     ModelConfig,
     MultiModalModelConfig,

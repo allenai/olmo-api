@@ -5,7 +5,9 @@ from dataclasses import asdict
 from time import time_ns
 from typing import Any, cast
 
+from flask import current_app
 from pydantic_ai.direct import model_request_stream_sync
+from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import ToolCallPart
 from pydantic_ai.models import ModelRequestParameters
 
@@ -37,6 +39,7 @@ from src.message.SafetyChecker import (
 )
 from src.message.stream_message import StreamMetrics, stream_message_chunks
 from src.pydantic_inference.pydantic_ai_helpers import (
+    find_tool_def_by_name,
     map_pydantic_tool_to_db_tool,
     pydantic_map_chunk,
     pydantic_map_messages,
@@ -249,7 +252,8 @@ def stream_new_message(
             last_msg = reply
             for tool in reply.tool_calls:
                 if tool.tool_source is not ToolSource.USER_DEFINED:
-                    tool_response = call_tool(tool)
+                    tool_definition = find_tool_def_by_name(reply, tool.tool_name)
+                    tool_response = call_tool(tool, tool_definition)
                     tool_msg = create_tool_response_message(
                         message_repository,
                         content=tool_response.content,
@@ -367,42 +371,73 @@ def stream_assistant_response(
     # away when InferD stores this I/O.
 
     if cfg.feature_flags.enable_pydantic_inference:
-        pydantic_chunks: list[Chunk] = []
-        pydantic_inference_engine = get_pydantic_model(model)
+        try:
+            pydantic_chunks: list[Chunk] = []
+            pydantic_inference_engine = get_pydantic_model(model)
 
-        first_chunk_ns: int | None = None
-        pydantic_messages = pydantic_map_messages(message_chain[:-1], blob_map)
-        tools = get_pydantic_tool_defs(input_message) if model.can_call_tools else []
+            first_chunk_ns: int | None = None
+            pydantic_messages = pydantic_map_messages(message_chain[:-1], blob_map)
+            tools = get_pydantic_tool_defs(input_message) if model.can_call_tools else []
 
-        with model_request_stream_sync(
-            model=pydantic_inference_engine,
-            messages=pydantic_messages,
-            model_settings=pydantic_settings_map(request.opts, model),
-            model_request_parameters=ModelRequestParameters(function_tools=tools, allow_text_output=True),
-        ) as stream:
-            for generator_chunk_pydantic in stream:
-                if first_chunk_ns is None:
-                    first_chunk_ns = time_ns()
+            with model_request_stream_sync(
+                model=pydantic_inference_engine,
+                messages=pydantic_messages,
+                model_settings=pydantic_settings_map(request.opts, model),
+                model_request_parameters=ModelRequestParameters(function_tools=tools, allow_text_output=True),
+            ) as stream:
+                for generator_chunk_pydantic in stream:
+                    if first_chunk_ns is None:
+                        first_chunk_ns = time_ns()
 
-                pydantic_chunk = pydantic_map_chunk(generator_chunk_pydantic, message=reply)
-                pydantic_chunks.append(pydantic_chunk)
-                yield pydantic_chunk
+                    pydantic_chunk = pydantic_map_chunk(generator_chunk_pydantic, message=reply)
+                    pydantic_chunks.append(pydantic_chunk)
+                    yield pydantic_chunk
 
-        full_response = stream.get()
-        text_part = next((part for part in full_response.parts if part.part_kind == "text"), None)
-        thinking_part = next((part for part in full_response.parts if part.part_kind == "thinking"), None)
-        tool_parts = [
-            map_pydantic_tool_to_db_tool(reply, part) for part in full_response.parts if isinstance(part, ToolCallPart)
-        ]
+            full_response = stream.get()
+            text_part = next((part for part in full_response.parts if part.part_kind == "text"), None)
+            thinking_part = next((part for part in full_response.parts if part.part_kind == "thinking"), None)
+            tool_parts = [
+                map_pydantic_tool_to_db_tool(reply, part)
+                for part in full_response.parts
+                if isinstance(part, ToolCallPart)
+            ]
 
-        stream_metrics.first_chunk_ns = first_chunk_ns
-        stream_metrics.input_token_count = -1
-        stream_metrics.output_token_count = -1
-        stream_metrics.total_generation_ns = time_ns() - start_generation_ns
+            stream_metrics.first_chunk_ns = first_chunk_ns
+            stream_metrics.input_token_count = -1
+            stream_metrics.output_token_count = -1
+            stream_metrics.total_generation_ns = time_ns() - start_generation_ns
 
-        output = text_part.content if text_part is not None else ""
-        thinking = thinking_part.content if thinking_part is not None else ""
-        # TODO finish reason https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse.vendor_details should be here but isn't
+            output = text_part.content if text_part is not None else ""
+            thinking = thinking_part.content if thinking_part is not None else ""
+            # TODO finish reason https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse.vendor_details should be here but isn't
+        except ModelHTTPError as e:
+            current_app.logger.exception(
+                "Http call to LLM failed",
+                extra={
+                    "message_id": reply.id,
+                    "model": model.id,
+                    "host": model.host,
+                    "event": "inference.stream-error",
+                },
+            )
+
+            err = f"http error: {e}"
+            yield MessageStreamError(message=reply.id, error=err, reason="Model http error")
+            raise
+        except Exception as e:
+            current_app.logger.exception(
+                "Unknown error",
+                extra={
+                    "message_id": reply.id,
+                    "model": model.id,
+                    "host": model.host,
+                    "event": "inference.stream-error",
+                },
+            )
+
+            err = f"Unknown Error {e}"
+            yield MessageStreamError(message=reply.id, error=err, reason="Unknown error")
+            raise
     else:
         tool_parts = []
         thinking = None

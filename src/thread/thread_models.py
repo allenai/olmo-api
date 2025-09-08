@@ -7,7 +7,7 @@ from pydantic import AwareDatetime, Field, computed_field, field_validator
 from src.api_interface import APIInterface
 from src.dao.engine_models.message import Message as SQLAMessage
 from src.dao.engine_models.model_config import ModelType
-from src.dao.engine_models.tool_definitions import ParameterDef, ToolSource
+from src.dao.engine_models.tool_definitions import ToolSource
 from src.dao.label import Rating
 from src.dao.message.message_models import InferenceOpts, Message, Role
 from src.inference.InferenceEngine import FinishReason
@@ -43,7 +43,7 @@ class ToolCall(APIInterface):
 class ToolDefinition(APIInterface):
     name: str
     description: str
-    parameters: ParameterDef
+    parameters: dict[str, Any] | None = None
     tool_source: ToolSource
 
 

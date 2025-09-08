@@ -16,7 +16,6 @@ from src.attribution.attribution_blueprint import attribution_blueprint
 from src.auth.auth_service import authn
 from src.config import get_config
 from src.dao import datachip, label, paged
-from src.inference.inference_service import get_available_models
 from src.log import logging_blueprint
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.v3_message_blueprint import create_v3_message_blueprint
@@ -36,8 +35,6 @@ class Server(Blueprint):
         self.get("/templates/prompts")(self.prompts)
 
         self.get("/messages")(self.messages)
-
-        self.get("/models")(self.models)
 
         self.get("/schema")(self.schema)
 
@@ -118,9 +115,6 @@ class Server(Blueprint):
             agent=agent.client,
         )
         return jsonify(message_list)
-
-    def models(self):
-        return jsonify(get_available_models())
 
     def schema(self):
         return jsonify({"Message": {"InferenceOpts": message.InferenceOpts.opts_schema()}})

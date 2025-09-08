@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import AwareDatetime, BaseModel, ByteSize, Field, computed_field
+from pydantic import AwareDatetime, BaseModel, BeforeValidator, ByteSize, ConfigDict, Field, computed_field
 
 from src.api_interface import APIInterface
 from src.dao.engine_models.model_config import FileRequiredToPromptOption, ModelHost, ModelType, PromptType
@@ -13,11 +13,12 @@ class AvailableTool(APIInterface):
 
 
 class ModelBase(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     host: ModelHost
     name: str
     description: str
-    compute_source_id: str = Field(exclude=True)
     model_type: ModelType
     internal: bool
     system_prompt: str | None = None
@@ -66,8 +67,24 @@ class Model(ModelBase):
     prompt_type: Literal[PromptType.TEXT_ONLY] = PromptType.TEXT_ONLY
 
 
+def none_to_false_validator(value: bool | None) -> bool:  # noqa: FBT001
+    if value is None:
+        return False
+
+    return value
+
+
+def none_to_no_requirements_validator(value: FileRequiredToPromptOption | None) -> FileRequiredToPromptOption:
+    if value is None:
+        return FileRequiredToPromptOption.NoRequirement
+
+    return value
+
+
 class MultiModalModel(ModelBase):
     prompt_type: Literal[PromptType.MULTI_MODAL, PromptType.FILES_ONLY]
+
+    accepts_files: bool = Field(default=True)
 
     accepted_file_types: list[str] = Field(
         description="A list of file type specifiers: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/file#unique_file_type_specifiers",
@@ -77,7 +94,9 @@ class MultiModalModel(ModelBase):
         default=None,
         description="The maximum number of files the user is allowed to send with a message",
     )
-    require_file_to_prompt: FileRequiredToPromptOption = Field(
+    require_file_to_prompt: Annotated[
+        FileRequiredToPromptOption, BeforeValidator(none_to_no_requirements_validator)
+    ] = Field(
         default=FileRequiredToPromptOption.NoRequirement,
         description="Defines if a user is required to send files with messages. Not intended to prevent users from sending files with follow-up messages.",
     )
@@ -85,7 +104,7 @@ class MultiModalModel(ModelBase):
         default=None,
         description="The maximum total file size a user is allowed to send. Adds up the size of every file.",
     )
-    allow_files_in_followups: bool = Field(
+    allow_files_in_followups: Annotated[bool, BeforeValidator(none_to_false_validator)] = Field(
         default=False,
         description="Defines if a user is allowed to send files with follow-up prompts. To require a file to prompt, use require_file_to_prompt",
     )

@@ -7,7 +7,7 @@ from pytest_postgresql import factories
 from sqlalchemy.orm import Session as SessionMaker
 from sqlalchemy.orm import sessionmaker
 
-from src import db
+from src.db import Client
 from src.config import get_config
 from src.db.init_sqlalchemy import make_db_engine
 
@@ -27,25 +27,6 @@ postgresql = factories.postgresql(
 
 
 @pytest.fixture
-def sql_alchemy_session_maker(postgresql: Connection):
-    logging.getLogger().error("Starting up SQL Alchemy session maker")
-    cfg = get_config.Config.load("./test.config.json")
-
-    cfg.db.conninfo = (
-        f"postgresql://{postgresql.info.user}:@{postgresql.info.host}:{postgresql.info.port}/{postgresql.info.dbname}"
-    )
-    dbc = db.Client.from_config(cfg.db)
-
-    db_engine = make_db_engine(cfg.db, pool=dbc.pool, sql_alchemy=cfg.sql_alchemy)
-    session_maker = sessionmaker(db_engine, expire_on_commit=False, autoflush=True)
-
-    yield session_maker
-    db_engine.dispose()
-
-    dbc.close()
-
-
-@pytest.fixture
 def dbc(postgresql: Connection):
     cfg = get_config.Config.load("./test.config.json")
 
@@ -53,13 +34,22 @@ def dbc(postgresql: Connection):
         f"postgresql://{postgresql.info.user}:@{postgresql.info.host}:{postgresql.info.port}/{postgresql.info.dbname}"
     )
 
-    dbc = db.Client.from_config(cfg.db)
+    dbc = Client.from_config(cfg.db)
     yield dbc
     dbc.close()
 
 
 @pytest.fixture
-def sql_alchemy(sql_alchemy_session_maker: sessionmaker[SessionMaker]):
-    logging.getLogger().error("Starting up SQL Alchemy session")
-    with sql_alchemy_session_maker() as session:
+def sql_alchemy(postgresql: Connection, dbc: Client):
+    cfg = get_config.Config.load("./test.config.json")
+
+    cfg.db.conninfo = (
+        f"postgresql://{postgresql.info.user}:@{postgresql.info.host}:{postgresql.info.port}/{postgresql.info.dbname}"
+    )
+
+    db_engine = make_db_engine(cfg.db, pool=dbc.pool, sql_alchemy=cfg.sql_alchemy)
+    session_maker = sessionmaker(db_engine, expire_on_commit=False, autoflush=True)
+
+    with session_maker() as session:
         yield session
+    db_engine.dispose()

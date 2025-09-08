@@ -10,7 +10,4 @@ COPY . .
 
 RUN apt-get update -qq && apt-get install ffmpeg -y
 
-RUN adduser testuser
-RUN apt-get install postgresql -y
-
 ENTRYPOINT [ "/api/start.sh" ]

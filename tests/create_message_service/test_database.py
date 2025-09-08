@@ -1,3 +1,4 @@
+import pytest
 from sqlalchemy.orm import Session
 
 from src.auth.token import Token
@@ -11,6 +12,7 @@ from src.message.create_message_request import (
 from src.message.create_message_service.database import create_user_message, setup_msg_thread
 
 
+@pytest.mark.integration
 class TestDatabase:
     def test_thread_setup(self, sql_alchemy: Session):
         message_repo = MessageRepository(sql_alchemy)

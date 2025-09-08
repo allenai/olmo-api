@@ -11,14 +11,18 @@ jobs:
 
             - name: Setup Config
               run: |
-                  echo ${{ secrets.CONFIG_JSON }} > config.json
+                  echo $CONFIG_JSON | base64 --decode > config.json
+                  env: CONFIG_JSON: ${{ secrets.CONFIG_JSON}}
+
             - name: Setup Gcloud Credentials
               run: |
-                  echo ${{ secrets.GCLOUD_SERVICE_ACCOUNT }} > service_account.json
+                  echo $GOOGLE_SERVICE_ACCOUNT | base64 --decode > service_account.json
+                  env: GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
             - name: Setup modal
               run: |
-                  echo ${{ secrets.MODAL_TOML }} > .modal.toml
+                  echo $MODAL_TOML | base64 --decode > .modal.toml
+                  env: MODAL_TOML: ${{ secrets.MODAL_TOML}}
 
             - name: Run docker compose
               uses: hoverkraft-tech/compose-action@v2.0.1

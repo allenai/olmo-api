@@ -29,7 +29,6 @@ services:
       - PYTHONUNBUFFERED=1
       - LOG_LEVEL=DEBUG
       - E2E_AUTH0_CLIENT_SECRET
-      - FLASK_CONFIG_PATH
       - GOOGLE_APPLICATION_CREDENTIALS=service_account.json
       - SHA=DEV
       - MODAL_CONFIG_PATH=/secret/.modal.toml

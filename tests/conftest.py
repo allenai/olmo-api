@@ -2,15 +2,15 @@ import logging
 from pathlib import Path
 
 import pytest
-from psycopg import Connection
 from pytest_postgresql import factories
-from sqlalchemy.orm import sessionmaker, Session as SessionMaker
+from pytest_postgresql.executor import PostgreSQLExecutor
+from pytest_postgresql.janitor import DatabaseJanitor
+from sqlalchemy.orm import Session as SessionMaker
+from sqlalchemy.orm import sessionmaker
 
 from src import db
 from src.config import get_config
 from src.db.init_sqlalchemy import make_db_engine
-from pytest_postgresql.executor import PostgreSQLExecutor
-from pytest_postgresql.janitor import DatabaseJanitor
 
 LOGGER = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ postgresql = factories.postgresql(
 )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def database_setup(postgresql_proc: PostgreSQLExecutor):
     logging.getLogger().error("Setting up DB")
     with DatabaseJanitor(
@@ -41,7 +41,7 @@ def database_setup(postgresql_proc: PostgreSQLExecutor):
         yield
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def sql_alchemy_session_maker(database_setup, postgresql_proc: PostgreSQLExecutor):
     logging.getLogger().error("Starting up SQL Alchemy session maker")
     cfg = get_config.Config.load("./test.config.json")
@@ -56,6 +56,8 @@ def sql_alchemy_session_maker(database_setup, postgresql_proc: PostgreSQLExecuto
 
     yield session_maker
     db_engine.dispose()
+
+    dbc.close()
 
 
 @pytest.fixture

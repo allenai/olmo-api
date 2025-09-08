@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from src.auth.token import Token
+from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import ModelConfig, ModelHost, ModelType, PromptType
 from src.dao.message.message_models import InferenceOpts, Role
 from src.dao.message.message_repository import MessageRepository
@@ -43,6 +44,9 @@ def test_thread_setup(sql_alchemy: Session):
     assert len(thread_setup) == 1
     assert thread_setup[0].role == Role.System
 
+    result = sql_alchemy.query(Message).all()
+    assert len(result) == 1
+
 
 def test_thread_setup_two(sql_alchemy: Session):
     message_repo = MessageRepository(sql_alchemy)
@@ -76,3 +80,6 @@ def test_thread_setup_two(sql_alchemy: Session):
 
     assert len(thread_setup) == 1
     assert thread_setup[0].role == Role.System
+
+    result = sql_alchemy.query(Message).all()
+    assert len(result) == 1

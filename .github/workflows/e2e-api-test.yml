@@ -1,5 +1,4 @@
-name: Docker Compose Action
-
+name: e2e API Tests
 on:
     push:
         branches: [main, dev]

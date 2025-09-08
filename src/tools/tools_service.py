@@ -7,8 +7,8 @@ from src.dao.engine_models.tool_call import ToolCall
 from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 from src.dao.engine_models.tool_definitions import ToolSource
 
-from .internal import call_internal_tool, get_internal_tools
-from .mcp import call_mcp_tool, get_mcp_tools
+from .internal_tools_service import call_internal_tool, get_internal_tools
+from .mcp_service import call_mcp_tool, get_mcp_tools
 
 
 def map_tool_def_to_pydantic(tool: Ai2ToolDefinition):

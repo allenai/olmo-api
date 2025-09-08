@@ -3,7 +3,13 @@ from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ByteSize, Field, computed_field
 
+from src.api_interface import APIInterface
 from src.dao.engine_models.model_config import FileRequiredToPromptOption, ModelHost, ModelType, PromptType
+
+
+class AvailableTool(APIInterface):
+    name: str
+    description: str | None = None
 
 
 class ModelBase(BaseModel):
@@ -22,6 +28,7 @@ class ModelBase(BaseModel):
     accepts_files: bool = Field(default=False)
     can_call_tools: bool = Field(default=False)
     can_think: bool = Field(default=False)
+    available_tools: list[AvailableTool] = Field(default_factory=list)
 
     @computed_field  # type: ignore[prop-decorator]
     @property

@@ -21,17 +21,19 @@ postgresql_proc = factories.postgresql_proc(
     ],
 )
 
-postgressql = factories.postgresql(
+postgresql = factories.postgresql(
     "postgresql_proc",
 )
 
 
 @pytest.fixture
-def sql_alchemy_session_maker(postgressql: Connection):
+def sql_alchemy_session_maker(postgresql: Connection):
     logging.getLogger().error("Starting up SQL Alchemy session maker")
     cfg = get_config.Config.load("./test.config.json")
 
-    cfg.db.conninfo = f"postgresql://{postgressql.info.user}:@{postgressql.info.host}:{postgressql.info.port}/{postgressql.info.dbname}"
+    cfg.db.conninfo = (
+        f"postgresql://{postgresql.info.user}:@{postgresql.info.host}:{postgresql.info.port}/{postgresql.info.dbname}"
+    )
     dbc = db.Client.from_config(cfg.db)
 
     db_engine = make_db_engine(cfg.db, pool=dbc.pool, sql_alchemy=cfg.sql_alchemy)
@@ -44,10 +46,12 @@ def sql_alchemy_session_maker(postgressql: Connection):
 
 
 @pytest.fixture
-def dbc(postgressql: Connection):
+def dbc(postgresql: Connection):
     cfg = get_config.Config.load("./test.config.json")
 
-    cfg.db.conninfo = f"postgresql://{postgressql.info.user}:@{postgressql.info.host}:{postgressql.info.port}/{postgressql.info.dbname}"
+    cfg.db.conninfo = (
+        f"postgresql://{postgresql.info.user}:@{postgresql.info.host}:{postgresql.info.port}/{postgresql.info.dbname}"
+    )
 
     dbc = db.Client.from_config(cfg.db)
     yield dbc

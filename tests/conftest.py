@@ -1,4 +1,3 @@
-import logging
 from pathlib import Path
 
 import pytest
@@ -9,8 +8,6 @@ from sqlalchemy.orm import sessionmaker
 from src.config import get_config
 from src.db import Client
 from src.db.init_sqlalchemy import make_db_engine
-
-LOGGER = logging.getLogger(__name__)
 
 postgresql_proc = factories.postgresql_proc(
     load=[

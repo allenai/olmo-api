@@ -9,12 +9,24 @@ jobs:
         steps:
             - uses: actions/checkout@v4.2.2
 
+            - name: Setup Config
+              run: |
+                  echo ${{ secrets.CONFIG_JSON }} > config.json
+            - name: Setup Gcloud Credentials
+              run: |
+                  echo ${{ secrets.GCLOUD_SERVICE_ACCOUNT }} > service_account.json
+
+            - name: Setup modal
+              run: |
+                  echo ${{ secrets.MODAL_TOML }} > .modal.toml
+
             - name: Run docker compose
               uses: hoverkraft-tech/compose-action@v2.0.1
               with:
                   compose-file: "./docker-compose.yaml"
               env:
                   FLASK_CONFIG_PATH: "./config.test.json"
+                  E2E_AUTH0_CLIENT_SECRET: ${{ secrets.E2E_AUTH0_CLIENT_SECRET }}
 
             - name: Execute tests in the running services
               run: |

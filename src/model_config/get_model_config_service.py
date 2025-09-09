@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from pydantic import ConfigDict, Field, RootModel
+from pydantic import Field, RootModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectin_polymorphic, sessionmaker
 
@@ -11,10 +11,10 @@ from src.dao.engine_models.model_config import (
     MultiModalModelConfig,
 )
 from src.model_config.response_model import ResponseModel
+from src.tools.tools_service import get_available_tools
 
 
 class ModelResponse(RootModel):
-    model_config = ConfigDict(from_attributes=True)
     root: list[Annotated[(Model | MultiModalModel), Field(discriminator="prompt_type")]]
 
 
@@ -31,7 +31,9 @@ def get_model_configs(session_maker: sessionmaker[Session], *, include_internal_
 
         results = session.scalars(stmt).all()
 
-        return ModelResponse.model_validate(results)
+        return ModelResponse.model_validate(
+            results, from_attributes=True, context={"get_available_tools": get_available_tools}
+        )
 
 
 class AdminModelResponse(RootModel):

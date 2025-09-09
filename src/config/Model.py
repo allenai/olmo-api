@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 
-from pydantic import AwareDatetime, BaseModel, BeforeValidator, ByteSize, ConfigDict, Field, computed_field
+from pydantic import AfterValidator, AwareDatetime, BaseModel, BeforeValidator, ByteSize, Field, computed_field
 
 from src.api_interface import APIInterface
 from src.dao.engine_models.model_config import FileRequiredToPromptOption, ModelHost, ModelType, PromptType
@@ -12,9 +12,14 @@ class AvailableTool(APIInterface):
     description: str | None = None
 
 
-class ModelBase(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+def map_datetime_to_utc(datetime: AwareDatetime | None) -> AwareDatetime | None:
+    if datetime is None:
+        return datetime
 
+    return datetime.astimezone(UTC)
+
+
+class ModelBase(BaseModel):
     id: str
     host: ModelHost
     name: str
@@ -24,8 +29,12 @@ class ModelBase(BaseModel):
     system_prompt: str | None = None
     family_id: str | None = None
     family_name: str | None = None
-    available_time: AwareDatetime | None = Field(default=None, exclude=True)
-    deprecation_time: AwareDatetime | None = Field(default=None, exclude=True)
+    available_time: Annotated[AwareDatetime | None, AfterValidator(map_datetime_to_utc)] = Field(
+        default=None, exclude=True
+    )
+    deprecation_time: Annotated[AwareDatetime | None, AfterValidator(map_datetime_to_utc)] = Field(
+        default=None, exclude=True
+    )
     accepts_files: bool = Field(default=False)
     can_call_tools: bool = Field(default=False)
     can_think: bool = Field(default=False)
@@ -50,17 +59,6 @@ class ModelBase(BaseModel):
         model_is_before_deprecation_time = True if self.deprecation_time is None else now < self.deprecation_time
 
         return model_is_available and model_is_before_deprecation_time
-
-    def __init__(self, **kwargs):
-        available_time = kwargs.get("available_time")
-        if isinstance(available_time, str):
-            kwargs["available_time"] = (
-                datetime.fromisoformat(available_time).astimezone(UTC)
-                if available_time is not None
-                else datetime.min.replace(tzinfo=UTC)
-            )
-
-        super().__init__(**kwargs)
 
 
 class Model(ModelBase):

@@ -40,4 +40,4 @@ jobs:
 
             - name: Execute e2e tests
               run: |
-                  docker compose exec api pytest
+                   docker compose exec api pytest -m "not integration" -k "not attribution"

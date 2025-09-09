@@ -1,3 +1,4 @@
+import operator
 from uuid import uuid4
 
 import requests
@@ -9,6 +10,7 @@ from src.model_config.create_model_config_service import (
     CreateMultiModalModelConfigRequest,
     CreateTextOnlyModelConfigRequest,
 )
+from src.model_config.get_model_config_service import AdminModelResponse, ModelResponse
 from src.model_config.response_model import MultiModalResponseModel, ResponseModel
 from src.model_config.update_model_config_service import (
     UpdateMultiModalModelConfigRequest,
@@ -45,6 +47,21 @@ class BaseTestV4ModelEndpoints(base.IntegrationTest):
 
         return response
 
+    def list_admin_models(self):
+        r = requests.get(
+            self.model_config_endpoint,
+            headers=self.auth(self.client),
+        )
+        r.raise_for_status()
+
+        return r.json()
+
+    def list_models(self):
+        r = requests.get(self.model_endpoint, headers=self.auth(self.client))
+        r.raise_for_status()
+
+        return r.json()
+
     def tearDown(self):
         for model_id in self.created_model_ids:
             delete_response = requests.delete(
@@ -63,10 +80,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         self.created_model_ids = []
 
     def test_get_a_list_of_models(self):
-        r = requests.get(self.model_endpoint, headers=self.auth(self.client))
-        r.raise_for_status()
-
-        response = r.json()
+        response = self.list_models()
 
         # should have at least one model entity
         assert len(response) > 0
@@ -80,13 +94,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert "deprecation_time" not in entity
 
     def test_get_admin_models(self):
-        r = requests.get(
-            self.model_config_endpoint,
-            headers=self.auth(self.client),
-        )
-        r.raise_for_status()
-
-        response = r.json()
+        response = self.list_admin_models()
 
         if isinstance(response, list):
             # should have at least one model entity
@@ -124,10 +132,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert created_model.get("modelType") == "chat"
         assert created_model.get("canThink") is True
 
-        get_models_response = requests.get(self.model_config_endpoint, headers=self.auth(self.client))
-        get_models_response.raise_for_status()
-
-        available_models = get_models_response.json()
+        available_models = self.list_admin_models()
 
         test_model = next((model for model in available_models if model.get("id") == model_id), None)
         assert test_model is not None, "The test model wasn't returned from the GET request"
@@ -154,11 +159,9 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert created_model.get("createdTime") is not None
         assert created_model.get("modelType") == "chat"
 
-        get_models_response = requests.get(f"{self.origin}/v4/models/", headers=self.auth(self.client))
-        get_models_response.raise_for_status()
-
-        available_models = get_models_response.json()
+        available_models = self.list_models()
         test_model = next((model for model in available_models if model.get("id") == model_id), None)
+
         assert test_model is not None, "The test model wasn't returned from the GET request"
         assert "image/*" in test_model.get("accepted_file_types")
         assert test_model.get("accepts_files") is True
@@ -179,19 +182,24 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         create_response = self.create_model(create_model_request)
         create_response.raise_for_status()
 
-        created_model = create_response.json()
-        assert created_model.get("createdTime") is not None
-        assert created_model.get("modelType") == "chat"
-        assert created_model.get("canCallTools") is True
+        created_model = ResponseModel.model_validate(create_response.json())
+        assert created_model.root.created_time is not None
+        assert created_model.root.model_type == "chat"
+        assert created_model.root.can_call_tools is True
 
-        get_models_response = requests.get(self.model_config_endpoint, headers=self.auth(self.client))
-        get_models_response.raise_for_status()
+        available_models = AdminModelResponse.model_validate(self.list_admin_models())
 
-        available_models = get_models_response.json()
+        test_admin_model = next((model for model in available_models.root if model.root.id == model_id), None)
+        assert test_admin_model is not None, "The test model wasn't returned from the GET request"
+        assert test_admin_model.root.can_call_tools is True
 
-        test_model = next((model for model in available_models if model.get("id") == model_id), None)
+        # Make sure tool call mapping worked. This may be able to be combined with the admin tool once we set up the available tool config on admin models
+        models = ModelResponse.model_validate(self.list_models())
+        test_model = next((model for model in models.root if model.id == model_id), None)
         assert test_model is not None, "The test model wasn't returned from the GET request"
-        assert test_model.get("canCallTools") is True
+        assert test_model.can_call_tools is True
+        assert test_model.available_tools is not None, "Available tools weren't set on a tool-calling model"
+        assert len(test_model.available_tools) > 0
 
     def test_should_create_a_model_with_an_infini_gram_index(self):
         model_id = "test-tool-model-" + str(uuid4())
@@ -214,10 +222,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert created_model.model_type == "chat"
         assert created_model.infini_gram_index == AvailableInfiniGramIndexId.OLMO_2_0325_32B
 
-        get_models_response = requests.get(self.model_config_endpoint, headers=self.auth(self.client))
-        get_models_response.raise_for_status()
-
-        available_models = get_models_response.json()
+        available_models = self.list_admin_models()
 
         test_model = ResponseModel.model_validate(
             next((model for model in available_models if model.get("id") == model_id), None)
@@ -248,9 +253,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         delete_response.raise_for_status()
         assert delete_response.status_code == 204
 
-        get_models_response = requests.get(self.model_config_endpoint, headers=self.auth(self.client))
-        get_models_response.raise_for_status()
-        available_models = get_models_response.json()
+        available_models = self.list_admin_models()
 
         assert all(model["id"] != model_id for model in available_models), "Model wasn't deleted"
 
@@ -283,14 +286,9 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         )
         reorder_response.raise_for_status()
 
-        get_response = requests.get(
-            self.model_config_endpoint,
-            headers=self.auth(self.client),
-        )
-        get_response.raise_for_status()
-        models = get_response.json()
+        models = self.list_admin_models()
 
-        test_models = sorted([m for m in models if m["id"] in model_ids], key=lambda m: m["order"])
+        test_models = sorted([m for m in models if m["id"] in model_ids], key=operator.itemgetter("order"))
 
         expected_order = ["model-c", "model-b", "model-a"]
         actual_order = [m["id"] for m in test_models]
@@ -331,12 +329,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         update_model_response.raise_for_status()
         assert update_model_response.status_code == 200
 
-        get_models_response = requests.get(
-            self.model_config_endpoint,
-            headers=self.auth(self.client),
-        )
-        get_models_response.raise_for_status()
-        available_models = get_models_response.json()
+        available_models = self.list_admin_models()
 
         updated_model = ResponseModel(next(filter(lambda model: model.get("id") == model_id, available_models))).root
         assert updated_model is not None, "Updated model not returned from models endpoint"
@@ -385,12 +378,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         update_model_response.raise_for_status()
         assert update_model_response.status_code == 200
 
-        get_models_response = requests.get(
-            self.model_config_endpoint,
-            headers=self.auth(self.client),
-        )
-        get_models_response.raise_for_status()
-        available_models = get_models_response.json()
+        available_models = self.list_admin_models()
 
         updated_model = next(filter(lambda model: model.get("id") == model_id, available_models))
         assert updated_model is not None, "Updated model not returned from models endpoint"

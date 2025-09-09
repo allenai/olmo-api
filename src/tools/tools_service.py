@@ -1,14 +1,19 @@
+from typing import TYPE_CHECKING
+
 from pydantic_ai.messages import ToolReturnPart
 from pydantic_ai.tools import ToolDefinition
 
 from src.dao.engine_models.message import Message
-from src.dao.engine_models.model_config import ModelConfig
 from src.dao.engine_models.tool_call import ToolCall
 from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 from src.dao.engine_models.tool_definitions import ToolSource
 
 from .internal_tools_service import call_internal_tool, get_internal_tools
 from .mcp_service import call_mcp_tool, get_mcp_tools
+
+if TYPE_CHECKING:
+    from src.config.Model import ModelBase
+    from src.dao.engine_models.model_config import ModelConfig
 
 
 def map_tool_def_to_pydantic(tool: Ai2ToolDefinition):
@@ -27,7 +32,7 @@ def get_pydantic_tool_defs(message: Message) -> list[ToolDefinition]:
     )
 
 
-def get_available_tools(model: ModelConfig):
+def get_available_tools(model: "ModelConfig | ModelBase") -> list[Ai2ToolDefinition]:
     if model.can_call_tools is False:
         return []
 

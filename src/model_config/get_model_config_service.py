@@ -1,10 +1,10 @@
 from typing import Annotated
 
-from pydantic import Field, RootModel
+from pydantic import Field, RootModel, TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectin_polymorphic, sessionmaker
 
-from src.config.Model import Model, MultiModalModel
+from src.config.Model import AvailableTool, Model, MultiModalModel
 from src.dao.engine_models.model_config import (
     FilesOnlyModelConfig,
     ModelConfig,
@@ -31,9 +31,16 @@ def get_model_configs(session_maker: sessionmaker[Session], *, include_internal_
 
         results = session.scalars(stmt).all()
 
-        return ModelResponse.model_validate(
-            results, from_attributes=True, context={"get_available_tools": get_available_tools}
-        )
+        mapped_models = ModelResponse.model_validate(results, from_attributes=True)
+
+        # Mutating the mapped models list here, would love to have a more elegant way of doing this
+        available_tool_list_type_adapter = TypeAdapter(list[AvailableTool])
+        for mapped_model in mapped_models.root:
+            mapped_model.available_tools = available_tool_list_type_adapter.validate_python(
+                get_available_tools(mapped_model)
+            )
+
+        return mapped_models
 
 
 class AdminModelResponse(RootModel):

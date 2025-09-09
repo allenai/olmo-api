@@ -38,7 +38,7 @@ class ModelBase(BaseModel):
     accepts_files: bool = Field(default=False)
     can_call_tools: bool = Field(default=False)
     can_think: bool = Field(default=False)
-    available_tools: list[AvailableTool] = Field(default_factory=list)
+    available_tools: list[AvailableTool] | None = Field(default=None)
 
     @computed_field  # type: ignore[prop-decorator]
     @property

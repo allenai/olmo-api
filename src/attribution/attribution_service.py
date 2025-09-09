@@ -27,6 +27,7 @@ from src.attribution.infini_gram_api_client.models.available_infini_gram_index_i
 from src.attribution.infini_gram_api_client.models.problem import Problem
 from src.attribution.infini_gram_api_client.models.request_validation_error import RequestValidationError
 from src.config.get_config import cfg
+from src.dao.engine_models.model_config import ModelConfig
 from src.util.pii_regex import does_contain_pii
 
 from .flatten_spans import (
@@ -178,11 +179,8 @@ def update_mapped_document(
         )
 
 
-def get_attribution(
-    request: GetAttributionRequest,
-    infini_gram_client: Client,
-):
-    index = AvailableInfiniGramIndexId(cfg.infini_gram.model_index_map[request.model_id])
+def get_attribution(request: GetAttributionRequest, infini_gram_client: Client, model_config: ModelConfig):
+    index = AvailableInfiniGramIndexId(model_config.infini_gram_index)
 
     try:
         attribution_response = get_document_attributions_index_attribution_post.sync(

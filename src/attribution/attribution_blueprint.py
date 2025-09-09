@@ -17,11 +17,15 @@ attribution_blueprint = Blueprint(name="attribution", import_name=__name__)
 def get_attribution_for_model_response(
     corpuslink_request: GetAttributionRequest,
 ) -> Response:
-    infini_gram_client = Client(base_url=cfg.infini_gram.api_url, raise_on_unexpected_status=True)
-
     config = get_single_model_config_admin(current_session, corpuslink_request.model_id)
     if config is None:
         raise exceptions.NotFound
+
+    if config.infini_gram_index is None:
+        msg = f"Model {config.id} does not have an infini gram index configured"
+        raise ValueError(msg)
+
+    infini_gram_client = Client(base_url=cfg.infini_gram.api_url, raise_on_unexpected_status=True)
 
     attribution_response = get_attribution(
         request=corpuslink_request, infini_gram_client=infini_gram_client, model_config=config

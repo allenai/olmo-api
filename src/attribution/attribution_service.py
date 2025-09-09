@@ -107,15 +107,6 @@ class ResponseAttributionDocument:
         )
 
 
-def model_id_is_valid_for_infini_gram(model_id: str) -> str:
-    valid_model_ids = list(cfg.infini_gram.model_index_map.keys())
-    if model_id not in valid_model_ids:
-        msg = f"{model_id} must be one of {valid_model_ids}"
-        raise ValueError(msg)
-
-    return model_id
-
-
 def should_block_prompt(prompt: str) -> str:
     if "lyric" in prompt.lower() or "song" in prompt.lower():
         msg = "The prompt is blocked due to legal compliance."
@@ -126,7 +117,7 @@ def should_block_prompt(prompt: str) -> str:
 class GetAttributionRequest(APIInterface):
     prompt: Annotated[str, AfterValidator(should_block_prompt)]
     model_response: str
-    model_id: Annotated[str, AfterValidator(model_id_is_valid_for_infini_gram)]
+    model_id: str
     max_documents: int = Field(default=10)  # unused
     max_display_context_length: int = Field(default=250)
 

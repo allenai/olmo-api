@@ -24,6 +24,19 @@
             "module": "alembic",
             "args": ["revision", "-m", "\"debug\"", "--autogenerate"],
             "envFile": "${workspaceFolder}/.env.local"
+        },
+        {
+            "name": "Python Debugger: Current Test File",
+            "type": "python",
+            "request": "launch",
+            "module": "pytest",
+            "args": ["${file}", "-v", "-s"],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
         }
     ]
 }

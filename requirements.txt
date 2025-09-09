@@ -4,9 +4,9 @@ python-json-logger==2.0.7
 requests==2.32.4
 psycopg[binary,pool]==3.2.4
 ./vendor/inferd-0.5.9-0_v0.5.9-py3-none-any.whl
-pydantic==2.11.5
+pydantic==2.11.7
 Authlib==1.3.2
-httpx~=0.28.0
+httpx==0.28.1
 attrs>=21.3.0
 python-dateutil>=2.8.0
 pytest==8.3.2
@@ -33,6 +33,13 @@ pydub==0.25.1
 openai==1.107.2
 pydantic-ai==1.0.18
 pytest-postgresql==7.0.2
+||||||| Stash base
+openai==1.93.0
+pydantic-ai==0.6.2
+=======
+openai==1.107.0
+pydantic-ai==1.0.2
+>>>>>>> Stashed changes
 mcp==1.13.1
 beaker-py==2.5.0
 opentelemetry-api==1.38.0

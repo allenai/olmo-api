@@ -1,42 +1,43 @@
 import asyncio
+from functools import lru_cache
 from logging import getLogger
-from typing import TYPE_CHECKING
 
+from pydantic_ai.mcp import MCPServer as PydanticMCPServer
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 
 from src.config.Config import McpServer
-from src.config.get_config import cfg
+from src.config.get_config import cfg, get_config
 from src.dao.engine_models.tool_call import ToolCall
 from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 from src.dao.engine_models.tool_definitions import ToolSource
 
-if TYPE_CHECKING:
-    from mcp import Tool as MCPTool
+
+@lru_cache
+def get_mcp_servers() -> dict[str, MCPServerStreamableHTTP]:
+    return {
+        server.id: MCPServerStreamableHTTP(server.url, headers=server.headers, tool_prefix=server.id)
+        for server in get_config().mcp.servers
+    }
+
+
+def get_tools_from_mcp_server(server: PydanticMCPServer) -> list[Ai2ToolDefinition]:
+    # HACK: get_tools wants the context but doesn't actually use it yet
+    tools = asyncio.run(server.get_tools(None))
+
+    return [
+        Ai2ToolDefinition(
+            name=tool.tool_def.name,
+            tool_source=ToolSource.MCP,
+            mcp_server_id=server.id,
+            description=tool.tool_def.description or "",
+            parameters=tool.tool_def.parameters_json_schema,
+        )
+        for tool in tools.values()
+    ]
 
 
 def get_mcp_tools() -> list[Ai2ToolDefinition]:
-    mcp_tools: list[Ai2ToolDefinition] = []
-    for server in cfg.mcp.servers:
-        if server.enabled is False:
-            continue
-        mcp_server = MCPServerStreamableHTTP(
-            url=server.url,
-            headers=server.headers,
-        )
-        tool_list: list[MCPTool] = asyncio.run(mcp_server.list_tools())
-        mapped_tools = [
-            Ai2ToolDefinition(
-                name=tool.name,
-                tool_source=ToolSource.MCP,
-                mcp_server_id=server.id,
-                description=tool.description or "",
-                parameters=tool.inputSchema,
-            )
-            for tool in tool_list
-        ]
-        mcp_tools.extend(mapped_tools)
-
-    return mcp_tools
+    return [tool for server in get_mcp_servers().values() for tool in get_tools_from_mcp_server(server)]
 
 
 def find_mcp_config_by_id(mcp_id: str | None) -> McpServer | None:

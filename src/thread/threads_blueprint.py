@@ -44,9 +44,7 @@ def format_messages(
         raise e
 
 
-def create_threads_blueprint(
-    dbc: db.Client, session_maker: sessionmaker[Session], storage_client: GoogleCloudStorage
-) -> Blueprint:
+def create_threads_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage) -> Blueprint:
     threads_blueprint = Blueprint("messages", __name__)
 
     @threads_blueprint.get("/")
@@ -97,7 +95,6 @@ def create_threads_blueprint(
                 create_message_request_with_lists,
                 dbc,
                 storage_client=storage_client,
-                session_maker=session_maker,
                 message_repository=MessageRepository(current_session),
             )
             if isinstance(stream_response, Generator):

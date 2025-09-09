@@ -31,9 +31,7 @@ def format_messages(stream_generator: Generator) -> Generator[str, Any, None]:
                 yield format_message(message)
 
 
-def create_v4_message_blueprint(
-    dbc: db.Client, storage_client: GoogleCloudStorage, session_maker: sessionmaker[Session]
-) -> Blueprint:
+def create_v4_message_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage) -> Blueprint:
     v4_message_blueprint = Blueprint("message", __name__)
 
     @v4_message_blueprint.post("/stream")
@@ -59,7 +57,6 @@ def create_v4_message_blueprint(
                 create_message_request_with_lists,
                 dbc,
                 storage_client=storage_client,
-                session_maker=session_maker,
                 message_repository=MessageRepository(current_session),
             )
             if isinstance(stream_response, Generator):

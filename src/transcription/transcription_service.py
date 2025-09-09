@@ -3,7 +3,6 @@ from typing import IO, cast
 
 from flask_pydantic_api.utils import UploadedFile
 from pydub import AudioSegment  # type: ignore
-from sqlalchemy.orm import sessionmaker
 
 from src.api_interface import APIInterface
 from src.config.get_models import get_model_by_host_and_id
@@ -23,7 +22,7 @@ class GetTranscriptionResponse(APIInterface):
     text: str
 
 
-def get_transcription(request: GetTranscriptionRequest, session_maker: sessionmaker):
+def get_transcription(request: GetTranscriptionRequest):
     start_all_ns = time_ns()
     segment = AudioSegment.from_file_using_temporary_files(request.audio)
 
@@ -32,7 +31,7 @@ def get_transcription(request: GetTranscriptionRequest, session_maker: sessionma
 
     olmo_asr_engine = OlmoAsrModalEngine()
 
-    model = get_model_by_host_and_id(host="modal", id=OLMO_ASR_MODEL_ID, session_maker=session_maker)
+    model = get_model_by_host_and_id(host="modal", id=OLMO_ASR_MODEL_ID)
     messages = [InferenceEngineMessage(role=Role.User, content="", files=[converted_audio_file.read()])]
 
     start_generation_ns = time_ns()

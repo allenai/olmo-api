@@ -14,7 +14,7 @@ def create_v4_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage, sess
     v4_blueprint = Blueprint(name="v4", import_name=__name__)
 
     v4_blueprint.register_blueprint(
-        blueprint=create_v4_message_blueprint(dbc, storage_client=storage_client, session_maker=session_maker),
+        blueprint=create_v4_message_blueprint(dbc, storage_client=storage_client),
         url_prefix="/message",
         name="message",
     )
@@ -27,13 +27,13 @@ def create_v4_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage, sess
     )
 
     v4_blueprint.register_blueprint(
-        blueprint=create_threads_blueprint(dbc=dbc, storage_client=storage_client, session_maker=session_maker),
+        blueprint=create_threads_blueprint(dbc=dbc, storage_client=storage_client),
         url_prefix="/threads",
         name="threads",
     )
 
     v4_blueprint.register_blueprint(
-        blueprint=create_transcription_blueprint(session_maker), url_prefix="/transcribe", name="transcribe"
+        blueprint=create_transcription_blueprint(), url_prefix="/transcribe", name="transcribe"
     )
 
     return v4_blueprint

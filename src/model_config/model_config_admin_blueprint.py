@@ -1,11 +1,11 @@
 from datetime import UTC, datetime
 
 from flask import Blueprint, current_app
-from flask_pydantic_api.api_wrapper import pydantic_api
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
 
 from src.auth.resource_protectors import required_auth_protector
+from src.flask_pydantic_api.api_wrapper import pydantic_api
 from src.model_config.create_model_config_service import (
     ResponseModel,
     RootCreateModelConfigRequest,

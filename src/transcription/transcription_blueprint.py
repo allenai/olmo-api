@@ -1,6 +1,6 @@
 from flask import Blueprint
-from flask_pydantic_api.api_wrapper import pydantic_api
 
+from src.flask_pydantic_api.api_wrapper import pydantic_api
 from src.transcription.transcription_service import GetTranscriptionRequest, GetTranscriptionResponse, get_transcription
 
 

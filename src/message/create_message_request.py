@@ -81,7 +81,7 @@ class CreateMessageRequest(APIInterface):
         le=logprobs.max,
         multiple_of=logprobs.step,
     )
-    stop: list[str] | None = Field(default_factory=list)
+    stop: list[str] | None = Field(default_factory=list)  # type:ignore[arg-type] # https://github.com/pydantic/pydantic/issues/10950
 
     files: list[UploadedFile] | None = Field(default=None)
 

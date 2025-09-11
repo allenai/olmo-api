@@ -203,4 +203,5 @@ class CreateMessageRequestWithFullMessages(BaseModel):
         return self
 
 
+# This is here because Pydantic complains about "Message" not being fully defined
 CreateMessageRequestWithFullMessages.model_rebuild()

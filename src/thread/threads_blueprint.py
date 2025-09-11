@@ -78,7 +78,7 @@ def create_threads_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage)
         tool_definitions = (
             adapter.validate_json(create_message_request.tool_definitions)
             if create_message_request.tool_definitions is not None
-            else None
+            else []
         )
 
         try:

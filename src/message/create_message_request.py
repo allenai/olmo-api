@@ -16,6 +16,7 @@ from src.dao.message.message_models import (
     temperature,
     top_p,
 )
+from src.flask_pydantic_api.utils import UploadedFile
 
 
 def captcha_token_required_if_captcha_enabled(value: str | None):

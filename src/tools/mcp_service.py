@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from mcp import Tool as MCPTool
 
 
-def get_mcp_tools():
+def get_mcp_tools() -> list[Ai2ToolDefinition]:
     mcp_tools: list[Ai2ToolDefinition] = []
     for server in cfg.mcp.servers:
         if server.enabled is False:

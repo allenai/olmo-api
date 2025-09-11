@@ -17,7 +17,6 @@ from src.dao.message.message_repository import BaseMessageRepository
 from src.message.create_message_request import (
     CreateMessageRequest,
     CreateMessageRequestWithFullMessages,
-    CreateToolDefinition,
 )
 from src.message.create_message_service.safety import validate_message_security_and_safety
 from src.message.create_message_service.stream_new_message import create_new_message
@@ -47,9 +46,6 @@ def create_message_v4(
         request.parent, message_repository, request.private, is_anonymous_user=agent.is_anonymous_user
     )
 
-    adapter = TypeAdapter(list[CreateToolDefinition])
-    tool_definitions = adapter.validate_json(request.tool_definitions) if request.tool_definitions is not None else []
-
     mapped_request = CreateMessageRequestWithFullMessages(
         parent_id=request.parent,
         parent=parent_message,
@@ -73,7 +69,7 @@ def create_message_v4(
         files=request.files,
         captcha_token=request.captcha_token,
         tool_call_id=request.tool_call_id,
-        create_tool_definitions=tool_definitions,
+        create_tool_definitions=request.tool_definitions,
         enable_tool_calling=request.enable_tool_calling,
         selected_tools=request.selected_tools,
     )

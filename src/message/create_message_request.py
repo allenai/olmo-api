@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from typing import Annotated, Self
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, Json, model_validator
 from werkzeug import exceptions
 
 from src.api_interface import APIInterface
@@ -53,7 +53,7 @@ class CreateMessageRequest(APIInterface):
     model: str
     host: str
     tool_call_id: str | None = Field(default=None)
-    tool_definitions: str | None = Field(default=None)
+    tool_definitions: Json[list[CreateToolDefinition]] | None = Field(default=None)
     selected_tools: list[str] | None = Field(default=None)
     enable_tool_calling: bool = Field(default=False)
 
@@ -81,7 +81,7 @@ class CreateMessageRequest(APIInterface):
         le=logprobs.max,
         multiple_of=logprobs.step,
     )
-    stop: list[str] | None = Field(default=None)
+    stop: list[str] | None = Field(default_factory=list)
 
     files: list[UploadedFile] | None = Field(default=None)
 

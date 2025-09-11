@@ -1,10 +1,10 @@
 from collections.abc import Generator
 from logging import getLogger
-from typing import Any, cast
+from typing import Any
 
-from flask import Blueprint, Response, jsonify, request, stream_with_context
+from flask import Blueprint, Response, jsonify, stream_with_context
 from flask.typing import ResponseReturnValue
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
 import src.dao.message.message_models as message
@@ -17,8 +17,7 @@ from src.dao.flask_sqlalchemy_session import current_session
 from src.dao.message.message_repository import MessageRepository
 from src.error import handle_validation_error
 from src.flask_pydantic_api.api_wrapper import pydantic_api
-from src.flask_pydantic_api.utils import UploadedFile
-from src.message.create_message_request import CreateMessageRequest, CreateToolDefinition
+from src.message.create_message_request import CreateMessageRequest
 from src.message.create_message_service.endpoint import create_message_v4, format_message
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.message_chunk import Chunk
@@ -67,27 +66,9 @@ def create_threads_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage)
     def create_message(
         create_message_request: CreateMessageRequest,
     ) -> ResponseReturnValue:
-        request_files = request.files.getlist("files")
-        # Defaulting to an empty list can cause problems with Modal
-        # This isn't happening from the UI but it is happening through e2e tests, so better safe than sorry!
-        files = cast(list[UploadedFile], request_files) if len(request_files) > 0 else None
-
-        stop_words = request.form.getlist("stop")
-
-        adapter = TypeAdapter(list[CreateToolDefinition])
-        tool_definitions = (
-            adapter.validate_json(create_message_request.tool_definitions)
-            if create_message_request.tool_definitions is not None
-            else []
-        )
-
         try:
-            # HACK: flask-pydantic-api has poor support for lists in form data
-            # Making a separate class that handles lists works for now
-            create_message_request_with_lists = create_message_request
-
             stream_response = create_message_v4(
-                create_message_request_with_lists,
+                create_message_request,
                 dbc,
                 storage_client=storage_client,
                 message_repository=MessageRepository(current_session),

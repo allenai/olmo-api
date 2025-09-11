@@ -78,43 +78,59 @@ def setup_msg_thread(
     return message_chain
 
 
-def create_user_message(
-    message_repository: BaseMessageRepository,
+def map_tools_for_user_message(
     request: CreateMessageRequestWithFullMessages,
     parent: Message | None,
-    agent: Token,
     model: ModelConfig,
-    is_msg_harmful: bool | None = None,
-):
+) -> list[ToolDefinition]:
     is_new_thread = request.parent is None
-    message_expiration_time = get_expiration_time(agent)
 
-    # make message with tools from last message, if tools in request, wipe and replace
-    tools_created: list[ToolDefinition] = [
+    # We can't currently change tools in the middle of a thread. If we're adding to a thread, use the parent's tools
+    if not is_new_thread:
+        return parent.tool_definitions or [] if parent is not None else []
+
+    if request.enable_tool_calling is False:
+        return []
+
+    user_defined_tools: list[ToolDefinition] = [
         ToolDefinition(
             name=tool_def.name,
             description=tool_def.description,
             parameters=tool_def.parameters.model_dump(),
             tool_source=ToolSource.USER_DEFINED,
         )
-        for tool_def in (
-            request.create_tool_definitions
-            if is_new_thread and request.create_tool_definitions is not None
-            else []  # currently we only allow tool creation in new messages. We don't add them if they come in later..
-        )
+        for tool_def in (request.create_tool_definitions)
     ]
 
-    parent_tool_calls = parent.tool_definitions if parent is not None else []
-
-    tool_list: list[ToolDefinition] = (
-        get_available_tools(model) + tools_created if is_new_thread else parent_tool_calls or []
+    selected_tools = (
+        [tool for tool in get_available_tools(model) if tool.name in request.selected_tools]
+        if request.selected_tools is not None
+        else []
     )
+
+    tool_list: list[ToolDefinition] = selected_tools + user_defined_tools
+
+    return tool_list
+
+
+def create_user_message(
+    message_repository: BaseMessageRepository,
+    request: CreateMessageRequestWithFullMessages,
+    parent: Message | None,
+    agent: Token,
+    model: ModelConfig,
+    *,
+    is_msg_harmful: bool | None = None,
+):
+    tool_list: list[ToolDefinition] = map_tools_for_user_message(request, parent, model)
 
     tool_names = [obj.name for obj in tool_list]
 
     if len(tool_names) != len(set(tool_names)):
         msg = f"tool name conflict detected for name in list {tool_names}"
         raise RuntimeError(msg)
+
+    message_expiration_time = get_expiration_time(agent)
 
     msg_id = obj.NewID("msg")
     message = Message(

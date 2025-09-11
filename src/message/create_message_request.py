@@ -39,6 +39,8 @@ class BaseCreateMessageRequest(APIInterface):
     host: str
     tool_call_id: str | None = Field(default=None)
     tool_definitions: str | None = Field(default=None)
+    selected_tools: list[str] | None = Field(default=None)
+    enable_tool_calling: bool | None = Field(default=None)
 
     captcha_token: Annotated[str | None, AfterValidator(captcha_token_required_if_captcha_enabled)] = Field(
         default=None
@@ -102,7 +104,7 @@ class CreateToolDefinition(APIInterface):
 class CreateMessageRequestWithLists(CreateMessageRequest):
     stop: list[str] | None = Field(default=None)
     files: list[UploadedFile] | None = Field(default=None)
-    create_tool_definitions: list[CreateToolDefinition] | None = Field(default=None)
+    create_tool_definitions: list[CreateToolDefinition] = Field(default_factory=list)
 
 
 class CreateMessageRequestWithFullMessages(BaseModel):
@@ -122,7 +124,9 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     captcha_token: str | None = Field()
 
     tool_call_id: str | None = Field(default=None)
-    create_tool_definitions: list[CreateToolDefinition] | None = Field(default=None)
+    create_tool_definitions: list[CreateToolDefinition] = Field(default_factory=list)
+    selected_tools: list[str] = Field(default_factory=list)
+    enable_tool_calling: bool = Field(default=False)
 
     model_config = ConfigDict(validate_assignment=True)
 

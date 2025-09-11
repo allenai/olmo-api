@@ -26,6 +26,9 @@ class TestDatabase:
             model="123",
             host="123",
             client="xyz",
+            create_tool_definitions=None,
+            selected_tools=None,
+            enable_tool_calling=False,
         )
 
         model = ModelConfig(
@@ -63,6 +66,9 @@ class TestDatabase:
             model="123",
             host="123",
             client="xyz",
+            create_tool_definitions=None,
+            selected_tools=None,
+            enable_tool_calling=False,
         )
 
         model = ModelConfig(

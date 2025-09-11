@@ -189,7 +189,7 @@ class TestThreadEndpoints(BaseTestThreadEndpoints):
         root_message = thread.messages[0]
         opts_dict = root_message.opts.model_dump()
         for name, value in self.default_options:
-            assert opts_dict[name] == value
+            assert opts_dict[name] == value, f"option {name} did not match expected value {value}"
 
         assert root_message.model_id == default_model_options["model"][1]
         assert root_message.model_host == default_model_options["host"][1]

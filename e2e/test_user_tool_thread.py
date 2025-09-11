@@ -64,6 +64,7 @@ tool_def_multi_type = """
 default_model_options = {
     "host": (None, "test_backend"),
     "model": (None, "test-model"),
+    "enableToolCalling": (None, "true"),
 }
 
 default_options: list[tuple[str, Any]] = [
@@ -100,44 +101,38 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
 
         json_lines = [json.loads(line) for line in lines]
 
-        first_yield = json_lines[0]
-        assert first_yield["type"] == "start"
+        start_chunk = json_lines[0]
+        assert start_chunk["type"] == "start"
 
-        first_yield = json_lines[1]
-        assert first_yield["id"] is not None
-        thread_id = first_yield["id"]
-        thread_messages = first_yield["messages"]
+        message_chunk = json_lines[1]
+        assert message_chunk["id"] is not None
+        thread_id = message_chunk["id"]
+        thread_messages = message_chunk["messages"]
         self.messages.append((thread_id, anonymous_user))
         assert (
             len(thread_messages) == 3
-        )  # / system message, user message and empty assistnat (no system prompt currently)
+        )  # / system message, user message and empty assistant (no system prompt currently)
         assert thread_messages[0]["role"] == "system"
         assert thread_messages[1]["role"] == "user"
         assert thread_messages[2]["role"] == "assistant"
 
-        # Test model always calls tools.
-        second_yield = json_lines[2]
-        assert second_yield["type"] == "toolCall"
+        tool_call_chunk = json_lines[2]
+        assert tool_call_chunk["type"] == "toolCall"
 
-        last_yield = json_lines[-1]
-
-        assert last_yield["type"] == "end"
+        end_chunk = json_lines[-1]
+        assert end_chunk["type"] == "end"
 
         final_thread = json_lines[-2]
-
         assert final_thread["messages"] is not None
 
         final_messages = final_thread["messages"]
 
-        last_assistant_message = final_messages[-2]
-        last_message = final_messages[-1]
-
-        assert last_message["role"] == "tool_call_result"
+        last_assistant_message = final_messages[-1]
 
         assert last_assistant_message["role"] == "assistant"
-        assert len(last_assistant_message["toolCalls"]) == 2
+        assert len(last_assistant_message["toolCalls"]) == 1
 
-        assert len(last_assistant_message["toolDefinitions"]) == 2
+        assert len(last_assistant_message["toolDefinitions"]) == 1
 
         # Find user call
         user_tool_call = next(
@@ -162,14 +157,14 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
 
         json_lines = [json.loads(line) for line in lines]
 
-        first_yield = json_lines[0]
-        assert first_yield["type"] == "start"
+        start_chunk = json_lines[0]
+        assert start_chunk["type"] == "start"
 
         final_yield = json_lines[-2]
 
         thread_messages = final_yield["messages"]
 
-        assert len(thread_messages[-1]["toolDefinitions"]) == 2
+        assert len(thread_messages[-1]["toolDefinitions"]) == 1
         assert thread_messages[0]["role"] == "tool_call_result"
         assert thread_messages[1]["role"] == "assistant"
 
@@ -182,7 +177,7 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
 
         for item in thread["messages"]:
             if item["role"] != "system":
-                assert len(item["toolDefinitions"]) == 2
+                assert len(item["toolDefinitions"]) == 1
 
     def tearDown(self):
         # Since the delete operation cascades, we have to find all child messages
@@ -252,14 +247,15 @@ class TestMultipleUserToolCallsThreadEndpoints(base.IntegrationTest):
 
         json_lines = [json.loads(line) for line in lines]
 
-        first_yield = json_lines[0]
-        assert first_yield["type"] == "start"
+        start_chunk = json_lines[0]
+        assert start_chunk["type"] == "start"
 
-        first_yield = json_lines[1]
-        assert first_yield["id"] is not None
+        message_chunk = json_lines[1]
+        assert message_chunk["id"] is not None
 
-        self.messages.append((first_yield["id"], anonymous_user))
-        thread_messages = first_yield["messages"]
+        self.messages.append((message_chunk["id"], anonymous_user))
+        thread_messages = message_chunk["messages"]
+
         assert (
             len(thread_messages) == 3
         )  # / system message, user message and empty assistnat (no system prompt currently)
@@ -267,27 +263,21 @@ class TestMultipleUserToolCallsThreadEndpoints(base.IntegrationTest):
         assert thread_messages[1]["role"] == "user"
         assert thread_messages[2]["role"] == "assistant"
 
-        # Test model always calls tools.
-        second_yield = json_lines[2]
-        assert second_yield["type"] == "toolCall"
+        tool_call_chunk = json_lines[2]
+        assert tool_call_chunk["type"] == "toolCall"
 
-        last_yield = json_lines[-1]
-
-        assert last_yield["type"] == "end"
+        end_chunk = json_lines[-1]
+        assert end_chunk["type"] == "end"
 
         final_thread = json_lines[-2]
-
         assert final_thread["messages"] is not None
 
         final_messages = final_thread["messages"]
 
-        last_assistant_message = final_messages[-2]
-        last_message = final_messages[-1]
-
-        assert last_message["role"] == "tool_call_result"
+        last_assistant_message = final_messages[-1]
 
         assert last_assistant_message["role"] == "assistant"
-        assert len(last_assistant_message["toolCalls"]) == 3  # two user 1 internal
+        assert len(last_assistant_message["toolCalls"]) == 2
 
         # Find user call
         user_tool_calls = list(
@@ -313,15 +303,15 @@ class TestMultipleUserToolCallsThreadEndpoints(base.IntegrationTest):
 
         json_lines = [json.loads(line) for line in lines]
 
-        first_yield = json_lines[0]
-        assert first_yield["type"] == "start"
+        message_chunk = json_lines[0]
+        assert message_chunk["type"] == "start"
 
         final_yield = json_lines[-2]
 
         thread_messages = final_yield["messages"]
         assert len(thread_messages) == 1
 
-        assert len(thread_messages[-1]["toolDefinitions"]) == 3
+        assert len(thread_messages[-1]["toolDefinitions"]) == 2
         assert thread_messages[0]["role"] == "tool_call_result"
 
         create_tool_response_2 = requests.post(

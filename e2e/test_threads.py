@@ -16,6 +16,12 @@ default_model_options = {
     "model": (None, "test-model-no-tools"),
 }
 
+tool_call_model_options = {
+    "host": (None, "test_backend"),
+    "model": (None, "test-model"),
+    "enableToolCalling": (None, "true"),
+}
+
 
 class BaseTestThreadEndpoints(base.IntegrationTest):
     messages: list[tuple[str, base.AuthenticatedClient]]
@@ -83,9 +89,8 @@ class TestAnonymousThreadEndpoints(BaseTestThreadEndpoints):
             headers=self.auth(anonymous_user),
             files={
                 "content": (None, user_content),
-                "enableToolCalling": (None, "true"),
                 "selectedTools": (None, "create_random_number"),
-                **default_model_options,
+                **tool_call_model_options,
             },
         )
         create_message_request.raise_for_status()

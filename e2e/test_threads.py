@@ -1,3 +1,4 @@
+import json
 from http.client import UNAUTHORIZED
 from typing import Any
 
@@ -41,7 +42,7 @@ class BaseTestThreadEndpoints(base.IntegrationTest):
             r.raise_for_status()
 
 
-class TestAnonymousMessageEndpoints(BaseTestThreadEndpoints):
+class TestAnonymousThreadEndpoints(BaseTestThreadEndpoints):
     def test_passes_with_anonymous_auth(self):
         anonymous_user = self.user(anonymous=True)
         for r in [
@@ -57,11 +58,6 @@ class TestAnonymousMessageEndpoints(BaseTestThreadEndpoints):
         create_message_request = requests.post(
             f"{self.origin}/v4/threads",
             headers=self.auth(anonymous_user),
-            json={
-                "content": "I'm a magical labrador named Murphy, who are you? ",
-                "private": True,
-                **default_model_options,
-            },
             files={
                 "content": (None, "I'm a magical labrador named Murphy, who are you?"),
                 "private": (None, str(True)),
@@ -76,6 +72,59 @@ class TestAnonymousMessageEndpoints(BaseTestThreadEndpoints):
 
         assert first_message.private is True
         assert first_message.expiration_time is not None
+
+    def test_calls_a_tool(self):
+        anonymous_user = self.user(anonymous=True)
+
+        user_content = "I'm a magical labrador named Murphy, who are you?"
+
+        create_message_request = requests.post(
+            f"{self.origin}/v4/threads/",
+            headers=self.auth(anonymous_user),
+            files={
+                "content": (None, user_content),
+                "enableToolCalling": (None, "true"),
+                "selectedTools": (None, "create_random_number"),
+                **default_model_options,
+            },
+        )
+        create_message_request.raise_for_status()
+
+        lines = list(create_message_request.text.splitlines())
+
+        json_lines = [json.loads(line) for line in lines]
+
+        first_yield = json_lines[0]
+        assert first_yield["type"] == "start"
+
+        first_yield = json_lines[1]
+        assert first_yield["id"] is not None
+
+        thread_messages = first_yield["messages"]
+        assert (
+            len(thread_messages) == 3
+        )  # / system message, user message and empty assistnat (no system prompt currently)
+        assert thread_messages[0]["role"] == "system"
+        assert thread_messages[1]["role"] == "user"
+        assert thread_messages[2]["role"] == "assistant"
+
+        # Test model always calls tools.
+        second_yield = json_lines[2]
+        assert second_yield["type"] == "toolCall"
+
+        final_thread = json_lines[-2]
+        assert final_thread["id"] is not None
+        assert len(final_thread["messages"]) == 5
+        final_message = final_thread["messages"]
+
+        assert final_message[0]["role"] == "system"
+        assert final_message[1]["role"] == "user"
+        assert final_message[2]["role"] == "assistant"
+        assert final_message[3]["role"] == "tool_call_result"
+        assert final_message[4]["role"] == "assistant"
+
+        last_yield = json_lines[-1]
+        assert last_yield["type"] == "end"
 
     def tearDown(self):
         # Since the delete operation cascades, we have to find all child messages

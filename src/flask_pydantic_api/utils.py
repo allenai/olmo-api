@@ -17,8 +17,7 @@ from typing import (
 from asgiref.sync import async_to_sync
 from flask import current_app, request
 from pydantic import BaseModel, GetCoreSchemaHandler
-from pydantic.annotated_handlers import GetJsonSchemaHandler
-from pydantic.json_schema import JsonSchemaValue
+from pydantic.json_schema import GetJsonSchemaHandler, JsonSchemaValue
 from pydantic_core import CoreSchema, PydanticCustomError, core_schema
 from werkzeug.datastructures import FileStorage
 

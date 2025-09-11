@@ -99,7 +99,7 @@ def map_tools_for_user_message(
             parameters=tool_def.parameters.model_dump(),
             tool_source=ToolSource.USER_DEFINED,
         )
-        for tool_def in (request.create_tool_definitions)
+        for tool_def in request.create_tool_definitions or []
     ]
 
     selected_tools = (

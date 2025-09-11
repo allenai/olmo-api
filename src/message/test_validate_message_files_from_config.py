@@ -5,7 +5,6 @@ from io import StringIO
 from typing import IO, Any, cast
 
 import pytest
-from flask_pydantic_api.utils import UploadedFile
 from pydantic import ValidationError
 
 from src.dao.engine_models.model_config import (
@@ -16,6 +15,7 @@ from src.dao.engine_models.model_config import (
     MultiModalModelConfig,
     PromptType,
 )
+from src.flask_pydantic_api.utils import UploadedFile
 from src.message.validate_message_files_from_config import validate_message_files_from_config
 
 

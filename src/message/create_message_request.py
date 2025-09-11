@@ -1,7 +1,6 @@
 from collections.abc import Sequence
 from typing import Annotated, Self
 
-from flask_pydantic_api.utils import UploadedFile
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 from werkzeug import exceptions
 

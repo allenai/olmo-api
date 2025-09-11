@@ -1,13 +1,13 @@
 from time import time_ns
 from typing import IO, cast
 
-from flask_pydantic_api.utils import UploadedFile
 from pydub import AudioSegment  # type: ignore
 
 from src.api_interface import APIInterface
 from src.config.get_models import get_model_by_host_and_id
 from src.constants import OLMO_ASR_MODEL_ID
 from src.dao.message.message_models import Role
+from src.flask_pydantic_api.utils import UploadedFile
 from src.inference.InferenceEngine import InferenceEngineMessage, InferenceOptions
 from src.inference.olmo_asr_engine import OlmoAsrModalEngine
 from src.message.inference_logging import log_inference_timing

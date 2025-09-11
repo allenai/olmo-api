@@ -15,8 +15,9 @@ from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import PromptType
 from src.dao.message.message_repository import BaseMessageRepository
 from src.message.create_message_request import (
+    CreateMessageRequest,
     CreateMessageRequestWithFullMessages,
-    CreateMessageRequestWithLists,
+    CreateToolDefinition,
 )
 from src.message.create_message_service.safety import validate_message_security_and_safety
 from src.message.create_message_service.stream_new_message import create_new_message
@@ -34,7 +35,7 @@ def format_message(obj) -> str:
 
 
 def create_message_v4(
-    request: CreateMessageRequestWithLists,
+    request: CreateMessageRequest,
     dbc: db.Client,
     storage_client: GoogleCloudStorage,
     message_repository: BaseMessageRepository,
@@ -45,6 +46,9 @@ def create_message_v4(
     parent_message, root_message, private = get_parent_and_root_messages_and_private(
         request.parent, message_repository, request.private, is_anonymous_user=agent.is_anonymous_user
     )
+
+    adapter = TypeAdapter(list[CreateToolDefinition])
+    tool_definitions = adapter.validate_json(request.tool_definitions) if request.tool_definitions is not None else []
 
     mapped_request = CreateMessageRequestWithFullMessages(
         parent_id=request.parent,
@@ -69,7 +73,9 @@ def create_message_v4(
         files=request.files,
         captcha_token=request.captcha_token,
         tool_call_id=request.tool_call_id,
-        create_tool_definitions=request.create_tool_definitions,
+        create_tool_definitions=tool_definitions,
+        enable_tool_calling=request.enable_tool_calling,
+        selected_tools=request.selected_tools,
     )
 
     model = get_model_by_host_and_id(mapped_request.host, mapped_request.model)

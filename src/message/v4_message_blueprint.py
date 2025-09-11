@@ -15,7 +15,6 @@ from src.flask_pydantic_api.api_wrapper import pydantic_api
 from src.flask_pydantic_api.utils import UploadedFile
 from src.message.create_message_request import (
     CreateMessageRequest,
-    CreateMessageRequestWithLists,
 )
 from src.message.create_message_service.endpoint import create_message_v4, format_message
 from src.message.GoogleCloudStorage import GoogleCloudStorage
@@ -49,9 +48,7 @@ def create_v4_message_blueprint(dbc: db.Client, storage_client: GoogleCloudStora
         try:
             # HACK: flask-pydantic-api has poor support for lists in form data
             # Making a separate class that handles lists works for now
-            create_message_request_with_lists = CreateMessageRequestWithLists(
-                **create_message_request.model_dump(), files=files, stop=stop_words
-            )
+            create_message_request_with_lists = create_message_request
 
             stream_response = create_message_v4(
                 create_message_request_with_lists,

@@ -27,7 +27,22 @@ def captcha_token_required_if_captcha_enabled(value: str | None):
     return value
 
 
-class BaseCreateMessageRequest(APIInterface):
+class ParameterDef(APIInterface):
+    type: str
+    properties: dict[str, "ParameterDef"] | None = Field(default=None)
+    description: str | None = Field(default=None)
+    required: list[str] | None = Field(default=[])
+    property_ordering: list[str] | None = Field(default=None)
+    default: dict[str, str] | None = Field(default=None)
+
+
+class CreateToolDefinition(APIInterface):
+    name: str
+    description: str
+    parameters: ParameterDef
+
+
+class CreateMessageRequest(APIInterface):
     # TODO: Validate that the parent role is different from this role and that it exists
     parent: str | None = Field(default=None)
     content: str = Field(min_length=1)
@@ -40,30 +55,12 @@ class BaseCreateMessageRequest(APIInterface):
     tool_call_id: str | None = Field(default=None)
     tool_definitions: str | None = Field(default=None)
     selected_tools: list[str] | None = Field(default=None)
-    enable_tool_calling: bool | None = Field(default=None)
+    enable_tool_calling: bool = Field(default=False)
 
     captcha_token: Annotated[str | None, AfterValidator(captcha_token_required_if_captcha_enabled)] = Field(
         default=None
     )
 
-    @model_validator(mode="after")
-    def check_original_and_parent_are_different(self) -> Self:
-        if self.original is not None and self.parent == self.original:
-            msg = "The original message cannot also be the parent"
-            raise ValueError(msg)
-
-        return self
-
-    @model_validator(mode="after")
-    def check_assistant_message_has_a_parent(self) -> Self:
-        if self.role is Role.Assistant and self.parent is None:
-            msg = "Assistant messages must have a parent"
-            raise ValueError(msg)
-
-        return self
-
-
-class CreateMessageRequest(BaseCreateMessageRequest):
     max_tokens: int = Field(
         default=max_tokens.default,
         ge=max_tokens.min,
@@ -84,27 +81,25 @@ class CreateMessageRequest(BaseCreateMessageRequest):
         le=logprobs.max,
         multiple_of=logprobs.step,
     )
-
-
-class ParameterDef(APIInterface):
-    type: str
-    properties: dict[str, "ParameterDef"] | None = Field(default=None)
-    description: str | None = Field(default=None)
-    required: list[str] | None = Field(default=[])
-    property_ordering: list[str] | None = Field(default=None)
-    default: dict[str, str] | None = Field(default=None)
-
-
-class CreateToolDefinition(APIInterface):
-    name: str
-    description: str
-    parameters: ParameterDef
-
-
-class CreateMessageRequestWithLists(CreateMessageRequest):
     stop: list[str] | None = Field(default=None)
+
     files: list[UploadedFile] | None = Field(default=None)
-    create_tool_definitions: list[CreateToolDefinition] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def check_original_and_parent_are_different(self) -> Self:
+        if self.original is not None and self.parent == self.original:
+            msg = "The original message cannot also be the parent"
+            raise ValueError(msg)
+
+        return self
+
+    @model_validator(mode="after")
+    def check_assistant_message_has_a_parent(self) -> Self:
+        if self.role is Role.Assistant and self.parent is None:
+            msg = "Assistant messages must have a parent"
+            raise ValueError(msg)
+
+        return self
 
 
 class CreateMessageRequestWithFullMessages(BaseModel):
@@ -124,9 +119,9 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     captcha_token: str | None = Field()
 
     tool_call_id: str | None = Field(default=None)
-    create_tool_definitions: list[CreateToolDefinition] = Field(default_factory=list)
-    selected_tools: list[str] = Field(default_factory=list)
-    enable_tool_calling: bool = Field(default=False)
+    create_tool_definitions: list[CreateToolDefinition] | None
+    selected_tools: list[str] | None
+    enable_tool_calling: bool
 
     model_config = ConfigDict(validate_assignment=True)
 

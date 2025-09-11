@@ -66,6 +66,7 @@ def get_multipart_form_value(request_model: type[BaseModel] | None, name: str, v
 
             if len(form_list) > 0:
                 return form_list
+            return None
 
     return value
 

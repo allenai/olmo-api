@@ -57,6 +57,19 @@ class EndpointConfig(BaseModel):
     )
 
 
+def get_multipart_form_value(request_model: type[BaseModel] | None, name: str, value: Any):
+    if request_model is not None:
+        field = next((field for field in request_model.model_fields.values() if field.alias == name), None)
+
+        if field is not None and is_list(field.annotation):
+            form_list = request.form.getlist(name)
+
+            if len(form_list) > 0:
+                return form_list
+
+    return value
+
+
 def get_request_args(
     view_kwargs: DT,
     for_models: Optional[list[type[BaseModel]]] = None,
@@ -88,11 +101,8 @@ def get_request_args(
     # Merge argument/parameter values in from the proper place
     if request_is_multipart:
         for name, value in chain(request.files.items(), request.form.items()):
-            field = next(field for field in model.model_fields.values() if field.alias == name)
-            if is_list(field.annotation):
-                args[name] = request.form.getlist(name)
-            else:
-                args[name] = value
+            args[name] = get_multipart_form_value(request_model, name, value)
+
     elif request.is_json and request.content_length and (body := request.json):
         if not isinstance(body, dict):
             abort(400, f"JSON request bodies must be a dictionary, not a {type(body)}")

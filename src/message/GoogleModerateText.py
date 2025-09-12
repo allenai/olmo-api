@@ -8,7 +8,7 @@ from google.cloud.language_v2 import (
     ModerateTextResponse,
 )
 
-from src.config import get_config
+from src.config.get_config import get_config
 from src.message.SafetyChecker import (
     SafetyChecker,
     SafetyCheckRequest,
@@ -18,24 +18,17 @@ from src.message.SafetyChecker import (
 
 class GoogleModerateTextResponse(SafetyCheckResponse):
     result: ModerateTextResponse
-    confidence_threshold = 0.5
-    severity_threshold = 0.5
-    unsafe_violation_categories = [
-        "Toxic",
-        "Derogatory",
-        "Violent",
-        "Sexual",
-        "Insult",
-        "Profanity",
-        "Death, Harm & Tragedy",
-        "Firearms & Weapons",
-        "Public Safety",
-        "War & Conflict",
-        "Dangerous Content",
-    ]
+    confidence_threshold: float
+    severity_threshold: float
+    unsafe_violation_categories: list[str]
 
     def __init__(self, result: ModerateTextResponse):
         self.result = result
+
+        config = get_config()
+        self.confidence_threshold = config.google_moderate_text.default_confidence_threshold
+        self.severity_threshold = config.google_moderate_text.default_severity_threshold
+        self.unsafe_violation_categories = config.google_moderate_text.default_unsafe_violation_categories
 
     def is_safe(self) -> bool:
         violations = self.get_violation_categories()
@@ -43,31 +36,26 @@ class GoogleModerateTextResponse(SafetyCheckResponse):
         return len(violations) == 0
 
     def get_violation_categories(self) -> list[str]:
-        violations = []
-
-        for category in self.result.moderation_categories:
-            if (
-                category.name in self.unsafe_violation_categories
-                and category.confidence >= self.confidence_threshold
-                and category.severity >= self.severity_threshold
-            ):
-                violations.append(f"<{category.name}> confidence: {category.confidence}; severity: {category.severity}")
-
-        return violations
+        return [
+            f"<{category.name}> confidence: {category.confidence}; severity: {category.severity}"
+            for category in self.result.moderation_categories
+            if category.name in self.unsafe_violation_categories
+            and category.confidence >= self.confidence_threshold
+            and category.severity >= self.severity_threshold
+        ]
 
     def get_scores(self):
-        scores = []
-        for category in self.result.moderation_categories:
-            scores.append({"name": category.name, "confidence": category.confidence, "severity": category.severity})
-
-        return scores
+        return [
+            {"name": category.name, "confidence": category.confidence, "severity": category.severity}
+            for category in self.result.moderation_categories
+        ]
 
 
 class GoogleModerateText(SafetyChecker):
     client: LanguageServiceClient
 
     def __init__(self):
-        self.client = LanguageServiceClient(client_options={"api_key": get_config.cfg.google_cloud_services.api_key})
+        self.client = LanguageServiceClient(client_options={"api_key": get_config().google_cloud_services.api_key})
 
     def check_request(self, req: SafetyCheckRequest) -> SafetyCheckResponse:
         request = ModerateTextRequest(

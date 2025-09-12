@@ -9,12 +9,14 @@
     - The `id` and `compute_source_id` should be the model name you got in the earlier step.
     - the `name` should be a human-readable, nicely formatted name. It will be shown on the UI.
     - the `description` should be a sentence about what the model is.
+    - the `information_url` is optional, but if provided it should be a URL where users can learn more about the model.
     - example (the model name is `Tulu-v3-8-dpo-preview` here):
         ```
         {
             "id": "Tulu-v3-8-dpo-preview",
             "name": "Tulu v3 Preview",
             "description": "A preview version of Ai2's latest Tulu model",
+            "information_url": "https://allenai.org/blog/tulu",
             "compute_source_id": "Tulu-v3-8-dpo-preview",
             "model_type": "chat"
         }

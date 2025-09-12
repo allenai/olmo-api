@@ -91,7 +91,7 @@ class TestUserToolThread(BaseTestThreadEndpoints):
             headers=self.auth(anonymous_user),
             files={
                 "content": (None, user_content),
-                "tool_definitions": (None, f"[{tool_def}]"),
+                "toolDefinitions": (None, f"[{tool_def}]"),
                 **default_model_options,
             },
         )
@@ -145,9 +145,9 @@ class TestUserToolThread(BaseTestThreadEndpoints):
             files={
                 "content": (None, "weather is good"),
                 "role": (None, "tool_call_result"),
-                "tool_call_id": (None, user_tool_call["toolCallId"]),
+                "toolCallId": (None, user_tool_call["toolCallId"]),
                 "parent": (None, final_messages[-1]["id"]),
-                "tool_definitions": (None, f"[{tool_def}]"),  # current spec is for this to be ignored
+                "toolDefinitions": (None, f"[{tool_def}]"),  # current spec is for this to be ignored
                 **default_model_options,
             },
         )
@@ -189,7 +189,7 @@ class TestUserToolThread(BaseTestThreadEndpoints):
             headers=self.auth(anonymous_user),
             files={
                 "content": (None, user_content),
-                "tool_definitions": (None, f"[{tool_def_multi_type}]"),
+                "toolDefinitions": (None, f"[{tool_def_multi_type}]"),
                 **default_model_options,
             },
         )
@@ -207,7 +207,7 @@ class TestUserToolThread(BaseTestThreadEndpoints):
             headers=self.auth(anonymous_user),
             files={
                 "content": (None, user_content),
-                "tool_definitions": (None, f"[{tool_def}, {tool_def_two}]"),
+                "toolDefinitions": (None, f"[{tool_def}, {tool_def_two}]"),
                 **default_model_options,
             },
         )
@@ -228,7 +228,7 @@ class TestUserToolThread(BaseTestThreadEndpoints):
 
         assert (
             len(thread_messages) == 3
-        )  # / system message, user message and empty assistnat (no system prompt currently)
+        )  # / system message, user message and empty assistant (no system prompt currently)
         assert thread_messages[0]["role"] == "system"
         assert thread_messages[1]["role"] == "user"
         assert thread_messages[2]["role"] == "assistant"
@@ -262,7 +262,7 @@ class TestUserToolThread(BaseTestThreadEndpoints):
             files={
                 "content": (None, "weather is good"),
                 "role": (None, "tool_call_result"),
-                "tool_call_id": (None, call_1["toolCallId"]),
+                "toolCallId": (None, call_1["toolCallId"]),
                 "parent": (None, final_messages[-1]["id"]),
                 **default_model_options,
             },
@@ -290,7 +290,7 @@ class TestUserToolThread(BaseTestThreadEndpoints):
             files={
                 "content": (None, "weather is good"),
                 "role": (None, "tool_call_result"),
-                "tool_call_id": (None, call_2["toolCallId"]),
+                "toolCallId": (None, call_2["toolCallId"]),
                 "parent": (None, thread_messages[0]["id"]),
                 **default_model_options,
             },

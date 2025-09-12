@@ -13,7 +13,7 @@ from src.dao.message.message_repository import BaseMessageRepository
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
-from src.message.create_message_service.tools.tool_calls import get_available_tools
+from src.tools.tools_service import get_available_tools
 
 
 def get_expiration_time(agent: Token):

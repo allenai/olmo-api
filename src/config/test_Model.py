@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
 import time_machine
 
@@ -136,3 +137,26 @@ def test_is_visible_when_deprecation_time_is_in_the_future() -> None:
 
     assert model.is_deprecated is False
     assert model.is_visible is True
+
+
+def test_converts_times_to_utc() -> None:
+    model = Model.model_validate({
+        "id": "foo",
+        "name": "foo",
+        "host": ModelHost.Modal,
+        "description": "desc",
+        "compute_source_id": "csid",
+        "model_type": ModelType.Chat,
+        "system_prompt": None,
+        "family_id": None,
+        "family_name": None,
+        "available_time": datetime(2025, 1, 1).astimezone(ZoneInfo("America/New_York")).isoformat(),
+        "deprecation_time": datetime(2026, 1, 1).astimezone(ZoneInfo("America/Los_Angeles")).isoformat(),
+        "internal": False,
+        "prompt_type": PromptType.TEXT_ONLY,
+    })
+    assert model.available_time is not None
+    assert model.available_time.tzname() == "UTC"
+
+    assert model.deprecation_time is not None
+    assert model.deprecation_time.tzname() == "UTC"

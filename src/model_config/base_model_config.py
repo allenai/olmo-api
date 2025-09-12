@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import AwareDatetime, ByteSize, Field
+from pydantic import AwareDatetime, ByteSize, Field, HttpUrl
 
 from src.api_interface import APIInterface
 from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
@@ -15,6 +15,7 @@ from src.dao.engine_models.model_config import (
 class BaseModelConfigRequest(APIInterface):
     name: str = Field(min_length=1)
     host: ModelHost
+    information_url: HttpUrl | None = Field(default=None)
     description: str = Field(min_length=1)
     model_type: ModelType
     model_id_on_host: str = Field(min_length=1)

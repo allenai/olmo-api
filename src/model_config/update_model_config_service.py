@@ -34,6 +34,7 @@ def update_model_config(
 
         model_to_update.name = request.root.name
         model_to_update.host = request.root.host
+        model_to_update.information_url = str(request.root.information_url) if request.root.information_url else None
         model_to_update.description = request.root.description
         model_to_update.model_type = request.root.model_type
         model_to_update.model_id_on_host = request.root.model_id_on_host

@@ -25,6 +25,7 @@ class ModelBase(BaseModel):
     host: ModelHost
     name: str
     description: str
+    information_url: str | None = None
     model_type: ModelType
     internal: bool
     system_prompt: str | None = None

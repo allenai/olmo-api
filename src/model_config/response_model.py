@@ -19,6 +19,7 @@ class BaseResponseModel(APIInterface):
     id: str
     host: ModelHost
     name: str
+    information_url: str | None = Field(default=None)
     description: str
     model_type: ModelType
     model_id_on_host: str

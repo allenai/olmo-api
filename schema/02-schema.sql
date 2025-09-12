@@ -932,5 +932,11 @@ ALTER TABLE model_config ADD COLUMN infini_gram_index availableinfinigramindexid
 
 UPDATE alembic_version SET version_num='277d02390564' WHERE alembic_version.version_num = '5018e6967549';
 
+-- Running upgrade 277d02390564 -> 6800257e41d6
+
+ALTER TABLE model_config ADD COLUMN information_url VARCHAR;
+
+UPDATE alembic_version SET version_num='6800257e41d6' WHERE alembic_version.version_num = '277d02390564';
+
 COMMIT;
 

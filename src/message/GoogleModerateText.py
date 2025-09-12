@@ -8,12 +8,22 @@ from google.cloud.language_v2 import (
     ModerateTextResponse,
 )
 
+from src.api_interface import APIInterface
 from src.config.get_config import get_config
 from src.message.SafetyChecker import (
     SafetyChecker,
     SafetyCheckRequest,
     SafetyCheckResponse,
 )
+
+
+class ViolationInfo(APIInterface):
+    category_name: str
+    confidence: float
+    confidence_threshold: float
+
+    severity: float
+    severity_threshold: float
 
 
 class GoogleModerateTextResponse(SafetyCheckResponse):
@@ -31,13 +41,19 @@ class GoogleModerateTextResponse(SafetyCheckResponse):
         self.unsafe_violation_categories = config.google_moderate_text.default_unsafe_violation_categories
 
     def is_safe(self) -> bool:
-        violations = self.get_violation_categories()
+        violations = self.get_violations()
 
         return len(violations) == 0
 
-    def get_violation_categories(self) -> list[str]:
+    def get_violations(self) -> list[ViolationInfo]:
         return [
-            f"<{category.name}> confidence: {category.confidence}; severity: {category.severity}"
+            ViolationInfo(
+                category_name=category.name,
+                confidence=category.confidence,
+                confidence_threshold=self.confidence_threshold,
+                severity=category.severity,
+                severity_threshold=self.severity_threshold,
+            )
             for category in self.result.moderation_categories
             if category.name in self.unsafe_violation_categories
             and category.confidence >= self.confidence_threshold
@@ -69,10 +85,11 @@ class GoogleModerateText(SafetyChecker):
         response = GoogleModerateTextResponse(result)
 
         current_app.logger.info({
+            "event": "safety-check.results",
             "checker": "GoogleModerateText",
             "prompt": req.content,
             "duration_ms": (end_ns - start_ns) / 1_000_000,
-            "violations": response.get_violation_categories(),
+            "violations": [info.model_dump() for info in response.get_violations()],
             "scores": response.get_scores(),
         })
 

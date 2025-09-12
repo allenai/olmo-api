@@ -228,3 +228,47 @@ VALUES (
         false
     ) ON CONFLICT DO NOTHING;
 
+
+INSERT INTO model_config(
+        id,
+        name,
+        description,
+        model_id_on_host,
+        model_type,
+        default_system_prompt,
+        family_id,
+        family_name,
+        host,
+        prompt_type,
+        internal,
+        can_call_tools
+    )
+VALUES (
+        'test-mm-model',
+        'Test Multimodal Model',
+        'A fake multimodal model to test with',
+        'foo',
+        'Chat',
+        'You are a fake model used for testing',
+        NULL,
+        NULL,
+        'TestBackend',
+        'TEXT_ONLY',
+        true,
+        true
+    ) ON CONFLICT DO NOTHING;
+
+INSERT INTO multi_modal_model_config(
+        id,
+        accepted_file_types,
+        max_files_per_message,
+        require_file_to_prompt,
+        allow_files_in_followups
+    )
+VALUES (
+        'test-mm-model',
+        '{ "image/*" }',
+        1,
+        'FirstMessage',
+        'false'
+    ) ON CONFLICT DO NOTHING;

@@ -1,5 +1,6 @@
 import json
 from http.client import UNAUTHORIZED
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -155,6 +156,32 @@ class TestAnonymousThreadEndpoints(BaseTestThreadEndpoints):
         assert first_message.tool_definitions is None or len(first_message.tool_definitions) == 0, (
             "First message had tool definitions when it shouldn't"
         )
+
+    def test_uploads_a_file_to_a_multimodal_model(self):
+        anonymous_user = self.user(anonymous=True)
+
+        user_content = "How many boats are in this image?"
+
+        test_image_path = Path(__file__).parent.joinpath("molmo-boats.png")
+        with test_image_path.open("rb") as file:
+            create_message_request = requests.post(
+                f"{self.origin}/v4/threads/",
+                headers=self.auth(anonymous_user),
+                files={
+                    "content": (None, user_content),
+                    "files": ("molmo-boats.png", file, "image/png"),
+                    "host": (None, "test_backend"),
+                    "model": (None, "test-mm-model"),
+                },
+            )
+        create_message_request.raise_for_status()
+
+        response_thread = Thread.model_validate_json(util.second_to_last_response_line(create_message_request))
+        self.add_messages_in_thread(response_thread, anonymous_user)
+
+        user_message = next(message for message in response_thread.messages if message.role == Role.User)
+        assert user_message.file_urls is not None
+        assert len(user_message.file_urls) == 1
 
     def tearDown(self):
         # Since the delete operation cascades, we have to find all child messages

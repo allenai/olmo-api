@@ -3,7 +3,7 @@ import os
 from dataclasses import dataclass
 from typing import Self
 
-from pydantic import SecretStr
+from pydantic import BaseModel, Field, SecretStr
 
 from src.config.InfiniGramSource import InfiniGramSource, map_infinigram_sources
 
@@ -126,6 +126,26 @@ class Mcp:
     servers: list[McpServer]
 
 
+class GoogleModerateText(BaseModel):
+    default_confidence_threshold: float = Field(default=0.8)
+    default_severity_threshold: float = Field(default=0.7)
+    default_unsafe_violation_categories: list[str] = Field(
+        default_factory=lambda: [
+            "Toxic",
+            "Derogatory",
+            "Violent",
+            "Sexual",
+            "Insult",
+            "Profanity",
+            "Death, Harm & Tragedy",
+            "Firearms & Weapons",
+            "Public Safety",
+            "War & Conflict",
+            "Dangerous Content",
+        ]
+    )
+
+
 DEFAULT_CONFIG_PATH = "/secret/cfg/config.json"
 
 
@@ -147,6 +167,7 @@ class Config:
     cirrascale: Cirrascale
     modal_openai: ModalOpenAI
     mcp: Mcp
+    google_moderate_text: GoogleModerateText
 
     @classmethod
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
@@ -239,4 +260,5 @@ class Config:
                         for server in data["mcp"]["servers"]
                     ]
                 ),
+                google_moderate_text=GoogleModerateText.model_validate(data.get("google_safety_check", {})),
             )

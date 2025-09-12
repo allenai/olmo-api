@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ByteSize, Field, computed_field
 
+from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
 from src.dao.engine_models.model_config import FileRequiredToPromptOption, ModelHost, ModelType, PromptType
 
 
@@ -22,6 +23,7 @@ class ModelBase(BaseModel):
     accepts_files: bool = Field(default=False)
     can_call_tools: bool = Field(default=False)
     can_think: bool = Field(default=False)
+    infini_gram_index: AvailableInfiniGramIndexId | None = Field(default=None)
 
     @computed_field  # type: ignore[prop-decorator]
     @property

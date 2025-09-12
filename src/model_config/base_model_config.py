@@ -15,6 +15,7 @@ from src.dao.engine_models.model_config import (
 class BaseModelConfigRequest(APIInterface):
     name: str = Field(min_length=1)
     host: ModelHost
+    information_url: str | None = Field(default=None)
     description: str = Field(min_length=1)
     model_type: ModelType
     model_id_on_host: str = Field(min_length=1)

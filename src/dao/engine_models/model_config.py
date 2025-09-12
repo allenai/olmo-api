@@ -42,6 +42,7 @@ class ModelConfig(Base, kw_only=True):
     id: Mapped[str] = mapped_column(primary_key=True)
     host: Mapped[ModelHost]
     name: Mapped[str]
+    information_url: Mapped[str | None] = mapped_column(default=None)
     description: Mapped[str]
     # We already have a model_type enum in the DB but it's hard to change through alembic so this makes a new one
     model_type: Mapped[ModelType]

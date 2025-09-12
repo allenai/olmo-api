@@ -131,6 +131,31 @@ class TestAnonymousThreadEndpoints(BaseTestThreadEndpoints):
         last_yield = json_lines[-1]
         assert last_yield["type"] == "end"
 
+    def test_does_not_call_a_tool_when_tools_are_disabled(self):
+        anonymous_user = self.user(anonymous=True)
+
+        user_content = "I'm a magical labrador named Murphy, who are you?"
+
+        create_message_request = requests.post(
+            f"{self.origin}/v4/threads/",
+            headers=self.auth(anonymous_user),
+            files={
+                "content": (None, user_content),
+                "selectedTools": (None, "create_random_number"),
+                "enableToolCalling": (None, "false"),
+                **default_model_options,
+            },
+        )
+        create_message_request.raise_for_status()
+
+        response_thread = Thread.model_validate_json(util.second_to_last_response_line(create_message_request))
+        self.add_messages_in_thread(response_thread, anonymous_user)
+
+        first_message = response_thread.messages[0]
+        assert first_message.tool_definitions is None or len(first_message.tool_definitions) == 0, (
+            "First message had tool definitions when it shouldn't"
+        )
+
     def tearDown(self):
         # Since the delete operation cascades, we have to find all child messages
         # and remove them from self.messages. Otherwise, we'll run into 404 errors

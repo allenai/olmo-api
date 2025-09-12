@@ -76,7 +76,6 @@ def get_multipart_form_value(
 
             if len(form_list) > 0:
                 return form_list
-            return None
 
     return value
 

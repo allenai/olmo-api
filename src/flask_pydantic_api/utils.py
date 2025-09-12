@@ -61,9 +61,16 @@ def is_union_of_model_sublclasses(value: Any) -> bool:
 
 def is_list(value: Any) -> bool:
     if is_union(value):
-        return any(get_origin(v) == list for v in get_args(value))
+        return any(is_list(v) for v in get_args(value))
 
-    return get_origin(value) == list
+    return get_origin(value) is list
+
+
+def is_uploaded_file(value: Any) -> bool:
+    if is_union(value) or is_list(value):
+        return any(is_uploaded_file(v) for v in get_args(value))
+
+    return value == UploadedFile
 
 
 def get_annotated_models(

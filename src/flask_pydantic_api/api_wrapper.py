@@ -10,6 +10,7 @@ from typing import (
     Optional,
     ParamSpec,
     TypeVar,
+    cast,
     get_origin,
 )
 
@@ -18,9 +19,11 @@ from flask.typing import ResponseReturnValue
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 
 from .utils import (
+    UploadedFile,
     function_has_fields_in_signature,
     get_annotated_models,
     is_list,
+    is_uploaded_file,
     model_has_uploaded_file_type,
     sync_async_wrapper,
 )
@@ -57,16 +60,22 @@ class EndpointConfig(BaseModel):
     )
 
 
-def get_multipart_form_value(request_model: type[BaseModel] | None, name: str, value: Any):
+def get_multipart_form_value(
+    request_model: type[BaseModel] | None, name: str, value: Any
+) -> list[UploadedFile] | list[str] | Any:
     if request_model is not None:
         field = next((field for field in request_model.model_fields.values() if field.alias == name), None)
 
         if field is not None and is_list(field.annotation):
-            form_list = request.form.getlist(name)
+            form_list: list[UploadedFile] | list[str]
+
+            if is_uploaded_file(field.annotation):
+                form_list = cast(list[UploadedFile], request.files.getlist(name))
+            else:
+                form_list = request.form.getlist(name)
 
             if len(form_list) > 0:
                 return form_list
-            return None
 
     return value
 

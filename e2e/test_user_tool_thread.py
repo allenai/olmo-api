@@ -4,9 +4,8 @@ from typing import Any
 import requests
 
 from e2e import util
+from e2e.test_threads import BaseTestThreadEndpoints
 from src.thread.thread_models import Thread
-
-from . import base
 
 tool_def = '{ "name": "get weather", "description": "get the weather", "parameters": {"type": "object", "properties": {"city": {"type": "string", "description": "the city name"} } } }'
 tool_def_two = '{ "name": "get weather two", "description": "get the weather again", "parameters": {"type": "object", "properties": {"city": {"type": "string", "description": "the city name"} } } }'
@@ -77,11 +76,8 @@ default_options: list[tuple[str, Any]] = [
 ]
 
 
-class TestUserToolThreadEndpoints(base.IntegrationTest):
-    messages: list[tuple[str, base.AuthenticatedClient]] = []
-    child_msgs: list[tuple[str, base.AuthenticatedClient]] = []
-
-    def runTest(self):
+class TestUserToolThread(BaseTestThreadEndpoints):
+    def test_user_defined_tools(self):
         anonymous_user = self.user(anonymous=True)
 
         user_content = "I'm a magical labrador named Murphy, who are you?"
@@ -179,22 +175,7 @@ class TestUserToolThreadEndpoints(base.IntegrationTest):
             if item["role"] != "system":
                 assert len(item["toolDefinitions"]) == 1
 
-    def tearDown(self):
-        # Since the delete operation cascades, we have to find all child messages
-        # and remove them from self.messages. Otherwise, we'll run into 404 errors
-        # when executing r.raise_for_status()
-        messages_to_delete = [msg for msg in self.messages if msg not in self.child_msgs]
-
-        for id, user in messages_to_delete:
-            r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
-            r.raise_for_status()
-
-
-class TestUserComplexToolDefThreadEndpoints(base.IntegrationTest):
-    messages: list[tuple[str, base.AuthenticatedClient]] = []
-    child_msgs: list[tuple[str, base.AuthenticatedClient]] = []
-
-    def runTest(self):
+    def test_complex_user_defined_tools(self):
         anonymous_user = self.user(anonymous=True)
 
         user_content = "I'm a magical labrador named Murphy, who are you?"
@@ -212,22 +193,7 @@ class TestUserComplexToolDefThreadEndpoints(base.IntegrationTest):
         response_thread = Thread.model_validate_json(util.second_to_last_response_line(create_message_request))
         self.messages.append((response_thread.id, anonymous_user))
 
-    def tearDown(self):
-        # Since the delete operation cascades, we have to find all child messages
-        # and remove them from self.messages. Otherwise, we'll run into 404 errors
-        # when executing r.raise_for_status()
-        messages_to_delete = [msg for msg in self.messages if msg not in self.child_msgs]
-
-        for id, user in messages_to_delete:
-            r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
-            r.raise_for_status()
-
-
-class TestMultipleUserToolCallsThreadEndpoints(base.IntegrationTest):
-    messages: list[tuple[str, base.AuthenticatedClient]] = []
-    child_msgs: list[tuple[str, base.AuthenticatedClient]] = []
-
-    def runTest(self):
+    def test_multiple_user_defined_tools(self):
         anonymous_user = self.user(anonymous=True)
 
         user_content = "I'm a magical labrador named Murphy, who are you?"
@@ -340,13 +306,3 @@ class TestMultipleUserToolCallsThreadEndpoints(base.IntegrationTest):
 
         assert thread_messages[0]["role"] == "tool_call_result"
         assert thread_messages[1]["role"] == "assistant"
-
-    def tearDown(self):
-        # Since the delete operation cascades, we have to find all child messages
-        # and remove them from self.messages. Otherwise, we'll run into 404 errors
-        # when executing r.raise_for_status()
-        messages_to_delete = [msg for msg in self.messages if msg not in self.child_msgs]
-
-        for id, user in messages_to_delete:
-            r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
-            r.raise_for_status()

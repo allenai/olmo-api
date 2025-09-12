@@ -59,11 +59,8 @@ def get_model_configs_admin(session_maker: sessionmaker[Session]) -> AdminModelR
         return AdminModelResponse.model_validate(processed_results)
 
 
-def get_single_model_config_admin(
-    session_maker: sessionmaker[Session], model_id: str
-) -> ModelConfig | MultiModalModelConfig | None:
-    with session_maker.begin() as session:
-        polymorphic_loader_opt = selectin_polymorphic(ModelConfig, [ModelConfig, MultiModalModelConfig])
-        stmt = select(ModelConfig).options(polymorphic_loader_opt).where(ModelConfig.id == model_id)
+def get_single_model_config_admin(session: Session, model_id: str) -> ModelConfig | MultiModalModelConfig | None:
+    polymorphic_loader_opt = selectin_polymorphic(ModelConfig, [ModelConfig, MultiModalModelConfig])
+    stmt = select(ModelConfig).options(polymorphic_loader_opt).where(ModelConfig.id == model_id)
 
-        return session.scalars(stmt).one_or_none()
+    return session.scalars(stmt).one_or_none()

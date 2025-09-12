@@ -4,7 +4,6 @@ from typing import cast
 
 from flask import current_app
 from flask import request as flask_request
-from sqlalchemy.orm import Session, sessionmaker
 from werkzeug import exceptions
 
 import src.dao.message.message_models as message
@@ -38,7 +37,6 @@ def create_message_v4(
     request: CreateMessageRequestWithLists,
     dbc: db.Client,
     storage_client: GoogleCloudStorage,
-    session_maker: sessionmaker[Session],
     message_repository: BaseMessageRepository,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
 ):
@@ -74,7 +72,7 @@ def create_message_v4(
         create_tool_definitions=request.create_tool_definitions,
     )
 
-    model = get_model_by_host_and_id(mapped_request.host, mapped_request.model, session_maker=session_maker)
+    model = get_model_by_host_and_id(mapped_request.host, mapped_request.model)
     if model.prompt_type == PromptType.FILES_ONLY and not cfg.feature_flags.allow_files_only_model_in_thread:
         current_app.logger.error("Tried to use a files only model in a normal thread stream %s/%s", id, model)
 

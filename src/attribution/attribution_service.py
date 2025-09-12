@@ -27,6 +27,7 @@ from src.attribution.infini_gram_api_client.models.available_infini_gram_index_i
 from src.attribution.infini_gram_api_client.models.problem import Problem
 from src.attribution.infini_gram_api_client.models.request_validation_error import RequestValidationError
 from src.config.get_config import cfg
+from src.dao.engine_models.model_config import ModelConfig
 from src.util.pii_regex import does_contain_pii
 
 from .flatten_spans import (
@@ -106,15 +107,6 @@ class ResponseAttributionDocument:
         )
 
 
-def model_id_is_valid_for_infini_gram(model_id: str) -> str:
-    valid_model_ids = list(cfg.infini_gram.model_index_map.keys())
-    if model_id not in valid_model_ids:
-        msg = f"{model_id} must be one of {valid_model_ids}"
-        raise ValueError(msg)
-
-    return model_id
-
-
 def should_block_prompt(prompt: str) -> str:
     if "lyric" in prompt.lower() or "song" in prompt.lower():
         msg = "The prompt is blocked due to legal compliance."
@@ -125,7 +117,7 @@ def should_block_prompt(prompt: str) -> str:
 class GetAttributionRequest(APIInterface):
     prompt: Annotated[str, AfterValidator(should_block_prompt)]
     model_response: str
-    model_id: Annotated[str, AfterValidator(model_id_is_valid_for_infini_gram)]
+    model_id: str
     max_documents: int = Field(default=10)  # unused
     max_display_context_length: int = Field(default=250)
 
@@ -178,11 +170,8 @@ def update_mapped_document(
         )
 
 
-def get_attribution(
-    request: GetAttributionRequest,
-    infini_gram_client: Client,
-):
-    index = AvailableInfiniGramIndexId(cfg.infini_gram.model_index_map[request.model_id])
+def get_attribution(request: GetAttributionRequest, infini_gram_client: Client, model_config: ModelConfig):
+    index = AvailableInfiniGramIndexId(model_config.infini_gram_index)
 
     try:
         attribution_response = get_document_attributions_index_attribution_post.sync(

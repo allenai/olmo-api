@@ -82,7 +82,7 @@ class Message(Base, kw_only=True):
         "ToolCall",
         back_populates="message",
         default_factory=list,
-        cascade="all, delete-orphan",
+        cascade="all, delete",
     )
 
     completion_: Mapped[Completion | None] = relationship("Completion", back_populates="message", init=False)
@@ -99,5 +99,5 @@ class Message(Base, kw_only=True):
         "Label",
         back_populates="message_",
         init=False,
-        cascade="all, delete-orphan",
+        cascade="all, delete",
     )

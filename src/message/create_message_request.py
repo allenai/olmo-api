@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from typing import Annotated, Self
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, Json, model_validator
 from werkzeug import exceptions
 
 from src.api_interface import APIInterface
@@ -27,7 +27,22 @@ def captcha_token_required_if_captcha_enabled(value: str | None):
     return value
 
 
-class BaseCreateMessageRequest(APIInterface):
+class ParameterDef(APIInterface):
+    type: str
+    properties: dict[str, "ParameterDef"] | None = Field(default=None)
+    description: str | None = Field(default=None)
+    required: list[str] | None = Field(default=[])
+    property_ordering: list[str] | None = Field(default=None)
+    default: dict[str, str] | None = Field(default=None)
+
+
+class CreateToolDefinition(APIInterface):
+    name: str
+    description: str
+    parameters: ParameterDef
+
+
+class CreateMessageRequest(APIInterface):
     # TODO: Validate that the parent role is different from this role and that it exists
     parent: str | None = Field(default=None)
     content: str = Field(min_length=1)
@@ -38,30 +53,14 @@ class BaseCreateMessageRequest(APIInterface):
     model: str
     host: str
     tool_call_id: str | None = Field(default=None)
-    tool_definitions: str | None = Field(default=None)
+    tool_definitions: Json[list[CreateToolDefinition]] | None = Field(default=None)
+    selected_tools: list[str] | None = Field(default=None)
+    enable_tool_calling: bool = Field(default=False)
 
     captcha_token: Annotated[str | None, AfterValidator(captcha_token_required_if_captcha_enabled)] = Field(
         default=None
     )
 
-    @model_validator(mode="after")
-    def check_original_and_parent_are_different(self) -> Self:
-        if self.original is not None and self.parent == self.original:
-            msg = "The original message cannot also be the parent"
-            raise ValueError(msg)
-
-        return self
-
-    @model_validator(mode="after")
-    def check_assistant_message_has_a_parent(self) -> Self:
-        if self.role is Role.Assistant and self.parent is None:
-            msg = "Assistant messages must have a parent"
-            raise ValueError(msg)
-
-        return self
-
-
-class CreateMessageRequest(BaseCreateMessageRequest):
     max_tokens: int = Field(
         default=max_tokens.default,
         ge=max_tokens.min,
@@ -82,27 +81,25 @@ class CreateMessageRequest(BaseCreateMessageRequest):
         le=logprobs.max,
         multiple_of=logprobs.step,
     )
+    stop: list[str] | None = Field(default_factory=list)  # type:ignore[arg-type] # https://github.com/pydantic/pydantic/issues/10950
 
-
-class ParameterDef(APIInterface):
-    type: str
-    properties: dict[str, "ParameterDef"] | None = Field(default=None)
-    description: str | None = Field(default=None)
-    required: list[str] | None = Field(default=[])
-    property_ordering: list[str] | None = Field(default=None)
-    default: dict[str, str] | None = Field(default=None)
-
-
-class CreateToolDefinition(APIInterface):
-    name: str
-    description: str
-    parameters: ParameterDef
-
-
-class CreateMessageRequestWithLists(CreateMessageRequest):
-    stop: list[str] | None = Field(default=None)
     files: list[UploadedFile] | None = Field(default=None)
-    create_tool_definitions: list[CreateToolDefinition] | None = Field(default=None)
+
+    @model_validator(mode="after")
+    def check_original_and_parent_are_different(self) -> Self:
+        if self.original is not None and self.parent == self.original:
+            msg = "The original message cannot also be the parent"
+            raise ValueError(msg)
+
+        return self
+
+    @model_validator(mode="after")
+    def check_assistant_message_has_a_parent(self) -> Self:
+        if self.role is Role.Assistant and self.parent is None:
+            msg = "Assistant messages must have a parent"
+            raise ValueError(msg)
+
+        return self
 
 
 class CreateMessageRequestWithFullMessages(BaseModel):
@@ -122,7 +119,9 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     captcha_token: str | None = Field()
 
     tool_call_id: str | None = Field(default=None)
-    create_tool_definitions: list[CreateToolDefinition] | None = Field(default=None)
+    create_tool_definitions: list[CreateToolDefinition] | None
+    selected_tools: list[str] | None
+    enable_tool_calling: bool
 
     model_config = ConfigDict(validate_assignment=True)
 
@@ -199,4 +198,5 @@ class CreateMessageRequestWithFullMessages(BaseModel):
         return self
 
 
+# This is here because Pydantic complains about "Message" not being fully defined
 CreateMessageRequestWithFullMessages.model_rebuild()

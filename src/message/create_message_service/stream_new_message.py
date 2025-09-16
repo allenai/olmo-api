@@ -363,12 +363,10 @@ def stream_assistant_response(
     start_generation_ns = time_ns()
 
     tool_parts: list[ToolCall] = []
-    # Now yield each chunk as it's returned.
     finish_reason: FinishReason | None = None
     logprobs: list[list[TokenLogProbs]] = []
     # We keep track of each chunk and the timing information per-chunk
-    # so that we can manifest a completion at the end. This will go
-    # away when InferD stores this I/O.
+    # so that we can manifest a completion at the end.
 
     if cfg.feature_flags.enable_pydantic_inference:
         try:

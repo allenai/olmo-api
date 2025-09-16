@@ -1,4 +1,6 @@
+import json
 from http.client import UNAUTHORIZED
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -13,6 +15,12 @@ from . import base
 default_model_options = {
     "host": (None, "test_backend"),
     "model": (None, "test-model-no-tools"),
+}
+
+tool_call_model_options = {
+    "host": (None, "test_backend"),
+    "model": (None, "test-model"),
+    "enableToolCalling": (None, "true"),
 }
 
 
@@ -41,7 +49,7 @@ class BaseTestThreadEndpoints(base.IntegrationTest):
             r.raise_for_status()
 
 
-class TestAnonymousMessageEndpoints(BaseTestThreadEndpoints):
+class TestAnonymousThreadEndpoints(BaseTestThreadEndpoints):
     def test_passes_with_anonymous_auth(self):
         anonymous_user = self.user(anonymous=True)
         for r in [
@@ -57,11 +65,6 @@ class TestAnonymousMessageEndpoints(BaseTestThreadEndpoints):
         create_message_request = requests.post(
             f"{self.origin}/v4/threads",
             headers=self.auth(anonymous_user),
-            json={
-                "content": "I'm a magical labrador named Murphy, who are you? ",
-                "private": True,
-                **default_model_options,
-            },
             files={
                 "content": (None, "I'm a magical labrador named Murphy, who are you?"),
                 "private": (None, str(True)),
@@ -76,6 +79,109 @@ class TestAnonymousMessageEndpoints(BaseTestThreadEndpoints):
 
         assert first_message.private is True
         assert first_message.expiration_time is not None
+
+    def test_calls_a_tool(self):
+        anonymous_user = self.user(anonymous=True)
+
+        user_content = "I'm a magical labrador named Murphy, who are you?"
+
+        create_message_request = requests.post(
+            f"{self.origin}/v4/threads/",
+            headers=self.auth(anonymous_user),
+            files={
+                "content": (None, user_content),
+                "selectedTools": (None, "create_random_number"),
+                **tool_call_model_options,
+            },
+        )
+        create_message_request.raise_for_status()
+
+        lines = list(create_message_request.text.splitlines())
+
+        json_lines = [json.loads(line) for line in lines]
+
+        first_yield = json_lines[0]
+        assert first_yield["type"] == "start"
+
+        first_yield = json_lines[1]
+        assert first_yield["id"] is not None
+
+        thread_messages = first_yield["messages"]
+        assert (
+            len(thread_messages) == 3
+        )  # / system message, user message and empty assistnat (no system prompt currently)
+        assert thread_messages[0]["role"] == "system"
+        assert thread_messages[1]["role"] == "user"
+        assert thread_messages[2]["role"] == "assistant"
+
+        # Test model always calls tools.
+        second_yield = json_lines[2]
+        assert second_yield["type"] == "toolCall"
+
+        final_thread = json_lines[-2]
+        assert final_thread["id"] is not None
+        assert len(final_thread["messages"]) == 5
+        final_message = final_thread["messages"]
+
+        assert final_message[0]["role"] == "system"
+        assert final_message[1]["role"] == "user"
+        assert final_message[2]["role"] == "assistant"
+        assert final_message[3]["role"] == "tool_call_result"
+        assert final_message[4]["role"] == "assistant"
+
+        last_yield = json_lines[-1]
+        assert last_yield["type"] == "end"
+
+    def test_does_not_call_a_tool_when_tools_are_disabled(self):
+        anonymous_user = self.user(anonymous=True)
+
+        user_content = "I'm a magical labrador named Murphy, who are you?"
+
+        create_message_request = requests.post(
+            f"{self.origin}/v4/threads/",
+            headers=self.auth(anonymous_user),
+            files={
+                "content": (None, user_content),
+                "selectedTools": (None, "create_random_number"),
+                "enableToolCalling": (None, "false"),
+                **default_model_options,
+            },
+        )
+        create_message_request.raise_for_status()
+
+        response_thread = Thread.model_validate_json(util.second_to_last_response_line(create_message_request))
+        self.add_messages_in_thread(response_thread, anonymous_user)
+
+        first_message = response_thread.messages[0]
+        assert first_message.tool_definitions is None or len(first_message.tool_definitions) == 0, (
+            "First message had tool definitions when it shouldn't"
+        )
+
+    def test_uploads_a_file_to_a_multimodal_model(self):
+        anonymous_user = self.user(anonymous=True)
+
+        user_content = "How many boats are in this image?"
+
+        test_image_path = Path(__file__).parent.joinpath("molmo-boats.png")
+        with test_image_path.open("rb") as file:
+            create_message_request = requests.post(
+                f"{self.origin}/v4/threads/",
+                headers=self.auth(anonymous_user),
+                files={
+                    "content": (None, user_content),
+                    "files": ("molmo-boats.png", file, "image/png"),
+                    "host": (None, "test_backend"),
+                    "model": (None, "test-mm-model"),
+                },
+            )
+        create_message_request.raise_for_status()
+
+        response_thread = Thread.model_validate_json(util.second_to_last_response_line(create_message_request))
+        self.add_messages_in_thread(response_thread, anonymous_user)
+
+        user_message = next(message for message in response_thread.messages if message.role == Role.User)
+        assert user_message.file_urls is not None
+        assert len(user_message.file_urls) == 1
 
     def tearDown(self):
         # Since the delete operation cascades, we have to find all child messages
@@ -135,7 +241,7 @@ class TestThreadEndpoints(BaseTestThreadEndpoints):
         root_message = thread.messages[0]
         opts_dict = root_message.opts.model_dump()
         for name, value in self.default_options:
-            assert opts_dict[name] == value
+            assert opts_dict[name] == value, f"option {name} did not match expected value {value}"
 
         assert root_message.model_id == default_model_options["model"][1]
         assert root_message.model_host == default_model_options["host"][1]

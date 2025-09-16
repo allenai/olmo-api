@@ -2,6 +2,8 @@ import base64
 from collections.abc import Sequence
 from time import time_ns
 
+from src.auth.auth_utils import user_has_permission
+
 from flask import current_app
 from werkzeug import exceptions
 from werkzeug.datastructures import FileStorage
@@ -107,6 +109,8 @@ def evaluate_prompt_submission_captcha(
 INAPPROPRIATE_TEXT_ERROR = "inappropriate_prompt_text"
 INAPPROPRIATE_FILE_ERROR = "inappropriate_prompt_file"
 
+FORRBIDDEN_SETTING = "User is not allowed to change this setting"
+
 
 def validate_message_security_and_safety(
     request: CreateMessageRequestWithFullMessages,
@@ -121,6 +125,14 @@ def validate_message_security_and_safety(
         user_agent=user_agent,
         is_anonymous_user=agent.is_anonymous_user,
     )
+
+    is_internal_user = user_has_permission(agent.token, "read:internal-models")
+
+    if is_internal_user is False and request.disable_safety_check is True:
+        raise exceptions.Forbidden(FORRBIDDEN_SETTING)
+
+    if is_internal_user is True and request.disable_safety_check is True:
+        return 0, None
 
     safety_check_start_time = time_ns()
     is_content_safe = check_message_safety(request.content, checker_type=checker_type)

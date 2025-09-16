@@ -4,6 +4,7 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from flask_pydantic_api.utils import UploadedFile
 from src.config.Model import MultiModalModel
 from src.dao.engine_models.model_config import (
     FileRequiredToPromptOption,

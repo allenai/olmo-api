@@ -1,7 +1,6 @@
 from datetime import UTC, datetime
 
 from flask import Blueprint, jsonify, request
-from flask_pydantic_api.api_wrapper import pydantic_api
 from pydantic import ValidationError
 from werkzeug import exceptions
 
@@ -13,6 +12,7 @@ from src.auth.resource_protectors import (
     anonymous_auth_protector as anonymous_auth_protector,
 )
 from src.auth.resource_protectors import required_auth_protector
+from src.flask_pydantic_api.api_wrapper import pydantic_api
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.user.user_service import (
     MigrateFromAnonymousUserRequest,

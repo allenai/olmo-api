@@ -1,7 +1,6 @@
 from collections.abc import Sequence
 from typing import Annotated, Self
 
-from flask_pydantic_api.utils import UploadedFile
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 from werkzeug import exceptions
 
@@ -17,6 +16,7 @@ from src.dao.message.message_models import (
     temperature,
     top_p,
 )
+from src.flask_pydantic_api.utils import UploadedFile
 
 
 def captcha_token_required_if_captcha_enabled(value: str | None):

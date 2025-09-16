@@ -25,8 +25,10 @@ class ToolSource(StrEnum):
 class MessageToolDefinition(Base, kw_only=True):
     __tablename__ = "message_tool_definition_association"
 
-    message_id: Mapped[str] = mapped_column(Text, ForeignKey("message.id"), primary_key=True)
-    tool_definition_id: Mapped[str] = mapped_column(Text, ForeignKey("tool_definition.id"), primary_key=True)
+    message_id: Mapped[str] = mapped_column(Text, ForeignKey("message.id", ondelete="CASCADE"), primary_key=True)
+    tool_definition_id: Mapped[str] = mapped_column(
+        Text, ForeignKey("tool_definition.id", ondelete="CASCADE"), primary_key=True
+    )
 
     created: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()"), init=False
@@ -56,4 +58,5 @@ class ToolDefinition(Base, kw_only=True):
         back_populates="tool_definitions",
         secondary="message_tool_definition_association",
         default_factory=list,
+        passive_deletes=True,
     )

@@ -20,7 +20,7 @@ from src.dao.engine_models.completion import Completion
 from src.dao.engine_models.label import Label
 from src.dao.engine_models.prompt_template import PromptTemplate
 from src.dao.engine_models.tool_call import ToolCall
-from src.dao.engine_models.tool_definitions import MessageToolDefinition, ToolDefinition
+from src.dao.engine_models.tool_definitions import ToolDefinition
 
 from .base import Base
 
@@ -82,7 +82,7 @@ class Message(Base, kw_only=True):
         "ToolCall",
         back_populates="message",
         default_factory=list,
-        cascade="all, delete",
+        cascade="all, delete-orphan",
     )
 
     completion_: Mapped[Completion | None] = relationship("Completion", back_populates="message", init=False)
@@ -99,5 +99,5 @@ class Message(Base, kw_only=True):
         "Label",
         back_populates="message_",
         init=False,
-        cascade="all, delete",
+        cascade="all, delete-orphan",
     )

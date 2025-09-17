@@ -37,6 +37,24 @@ def test_tool_def_does_not_delete_when_related_message_does(sql_alchemy: Session
     sql_alchemy.commit()
 
     loaded_message = sql_alchemy.get(Message, message.id)
-    loaded_tool_definition = sql_alchemy.get(ToolDefinition, tool_definition.id)
+    assert loaded_message is not None
+    assert loaded_message.tool_definitions is not None
+    assert len(loaded_message.tool_definitions) == 1
 
-    # TODO: Delete message and make sure tool def sticks around
+    loaded_tool_definition = sql_alchemy.get(ToolDefinition, tool_definition.id)
+    assert loaded_tool_definition is not None
+    assert loaded_tool_definition.messages is not None
+    assert len(loaded_tool_definition.messages) == 1
+
+    sql_alchemy.delete(loaded_message)
+    sql_alchemy.commit()
+
+    loaded_message_after_deletion = sql_alchemy.get(Message, message.id)
+    assert loaded_message_after_deletion is None
+
+    loaded_tool_definition_after_deletion = sql_alchemy.get(ToolDefinition, tool_definition.id)
+    assert loaded_tool_definition_after_deletion is not None
+    assert (
+        loaded_tool_definition_after_deletion.messages is None
+        or len(loaded_tool_definition_after_deletion.messages) == 0
+    )

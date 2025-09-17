@@ -3,7 +3,7 @@ from collections.abc import AsyncIterable, AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, Literal, assert_never, cast
+from typing import Any, assert_never, cast
 
 from beaker import Beaker
 from beaker.config import Config as BeakerConfig
@@ -123,6 +123,7 @@ class BeakerQueuesModel(Model):
             "messages": new_messages,
             "stream": True,
             "tools": tools,
+            "add_generation_prompt": True,
             **model_settings,
         }
 

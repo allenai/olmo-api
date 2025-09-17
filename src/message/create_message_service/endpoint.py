@@ -72,7 +72,7 @@ def create_message_v4(
         create_tool_definitions=request.tool_definitions,
         enable_tool_calling=request.enable_tool_calling,
         selected_tools=request.selected_tools,
-        disable_safety_check=request.disable_safety_check,
+        bypass_safety_check=request.bypass_safety_check,
     )
 
     model = get_model_by_host_and_id(mapped_request.host, mapped_request.model)

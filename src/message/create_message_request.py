@@ -57,7 +57,7 @@ class CreateMessageRequest(APIInterface):
     selected_tools: list[str] | None = Field(default=None)
     enable_tool_calling: bool = Field(default=False)
 
-    disable_safety_check: bool = Field(default=False)
+    bypass_safety_check: bool = Field(default=False)
 
     captcha_token: Annotated[str | None, AfterValidator(captcha_token_required_if_captcha_enabled)] = Field(
         default=None
@@ -119,7 +119,7 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     files: Sequence[UploadedFile] | None = Field(default=None)
     client: str
     captcha_token: str | None = Field()
-    disable_safety_check: bool = Field(default=False)
+    bypass_safety_check: bool = Field(default=False)
 
     tool_call_id: str | None = Field(default=None)
     create_tool_definitions: list[CreateToolDefinition] | None

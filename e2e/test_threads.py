@@ -368,11 +368,11 @@ class TestSafetyCheckFlag(BaseTestThreadEndpoints):
                 "content": (None, "I'm a magical labrador named Murphy, who are you?"),
                 "private": (None, str(True)),
                 **default_model_options,
-                "disableSafetyCheck": (None, str(True)),
+                "bypassSafetyCheck": (None, str(True)),
             },
         )
 
-        assert r.status_code == FORBIDDEN, "Setting disabled safety check should be forbidden for anonymouse user."
+        assert r.status_code == FORBIDDEN, "Setting bypass safety check should be forbidden for anonymouse user."
 
     @pytest.mark.skip(reason="Need ability to create non admin user.")
     def test_forbidden_to_turn_off_safety_for_normal_user(self):
@@ -390,11 +390,11 @@ class TestSafetyCheckFlag(BaseTestThreadEndpoints):
                 "content": (None, "I'm a magical labrador named Murphy, who are you?"),
                 "private": (None, str(True)),
                 **default_model_options,
-                "disableSafetyCheck": (None, str(True)),
+                "bypassSafetyCheck": (None, str(True)),
             },
         )
 
-        assert r.status_code == FORBIDDEN, "Setting disabled safety check should be forbidden for normal user."
+        assert r.status_code == FORBIDDEN, "Setting bypass safety check should be forbidden for normal user."
 
     def test_internal_user_can_bypass_safety_check(self):
         user = self.user()
@@ -412,7 +412,7 @@ class TestSafetyCheckFlag(BaseTestThreadEndpoints):
                 "content": (None, "I'm a magical labrador named Murphy, who are you?"),
                 "private": (None, str(True)),
                 **default_model_options,
-                "disableSafetyCheck": (None, str(True)),
+                "bypassSafetyCheck": (None, str(True)),
             },
         )
         r.raise_for_status()

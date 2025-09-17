@@ -125,7 +125,7 @@ def validate_message_security_and_safety(
         is_anonymous_user=agent.is_anonymous_user,
     )
 
-    is_internal_user = user_has_permission(agent.token, Permissions.BYPASS_SAFETY_CHECKS)
+    is_internal_user = user_has_permission(agent.token, Permissions.WRITE_BYPASS_SAFETY_CHECKS)
 
     if is_internal_user is False and request.disable_safety_check is True:
         raise exceptions.Forbidden(FORRBIDDEN_SETTING)

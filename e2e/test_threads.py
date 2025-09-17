@@ -3,6 +3,7 @@ from http.client import FORBIDDEN, UNAUTHORIZED
 from pathlib import Path
 from typing import Any
 
+import pytest
 import requests
 
 from e2e import util
@@ -373,6 +374,7 @@ class TestSafetyCheckFlag(BaseTestThreadEndpoints):
 
         assert r.status_code == FORBIDDEN, "Setting disabled safety check should be forbidden for anonymouse user."
 
+    @pytest.mark.skip(reason="Need ability to create non admin user.")
     def test_forbidden_to_turn_off_safety_for_normal_user(self):
         user = self.user()
 
@@ -395,7 +397,7 @@ class TestSafetyCheckFlag(BaseTestThreadEndpoints):
         assert r.status_code == FORBIDDEN, "Setting disabled safety check should be forbidden for normal user."
 
     def test_internal_user_can_bypass_safety_check(self):
-        user = self.user("murphy@localhost")
+        user = self.user()
         # TODO find a way to make a non admin user... or mock something
 
         r = requests.post(

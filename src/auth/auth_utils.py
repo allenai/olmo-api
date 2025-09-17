@@ -5,7 +5,7 @@ from typing import Any
 class Permissions(StrEnum):
     READ_INTERNAL_MODELS = "read:internal-models"
     WRITE_MODEL_CONFIG = "write:model-config"
-    BYPASS_SAFETY_CHECKS = "bypass-safety-checks"
+    WRITE_BYPASS_SAFETY_CHECKS = "write:bypass-safety-check"
 
 
 def get_permissions(token: dict[str, Any] | str | None) -> list[Any] | Any:

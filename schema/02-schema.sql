@@ -339,7 +339,7 @@ CREATE TYPE prompttype AS ENUM ('text_only', 'multi_modal');
 CREATE TABLE model_config (
     id VARCHAR NOT NULL, 
     prompt_type prompttype NOT NULL, 
-    PRIMARY KEY (id)
+    CONSTRAINT model_config_pk PRIMARY KEY (id)
 );
 
 UPDATE alembic_version SET version_num='befde9e1de64' WHERE alembic_version.version_num = '67c7571bc5b8';
@@ -387,8 +387,8 @@ CREATE TABLE multi_modal_model_config (
     require_file_to_prompt filerequiredtopromptoption, 
     max_total_file_size INTEGER, 
     allow_files_in_followups BOOLEAN, 
-    PRIMARY KEY (id), 
-    FOREIGN KEY(id) REFERENCES model_config (id)
+    CONSTRAINT multi_modal_model_config_pk PRIMARY KEY (id), 
+    CONSTRAINT multi_modal_model_config_id_model_config_fkey FOREIGN KEY(id) REFERENCES model_config (id)
 );
 
 UPDATE alembic_version SET version_num='636b1b8f1f03' WHERE alembic_version.version_num = 'ea686b7953cb';
@@ -811,8 +811,8 @@ CREATE TABLE tool_call (
     tool_name VARCHAR NOT NULL, 
     args JSONB, 
     message_id TEXT NOT NULL, 
-    PRIMARY KEY (id), 
-    FOREIGN KEY(message_id) REFERENCES message (id)
+    CONSTRAINT tool_call_pk PRIMARY KEY (id), 
+    CONSTRAINT tool_call_message_id_message_fkey FOREIGN KEY(message_id) REFERENCES message (id)
 );
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE tool_call TO app;
@@ -832,7 +832,7 @@ CREATE TABLE tool_definition (
     parameters JSONB, 
     tool_source toolsource NOT NULL, 
     created TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
-    PRIMARY KEY (id)
+    CONSTRAINT tool_definition_pk PRIMARY KEY (id)
 );
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE tool_definition TO app;
@@ -841,9 +841,9 @@ CREATE TABLE message_tool_definition_association (
     message_id TEXT NOT NULL, 
     tool_definition_id TEXT NOT NULL, 
     created TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
-    PRIMARY KEY (message_id, tool_definition_id), 
-    FOREIGN KEY(message_id) REFERENCES message (id), 
-    FOREIGN KEY(tool_definition_id) REFERENCES tool_definition (id)
+    CONSTRAINT message_tool_definition_association_pk PRIMARY KEY (message_id, tool_definition_id), 
+    CONSTRAINT message_tool_definition_association_message_id_message_fkey FOREIGN KEY(message_id) REFERENCES message (id), 
+    CONSTRAINT message_tool_definition_association_tool_definition_id__0ebc FOREIGN KEY(tool_definition_id) REFERENCES tool_definition (id)
 );
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE message_tool_definition_association TO app;
@@ -938,17 +938,17 @@ ALTER TABLE model_config ADD COLUMN information_url VARCHAR;
 
 UPDATE alembic_version SET version_num='6800257e41d6' WHERE alembic_version.version_num = '277d02390564';
 
--- Running upgrade 6800257e41d6 -> 50eb7d8b974b
-
-ALTER TABLE message_tool_definition_association DROP CONSTRAINT message_tool_definition_association_message_id_fkey;
+-- Running upgrade 6800257e41d6 -> 35175410798d
 
 ALTER TABLE message_tool_definition_association DROP CONSTRAINT message_tool_definition_association_tool_definition_id_fkey;
 
-ALTER TABLE message_tool_definition_association ADD FOREIGN KEY(message_id) REFERENCES message (id) ON DELETE CASCADE;
+ALTER TABLE message_tool_definition_association DROP CONSTRAINT message_tool_definition_association_message_id_fkey;
 
-ALTER TABLE message_tool_definition_association ADD FOREIGN KEY(tool_definition_id) REFERENCES tool_definition (id) ON DELETE CASCADE;
+ALTER TABLE message_tool_definition_association ADD CONSTRAINT message_tool_definition_association_tool_definition_id__0ebc FOREIGN KEY(tool_definition_id) REFERENCES tool_definition (id) ON DELETE CASCADE;
 
-UPDATE alembic_version SET version_num='50eb7d8b974b' WHERE alembic_version.version_num = '6800257e41d6';
+ALTER TABLE message_tool_definition_association ADD CONSTRAINT message_tool_definition_association_message_id_message_fkey FOREIGN KEY(message_id) REFERENCES message (id) ON DELETE CASCADE;
+
+UPDATE alembic_version SET version_num='35175410798d' WHERE alembic_version.version_num = '6800257e41d6';
 
 COMMIT;
 

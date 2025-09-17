@@ -43,6 +43,7 @@ def dbc(cfg: Config, postgresql: Connection):
         min_size=cfg.db.min_size,
         max_size=cfg.db.max_size,
         check=ConnectionPool.check_connection,
+        open=True,
         kwargs={"application_name": f"olmo-api:{os.getenv('SHA') or ''}"},
     )
 

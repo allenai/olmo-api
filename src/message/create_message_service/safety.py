@@ -2,12 +2,11 @@ import base64
 from collections.abc import Sequence
 from time import time_ns
 
-from src.auth.auth_utils import user_has_permission
-
 from flask import current_app
 from werkzeug import exceptions
 from werkzeug.datastructures import FileStorage
 
+from src.auth.auth_utils import Permissions, user_has_permission
 from src.auth.token import Token
 from src.bot_detection.create_assessment import create_assessment
 from src.config.get_config import cfg
@@ -126,7 +125,7 @@ def validate_message_security_and_safety(
         is_anonymous_user=agent.is_anonymous_user,
     )
 
-    is_internal_user = user_has_permission(agent.token, "read:internal-models")
+    is_internal_user = user_has_permission(agent.token, Permissions.BYPASS_SAFETY_CHECKS)
 
     if is_internal_user is False and request.disable_safety_check is True:
         raise exceptions.Forbidden(FORRBIDDEN_SETTING)

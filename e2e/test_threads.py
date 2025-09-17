@@ -396,6 +396,7 @@ class TestSafetyCheckFlag(BaseTestThreadEndpoints):
 
     def test_internal_user_can_bypass_safety_check(self):
         user = self.user("murphy@localhost")
+        # TODO find a way to make a non admin user... or mock something
 
         r = requests.post(
             f"{self.origin}/v4/threads",

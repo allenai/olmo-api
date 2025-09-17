@@ -944,9 +944,9 @@ ALTER TABLE message_tool_definition_association DROP CONSTRAINT message_tool_def
 
 ALTER TABLE message_tool_definition_association DROP CONSTRAINT message_tool_definition_association_tool_definition_id_fkey;
 
-ALTER TABLE message_tool_definition_association ADD FOREIGN KEY(message_id) REFERENCES message (id) ON DELETE CASCADE;
+ALTER TABLE message_tool_definition_association ADD CONSTRAINT message_tool_definition_association_message_id_fkey FOREIGN KEY(message_id) REFERENCES message (id) ON DELETE CASCADE;
 
-ALTER TABLE message_tool_definition_association ADD FOREIGN KEY(tool_definition_id) REFERENCES tool_definition (id) ON DELETE CASCADE;
+ALTER TABLE message_tool_definition_association ADD CONSTRAINT message_tool_definition_association_tool_definition_id_fkey FOREIGN KEY(tool_definition_id) REFERENCES tool_definition (id) ON DELETE CASCADE;
 
 UPDATE alembic_version SET version_num='50eb7d8b974b' WHERE alembic_version.version_num = '6800257e41d6';
 

@@ -125,12 +125,12 @@ def validate_message_security_and_safety(
         is_anonymous_user=agent.is_anonymous_user,
     )
 
-    is_internal_user = user_has_permission(agent.token, Permissions.WRITE_MODEL_CONFIG)
+    can_bypass_safety_checks = user_has_permission(agent.token, Permissions.WRITE_BYPASS_SAFETY_CHECKS)
 
-    if is_internal_user is False and request.bypass_safety_check is True:
+    if can_bypass_safety_checks is False and request.bypass_safety_check is True:
         raise exceptions.Forbidden(FORRBIDDEN_SETTING)
 
-    if is_internal_user is True and request.bypass_safety_check is True:
+    if can_bypass_safety_checks is True and request.bypass_safety_check is True:
         return 0, None
 
     safety_check_start_time = time_ns()

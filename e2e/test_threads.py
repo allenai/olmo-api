@@ -398,7 +398,6 @@ class TestSafetyCheckFlag(BaseTestThreadEndpoints):
 
     def test_internal_user_can_bypass_safety_check(self):
         user = self.user()
-        # TODO find a way to make a non admin user... or mock something
 
         r = requests.post(
             f"{self.origin}/v4/threads",
@@ -418,9 +417,6 @@ class TestSafetyCheckFlag(BaseTestThreadEndpoints):
         r.raise_for_status()
 
     def tearDown(self):
-        # Since the delete operation cascades, we have to find all child messages
-        # and remove them from self.messages. Otherwise, we'll run into 404 errors
-        # when executing r.raise_for_status()
         messages_to_delete = [msg for msg in self.messages if msg not in self.child_msgs]
 
         for id, user in messages_to_delete:

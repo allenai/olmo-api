@@ -31,6 +31,20 @@ class BaseResponseModel(APIInterface):
 
     infini_gram_index: AvailableInfiniGramIndexId | None = Field(default=None)
 
+    temperature_default: float
+    temperature_upper: float
+    temperature_lower: float
+    temperature_step: float
+    top_p_default: float
+    top_p_upper: float
+    top_p_lower: float
+    top_p_step: float
+    max_tokens_default: int
+    max_tokens_upper: int
+    max_tokens_lower: int
+    max_tokens_step: int
+    stop_default: list[str] | None = None
+
     # @field_validator("default_inference_opts", mode="before")
     # @classmethod
     # def validate_default_inference_opts(cls, value):

@@ -48,18 +48,24 @@ class ModelBase(BaseModel):
         default=None, exclude=True
     )
     accepts_files: bool = Field(default=False)
+    available_tools: list[AvailableTool] | None = Field(default=None)
     can_call_tools: bool = Field(default=False)
     can_think: bool = Field(default=False)
     infini_gram_index: AvailableInfiniGramIndexId | None = Field(default=None)
-    default_inference_opts: InferenceOpts | None = Field(default=None)
-    available_tools: list[AvailableTool] | None = Field(default=None)
 
-    @field_validator("default_inference_opts", mode="before")
-    @classmethod
-    def validate_default_inference_opts(cls, value):
-        if value is None:
-            return InferenceOpts()
-        return value
+    temperature_default: float
+    temperature_upper: float
+    temperature_lower: float
+    temperature_step: float
+    top_p_default: float
+    top_p_upper: float
+    top_p_lower: float
+    top_p_step: float
+    max_tokens_default: int
+    max_tokens_upper: int
+    max_tokens_lower: int
+    max_tokens_step: int
+    stop_default: list[str] | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property

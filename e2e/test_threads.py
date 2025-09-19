@@ -1,8 +1,9 @@
 import json
-from http.client import UNAUTHORIZED
+from http.client import FORBIDDEN, UNAUTHORIZED
 from pathlib import Path
 from typing import Any
 
+import pytest
 import requests
 
 from e2e import util
@@ -349,3 +350,75 @@ class TestThreadEndpoints(BaseTestThreadEndpoints):
         new_messages_thread_response = self.assert_can_add_to_thread(first_thread.messages[-1].id, u1)
         self.assert_full_tree(first_thread, new_messages_thread_response, u1)
         self.assert_list_threads_belonging_to_user(first_thread.id, u1)
+
+
+class TestSafetyCheckFlag(BaseTestThreadEndpoints):
+    def test_forbidden_to_turn_off_safety_for_anonymous_user(self):
+        anonymous_user = self.user(anonymous=True)
+
+        r = requests.post(
+            f"{self.origin}/v4/threads",
+            headers=self.auth(anonymous_user),
+            json={
+                "content": "I'm a magical labrador named Murphy, who are you? ",
+                "private": True,
+                **default_model_options,
+            },
+            files={
+                "content": (None, "I'm a magical labrador named Murphy, who are you?"),
+                "private": (None, str(True)),
+                **default_model_options,
+                "bypassSafetyCheck": (None, str(True)),
+            },
+        )
+
+        assert r.status_code == FORBIDDEN, "Setting bypass safety check should be forbidden for anonymouse user."
+
+    @pytest.mark.skip(reason="Need ability to create non admin user.")
+    def test_forbidden_to_turn_off_safety_for_normal_user(self):
+        user = self.user()
+
+        r = requests.post(
+            f"{self.origin}/v4/threads",
+            headers=self.auth(user),
+            json={
+                "content": "I'm a magical labrador named Murphy, who are you? ",
+                "private": True,
+                **default_model_options,
+            },
+            files={
+                "content": (None, "I'm a magical labrador named Murphy, who are you?"),
+                "private": (None, str(True)),
+                **default_model_options,
+                "bypassSafetyCheck": (None, str(True)),
+            },
+        )
+
+        assert r.status_code == FORBIDDEN, "Setting bypass safety check should be forbidden for normal user."
+
+    def test_internal_user_can_bypass_safety_check(self):
+        user = self.user()
+
+        r = requests.post(
+            f"{self.origin}/v4/threads",
+            headers=self.auth(user),
+            json={
+                "content": "I'm a magical labrador named Murphy, who are you? ",
+                "private": True,
+                **default_model_options,
+            },
+            files={
+                "content": (None, "I'm a magical labrador named Murphy, who are you?"),
+                "private": (None, str(True)),
+                **default_model_options,
+                "bypassSafetyCheck": (None, str(True)),
+            },
+        )
+        r.raise_for_status()
+
+    def tearDown(self):
+        messages_to_delete = [msg for msg in self.messages if msg not in self.child_msgs]
+
+        for id, user in messages_to_delete:
+            r = requests.delete(f"{self.origin}/v3/message/{id}", headers=self.auth(user))
+            r.raise_for_status()

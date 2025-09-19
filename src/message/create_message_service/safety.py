@@ -6,6 +6,7 @@ from flask import current_app
 from werkzeug import exceptions
 from werkzeug.datastructures import FileStorage
 
+from src.auth.auth_utils import Permissions, user_has_permission
 from src.auth.token import Token
 from src.bot_detection.create_assessment import create_assessment
 from src.config.get_config import cfg
@@ -107,6 +108,8 @@ def evaluate_prompt_submission_captcha(
 INAPPROPRIATE_TEXT_ERROR = "inappropriate_prompt_text"
 INAPPROPRIATE_FILE_ERROR = "inappropriate_prompt_file"
 
+FORRBIDDEN_SETTING = "User is not allowed to change this setting"
+
 
 def validate_message_security_and_safety(
     request: CreateMessageRequestWithFullMessages,
@@ -121,6 +124,14 @@ def validate_message_security_and_safety(
         user_agent=user_agent,
         is_anonymous_user=agent.is_anonymous_user,
     )
+
+    can_bypass_safety_checks = user_has_permission(agent.token, Permissions.WRITE_BYPASS_SAFETY_CHECKS)
+
+    if can_bypass_safety_checks is False and request.bypass_safety_check is True:
+        raise exceptions.Forbidden(FORRBIDDEN_SETTING)
+
+    if can_bypass_safety_checks is True and request.bypass_safety_check is True:
+        return 0, None
 
     safety_check_start_time = time_ns()
     is_content_safe = check_message_safety(request.content, checker_type=checker_type)

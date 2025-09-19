@@ -1,7 +1,7 @@
 from flask import Blueprint
 from sqlalchemy.orm import Session, sessionmaker
 
-from src.auth.auth_utils import user_has_permission
+from src.auth.auth_utils import Permissions, user_has_permission
 from src.auth.resource_protectors import anonymous_auth_protector
 from src.flask_pydantic_api.api_wrapper import pydantic_api
 from src.model_config.get_model_config_service import (
@@ -21,7 +21,7 @@ def create_model_config_blueprint(session_maker: sessionmaker[Session]) -> Bluep
     )
     def get_models() -> ModelResponse:
         token = anonymous_auth_protector.get_token()
-        should_include_internal_models = user_has_permission(token, "read:internal-models")
+        should_include_internal_models = user_has_permission(token, Permissions.READ_INTERNAL_MODELS)
 
         return get_model_configs(
             session_maker=session_maker,

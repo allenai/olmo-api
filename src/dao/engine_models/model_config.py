@@ -2,11 +2,9 @@ from datetime import datetime
 from enum import StrEnum
 
 from sqlalchemy import ARRAY, ForeignKey, Integer, Sequence, String, func
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
-from src.dao.message.inference_opts_model import InferenceOpts
 
 from .base import Base
 
@@ -36,7 +34,6 @@ class PromptType(StrEnum):
     TEXT_ONLY = "text_only"
     MULTI_MODAL = "multi_modal"
     FILES_ONLY = "files_only"
-
 
 class ModelConfig(Base, kw_only=True):
     __tablename__ = "model_config"
@@ -69,7 +66,23 @@ class ModelConfig(Base, kw_only=True):
     can_think: Mapped[bool] = mapped_column(default=False, server_default="false")
 
     infini_gram_index: Mapped[AvailableInfiniGramIndexId | None] = mapped_column(default=None)
-    default_inference_opts: Mapped[dict | None] = mapped_column(JSONB, default=None)
+
+    temperature_default: Mapped[float] = mapped_column(default=0.7)
+    temperature_upper: Mapped[float] = mapped_column(default=1.0)
+    temperature_lower: Mapped[float] = mapped_column(default=0.0)
+    temperature_step: Mapped[float] = mapped_column(default=0.01)
+
+    top_p_default: Mapped[float] = mapped_column(default=1.0)
+    top_p_upper: Mapped[float] = mapped_column(default=1.0)
+    top_p_lower: Mapped[float] = mapped_column(default=0.0)
+    top_p_step: Mapped[float] = mapped_column(default=0.01)
+
+    max_tokens_default: Mapped[int] = mapped_column(default=2048)
+    max_tokens_upper: Mapped[int] = mapped_column(default=2048)
+    max_tokens_lower: Mapped[int] = mapped_column(default=1)
+    max_tokens_step: Mapped[int] = mapped_column(default=1)
+
+    stop_default: Mapped[list[str] | None] = mapped_column(default=None)
 
     __mapper_args__ = {
         "polymorphic_identity": PromptType.TEXT_ONLY,

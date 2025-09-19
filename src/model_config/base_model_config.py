@@ -10,7 +10,6 @@ from src.dao.engine_models.model_config import (
     ModelType,
     PromptType,
 )
-from src.dao.message.inference_opts_model import InferenceOpts
 
 
 class BaseModelConfigRequest(APIInterface):
@@ -29,7 +28,23 @@ class BaseModelConfigRequest(APIInterface):
     can_call_tools: bool = Field(default=False)
     can_think: bool = Field(default=False)
     infini_gram_index: AvailableInfiniGramIndexId | None = Field(default=None)
-    default_inference_opts: InferenceOpts | None = Field(default=None)
+
+    temperature_default: float | None = None
+    temperature_upper: float | None = None
+    temperature_lower: float | None = None
+    temperature_step: float | None = None
+
+    top_p_default: float | None = None
+    top_p_upper: float | None = None
+    top_p_lower: float | None = None
+    top_p_step: float | None = None
+
+    max_tokens_default: int | None = None
+    max_tokens_upper: int | None = None
+    max_tokens_lower: int | None = None
+    max_tokens_step: int | None = None
+
+    stop_default: list[str] | None
 
 
 class BaseTextOnlyModelConfigRequest(BaseModelConfigRequest):

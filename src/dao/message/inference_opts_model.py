@@ -4,6 +4,8 @@ from typing import Any
 from pydantic import BaseModel
 from pydantic import Field as PydanticField
 
+from src.api_interface import APIInterface
+
 
 @dataclass
 class Field:
@@ -23,45 +25,43 @@ logprobs = Field("logprobs", None, 0, 10, 1)
 stop = Field("stop", None, None, None)
 
 class InferenceOpts(BaseModel):
-    max_tokens: int = PydanticField(
-        default=max_tokens.default,
-        ge=max_tokens.min,
-        le=max_tokens.max,
-        multiple_of=max_tokens.step,
+    max_tokens: int | None = PydanticField(
+        default=None,
         strict=True,
     )
-    temperature: float = PydanticField(
-        default=temperature.default,
-        ge=temperature.min,
-        le=temperature.max,
-        multiple_of=temperature.step,
+    temperature: float | None = PydanticField(
+        default=None,
         strict=True,
     )
-    n: int = PydanticField(default=num.default, ge=num.min, le=num.max, multiple_of=num.step, strict=True)
-    top_p: float = PydanticField(
-        default=top_p.default,
-        ge=top_p.min,
-        le=top_p.max,
-        multiple_of=top_p.step,
+    n: int | None = PydanticField(default=None, strict=True)
+    top_p: float | None = PydanticField(
+        default=None,
         strict=True,
     )
     logprobs: int | None = PydanticField(
-        default=logprobs.default,
-        ge=logprobs.min,
-        le=logprobs.max,
-        multiple_of=logprobs.step,
+        default=None,
         strict=True,
     )
-    stop: list[str] | None = PydanticField(default=stop.default)
-
-    @staticmethod
-    def get_defaults() -> dict[str, Any]:
-        return {f.name: f.default for f in [max_tokens, temperature, num, top_p, logprobs, stop]}
+    stop: list[str] | None = PydanticField(default=None)
 
     @staticmethod
     def opts_schema() -> dict[str, Field]:
         return {f.name: f for f in [max_tokens, temperature, num, top_p, logprobs, stop]}
 
-    @staticmethod
-    def from_request(request_opts: dict[str, Any]) -> "InferenceOpts":
-        return InferenceOpts(**request_opts)
+class InferenceOptionsConstraints(APIInterface):
+    temperature_default: float | None
+    temperature_upper: float | None
+    temperature_lower: float | None
+    temperature_step: float | None
+
+    top_p_default: float | None
+    top_p_upper: float | None
+    top_p_lower: float | None
+    top_p_step: float | None
+
+    max_tokens_default: int | None
+    max_tokens_upper: int | None
+    max_tokens_lower: int | None
+    max_tokens_step: int | None
+
+    stop_default: list[str] | None

@@ -1,11 +1,21 @@
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, AwareDatetime, BaseModel, BeforeValidator, ByteSize, Field, computed_field
+from pydantic import (
+    AfterValidator,
+    AwareDatetime,
+    BaseModel,
+    BeforeValidator,
+    ByteSize,
+    Field,
+    computed_field,
+    field_validator,
+)
 
 from src.api_interface import APIInterface
 from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
 from src.dao.engine_models.model_config import FileRequiredToPromptOption, ModelHost, ModelType, PromptType
+from src.dao.message.inference_opts_model import InferenceOpts
 
 
 class AvailableTool(APIInterface):
@@ -41,7 +51,15 @@ class ModelBase(BaseModel):
     can_call_tools: bool = Field(default=False)
     can_think: bool = Field(default=False)
     infini_gram_index: AvailableInfiniGramIndexId | None = Field(default=None)
+    default_inference_opts: InferenceOpts | None = Field(default=None)
     available_tools: list[AvailableTool] | None = Field(default=None)
+
+    @field_validator("default_inference_opts", mode="before")
+    @classmethod
+    def validate_default_inference_opts(cls, value):
+        if value is None:
+            return InferenceOpts()
+        return value
 
     @computed_field  # type: ignore[prop-decorator]
     @property

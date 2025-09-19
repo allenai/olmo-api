@@ -1,6 +1,7 @@
 from flask import Blueprint
 from sqlalchemy.orm import Session, sessionmaker
 
+from flask_pydantic_api.api_wrapper import pydantic_api
 from src.auth.auth_utils import Permissions, user_has_permission
 from src.auth.resource_protectors import anonymous_auth_protector
 from src.flask_pydantic_api.api_wrapper import pydantic_api

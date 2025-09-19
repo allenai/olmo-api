@@ -2,11 +2,12 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import AwareDatetime, ByteSize, Field, RootModel, computed_field
+from pydantic import AwareDatetime, ByteSize, Field, RootModel, computed_field, field_validator
 
 from src.api_interface import APIInterface
 from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
 from src.dao.engine_models.model_config import FileRequiredToPromptOption, ModelHost, ModelType, PromptType
+from src.dao.message.inference_opts_model import InferenceOpts
 
 
 class ModelAvailability(StrEnum):
@@ -30,6 +31,14 @@ class BaseResponseModel(APIInterface):
     can_think: bool
 
     infini_gram_index: AvailableInfiniGramIndexId | None = Field(default=None)
+    default_inference_opts: InferenceOpts | None = Field(default=None)
+
+    @field_validator("default_inference_opts", mode="before")
+    @classmethod
+    def validate_default_inference_opts(cls, value):
+        if value is None:
+            return InferenceOpts()
+        return value
 
     @computed_field  # type:ignore
     @property

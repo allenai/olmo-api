@@ -48,6 +48,7 @@ def update_model_config(
         model_to_update.can_call_tools = request.root.can_call_tools
         model_to_update.can_think = request.root.can_think
         model_to_update.infini_gram_index = request.root.infini_gram_index
+        model_to_update.default_inference_opts = request.root.default_inference_opts.model_dump() if request.root.default_inference_opts else None
 
         if isinstance(model_to_update, MultiModalModelConfig):
             multi_modal_request = cast(UpdateMultiModalModelConfigRequest, request.root)

@@ -2,9 +2,11 @@ from datetime import datetime
 from enum import StrEnum
 
 from sqlalchemy import ARRAY, ForeignKey, Integer, Sequence, String, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
+from src.dao.message.inference_opts_model import InferenceOpts
 
 from .base import Base
 
@@ -67,6 +69,7 @@ class ModelConfig(Base, kw_only=True):
     can_think: Mapped[bool] = mapped_column(default=False, server_default="false")
 
     infini_gram_index: Mapped[AvailableInfiniGramIndexId | None] = mapped_column(default=None)
+    default_inference_opts: Mapped[dict | None] = mapped_column(JSONB, default=None)
 
     __mapper_args__ = {
         "polymorphic_identity": PromptType.TEXT_ONLY,

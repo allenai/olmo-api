@@ -4,6 +4,7 @@ from typing import cast
 
 from flask import current_app
 from flask import request as flask_request
+from opentelemetry import trace
 from werkzeug import exceptions
 
 import src.dao.message.message_models as message
@@ -31,6 +32,9 @@ from src.message.validate_message_files_from_config import (
 
 def format_message(obj) -> str:
     return json.dumps(obj=obj, cls=util.CustomEncoder) + "\n"
+
+
+tracer = trace.get_tracer(__name__)
 
 
 def create_message_v4(

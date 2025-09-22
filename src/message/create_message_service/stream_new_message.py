@@ -5,7 +5,9 @@ from dataclasses import asdict
 from time import time_ns
 from typing import Any, cast
 
+from opentelemetry import trace
 from flask import current_app
+from pydantic_ai.agent import InstrumentationSettings
 from pydantic_ai.direct import model_request_stream_sync
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import ToolCallPart
@@ -343,6 +345,9 @@ def finalize_messages(message_repository: BaseMessageRepository, message_chain: 
             raise final_message_error
 
 
+tracer = trace.get_tracer(__name__)
+
+
 def stream_assistant_response(
     request: CreateMessageRequestWithFullMessages,
     dbc: db.Client,
@@ -377,11 +382,16 @@ def stream_assistant_response(
             pydantic_messages = pydantic_map_messages(message_chain[:-1], blob_map)
             tools = get_pydantic_tool_defs(input_message) if model.can_call_tools else []
 
+            with tracer.start_as_current_span("span-name") as span:
+                # do some work that 'span' will track
+                print("doing some work...")
+
             with model_request_stream_sync(
                 model=pydantic_inference_engine,
                 messages=pydantic_messages,
                 model_settings=pydantic_settings_map(request.opts, model),
                 model_request_parameters=ModelRequestParameters(function_tools=tools, allow_text_output=True),
+                instrument=True,
             ) as stream:
                 for generator_chunk_pydantic in stream:
                     if first_chunk_ns is None:

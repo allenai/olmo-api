@@ -9,13 +9,11 @@ from pydantic import (
     ByteSize,
     Field,
     computed_field,
-    field_validator,
 )
 
 from src.api_interface import APIInterface
 from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
 from src.dao.engine_models.model_config import FileRequiredToPromptOption, ModelHost, ModelType, PromptType
-from src.dao.message.inference_opts_model import InferenceOpts
 
 
 class AvailableTool(APIInterface):
@@ -53,18 +51,21 @@ class ModelBase(BaseModel):
     can_think: bool = Field(default=False)
     infini_gram_index: AvailableInfiniGramIndexId | None = Field(default=None)
 
-    temperature_default: float
-    temperature_upper: float
-    temperature_lower: float
-    temperature_step: float
-    top_p_default: float
-    top_p_upper: float
-    top_p_lower: float
-    top_p_step: float
-    max_tokens_default: int
-    max_tokens_upper: int
-    max_tokens_lower: int
-    max_tokens_step: int
+    temperature_default: float | None = None
+    temperature_upper: float | None = None
+    temperature_lower: float | None = None
+    temperature_step: float | None = None
+
+    top_p_default: float | None = None
+    top_p_upper: float | None = None
+    top_p_lower: float | None = None
+    top_p_step: float | None = None
+
+    max_tokens_default: int | None = None
+    max_tokens_upper: int | None = None
+    max_tokens_lower: int | None = None
+    max_tokens_step: int | None = None
+
     stop_default: list[str] | None = None
 
     @computed_field  # type: ignore[prop-decorator]

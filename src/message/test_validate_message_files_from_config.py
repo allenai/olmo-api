@@ -7,6 +7,7 @@ from typing import IO, Any, cast
 import pytest
 from pydantic import ValidationError
 
+from e2e.test_models import default_inference_constraints
 from src.dao.engine_models.model_config import (
     FileRequiredToPromptOption,
     ModelConfig,
@@ -41,6 +42,7 @@ def create_model_config(
         "require_file_to_prompt": FileRequiredToPromptOption.NoRequirement,
         "max_total_file_size": None,
         "allow_files_in_followups": False,
+        **default_inference_constraints,
     }
 
     if partial_config is not None:
@@ -183,6 +185,7 @@ def test_file_validation_fails_if_a_file_is_sent_to_a_non_multi_modal_model() ->
         model_type=ModelType.Chat,
         prompt_type=PromptType.TEXT_ONLY,
         internal=False,
+        **default_inference_constraints,
     )
 
     with pytest.raises(ValidationError, match=""):

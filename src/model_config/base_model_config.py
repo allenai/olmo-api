@@ -44,7 +44,7 @@ class BaseModelConfigRequest(APIInterface):
     max_tokens_lower: int | None = None
     max_tokens_step: int | None = None
 
-    stop_default: list[str] | None
+    stop_default: list[str] | None = None
 
 
 class BaseTextOnlyModelConfigRequest(BaseModelConfigRequest):

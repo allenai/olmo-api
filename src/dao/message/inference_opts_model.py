@@ -4,8 +4,6 @@ from typing import Any
 from pydantic import BaseModel
 from pydantic import Field as PydanticField
 
-from src.api_interface import APIInterface
-
 
 @dataclass
 class Field:
@@ -47,21 +45,3 @@ class InferenceOpts(BaseModel):
     @staticmethod
     def opts_schema() -> dict[str, Field]:
         return {f.name: f for f in [max_tokens, temperature, num, top_p, logprobs, stop]}
-
-class InferenceOptionsConstraints(APIInterface):
-    temperature_default: float | None
-    temperature_upper: float | None
-    temperature_lower: float | None
-    temperature_step: float | None
-
-    top_p_default: float | None
-    top_p_upper: float | None
-    top_p_lower: float | None
-    top_p_step: float | None
-
-    max_tokens_default: int | None
-    max_tokens_upper: int | None
-    max_tokens_lower: int | None
-    max_tokens_step: int | None
-
-    stop_default: list[str] | None

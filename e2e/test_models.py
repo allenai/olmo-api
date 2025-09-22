@@ -19,6 +19,22 @@ from src.model_config.update_model_config_service import (
 
 from . import base
 
+default_inference_constraints = {
+    "temperature_default": 0.7,
+    "temperature_upper": 1.0,
+    "temperature_lower": 0.0,
+    "temperature_step": 0.01,
+    "top_p_default": 1.0,
+    "top_p_upper": 1.0,
+    "top_p_lower": 0.0,
+    "top_p_step": 0.01,
+    "max_tokens_default": 2048,
+    "max_tokens_upper": 2048,
+    "max_tokens_lower": 1,
+    "max_tokens_step": 1,
+    "stop_default": None,
+}
+
 
 class BaseTestV4ModelEndpoints(base.IntegrationTest):
     client: base.AuthenticatedClient
@@ -131,6 +147,10 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert created_model.get("createdTime") is not None
         assert created_model.get("modelType") == "chat"
         assert created_model.get("canThink") is True
+        assert created_model.get("temperatureDefault") == default_inference_constraints["temperature_default"]
+        assert created_model.get("topPDefault") == default_inference_constraints["top_p_default"]
+        assert created_model.get("maxTokensDefault") == default_inference_constraints["max_tokens_default"]
+        assert created_model.get("stopDefault") == default_inference_constraints["stop_default"]
 
         available_models = self.list_admin_models()
 
@@ -310,6 +330,13 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         create_response = self.create_model(create_model_request)
         create_response.raise_for_status()
 
+        new_constraints = {
+            "temperature_default": 0.8,
+            "top_p_default": 0.9,
+            "max_tokens_default": 1024,
+            "stop_default": ["stop1", "stop2"],
+        }
+
         update_model_request = UpdateTextOnlyModelConfigRequest(
             name="updated model made for testing",
             description="This model is made for testing",
@@ -320,6 +347,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
             can_call_tools=True,
             can_think=True,
             infini_gram_index=AvailableInfiniGramIndexId.OLMO_2_0325_32B,
+            **new_constraints,
         )
         update_model_response = requests.put(
             self.model_config_endpoint + "/" + model_id,
@@ -338,6 +366,10 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert updated_model.can_call_tools is True
         assert updated_model.can_think is True
         assert updated_model.infini_gram_index == AvailableInfiniGramIndexId.OLMO_2_0325_32B
+        assert updated_model.temperature_default == new_constraints["temperature_default"]
+        assert updated_model.top_p_default == new_constraints["top_p_default"]
+        assert updated_model.max_tokens_default == new_constraints["max_tokens_default"]
+        assert updated_model.stop_default == new_constraints["stop_default"]
 
     def test_should_update_a_multi_modal_model(self):
         model_id = "test-model-" + str(uuid4())

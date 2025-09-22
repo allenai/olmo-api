@@ -23,21 +23,24 @@ logprobs = Field("logprobs", None, 0, 10, 1)
 stop = Field("stop", None, None, None)
 
 class InferenceOpts(BaseModel):
-    max_tokens: int | None = PydanticField(
-        default=None,
+    max_tokens: int = PydanticField(
+        default=max_tokens.default,
         strict=True,
     )
-    temperature: float | None = PydanticField(
-        default=None,
+    temperature: float = PydanticField(
+        default=temperature.default,
         strict=True,
     )
-    n: int | None = PydanticField(default=None, strict=True)
-    top_p: float | None = PydanticField(
-        default=None,
+    n: int = PydanticField(
+        default=num.default,
+        strict=True,
+    )
+    top_p: float = PydanticField(
+        default=top_p.default,
         strict=True,
     )
     logprobs: int | None = PydanticField(
-        default=None,
+        default=logprobs.default,
         strict=True,
     )
     stop: list[str] | None = PydanticField(default=None)

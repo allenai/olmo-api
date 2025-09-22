@@ -45,7 +45,7 @@ class BaseResponseModel(APIInterface):
     max_tokens_upper: int
     max_tokens_lower: int
     max_tokens_step: int
-    
+
     stop_default: list[str] | None = None
 
     @computed_field  # type:ignore

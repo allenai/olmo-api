@@ -4,7 +4,6 @@ from typing import Annotated, Any, Self
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, Json, model_validator
 from werkzeug import exceptions
 
-from flask_pydantic_api.utils import UploadedFile
 from src.api_interface import APIInterface
 from src.config.get_config import get_config
 from src.dao.engine_models.message import Message
@@ -17,6 +16,7 @@ from src.dao.message.inference_opts_model import (
     top_p,
 )
 from src.dao.message.message_models import Role
+from src.flask_pydantic_api.utils import UploadedFile
 
 
 def captcha_token_required_if_captcha_enabled(value: str | None):

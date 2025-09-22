@@ -185,7 +185,19 @@ def test_file_validation_fails_if_a_file_is_sent_to_a_non_multi_modal_model() ->
         model_type=ModelType.Chat,
         prompt_type=PromptType.TEXT_ONLY,
         internal=False,
-        **default_inference_constraints,
+        temperature_default=0.7,
+        temperature_upper=1.0,
+        temperature_lower=0.0,
+        temperature_step=0.01,
+        top_p_default=1.0,
+        top_p_upper=1.0,
+        top_p_lower=0.0,
+        top_p_step=0.01,
+        max_tokens_default=2048,
+        max_tokens_upper=2048,
+        max_tokens_lower=1,
+        max_tokens_step=1,
+        stop_default=None,
     )
 
     with pytest.raises(ValidationError, match=""):

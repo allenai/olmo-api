@@ -15,7 +15,6 @@ from pydantic_ai.models import ModelRequestParameters
 
 from src import db, parse
 from src.auth.token import Token
-from src.config.get_config import cfg
 from src.dao.completion import CompletionOutput
 from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import ModelConfig, ModelHost
@@ -23,12 +22,6 @@ from src.dao.engine_models.tool_call import ToolCall
 from src.dao.engine_models.tool_definitions import ToolSource
 from src.dao.message.message_models import MessageChunk, MessageStreamError, Role, TokenLogProbs
 from src.dao.message.message_repository import BaseMessageRepository
-from src.inference.inference_service import get_engine
-from src.inference.InferenceEngine import (
-    FinishReason,
-    InferenceEngineChunk,
-    InferenceEngineMessage,
-)
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
@@ -39,7 +32,7 @@ from src.message.message_chunk import Chunk, StreamEndChunk, StreamStartChunk
 from src.message.SafetyChecker import (
     SafetyCheckerType,
 )
-from src.message.stream_message import StreamMetrics, stream_message_chunks
+from src.message.stream_message import StreamMetrics
 from src.pydantic_inference.pydantic_ai_helpers import (
     find_tool_def_by_name,
     map_pydantic_tool_to_db_tool,
@@ -49,7 +42,6 @@ from src.pydantic_inference.pydantic_ai_helpers import (
 )
 from src.pydantic_inference.pydantic_model_service import get_pydantic_model
 from src.tools.tools_service import call_tool, get_pydantic_tool_defs
-from src.util.generator_with_return_value import GeneratorWithReturnValue
 
 from .database import (
     create_assistant_message,
@@ -369,114 +361,75 @@ def stream_assistant_response(
     start_generation_ns = time_ns()
 
     tool_parts: list[ToolCall] = []
-    finish_reason: FinishReason | None = None
+    finish_reason: None = None
     logprobs: list[list[TokenLogProbs]] = []
     # We keep track of each chunk and the timing information per-chunk
     # so that we can manifest a completion at the end.
+    try:
+        pydantic_chunks: list[Chunk] = []
+        pydantic_inference_engine = get_pydantic_model(model)
 
-    if cfg.feature_flags.enable_pydantic_inference and model.host != ModelHost.Modal:
-        try:
-            pydantic_chunks: list[Chunk] = []
-            pydantic_inference_engine = get_pydantic_model(model)
+        first_chunk_ns: int | None = None
+        pydantic_messages = pydantic_map_messages(message_chain[:-1], blob_map)
+        tools = get_pydantic_tool_defs(input_message) if model.can_call_tools else []
 
-            first_chunk_ns: int | None = None
-            pydantic_messages = pydantic_map_messages(message_chain[:-1], blob_map)
-            tools = get_pydantic_tool_defs(input_message) if model.can_call_tools else []
+        with model_request_stream_sync(
+            model=pydantic_inference_engine,
+            messages=pydantic_messages,
+            model_settings=pydantic_settings_map(request.opts, model),
+            model_request_parameters=ModelRequestParameters(function_tools=tools, allow_text_output=True),
+        ) as stream:
+            for generator_chunk_pydantic in stream:
+                if first_chunk_ns is None:
+                    first_chunk_ns = time_ns()
 
-            with model_request_stream_sync(
-                model=pydantic_inference_engine,
-                messages=pydantic_messages,
-                model_settings=pydantic_settings_map(request.opts, model, extra_body=request.extra_parameters),
-                model_request_parameters=ModelRequestParameters(function_tools=tools, allow_text_output=True),
-                instrument=instrumentation_settings,
-            ) as stream:
-                for generator_chunk_pydantic in stream:
-                    if first_chunk_ns is None:
-                        first_chunk_ns = time_ns()
+                pydantic_chunk = pydantic_map_chunk(generator_chunk_pydantic, message=reply)
+                pydantic_chunks.append(pydantic_chunk)
+                yield pydantic_chunk
 
-                    pydantic_chunk = pydantic_map_chunk(generator_chunk_pydantic, message=reply)
-                    pydantic_chunks.append(pydantic_chunk)
-                    yield pydantic_chunk
-
-            full_response = stream.get()
-            text_part = next((part for part in full_response.parts if part.part_kind == "text"), None)
-            thinking_part = next((part for part in full_response.parts if part.part_kind == "thinking"), None)
-            tool_parts = [
-                map_pydantic_tool_to_db_tool(reply, part)
-                for part in full_response.parts
-                if isinstance(part, ToolCallPart)
-            ]
-
-            stream_metrics.first_chunk_ns = first_chunk_ns
-            stream_metrics.input_token_count = -1
-            stream_metrics.output_token_count = -1
-            stream_metrics.total_generation_ns = time_ns() - start_generation_ns
-
-            output = text_part.content if text_part is not None else ""
-            thinking = thinking_part.content if thinking_part is not None else ""
-            # TODO finish reason https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse.vendor_details should be here but isn't
-        except ModelHTTPError as e:
-            yield from pydnatic_ai_http_error_handling(e, reply, model)
-            raise
-        except Exception as e:
-            current_app.logger.exception(
-                "Unknown error",
-                extra={
-                    "message_id": reply.id,
-                    "model": model.id,
-                    "host": model.host,
-                    "is_internal": model.internal,
-                    "event": "inference.stream-error",
-                },
-            )
-
-            err = f"Unknown Error {e}"
-            yield MessageStreamError(message=reply.id, error=err, reason="Unknown error")
-            raise
-    else:
-        tool_parts = []
-        thinking = None
-        chunks: list[MessageChunk] = []
-
-        chain: list[InferenceEngineMessage] = [
-            InferenceEngineMessage(
-                role=message_in_chain.role,
-                content=message_in_chain.content,
-                # We only want to add the request files to the new message. The rest will have file urls associated with them
-                files=request.files
-                if input_message is not None and message_in_chain.id == input_message.id
-                else message_in_chain.file_urls,
-            )
-            for message_in_chain in message_chain[:-1]
+        full_response = stream.get()
+        text_part = next((part for part in full_response.parts if part.part_kind == "text"), None)
+        thinking_part = next((part for part in full_response.parts if part.part_kind == "thinking"), None)
+        tool_parts = [
+            map_pydantic_tool_to_db_tool(reply, part) for part in full_response.parts if isinstance(part, ToolCallPart)
         ]
-        inference_engine = get_engine(model)
-        message_chunks_generator = GeneratorWithReturnValue(
-            stream_message_chunks(
-                reply_id=reply.id,
-                model=model,
-                messages=chain,
-                opts=request.opts,
-                inference_engine=inference_engine,
-            )
+
+        stream_metrics.first_chunk_ns = first_chunk_ns
+        stream_metrics.input_token_count = -1
+        stream_metrics.output_token_count = -1
+        stream_metrics.total_generation_ns = time_ns() - start_generation_ns
+
+        output = text_part.content if text_part is not None else ""
+        thinking = thinking_part.content if thinking_part is not None else ""
+        # TODO finish reason https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse.vendor_details should be here but isn't
+    except ModelHTTPError as e:
+        current_app.logger.exception(
+            "Http call to LLM failed",
+            extra={
+                "message_id": reply.id,
+                "model": model.id,
+                "host": model.host,
+                "event": "inference.stream-error",
+            },
         )
 
-        for generator_chunk in message_chunks_generator:
-            if isinstance(generator_chunk, InferenceEngineChunk):
-                mapped_chunk = map_chunk(generator_chunk, message_id=reply.id)
-                yield mapped_chunk
-                finish_reason = generator_chunk.finish_reason
-                chunks.append(mapped_chunk)
-            else:
-                yield generator_chunk
+        err = f"http error: {e}"
+        yield MessageStreamError(message=reply.id, error=err, reason="Model http error")
+        raise
+    except Exception as e:
+        current_app.logger.exception(
+            "Unknown error",
+            extra={
+                "message_id": reply.id,
+                "model": model.id,
+                "host": model.host,
+                "event": "inference.stream-error",
+            },
+        )
 
-        output, logprobs = create_output_from_chunks(chunks)
-        inference_stream_metrics: StreamMetrics = message_chunks_generator.value
-
-        stream_metrics.first_chunk_ns = inference_stream_metrics.first_chunk_ns
-        stream_metrics.input_token_count = inference_stream_metrics.input_token_count
-        stream_metrics.output_token_count = inference_stream_metrics.output_token_count
-        stream_metrics.total_generation_ns = inference_stream_metrics.total_generation_ns
-
+        err = f"Unknown Error {e}"
+        yield MessageStreamError(message=reply.id, error=err, reason="Unknown error")
+        raise
     prompt = create_prompt_from_engine_input(message_chain)
 
     gen = stream_metrics.total_generation_ns or 0
@@ -535,20 +488,6 @@ def repair_children(msg_chain: list[Message]):
     for i, msg in enumerate(msg_chain):
         next_msg = msg_chain[i + 1] if i < len(msg_chain) - 1 else None
         msg.children = [next_msg] if next_msg else []
-
-
-def map_chunk(chunk: InferenceEngineChunk, message_id: str) -> MessageChunk:
-    chunk_logprobs = chunk.logprobs if chunk.logprobs is not None else []
-    mapped_logprobs = [
-        [TokenLogProbs(token_id=lp.token_id, text=lp.text, logprob=lp.logprob) for lp in lp_list]
-        for lp_list in chunk_logprobs
-    ]
-
-    return MessageChunk(
-        message=message_id,
-        content=chunk.content,
-        logprobs=mapped_logprobs,
-    )
 
 
 def create_prompt_from_engine_input(

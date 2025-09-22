@@ -17,7 +17,7 @@ All e2e tests should live in the e2e folder.
 This setup extends unit tests to also have access to the database. To run them you need to install postgres.
 
 ```sh
-brew install postgres
+brew install postgresql
 ```
 
 In the python .venv you can simply run these tests by writing 

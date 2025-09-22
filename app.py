@@ -3,6 +3,15 @@ import logging
 import os
 
 from flask import Flask
+from opentelemetry import trace
+from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import (
+    BatchSpanProcessor,
+    SimpleSpanProcessor,
+)
 from sqlalchemy.orm import sessionmaker
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -15,8 +24,20 @@ from src.openapi import openapi_blueprint
 from src.v4 import create_v4_blueprint
 
 
+tracer_provider = TracerProvider()
+
+# if os.getenv("ENV") == "development":
+tracer_provider.add_span_processor(span_processor=SimpleSpanProcessor(OTLPSpanExporter()))
+#   else:
+
+#        tracer_provider.add_span_processor(BatchSpanProcessor(CloudTraceSpanExporter(project_id="ai2-reviz")))
+
+trace.set_tracer_provider(tracer_provider)
+
+
 def create_app():
     app = Flask(__name__)
+    FlaskInstrumentor().instrument_app(app)
 
     # Use ISO formatted datetimes
     app.json = util.CustomJSONProvider(app)

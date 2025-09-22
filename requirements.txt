@@ -34,5 +34,11 @@ openai==1.93.0
 pydantic-ai==0.6.2
 pytest-postgresql==7.0.2
 mcp==1.13.1
+opentelemetry-instrumentation-flask==0.58b0
+opentelemetry-api==1.37.0
+opentelemetry-sdk==1.37.0
+opentelemetry-exporter-otlp==1.37.0
+opentelemetry-exporter-gcp-trace==1.9.0
+
 # beaker-py==2.2.1
 ./vendor/beaker_py-2.2.1-py3-none-any.whl

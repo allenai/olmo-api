@@ -32,6 +32,8 @@ services:
       - GOOGLE_APPLICATION_CREDENTIALS=service_account.json
       - SHA=DEV
       - MODAL_CONFIG_PATH=/secret/.modal.toml
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4318
+
     ports:
       - 8000:8000
 
@@ -40,6 +42,13 @@ services:
     profiles: [ "scheduled-job" ]
     volumes:
       - ./config.json:/secret/cfg/config.json
+
+  otelcol:
+    image: otel/opentelemetry-collector-contrib:0.135.0
+    ports:
+      - 55679:55679
+      - 4317:4317
+      - 4318:4318
 
 volumes:
   pgdata:

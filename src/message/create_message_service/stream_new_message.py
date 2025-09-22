@@ -60,6 +60,8 @@ from .database import (
 
 MAX_REPEATED_TOOL_CALLS = 10
 
+instrumentation_settings = InstrumentationSettings(include_content=False, tracer_provider=trace.get_tracer_provider())
+
 
 @dataclasses.dataclass
 class ParsedMessage:
@@ -391,7 +393,7 @@ def stream_assistant_response(
                 messages=pydantic_messages,
                 model_settings=pydantic_settings_map(request.opts, model),
                 model_request_parameters=ModelRequestParameters(function_tools=tools, allow_text_output=True),
-                instrument=True,
+                instrument=instrumentation_settings,
             ) as stream:
                 for generator_chunk_pydantic in stream:
                     if first_chunk_ns is None:

@@ -6,6 +6,8 @@ from werkzeug import exceptions
 
 from src import db
 from src.api_interface import APIInterface
+from src.dao.flask_sqlalchemy_session import current_session
+from src.dao.message.message_repository import MessageRepository
 from src.dao.user import User
 from src.hubspot_service import create_contact
 from src.message.GoogleCloudStorage import GoogleCloudStorage
@@ -107,7 +109,9 @@ def migrate_user_from_anonymous_user(
     elif previous_user is None and new_user is not None:
         updated_user = new_user
 
-    msgs_to_be_migrated = dbc.message.get_by_creator(creator=anonymous_user_id)
+    message_repository = MessageRepository(current_session)
+
+    msgs_to_be_migrated = message_repository.get_by_creator(anonymous_user_id)
 
     for index, msg in enumerate(msgs_to_be_migrated):
         # 1. migrate anonyous files on Google Cloud
@@ -116,8 +120,7 @@ def migrate_user_from_anonymous_user(
             whole_name = f"{msg.root}/{filename}"
             storage_client.migrate_anonymous_file(whole_name)
 
-    # 2. Remove expiration time, set private to false, update messages and labels with new user id
-    updated_messages_count = dbc.message.migrate_messages_to_new_user(
+    updated_messages_count = message_repository.migrate_messages_to_new_user(
         previous_user_id=anonymous_user_id, new_user_id=new_user_id
     )
 

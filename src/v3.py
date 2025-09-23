@@ -16,6 +16,8 @@ from src.attribution.attribution_blueprint import attribution_blueprint
 from src.auth.auth_service import authn
 from src.config import get_config
 from src.dao import datachip, label, paged
+from src.dao.flask_sqlalchemy_session import current_session
+from src.dao.message.message_repository import MessageRepository
 from src.log import logging_blueprint
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.v3_message_blueprint import create_v3_message_blueprint
@@ -120,8 +122,9 @@ class Server(Blueprint):
             msg = "missing JSON body"
             raise exceptions.BadRequest(msg)
 
+        message_repository = MessageRepository(current_session)
         mid = request.json.get("message")
-        msg = self.dbc.message.get(mid)
+        msg = message_repository.get_message_by_id(mid)
         if msg is None:
             msg = f"message {mid} not found"
             raise exceptions.BadRequest(msg)

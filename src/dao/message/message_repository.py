@@ -62,6 +62,10 @@ class BaseMessageRepository(abc.ABC):
     def migrate_messages_to_new_user(self, previous_user_id: str, new_user_id: str) -> int:
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def get_by_creator(self, creator_id: str) -> Sequence[Message]:
+        raise NotImplementedError
+
 
 class MessageRepository(BaseMessageRepository):
     session: Session
@@ -184,6 +188,10 @@ class MessageRepository(BaseMessageRepository):
         self.session.commit()
 
         return count
+
+    def get_by_creator(self, creator_id: str):
+        query = select(Message).where(Message.creator == creator_id)
+        return self.session.scalars(query).unique().all()
 
 
 def map_sqla_to_old(message: Message) -> OldMessage:

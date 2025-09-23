@@ -34,9 +34,7 @@ def create_app():
     if cfg.otel.collector_type == "local":
         tracer_provider.add_span_processor(span_processor=SimpleSpanProcessor(OTLPSpanExporter()))
     else:
-        tracer_provider.add_span_processor(
-            BatchSpanProcessor(CloudTraceSpanExporter(project_id=cfg.otel.cloud_project_id))
-        )
+        tracer_provider.add_span_processor(BatchSpanProcessor(CloudTraceSpanExporter(project_id="ai2-reviz")))
 
     set_tracer_provider(tracer_provider)
 

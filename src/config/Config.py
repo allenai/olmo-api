@@ -129,7 +129,6 @@ class Mcp:
 @dataclass
 class Otel:
     collector_type: str
-    cloud_project_id: str
 
 
 class GoogleModerateText(BaseModel):
@@ -257,7 +256,6 @@ class Config:
                 ),
                 otel=Otel(
                     collector_type=data.get("otel", {}).get("collector_type", "local"),
-                    cloud_project_id=data.get("otel", {}).get("cloud_project_id", ""),
                 ),
                 mcp=Mcp(
                     servers=[

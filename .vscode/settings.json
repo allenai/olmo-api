@@ -10,7 +10,8 @@
         "datachip",
         "getpid",
         "drivername",
-        "sessionmaker"
+        "sessionmaker",
+        "Cirrascale"
     ],
     "ruff.configurationPreference": "filesystemFirst",
     "ruff.format.preview": true,

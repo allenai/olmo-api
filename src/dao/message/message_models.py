@@ -25,6 +25,7 @@ class Role(StrEnum):
     System = "system"
     ToolResponse = "tool_call_result"
 
+
 @dataclass
 class TokenLogProbs:
     token_id: int

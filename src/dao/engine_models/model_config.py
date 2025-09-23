@@ -35,6 +35,7 @@ class PromptType(StrEnum):
     MULTI_MODAL = "multi_modal"
     FILES_ONLY = "files_only"
 
+
 class ModelConfig(Base, kw_only=True):
     __tablename__ = "model_config"
 

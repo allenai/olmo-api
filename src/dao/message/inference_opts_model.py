@@ -22,6 +22,7 @@ top_p = Field("top_p", 1.0, 0.01, 1.0, 0.01)
 logprobs = Field("logprobs", None, 0, 10, 1)
 stop = Field("stop", None, None, None)
 
+
 class InferenceOpts(BaseModel):
     max_tokens: int = PydanticField(
         default=max_tokens.default,

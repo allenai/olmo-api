@@ -496,18 +496,6 @@ def create_prompt_from_engine_input(
     return "\n".join([f"<|{m.role}|>\n{m.content}" for m in input_list])
 
 
-def create_output_from_chunks(chunks: list[MessageChunk]):
-    output = ""
-    logprobs: list[list[TokenLogProbs]] = []
-
-    for chunk in cast(list[MessageChunk], chunks):
-        output += chunk.content
-        if chunk.logprobs is not None and len(chunk.logprobs) > 0:
-            logprobs.append(*chunk.logprobs)
-
-    return output, logprobs
-
-
 def has_pending_tool_calls(chain: list[Message]) -> bool:
     # find the last assistant message in the list...
     # find the current tool responses...

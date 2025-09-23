@@ -1,11 +1,11 @@
-from datetime import UTC, datetime
 import re
+from datetime import UTC, datetime
 from time import time_ns
 
 from flask import current_app
 from google.cloud.storage import Bucket, Client
 
-from src.config import get_config
+from src.config.get_config import get_config
 
 # GOOGLE CLOUD STORAGE doesn't accept extreme datetime values like 3000 AD as custom time
 # For whoever sees this code in 2100 AD, please update the value!!!
@@ -16,8 +16,10 @@ class GoogleCloudStorage:
     client: Client
     bucket: Bucket
 
-    def __init__(self, bucket_name=get_config.cfg.google_cloud_services.storage_bucket):
+    def __init__(self, bucket_name: str | None = None):
         self.client = Client()
+        if bucket_name is None:
+            bucket_name = get_config().google_cloud_services.storage_bucket
         self.bucket = self.client.bucket(bucket_name)
 
     def upload_content(

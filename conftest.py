@@ -36,13 +36,14 @@ def cfg(postgresql: Connection):
     return cfg
 
 
-@pytest.fixture
+@pytest.fixture(params=[pytest.param("", marks=pytest.mark.integration)])
 def dbc(cfg: Config, postgresql: Connection):
     pool: ConnectionPool = ConnectionPool(
         conninfo=f"postgresql://{postgresql.info.user}:@{postgresql.info.host}:{postgresql.info.port}/{postgresql.info.dbname}",
         min_size=cfg.db.min_size,
         max_size=cfg.db.max_size,
         check=ConnectionPool.check_connection,
+        open=True,
         kwargs={"application_name": f"olmo-api:{os.getenv('SHA') or ''}"},
     )
 
@@ -51,7 +52,7 @@ def dbc(cfg: Config, postgresql: Connection):
     dbc.close()
 
 
-@pytest.fixture
+@pytest.fixture(params=[pytest.param("", marks=pytest.mark.integration)])
 def sql_alchemy(dbc: Client, cfg: Config):
     db_engine = make_db_engine(cfg.db, pool=dbc.pool, sql_alchemy=cfg.sql_alchemy)
     session_maker = sessionmaker(db_engine, expire_on_commit=False, autoflush=True)

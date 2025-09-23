@@ -126,6 +126,12 @@ class Mcp:
     servers: list[McpServer]
 
 
+@dataclass
+class Otel:
+    collector_type: str
+    cloud_project_id: str
+
+
 class GoogleModerateText(BaseModel):
     default_confidence_threshold: float = Field(default=0.8)
     default_severity_threshold: float = Field(default=0.7)
@@ -168,6 +174,7 @@ class Config:
     modal_openai: ModalOpenAI
     mcp: Mcp
     google_moderate_text: GoogleModerateText
+    otel: Otel
 
     @classmethod
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
@@ -247,6 +254,10 @@ class Config:
                 beaker=Beaker(
                     address=data.get("beaker", {}).get("address"),
                     user_token=data.get("beaker", {}).get("user_token"),
+                ),
+                otel=Otel(
+                    collector_type=data.get("otel", {}).get("collector_type", "local"),
+                    cloud_project_id=data.get("otel", {}).get("cloud_project_id", ""),
                 ),
                 mcp=Mcp(
                     servers=[

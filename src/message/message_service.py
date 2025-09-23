@@ -5,13 +5,17 @@ from werkzeug import exceptions
 from src import db
 from src.auth.auth_service import authn
 from src.dao.flask_sqlalchemy_session import current_session
-from src.dao.message.message_repository import MessageRepository
+from src.dao.message.message_repository import MessageRepository, map_sqla_to_old
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 
 
 def get_message(id: str, dbc: db.Client):
     agent = authn()
-    message = dbc.message.get(id, agent=agent.client)
+    message_repository = MessageRepository(current_session)
+    message = message_repository.get_message_by_id(id)
+
+    if message is None:
+        raise exceptions.NotFound
 
     if message is None:
         raise exceptions.NotFound
@@ -20,7 +24,7 @@ def get_message(id: str, dbc: db.Client):
         msg = "You do not have access to that private message."
         raise exceptions.Forbidden(msg)
 
-    return message
+    return map_sqla_to_old(message)
 
 
 def delete_message(id: str, dbc: db.Client, storage_client: GoogleCloudStorage):

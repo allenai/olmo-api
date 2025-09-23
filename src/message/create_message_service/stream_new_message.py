@@ -60,7 +60,9 @@ from .database import (
 
 MAX_REPEATED_TOOL_CALLS = 10
 
-instrumentation_settings = InstrumentationSettings(include_content=False, tracer_provider=trace.get_tracer_provider())
+instrumentation_settings = InstrumentationSettings(
+    include_content=False, include_binary_content=False, tracer_provider=trace.get_tracer_provider()
+)
 
 
 @dataclasses.dataclass
@@ -345,9 +347,6 @@ def finalize_messages(message_repository: BaseMessageRepository, message_chain: 
                 message=user_message.id, error=str(final_message_error), reason="finalization failure"
             )
             raise final_message_error
-
-
-tracer = trace.get_tracer(__name__)
 
 
 def stream_assistant_response(

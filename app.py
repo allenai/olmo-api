@@ -6,13 +6,12 @@ from flask import Flask
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import (
-    SimpleSpanProcessor,
-)
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor, BatchSpanProcessor
 from opentelemetry.trace import set_tracer_provider
 from pydantic_ai import Agent
 from sqlalchemy.orm import sessionmaker
 from werkzeug.middleware.proxy_fix import ProxyFix
+from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
 
 from src import db, error, util, v3
 from src.config import get_config
@@ -24,11 +23,10 @@ from src.v4 import create_v4_blueprint
 
 tracer_provider = TracerProvider()
 
-# if os.getenv("ENV") == "development":
-tracer_provider.add_span_processor(span_processor=SimpleSpanProcessor(OTLPSpanExporter()))
-#   else:
-
-#        tracer_provider.add_span_processor(BatchSpanProcessor(CloudTraceSpanExporter(project_id="ai2-reviz")))
+if os.getenv("ENV") == "development":
+    tracer_provider.add_span_processor(span_processor=SimpleSpanProcessor(OTLPSpanExporter()))
+else:
+    tracer_provider.add_span_processor(BatchSpanProcessor(CloudTraceSpanExporter(project_id="ai2-reviz")))
 
 set_tracer_provider(tracer_provider)
 Agent.instrument_all()

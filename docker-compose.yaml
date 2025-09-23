@@ -44,19 +44,6 @@ services:
     volumes:
       - ./config.json:/secret/cfg/config.json
 
-  # otelcol:
-  #   image: otel/opentelemetry-collector-contrib:0.135.0
-  #   command: ["--config=/etc/otel-collector-config.yaml"]
-  #   volumes:
-  #     - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
-  #   ports:
-  #     - 55679:55679
-  #     - 4317:4317
-  #     - 4318:4318
-  #   depends_on:
-  #     - jaeger
-
-  # In your docker-compose.yml
   jaeger:
     image: jaegertracing/all-in-one:latest
     ports:

@@ -70,23 +70,6 @@ class TestLabelEndpoints(base.IntegrationTest):
         r.raise_for_status()
         assert len(r.json()["labels"]) == 0
 
-        # Make sure /messages returns the label
-        r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1))
-        r.raise_for_status()
-        for m in r.json()["messages"]:
-            if m["id"] != m1["id"]:
-                continue
-            assert len(m["labels"]) == 1
-            assert m["labels"][0] == l1
-
-        # Make sure /messages doesn't return the label for u2
-        r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u2))
-        r.raise_for_status()
-        for m in r.json()["messages"]:
-            if m["id"] != m1["id"]:
-                continue
-            assert len(m["labels"]) == 0
-
         # Verify /v3/label/:id
         r = requests.get(f"{self.origin}/v3/label/{l1['id']}", headers=self.auth(u1))
         r.raise_for_status()
@@ -198,14 +181,6 @@ class TestLabelEndpoints(base.IntegrationTest):
         r = requests.get(f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u1))
         r.raise_for_status()
         assert len(r.json()["labels"]) == 0
-
-        # ...and that /v3/messages does the same
-        r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1))
-        r.raise_for_status()
-        for m in r.json()["messages"]:
-            if m["id"] != m1["id"]:
-                continue
-            assert len(m["labels"]) == 0
 
         # Update the deleted label
         r = requests.get(f"{self.origin}/v3/label/{l1['id']}", headers=self.auth(u1))

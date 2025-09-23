@@ -102,23 +102,6 @@ class TestPrivateMessages(base.IntegrationTest):
             r = requests.get(f"{self.origin}/v3/message/{mid}", headers=self.auth(u1))
             assert r.status_code == 200
 
-        # Verify GET /messages doesn't return private messages inappropriately. We sort by recency,
-        # so we shouldn't need to paginate (but still set a high limit to be safe).
-        for user, should_see_private in [(u2, False), (u1, True)]:
-            expect = 0 if not should_see_private else len(private_ids)
-
-            r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(user), params={"limit": 100})
-            r.raise_for_status()
-            ids = set(all_message_ids(r.json()["messages"]))
-            assert len(ids.intersection(private_ids)) == expect
-
-            r = requests.get(
-                f"{self.origin}/v3/messages", headers=self.auth(user), params={"limit": 100, "creator": u1.client}
-            )
-            r.raise_for_status()
-            ids = set(all_message_ids(r.json()["messages"]))
-            assert len(ids.intersection(private_ids)) == expect
-
         # Make sure only the original creator can add messages to an private thread
         for mid in [im1["children"][0]["id"], im2["children"][0]["id"]]:
             r = requests.post(

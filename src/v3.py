@@ -36,8 +36,6 @@ class Server(Blueprint):
         self.delete("/templates/prompt/<string:id>")(self.delete_prompt)
         self.get("/templates/prompts")(self.prompts)
 
-        self.get("/messages")(self.messages)
-
         self.post("/label")(self.create_label)
         self.get("/label/<string:id>")(self.label)
         self.delete("/label/<string:id>")(self.delete_label)
@@ -105,16 +103,6 @@ class Server(Blueprint):
 
         prompt = self.dbc.template.create_prompt(request.json.get("name"), request.json.get("content"), agent.client)
         return jsonify(prompt)
-
-    def messages(self):
-        agent = authn()
-        message_list = self.dbc.message.get_list(
-            creator=request.args.get("creator"),
-            deleted="deleted" in request.args,
-            opts=paged.parse_opts_from_querystring(request),
-            agent=agent.client,
-        )
-        return jsonify(message_list)
 
     def create_label(self):
         agent = authn()

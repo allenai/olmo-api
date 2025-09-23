@@ -86,7 +86,6 @@ class TestMessageEndpoints(base.IntegrationTest):
     def runTest(self):
         # Make sure all endpoints fail w/o auth
         for r in [
-            requests.get(f"{self.origin}/v3/messages"),
             requests.post(
                 f"{self.origin}/v4/message/stream",
                 # The Pydantic validation setup  makes it so that we run request validation before auth validation
@@ -219,80 +218,6 @@ class TestMessageEndpoints(base.IntegrationTest):
             self.messages.append(c_tup)
             self.child_msgs.append(c_tup)
 
-        # Verify listing messages
-        r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1))
-        r.raise_for_status()
-        msglist = r.json()
-        assert msglist["meta"]["total"] > 0
-        assert msglist["meta"]["offset"] == 0
-        assert msglist["meta"]["limit"] == 10
-        ids = [m["id"] for m in msglist["messages"]]
-        assert root_message_1["id"] in ids
-        assert m2["id"] in ids
-        # assert ids.index(m2["id"]) < ids.index(m1["id"])
-        # TODO: Figure out how to get this to work with system messages
-        # for m in msglist["messages"]:
-        #     r = requests.get(f"{self.origin}/v3/message/{m['id']}", headers=self.auth(u1))
-        #     r.raise_for_status()
-        #     message_json = r.json()
-        #     assert message_json == m, f"{m['id']} from GET /message didn't match"
-
-        r = requests.get(f"{self.origin}/v3/messages?offset=1", headers=self.auth(u1))
-        r.raise_for_status()
-        offset_msglist = r.json()
-        assert offset_msglist["meta"]["total"] > 0
-        assert offset_msglist["meta"]["offset"] == 1
-        assert offset_msglist["meta"]["limit"] == 10
-        offset_ids = [m["id"] for m in offset_msglist["messages"]]
-        assert msglist["messages"][0]["id"] not in offset_ids
-        for root_message_v3_user_message in msglist["messages"][1:]:
-            assert root_message_v3_user_message["id"] in offset_ids
-        assert root_message_1["id"] in offset_ids
-
-        r = requests.get(f"{self.origin}/v3/messages?offset=1&limit=1", headers=self.auth(u1))
-        r.raise_for_status()
-        limit_msglist = r.json()
-        assert limit_msglist["meta"]["total"] > 0
-        assert limit_msglist["meta"]["offset"] == 1
-        assert limit_msglist["meta"]["limit"] == 1
-        assert len(limit_msglist["messages"]) == 1
-        assert limit_msglist["messages"][0]["id"] == offset_msglist["messages"][0]["id"]
-
-        # List by author
-        r = requests.get(
-            f"{self.origin}/v3/messages",
-            headers=self.auth(u1),
-            params={"creator": u1.client},
-        )
-        r.raise_for_status()
-        u1_msglist = r.json()
-        assert u1_msglist["meta"]["total"] > 0
-        # TODO: This requires a second user making messages to work
-        # assert u1_msglist["meta"]["total"] < msglist["meta"]["total"]
-        ids = [m["id"] for m in u1_msglist["messages"]]
-        assert root_message_1["id"] in ids
-        # We don't have a a way of setting a second author with the current auth setup. we can probably log in with other users in the future
-        # assert m2["id"] not in ids
-
-        # r = requests.get(
-        #     f"{self.origin}/v3/messages",
-        #     headers=self.auth(u1),
-        #     params={"creator": u2.client},
-        # )
-        # r.raise_for_status()
-        # u2_msglist = r.json()
-        # assert u2_msglist["meta"]["total"] > 0
-        # assert u2_msglist["meta"]["total"] < msglist["meta"]["total"]
-        # ids = [m["id"] for m in u2_msglist["messages"]]
-        # assert m1["id"] not in ids
-        # assert m2["id"] in ids
-
-        # # Make sure u2 can't delete u1
-        # r = requests.delete(
-        #     f"{self.origin}/v3/message/{m1['id']}", headers=self.auth(u2)
-        # )
-        # assert r.status_code == 403
-
         # Delete message m1
         r = requests.delete(f"{self.origin}/v3/message/{root_message_1['id']}", headers=self.auth(u1))
         r.raise_for_status()
@@ -311,13 +236,6 @@ class TestMessageEndpoints(base.IntegrationTest):
         for c in root_message_1["children"]:
             r = requests.get(f"{self.origin}/v3/message/{c['id']}", headers=self.auth(u1))
             assert r.status_code == 404
-
-        # Don't list deleted messages by default
-        r = requests.get(f"{self.origin}/v3/messages", headers=self.auth(u1))
-        r.raise_for_status()
-        msglist = r.json()
-        ids = [m["id"] for m in msglist["messages"]]
-        assert root_message_1["id"] not in ids
 
         # Test snippet creation
         cases = [

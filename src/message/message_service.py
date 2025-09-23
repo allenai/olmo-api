@@ -9,7 +9,7 @@ from src.dao.message.message_repository import MessageRepository, map_sqla_to_ol
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 
 
-def get_message(id: str, dbc: db.Client):
+def get_message(id: str):
     agent = authn()
     message_repository = MessageRepository(current_session)
     message = message_repository.get_message_by_id(id)

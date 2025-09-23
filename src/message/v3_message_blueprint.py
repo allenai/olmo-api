@@ -11,7 +11,7 @@ def create_v3_message_blueprint(dbc: db.Client, storage_client: GoogleCloudStora
 
     @v3_message_blueprint.get("/<string:id>")
     def message(id: str):
-        message = get_message(id=id, dbc=dbc)
+        message = get_message(id=id)
         return jsonify(message)
 
     @v3_message_blueprint.delete("/<string:id>")

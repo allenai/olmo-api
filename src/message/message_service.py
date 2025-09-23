@@ -25,8 +25,10 @@ def get_message(id: str, dbc: db.Client):
 
 def delete_message(id: str, dbc: db.Client, storage_client: GoogleCloudStorage):
     agent = authn()
+    message_repository = MessageRepository(current_session)
 
-    message_list = dbc.message.get_by_root(id)
+    message_list = message_repository.get_messages_by_root_for_delete(id)
+
     root_message = next((m for m in message_list if m.id == id), None)
 
     if root_message is None:
@@ -46,9 +48,6 @@ def delete_message(id: str, dbc: db.Client, storage_client: GoogleCloudStorage):
     ]
 
     storage_client.delete_multiple_files_by_url(files_to_delete)
-
-    message_repository = MessageRepository(current_session)
-    # Remove messages
 
     for m in message_list:
         message_repository.delete(m.id)

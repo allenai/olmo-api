@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Annotated, Self
+from typing import Annotated, Any, Self
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, Json, model_validator
 from werkzeug import exceptions
@@ -85,6 +85,8 @@ class CreateMessageRequest(APIInterface):
     )
     stop: list[str] | None = Field(default_factory=list)  # type:ignore[arg-type] # https://github.com/pydantic/pydantic/issues/10950
 
+    extra_parameters: dict[str, Any] | None = Field(default=None)
+
     files: list[UploadedFile] | None = Field(default=None)
 
     @model_validator(mode="after")
@@ -108,6 +110,8 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     parent_id: str | None = Field(default=None)
     parent: Message | None = Field(default=None)
     opts: InferenceOpts = Field(default_factory=InferenceOpts)
+    extra_parameters: dict[str, Any] | None = Field(default=None)
+
     content: str = Field(min_length=1)
     role: Role
     original: str | None = Field(default=None)

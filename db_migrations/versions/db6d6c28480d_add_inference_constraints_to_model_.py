@@ -1,8 +1,8 @@
 """add inference constraints to model config
 
-Revision ID: 8ef36f09eebb
-Revises: 6800257e41d6
-Create Date: 2025-09-19 15:32:58.542010
+Revision ID: db6d6c28480d
+Revises: 50eb7d8b974b
+Create Date: 2025-09-23 13:19:16.515225
 
 """
 
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "8ef36f09eebb"
-down_revision: str | None = "6800257e41d6"
+revision: str = "db6d6c28480d"
+down_revision: str | None = "50eb7d8b974b"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

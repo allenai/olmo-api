@@ -3,15 +3,15 @@ import logging
 import os
 
 from flask import Flask
+from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor, BatchSpanProcessor
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
 from opentelemetry.trace import set_tracer_provider
 from pydantic_ai import Agent
 from sqlalchemy.orm import sessionmaker
 from werkzeug.middleware.proxy_fix import ProxyFix
-from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
 
 from src import db, error, util, v3
 from src.config import get_config

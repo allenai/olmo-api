@@ -34,6 +34,7 @@ services:
       - MODAL_CONFIG_PATH=/secret/.modal.toml
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - OTEL_SERVICE_NAME=olmo-api
+      - ENV=development
 
     ports:
       - 8000:8000
@@ -45,13 +46,13 @@ services:
       - ./config.json:/secret/cfg/config.json
 
   jaeger:
-    image: jaegertracing/all-in-one:latest
+    image: cr.jaegertracing.io/jaegertracing/jaeger:2.10.0
     ports:
       - 55679:55679
       - 4317:4317
       - 4318:4318
-      - "16686:16686"
-      - "14250:14250"
+      - 16686:16686
+      - 14250:14250
     environment:
       - COLLECTOR_OTLP_ENABLED=true
       

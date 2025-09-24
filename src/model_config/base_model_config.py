@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import AwareDatetime, ByteSize, Field, HttpUrl
+from pydantic import AwareDatetime, ByteSize, Field, HttpUrl, model_validator
 
 from src.api_interface import APIInterface
 from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
@@ -45,6 +45,42 @@ class BaseModelConfigRequest(APIInterface):
     max_tokens_step: int | None = None
 
     stop_default: list[str] | None = None
+
+    @model_validator(mode="after")
+    def check_max_tokens_default_is_in_range(self) -> Self:
+        if self.max_tokens_default is not None:
+            if self.max_tokens_lower is not None and self.max_tokens_default < self.max_tokens_lower:
+                msg = "Default max tokens must be greater than or equal to the lower limit"
+                raise ValueError(msg)
+            if self.max_tokens_upper is not None and self.max_tokens_default > self.max_tokens_upper:
+                msg = "Default max tokens must be less than or equal to the upper limit"
+                raise ValueError(msg)
+
+        return self
+
+    @model_validator(mode="after")
+    def check_temperature_default_is_in_range(self) -> Self:
+        if self.temperature_default is not None:
+            if self.temperature_lower is not None and self.temperature_default < self.temperature_lower:
+                msg = "Default temperature must be greater than or equal to the lower limit"
+                raise ValueError(msg)
+            if self.temperature_upper is not None and self.temperature_default > self.temperature_upper:
+                msg = "Default temperature must be less than or equal to the upper limit"
+                raise ValueError(msg)
+
+        return self
+
+    @model_validator(mode="after")
+    def check_top_p_default_is_in_range(self) -> Self:
+        if self.top_p_default is not None:
+            if self.top_p_lower is not None and self.top_p_default < self.top_p_lower:
+                msg = "Default top_p must be greater than or equal to the lower limit"
+                raise ValueError(msg)
+            if self.top_p_upper is not None and self.top_p_default > self.top_p_upper:
+                msg = "Default top_p must be less than or equal to the upper limit"
+                raise ValueError(msg)
+
+        return self
 
 
 class BaseTextOnlyModelConfigRequest(BaseModelConfigRequest):

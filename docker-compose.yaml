@@ -34,7 +34,6 @@ services:
       - MODAL_CONFIG_PATH=/secret/.modal.toml
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - OTEL_SERVICE_NAME=olmo-api
-      - ENV=development
 
     ports:
       - 8000:8000

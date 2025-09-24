@@ -24,7 +24,7 @@ def get_message(id: str):
         msg = "You do not have access to that private message."
         raise exceptions.Forbidden(msg)
 
-    return message
+    return map_sqla_to_old(message)
 
 
 def delete_message(id: str, dbc: db.Client, storage_client: GoogleCloudStorage):

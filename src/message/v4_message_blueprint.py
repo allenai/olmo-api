@@ -25,7 +25,7 @@ def format_messages(stream_generator: Generator) -> Generator[str, Any, None]:
         match message:
             case SQLAMessage():
                 # map Message to old messsage...
-                yield format_message(dataclasses.asdict(message))
+                yield format_message(map_sqla_to_old(message))
             case _:
                 yield format_message(message)
 

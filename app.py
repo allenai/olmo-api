@@ -3,13 +3,7 @@ import logging
 import os
 
 from flask import Flask
-from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import SpanProcessor, TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
-from opentelemetry.trace import set_tracer_provider
 from sqlalchemy.orm import sessionmaker
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -19,17 +13,8 @@ from src.dao.flask_sqlalchemy_session import flask_scoped_session
 from src.db.init_sqlalchemy import make_db_engine
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.openapi import openapi_blueprint
+from otel.otel_setup import setup_otel
 from src.v4 import create_v4_blueprint
-
-
-class CustomAttributeSpanProcessor(SpanProcessor):
-    def on_start(self, span, parent_context=None):
-        span.set_attributes({
-            "service.name": "olmo-api",
-        })
-
-    def on_end(self, span):
-        pass
 
 
 def create_app():
@@ -40,21 +25,7 @@ def create_app():
 
     cfg = get_config.Config.load(os.environ.get("FLASK_CONFIG_PATH", get_config.DEFAULT_CONFIG_PATH))
 
-    resource = Resource.create({
-        "service.name": "olmo-api",
-        "service.hello": "world",
-    })
-
-    tracer_provider = TracerProvider(resource=resource)
-
-    tracer_provider.add_span_processor(CustomAttributeSpanProcessor())
-
-    if cfg.otel.collector_type == "local":
-        tracer_provider.add_span_processor(span_processor=SimpleSpanProcessor(OTLPSpanExporter()))
-    if cfg.otel.collector_type == "cloud":
-        tracer_provider.add_span_processor(BatchSpanProcessor(CloudTraceSpanExporter(project_id="ai2-reviz")))
-
-    set_tracer_provider(tracer_provider)
+    setup_otel()
 
     FlaskInstrumentor().instrument_app(app)
 

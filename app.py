@@ -7,13 +7,13 @@ from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from sqlalchemy.orm import sessionmaker
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+from otel.otel_setup import setup_otel
 from src import db, error, util, v3
 from src.config import get_config
 from src.dao.flask_sqlalchemy_session import flask_scoped_session
 from src.db.init_sqlalchemy import make_db_engine
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.openapi import openapi_blueprint
-from otel.otel_setup import setup_otel
 from src.v4 import create_v4_blueprint
 
 

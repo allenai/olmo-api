@@ -36,6 +36,8 @@ def pydantic_settings_map(
 ) -> OpenAIModelSettings:
     # Not mapping "N" from InferenceOpts
 
+    kwargs = extra_body if extra_body is not None else {}
+
     return OpenAIModelSettings(
         max_tokens=opts.max_tokens,
         temperature=opts.temperature,
@@ -43,6 +45,8 @@ def pydantic_settings_map(
         stop_sequences=opts.stop or [],
         openai_reasoning_effort="low" if model_config.can_think else None,
         extra_body=extra_body,
+        # HACK: This lets us send vllm args flattened. Not sure if this is only needed for beaker queues or all, but this gets us working for now
+        **kwargs,  # type: ignore
     )
 
 

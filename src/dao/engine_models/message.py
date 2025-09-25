@@ -85,7 +85,7 @@ class Message(Base, kw_only=True):
     )
 
     # NOTE: JSONB changes aren't tracked by SQLAlchemy automatically
-    extra_parameters: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    extra_parameters: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True, default=None)
 
     completion_: Mapped[Completion | None] = relationship("Completion", back_populates="message", init=False)
 

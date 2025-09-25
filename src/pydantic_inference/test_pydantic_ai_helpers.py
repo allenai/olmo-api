@@ -1,4 +1,5 @@
 from src.dao.engine_models.model_config import ModelConfig, ModelHost, ModelType, PromptType
+from src.dao.message.inference_opts_model import default_inference_constraints
 from src.dao.message.message_models import InferenceOpts
 from src.pydantic_inference.pydantic_ai_helpers import pydantic_settings_map
 
@@ -16,6 +17,7 @@ class TestPydanticSettingsMap:
             internal=True,
             prompt_type=PromptType.TEXT_ONLY,
             can_think=False,
+            **default_inference_constraints,
         )
 
         result = pydantic_settings_map(opts=opts, model_config=model_config)
@@ -41,6 +43,7 @@ class TestPydanticSettingsMap:
             internal=True,
             prompt_type=PromptType.TEXT_ONLY,
             can_think=True,
+            **default_inference_constraints,
         )
 
         result = pydantic_settings_map(opts=opts, model_config=model_config)
@@ -59,6 +62,7 @@ class TestPydanticSettingsMap:
             internal=True,
             prompt_type=PromptType.TEXT_ONLY,
             can_think=False,
+            **default_inference_constraints,
         )
         extra_body = {"foo": "bar", "number": 42}
 

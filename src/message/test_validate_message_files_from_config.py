@@ -7,7 +7,6 @@ from typing import IO, Any, cast
 import pytest
 from pydantic import ValidationError
 
-from e2e.test_models import default_inference_constraints
 from src.dao.engine_models.model_config import (
     FileRequiredToPromptOption,
     ModelConfig,
@@ -16,6 +15,7 @@ from src.dao.engine_models.model_config import (
     MultiModalModelConfig,
     PromptType,
 )
+from src.dao.message.inference_opts_model import default_inference_constraints
 from src.flask_pydantic_api.utils import UploadedFile
 from src.message.validate_message_files_from_config import validate_message_files_from_config
 

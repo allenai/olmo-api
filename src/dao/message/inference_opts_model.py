@@ -49,3 +49,20 @@ class InferenceOpts(BaseModel):
     @staticmethod
     def opts_schema() -> dict[str, Field]:
         return {f.name: f for f in [max_tokens, temperature, num, top_p, logprobs, stop]}
+
+
+default_inference_constraints = {
+    "max_tokens_default": max_tokens.default,
+    "max_tokens_upper": max_tokens.max,
+    "max_tokens_lower": max_tokens.min,
+    "max_tokens_step": max_tokens.step,
+    "temperature_default": temperature.default,
+    "temperature_upper": temperature.max,
+    "temperature_lower": temperature.min,
+    "temperature_step": temperature.step,
+    "top_p_default": top_p.default,
+    "top_p_upper": top_p.max,
+    "top_p_lower": top_p.min,
+    "top_p_step": top_p.step,
+    "stop_default": stop.default,
+}

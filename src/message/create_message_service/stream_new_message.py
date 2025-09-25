@@ -6,6 +6,8 @@ from time import time_ns
 from typing import Any, cast
 
 from flask import current_app
+from opentelemetry import trace
+from pydantic_ai.agent import InstrumentationSettings
 from pydantic_ai.direct import model_request_stream_sync
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import ToolCallPart
@@ -57,6 +59,10 @@ from .database import (
 )
 
 MAX_REPEATED_TOOL_CALLS = 10
+
+instrumentation_settings = InstrumentationSettings(
+    include_content=False, include_binary_content=False, tracer_provider=trace.get_tracer_provider()
+)
 
 
 @dataclasses.dataclass
@@ -382,6 +388,7 @@ def stream_assistant_response(
                 messages=pydantic_messages,
                 model_settings=pydantic_settings_map(request.opts, model),
                 model_request_parameters=ModelRequestParameters(function_tools=tools, allow_text_output=True),
+                instrument=instrumentation_settings,
             ) as stream:
                 for generator_chunk_pydantic in stream:
                     if first_chunk_ns is None:

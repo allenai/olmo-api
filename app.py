@@ -3,9 +3,11 @@ import logging
 import os
 
 from flask import Flask
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from sqlalchemy.orm import sessionmaker
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+from otel.otel_setup import setup_otel
 from src import db, error, util, v3
 from src.config import get_config
 from src.dao.flask_sqlalchemy_session import flask_scoped_session
@@ -22,6 +24,10 @@ def create_app():
     app.json = util.CustomJSONProvider(app)
 
     cfg = get_config.Config.load(os.environ.get("FLASK_CONFIG_PATH", get_config.DEFAULT_CONFIG_PATH))
+
+    setup_otel()
+
+    FlaskInstrumentor().instrument_app(app)
 
     dbc = db.Client.from_config(cfg.db)
     db_engine = make_db_engine(cfg.db, pool=dbc.pool, sql_alchemy=cfg.sql_alchemy)

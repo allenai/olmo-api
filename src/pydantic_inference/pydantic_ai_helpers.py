@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 from pydantic_ai.messages import (
     BinaryContent,
@@ -30,15 +31,22 @@ from src.message.create_message_service.files import FileUploadResult
 from src.message.message_chunk import Chunk, ModelResponseChunk, ThinkingChunk, ToolCallChunk
 
 
-def pydantic_settings_map(ops: InferenceOpts, model_config: ModelConfig) -> OpenAIModelSettings:
+def pydantic_settings_map(
+    opts: InferenceOpts, model_config: ModelConfig, extra_body: dict[str, Any] | None = None
+) -> OpenAIModelSettings:
     # Not mapping "N" from InferenceOpts
 
+    kwargs = extra_body if extra_body is not None else {}
+
     return OpenAIModelSettings(
-        max_tokens=ops.max_tokens,
-        temperature=ops.temperature,
-        top_p=ops.top_p,
-        stop_sequences=ops.stop or [],
+        max_tokens=opts.max_tokens,
+        temperature=opts.temperature,
+        top_p=opts.top_p,
+        stop_sequences=opts.stop or [],
         openai_reasoning_effort="low" if model_config.can_think else None,
+        extra_body=extra_body,
+        # HACK: This lets us send vllm args flattened. Not sure if this is only needed for beaker queues or all, but this gets us working for now
+        **kwargs,  # type: ignore
     )
 
 

@@ -57,6 +57,7 @@ def create_message_v4(
             logprobs=request.logprobs,
             stop=request.stop,
         ),
+        extra_parameters=request.extra_parameters,
         content=request.content,
         role=cast(message.Role, request.role),
         original=request.original,

@@ -150,6 +150,7 @@ def create_user_message(
         harmful=is_msg_harmful,
         expiration_time=message_expiration_time,
         tool_definitions=tool_list,
+        extra_parameters=request.extra_parameters,
     )
     return message_repository.add(message)
 
@@ -179,6 +180,7 @@ def create_tool_response_message(
         creator=creator,
         tool_calls=[clone_tool_call(source_tool)],
         tool_definitions=parent.tool_definitions,
+        extra_parameters=parent.extra_parameters,
     )
 
     return message_repository.add(message)
@@ -207,6 +209,7 @@ def create_assistant_message(
         model_type=model.model_type,
         expiration_time=message_expiration_time,
         tool_definitions=parent.tool_definitions,
+        extra_parameters=parent.extra_parameters,
     )
     return message_repository.add(message)
 

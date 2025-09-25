@@ -386,7 +386,7 @@ def stream_assistant_response(
             with model_request_stream_sync(
                 model=pydantic_inference_engine,
                 messages=pydantic_messages,
-                model_settings=pydantic_settings_map(request.opts, model),
+                model_settings=pydantic_settings_map(request.opts, model, extra_body=request.extra_parameters),
                 model_request_parameters=ModelRequestParameters(function_tools=tools, allow_text_output=True),
                 instrument=instrumentation_settings,
             ) as stream:

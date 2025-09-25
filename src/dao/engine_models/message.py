@@ -1,5 +1,5 @@
 import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import (
     ARRAY,
@@ -83,6 +83,9 @@ class Message(Base, kw_only=True):
         default_factory=list,
         cascade="all, delete",
     )
+
+    # NOTE: JSONB changes aren't tracked by SQLAlchemy automatically
+    extra_parameters: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
     completion_: Mapped[Completion | None] = relationship("Completion", back_populates="message", init=False)
 

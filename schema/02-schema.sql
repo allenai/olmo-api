@@ -950,5 +950,11 @@ ALTER TABLE message_tool_definition_association ADD CONSTRAINT message_tool_defi
 
 UPDATE alembic_version SET version_num='50eb7d8b974b' WHERE alembic_version.version_num = '6800257e41d6';
 
+-- Running upgrade 50eb7d8b974b -> dc5ccc64fa6f
+
+ALTER TABLE message ADD COLUMN extra_parameters JSONB;
+
+UPDATE alembic_version SET version_num='dc5ccc64fa6f' WHERE alembic_version.version_num = '50eb7d8b974b';
+
 COMMIT;
 

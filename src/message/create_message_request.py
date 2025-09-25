@@ -85,7 +85,7 @@ class CreateMessageRequest(APIInterface):
     )
     stop: list[str] | None = Field(default_factory=list)  # type:ignore[arg-type] # https://github.com/pydantic/pydantic/issues/10950
 
-    extra_parameters: dict[str, Any] | None = Field(default=None)
+    extra_parameters: Json[dict[str, Any]] | None = Field(default=None)
 
     files: list[UploadedFile] | None = Field(default=None)
 

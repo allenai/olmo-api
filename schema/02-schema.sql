@@ -956,5 +956,35 @@ ALTER TABLE message ADD COLUMN extra_parameters JSONB;
 
 UPDATE alembic_version SET version_num='dc5ccc64fa6f' WHERE alembic_version.version_num = '50eb7d8b974b';
 
+-- Running upgrade dc5ccc64fa6f -> 13971fd04e39
+
+ALTER TABLE model_config ADD COLUMN temperature_default FLOAT DEFAULT 0.7 NOT NULL;
+
+ALTER TABLE model_config ADD COLUMN temperature_upper FLOAT DEFAULT 1.0 NOT NULL;
+
+ALTER TABLE model_config ADD COLUMN temperature_lower FLOAT DEFAULT 0.0 NOT NULL;
+
+ALTER TABLE model_config ADD COLUMN temperature_step FLOAT DEFAULT 0.01 NOT NULL;
+
+ALTER TABLE model_config ADD COLUMN top_p_default FLOAT DEFAULT 1.0 NOT NULL;
+
+ALTER TABLE model_config ADD COLUMN top_p_upper FLOAT DEFAULT 1.0 NOT NULL;
+
+ALTER TABLE model_config ADD COLUMN top_p_lower FLOAT DEFAULT 0.0 NOT NULL;
+
+ALTER TABLE model_config ADD COLUMN top_p_step FLOAT DEFAULT 0.01 NOT NULL;
+
+ALTER TABLE model_config ADD COLUMN max_tokens_default INTEGER DEFAULT 2048 NOT NULL;
+
+ALTER TABLE model_config ADD COLUMN max_tokens_upper INTEGER DEFAULT 2048 NOT NULL;
+
+ALTER TABLE model_config ADD COLUMN max_tokens_lower INTEGER DEFAULT 1 NOT NULL;
+
+ALTER TABLE model_config ADD COLUMN max_tokens_step INTEGER DEFAULT 1 NOT NULL;
+
+ALTER TABLE model_config ADD COLUMN stop_default VARCHAR[];
+
+UPDATE alembic_version SET version_num='13971fd04e39' WHERE alembic_version.version_num = 'dc5ccc64fa6f';
+
 COMMIT;
 

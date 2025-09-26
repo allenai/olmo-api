@@ -317,7 +317,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         create_response.raise_for_status()
 
         new_constraints = {
-            "temperature_default": 0.8,
+            "temperature_default": 0,  # ensure falsy value updates correctly
             "top_p_default": 0.9,
             "max_tokens_default": 1024,
             "stop_default": ["stop1", "stop2"],

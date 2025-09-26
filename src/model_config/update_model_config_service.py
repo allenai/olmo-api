@@ -49,29 +49,29 @@ def update_model_config(
         model_to_update.can_think = request.root.can_think
         model_to_update.infini_gram_index = request.root.infini_gram_index
 
-        if request.root.temperature_default:
+        if request.root.temperature_default is not None:
             model_to_update.temperature_default = request.root.temperature_default
-        if request.root.temperature_lower:
+        if request.root.temperature_lower is not None:
             model_to_update.temperature_lower = request.root.temperature_lower
-        if request.root.temperature_upper:
+        if request.root.temperature_upper is not None:
             model_to_update.temperature_upper = request.root.temperature_upper
-        if request.root.temperature_step:
+        if request.root.temperature_step is not None:
             model_to_update.temperature_step = request.root.temperature_step
-        if request.root.top_p_default:
+        if request.root.top_p_default is not None:
             model_to_update.top_p_default = request.root.top_p_default
-        if request.root.top_p_lower:
+        if request.root.top_p_lower is not None:
             model_to_update.top_p_lower = request.root.top_p_lower
-        if request.root.top_p_upper:
+        if request.root.top_p_upper is not None:
             model_to_update.top_p_upper = request.root.top_p_upper
-        if request.root.top_p_step:
+        if request.root.top_p_step is not None:
             model_to_update.top_p_step = request.root.top_p_step
-        if request.root.max_tokens_default:
+        if request.root.max_tokens_default is not None:
             model_to_update.max_tokens_default = request.root.max_tokens_default
-        if request.root.max_tokens_lower:
+        if request.root.max_tokens_lower is not None:
             model_to_update.max_tokens_lower = request.root.max_tokens_lower
-        if request.root.max_tokens_upper:
+        if request.root.max_tokens_upper is not None:
             model_to_update.max_tokens_upper = request.root.max_tokens_upper
-        if request.root.max_tokens_step:
+        if request.root.max_tokens_step is not None:
             model_to_update.max_tokens_step = request.root.max_tokens_step
         model_to_update.stop_default = request.root.stop_default
 

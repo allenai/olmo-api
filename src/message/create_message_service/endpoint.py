@@ -6,7 +6,6 @@ from flask import current_app
 from flask import request as flask_request
 from werkzeug import exceptions
 
-from src.dao.message.inference_opts_model import InferenceOpts
 import src.dao.message.message_models as message
 from src import db, util
 from src.auth.auth_service import authn
@@ -87,11 +86,14 @@ def create_message_v4(
         raise exceptions.BadRequest(model_not_available_message)
 
     validate_message_files_from_config(request.files, config=model, has_parent=mapped_request.parent is not None)
-    validate_inference_params(model, InferenceValidationValues(
-        mapped_request.opts.max_tokens,
-        mapped_request.opts.temperature,
-        mapped_request.opts.top_p,
-    ))
+    validate_inference_params(
+        model,
+        InferenceValidationValues(
+            mapped_request.opts.max_tokens,
+            mapped_request.opts.temperature,
+            mapped_request.opts.top_p,
+        ),
+    )
 
     user_ip_address = flask_request.remote_addr
     user_agent = flask_request.user_agent.string

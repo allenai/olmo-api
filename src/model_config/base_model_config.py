@@ -50,11 +50,14 @@ class BaseModelConfigRequest(APIInterface):
 
     @model_validator(mode="after")
     def check_inference_parameters_against_constraints(self) -> Self:
-        validate_inference_params(self, InferenceValidationValues(
-            self.max_tokens_default,
-            self.temperature_default,
-            self.top_p_default,
-        ))
+        validate_inference_params(
+            self,
+            InferenceValidationValues(
+                self.max_tokens_default,
+                self.temperature_default,
+                self.top_p_default,
+            ),
+        )
         return self
 
 
@@ -77,7 +80,10 @@ class InferenceValidationValues:
         self.temperature = temperature
         self.top_p = top_p
 
-def validate_inference_params(model_config: ModelConfig | BaseModelConfigRequest, values: InferenceValidationValues) -> None:
+
+def validate_inference_params(
+    model_config: ModelConfig | BaseModelConfigRequest, values: InferenceValidationValues
+) -> None:
     if values.max_tokens is not None:
         if model_config.max_tokens_lower is not None and values.max_tokens < model_config.max_tokens_lower:
             msg = "Default max tokens must be greater than or equal to the lower limit"

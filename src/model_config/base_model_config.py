@@ -1,5 +1,6 @@
 from typing import Literal, Self
 
+from mistralai import Any
 from pydantic import AwareDatetime, ByteSize, Field, HttpUrl, model_validator
 
 from src.api_interface import APIInterface
@@ -49,7 +50,11 @@ class BaseModelConfigRequest(APIInterface):
 
     @model_validator(mode="after")
     def check_inference_parameters_against_constraints(self) -> Self:
-        validate_inference_params(self)
+        validate_inference_params(self, InferenceValidationValues(
+            self.max_tokens_default,
+            self.temperature_default,
+            self.top_p_default,
+        ))
         return self
 
 
@@ -66,27 +71,33 @@ class BaseMultiModalModelConfigRequest(BaseModelConfigRequest):
     allow_files_in_followups: bool | None = Field(default=None)
 
 
-def validate_inference_params(model: ModelConfig | BaseModelConfigRequest) -> None:
-    if model.max_tokens_default is not None:
-        if model.max_tokens_lower is not None and model.max_tokens_default < model.max_tokens_lower:
+class InferenceValidationValues:
+    def __init__(self, max_tokens: int | None = None, temperature: float | None = None, top_p: float | None = None):
+        self.max_tokens = max_tokens
+        self.temperature = temperature
+        self.top_p = top_p
+
+def validate_inference_params(model_config: ModelConfig | BaseModelConfigRequest, values: InferenceValidationValues) -> None:
+    if values.max_tokens is not None:
+        if model_config.max_tokens_lower is not None and values.max_tokens < model_config.max_tokens_lower:
             msg = "Default max tokens must be greater than or equal to the lower limit"
             raise ValueError(msg)
-        if model.max_tokens_upper is not None and model.max_tokens_default > model.max_tokens_upper:
+        if model_config.max_tokens_upper is not None and values.max_tokens > model_config.max_tokens_upper:
             msg = "Default max tokens must be less than or equal to the upper limit"
             raise ValueError(msg)
 
-    if model.temperature_default is not None:
-        if model.temperature_lower is not None and model.temperature_default < model.temperature_lower:
+    if values.temperature is not None:
+        if model_config.temperature_lower is not None and values.temperature < model_config.temperature_lower:
             msg = "Default temperature must be greater than or equal to the lower limit"
             raise ValueError(msg)
-        if model.temperature_upper is not None and model.temperature_default > model.temperature_upper:
+        if model_config.temperature_upper is not None and values.temperature > model_config.temperature_upper:
             msg = "Default temperature must be less than or equal to the upper limit"
             raise ValueError(msg)
 
-    if model.top_p_default is not None:
-        if model.top_p_lower is not None and model.top_p_default < model.top_p_lower:
+    if values.top_p is not None:
+        if model_config.top_p_lower is not None and values.top_p < model_config.top_p_lower:
             msg = "Default top_p must be greater than or equal to the lower limit"
             raise ValueError(msg)
-        if model.top_p_upper is not None and model.top_p_default > model.top_p_upper:
+        if model_config.top_p_upper is not None and values.top_p > model_config.top_p_upper:
             msg = "Default top_p must be less than or equal to the upper limit"
             raise ValueError(msg)

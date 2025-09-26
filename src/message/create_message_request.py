@@ -65,18 +65,13 @@ class CreateMessageRequest(APIInterface):
 
     max_tokens: int = Field(
         default=max_tokens.default,
-        ge=max_tokens.min,
-        le=max_tokens.max,
-        multiple_of=max_tokens.step,
     )
     temperature: float = Field(
         default=temperature.default,
-        ge=temperature.min,
-        le=temperature.max,
-        multiple_of=temperature.step,
     )
+    top_p: float = Field(default=top_p.default)
+
     n: int = Field(default=num.default, ge=num.min, le=num.max, multiple_of=num.step)
-    top_p: float = Field(default=top_p.default, ge=top_p.min, le=top_p.max, multiple_of=top_p.step)
     logprobs: int | None = Field(
         default=logprobs.default,
         ge=logprobs.min,

@@ -27,6 +27,7 @@ from src.message.SafetyChecker import (
 from src.message.validate_message_files_from_config import (
     validate_message_files_from_config,
 )
+from src.model_config.base_model_config import validate_inference_params
 
 
 def format_message(obj) -> str:
@@ -83,7 +84,17 @@ def create_message_v4(
         # HACK: I want OLMoASR to be set up like a normal model but don't want people to stream to it yet
         model_not_available_message = "This model isn't available yet"
         raise exceptions.BadRequest(model_not_available_message)
+
     validate_message_files_from_config(request.files, config=model, has_parent=mapped_request.parent is not None)
+    validate_inference_params(model)
+
+    if model.top_p_default is not None:
+        if model.top_p_lower is not None and model.top_p_default < model.top_p_lower:
+            msg = "Default top_p must be greater than or equal to the lower limit"
+            raise ValueError(msg)
+        if model.top_p_upper is not None and model.top_p_default > model.top_p_upper:
+            msg = "Default top_p must be less than or equal to the upper limit"
+            raise ValueError(msg)
 
     user_ip_address = flask_request.remote_addr
     user_agent = flask_request.user_agent.string

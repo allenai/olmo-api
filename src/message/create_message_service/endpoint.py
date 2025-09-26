@@ -88,14 +88,6 @@ def create_message_v4(
     validate_message_files_from_config(request.files, config=model, has_parent=mapped_request.parent is not None)
     validate_inference_params(model)
 
-    if model.top_p_default is not None:
-        if model.top_p_lower is not None and model.top_p_default < model.top_p_lower:
-            msg = "Default top_p must be greater than or equal to the lower limit"
-            raise ValueError(msg)
-        if model.top_p_upper is not None and model.top_p_default > model.top_p_upper:
-            msg = "Default top_p must be less than or equal to the upper limit"
-            raise ValueError(msg)
-
     user_ip_address = flask_request.remote_addr
     user_agent = flask_request.user_agent.string
 

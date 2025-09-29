@@ -15,9 +15,24 @@ from src.dao.engine_models.model_config import (
     MultiModalModelConfig,
     PromptType,
 )
-from src.dao.message.inference_opts_model import default_inference_constraints
 from src.flask_pydantic_api.utils import UploadedFile
 from src.message.validate_message_files_from_config import validate_message_files_from_config
+
+default_inference_constraints = {
+    "max_tokens_default": 2048,
+    "max_tokens_upper": 2048,
+    "max_tokens_lower": 1,
+    "max_tokens_step": 1,
+    "temperature_default": 0.7,
+    "temperature_upper": 1.0,
+    "temperature_lower": 0.0,
+    "temperature_step": 0.01,
+    "top_p_default": 1.0,
+    "top_p_upper": 1.0,
+    "top_p_lower": 0.0,
+    "top_p_step": 0.01,
+    "stop_default": None,
+}
 
 
 def create_model_config(

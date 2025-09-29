@@ -5,6 +5,7 @@ from sqlalchemy import ARRAY, ForeignKey, Integer, Sequence, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
+from src.dao.message.inference_opts_model import InferenceOpts
 
 from .base import Base
 
@@ -89,6 +90,14 @@ class ModelConfig(Base, kw_only=True):
         "polymorphic_identity": PromptType.TEXT_ONLY,
         "polymorphic_on": "prompt_type",
     }
+
+    def get_model_config_default_inference_options(self) -> InferenceOpts:
+        return InferenceOpts(
+            max_tokens=self.max_tokens_default,
+            temperature=self.temperature_default,
+            top_p=self.top_p_default,
+            stop=self.stop_default,
+        )
 
 
 class MultiModalModelConfig(ModelConfig, kw_only=True):

@@ -6,7 +6,6 @@ import requests
 
 from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
 from src.dao.engine_models.model_config import ModelHost, ModelType, PromptType
-from src.dao.message.inference_opts_model import default_inference_constraints
 from src.model_config.create_model_config_service import (
     BaseCreateModelConfigRequest,
     CreateMultiModalModelConfigRequest,
@@ -20,6 +19,22 @@ from src.model_config.update_model_config_service import (
 )
 
 from . import base
+
+default_inference_constraints = {
+    "max_tokens_default": 2048,
+    "max_tokens_upper": 2048,
+    "max_tokens_lower": 1,
+    "max_tokens_step": 1,
+    "temperature_default": 0.7,
+    "temperature_upper": 1.0,
+    "temperature_lower": 0.0,
+    "temperature_step": 0.01,
+    "top_p_default": 1.0,
+    "top_p_upper": 1.0,
+    "top_p_lower": 0.0,
+    "top_p_step": 0.01,
+    "stop_default": None,
+}
 
 
 class BaseTestV4ModelEndpoints(base.IntegrationTest):

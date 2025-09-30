@@ -374,7 +374,7 @@ def stream_assistant_response(
     # We keep track of each chunk and the timing information per-chunk
     # so that we can manifest a completion at the end.
 
-    if cfg.feature_flags.enable_pydantic_inference:
+    if cfg.feature_flags.enable_pydantic_inference and model.host != "modal":
         try:
             pydantic_chunks: list[Chunk] = []
             pydantic_inference_engine = get_pydantic_model(model)

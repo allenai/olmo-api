@@ -22,7 +22,7 @@ class ModalEngine(InferenceEngine):
         messages: Sequence[InferenceEngineMessage],
         inference_options: InferenceOptions,
     ):
-        if model == "mm-olmo-uber-model-v4-synthetic":
+        if model == "mm-olmo-uber-model-v4-synthetic":  # TODO update to correct model name
             modal_msgs = " ".join([f"{message.role}: {message.content}" for message in messages]) + "Assistant:"
 
             image: str | None = None

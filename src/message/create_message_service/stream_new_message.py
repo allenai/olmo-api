@@ -18,7 +18,7 @@ from src.auth.token import Token
 from src.config.get_config import cfg
 from src.dao.completion import CompletionOutput
 from src.dao.engine_models.message import Message
-from src.dao.engine_models.model_config import ModelConfig
+from src.dao.engine_models.model_config import ModelConfig, ModelHost
 from src.dao.engine_models.tool_call import ToolCall
 from src.dao.engine_models.tool_definitions import ToolSource
 from src.dao.message.message_models import MessageChunk, MessageStreamError, Role, TokenLogProbs
@@ -374,7 +374,7 @@ def stream_assistant_response(
     # We keep track of each chunk and the timing information per-chunk
     # so that we can manifest a completion at the end.
 
-    if cfg.feature_flags.enable_pydantic_inference and model.host != "modal":
+    if cfg.feature_flags.enable_pydantic_inference and model.host != ModelHost.Modal:
         try:
             pydantic_chunks: list[Chunk] = []
             pydantic_inference_engine = get_pydantic_model(model)

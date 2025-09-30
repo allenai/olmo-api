@@ -39,9 +39,9 @@ def pydantic_settings_map(
     kwargs = extra_body if extra_body is not None else {}
 
     return OpenAIModelSettings(
-        max_tokens=opts.max_tokens,
-        temperature=opts.temperature,
-        top_p=opts.top_p,
+        max_tokens=opts.max_tokens or model_config.max_tokens_default,
+        temperature=opts.temperature or model_config.temperature_default,
+        top_p=opts.top_p or model_config.top_p_default,
         stop_sequences=opts.stop or [],
         openai_reasoning_effort="low" if model_config.can_think else None,
         extra_body=extra_body,

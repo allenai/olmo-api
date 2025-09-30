@@ -70,15 +70,6 @@ default_model_options = {
     "enableToolCalling": (None, "true"),
 }
 
-default_options: list[tuple[str, Any]] = [
-    ("max_tokens", 2048),
-    ("temperature", 0.7),
-    ("n", 1),
-    ("top_p", 1.0),
-    ("logprobs", None),
-    ("stop", []),
-]
-
 
 class TestUserToolThread(BaseTestThreadEndpoints):
     def test_user_defined_tools(self):

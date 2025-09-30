@@ -1,10 +1,11 @@
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import ARRAY, ForeignKey, Integer, Sequence, String, func
+from sqlalchemy import ARRAY, ForeignKey, Integer, Sequence, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
+from src.dao.message.inference_opts_model import InferenceOpts
 
 from .base import Base
 
@@ -68,10 +69,35 @@ class ModelConfig(Base, kw_only=True):
 
     infini_gram_index: Mapped[AvailableInfiniGramIndexId | None] = mapped_column(default=None)
 
+    temperature_default: Mapped[float] = mapped_column(server_default=text("0.7"))
+    temperature_upper: Mapped[float] = mapped_column(server_default=text("1.0"))
+    temperature_lower: Mapped[float] = mapped_column(server_default=text("0.0"))
+    temperature_step: Mapped[float] = mapped_column(server_default=text("0.01"))
+
+    top_p_default: Mapped[float] = mapped_column(server_default=text("1.0"))
+    top_p_upper: Mapped[float] = mapped_column(server_default=text("1.0"))
+    top_p_lower: Mapped[float] = mapped_column(server_default=text("0.0"))
+    top_p_step: Mapped[float] = mapped_column(server_default=text("0.01"))
+
+    max_tokens_default: Mapped[int] = mapped_column(server_default=text("2048"))
+    max_tokens_upper: Mapped[int] = mapped_column(server_default=text("2048"))
+    max_tokens_lower: Mapped[int] = mapped_column(server_default=text("1"))
+    max_tokens_step: Mapped[int] = mapped_column(server_default=text("1"))
+
+    stop_default: Mapped[list[str] | None] = mapped_column(ARRAY(String), default=None)
+
     __mapper_args__ = {
         "polymorphic_identity": PromptType.TEXT_ONLY,
         "polymorphic_on": "prompt_type",
     }
+
+    def get_model_config_default_inference_options(self) -> InferenceOpts:
+        return InferenceOpts(
+            max_tokens=self.max_tokens_default,
+            temperature=self.temperature_default,
+            top_p=self.top_p_default,
+            stop=self.stop_default,
+        )
 
 
 class MultiModalModelConfig(ModelConfig, kw_only=True):

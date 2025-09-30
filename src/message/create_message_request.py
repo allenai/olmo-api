@@ -7,15 +7,10 @@ from werkzeug import exceptions
 from src.api_interface import APIInterface
 from src.config.get_config import get_config
 from src.dao.engine_models.message import Message
-from src.dao.message.message_models import (
+from src.dao.message.inference_opts_model import (
     InferenceOpts,
-    Role,
-    logprobs,
-    max_tokens,
-    num,
-    temperature,
-    top_p,
 )
+from src.dao.message.message_models import Role
 from src.flask_pydantic_api.utils import UploadedFile
 
 
@@ -63,27 +58,15 @@ class CreateMessageRequest(APIInterface):
         default=None
     )
 
-    max_tokens: int = Field(
-        default=max_tokens.default,
-        ge=max_tokens.min,
-        le=max_tokens.max,
-        multiple_of=max_tokens.step,
-    )
-    temperature: float = Field(
-        default=temperature.default,
-        ge=temperature.min,
-        le=temperature.max,
-        multiple_of=temperature.step,
-    )
-    n: int = Field(default=num.default, ge=num.min, le=num.max, multiple_of=num.step)
-    top_p: float = Field(default=top_p.default, ge=top_p.min, le=top_p.max, multiple_of=top_p.step)
-    logprobs: int | None = Field(
-        default=logprobs.default,
-        ge=logprobs.min,
-        le=logprobs.max,
-        multiple_of=logprobs.step,
-    )
+    max_tokens: int | None = Field(default=None)
+    temperature: float | None = Field(default=None)
+    top_p: float | None = Field(default=None)
     stop: list[str] | None = Field(default_factory=list)  # type:ignore[arg-type] # https://github.com/pydantic/pydantic/issues/10950
+
+    n: int | None = Field(
+        default=1, ge=1, le=1
+    )  # n has a max of 1 when streaming. if we allow for non-streaming requests we can go up to 50
+    logprobs: int | None = Field(default=None, ge=0, le=10)  # logprobs has a max of 10
 
     extra_parameters: Json[dict[str, Any]] | None = Field(default=None)
 

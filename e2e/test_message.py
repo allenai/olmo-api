@@ -15,7 +15,7 @@ default_model_options = {
 }
 
 
-default_options: list[tuple[str, Any]] = [
+default_inference_options: list[tuple[str, Any]] = [
     ("max_tokens", 2048),
     ("temperature", 0.7),
     ("n", 1),
@@ -122,7 +122,7 @@ class TestMessageEndpoints(base.IntegrationTest):
             self.messages.append(c_tup)
             self.child_msgs.append(c_tup)
 
-        for name, value in default_options:
+        for name, value in default_inference_options:
             assert root_message_1["opts"][name] == value
         assert root_message_1["model_id"] == default_model_options["model"][1]
         assert root_message_1["model_host"] == default_model_options["host"][1]
@@ -407,7 +407,7 @@ class TestMessageValidation(base.IntegrationTest):
                 assert r.status_code == 200, f"Expected 200 for valid value {v} for {name}. Error {r.json()}"
                 msg = json.loads(util.second_to_last_response_line(r))
                 self.messages.append((msg["id"], u3))
-                for default_name, default_value in default_options:
+                for default_name, default_value in default_inference_options:
                     actual = msg["opts"][default_name]
                     expected = opts.get(default_name, default_value)
                     if actual != expected:

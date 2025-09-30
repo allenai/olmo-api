@@ -1,7 +1,15 @@
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, AwareDatetime, BaseModel, BeforeValidator, ByteSize, Field, computed_field
+from pydantic import (
+    AfterValidator,
+    AwareDatetime,
+    BaseModel,
+    BeforeValidator,
+    ByteSize,
+    Field,
+    computed_field,
+)
 
 from src.api_interface import APIInterface
 from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
@@ -38,10 +46,27 @@ class ModelBase(BaseModel):
         default=None, exclude=True
     )
     accepts_files: bool = Field(default=False)
+    available_tools: list[AvailableTool] | None = Field(default=None)
     can_call_tools: bool = Field(default=False)
     can_think: bool = Field(default=False)
     infini_gram_index: AvailableInfiniGramIndexId | None = Field(default=None)
-    available_tools: list[AvailableTool] | None = Field(default=None)
+
+    temperature_default: float | None = None
+    temperature_upper: float | None = None
+    temperature_lower: float | None = None
+    temperature_step: float | None = None
+
+    top_p_default: float | None = None
+    top_p_upper: float | None = None
+    top_p_lower: float | None = None
+    top_p_step: float | None = None
+
+    max_tokens_default: int | None = None
+    max_tokens_upper: int | None = None
+    max_tokens_lower: int | None = None
+    max_tokens_step: int | None = None
+
+    stop_default: list[str] | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property

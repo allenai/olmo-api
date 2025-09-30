@@ -1,7 +1,7 @@
-from src.api_interface import APIInterface
-
-from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy import update
+from sqlalchemy.orm import Session, sessionmaker
+
+from src.api_interface import APIInterface
 from src.dao.engine_models.model_config import ModelConfig
 
 

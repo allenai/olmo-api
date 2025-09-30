@@ -11,8 +11,9 @@ from src.dao import paged
 from src.dao.engine_models.label import Label
 from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import ModelType
-from src.dao.message.message_models import InferenceOpts, Role, ThreadList
+from src.dao.message.inference_opts_model import InferenceOpts
 from src.dao.message.message_models import Message as OldMessage
+from src.dao.message.message_models import Role, ThreadList
 from src.dao.paged import Opts
 from src.message.map_text_snippet import text_snippet
 

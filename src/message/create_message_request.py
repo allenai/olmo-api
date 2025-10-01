@@ -1,3 +1,4 @@
+import json
 from collections.abc import Sequence
 from typing import Annotated, Any, Self
 
@@ -40,7 +41,8 @@ class CreateToolDefinition(APIInterface):
 class CreateMessageRequest(APIInterface):
     # TODO: Validate that the parent role is different from this role and that it exists
     parent: str | None = Field(default=None)
-    content: str = Field(min_length=1)
+    content: str | None = Field(default=None)
+    encoded_content: str | None = Field(default=None)
     role: Role | None = Field(default=Role.User)
     original: str | None = Field(default=None)
     private: bool = Field(default=False)
@@ -84,6 +86,26 @@ class CreateMessageRequest(APIInterface):
     def check_assistant_message_has_a_parent(self) -> Self:
         if self.role is Role.Assistant and self.parent is None:
             msg = "Assistant messages must have a parent"
+            raise ValueError(msg)
+
+        return self
+
+    @model_validator(mode="after")
+    def check_content_is_present(self) -> Self:
+        if self.content is None and self.encoded_content is None:
+            msg = "content  is required"
+            raise ValueError(msg)
+
+        if self.content is not None and self.encoded_content is not None:
+            msg = "content and encoded_content are both present. Only specify one."
+            raise ValueError(msg)
+
+        if self.content is not None and len(self.content) < 1:
+            msg = "Min content length is one"
+            raise ValueError(msg)
+
+        if self.encoded_content is not None and len(json.loads(self.encoded_content)) < 1:
+            msg = "Min content length is one"
             raise ValueError(msg)
 
         return self

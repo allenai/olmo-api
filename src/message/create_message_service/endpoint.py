@@ -78,7 +78,7 @@ def create_message_v4(
             stop=request.stop if request.stop is not None else last_inference_options.stop,
         ),
         extra_parameters=request.extra_parameters,
-        content=request.content,
+        content=request.content or json.loads(request.encoded_content) if request.encoded_content else "",
         role=cast(message.Role, request.role),
         original=request.original,
         private=private,

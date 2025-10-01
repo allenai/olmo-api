@@ -416,6 +416,14 @@ def stream_assistant_response(
             thinking = thinking_part.content if thinking_part is not None else ""
             # TODO finish reason https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse.vendor_details should be here but isn't
         except ModelHTTPError as e:
+            max_content_snippet = "This model's maximum context length is"
+            if e.body is not None and isinstance(e.body, dict):
+                msg = e.body["message"]
+                if max_content_snippet in msg:
+                    err = "Context limit reached"
+                    yield MessageStreamError(message=reply.id, error=err, reason="Model context limit reached")
+                    raise
+
             current_app.logger.exception(
                 "Http call to LLM failed",
                 extra={

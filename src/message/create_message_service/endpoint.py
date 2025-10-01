@@ -37,6 +37,16 @@ def format_message(obj) -> str:
     return json.dumps(obj=obj, cls=util.CustomEncoder) + "\n"
 
 
+def parse_content(request: CreateMessageRequest) -> str:
+    if request.encoded_content is not None:
+        return json.loads(request.encoded_content)
+    if request.content is not None:
+        return request.content
+
+    msg = "Content is required."
+    raise ValueError(msg)
+
+
 def create_message_v4(
     request: CreateMessageRequest,
     dbc: db.Client,
@@ -78,7 +88,7 @@ def create_message_v4(
             stop=request.stop if request.stop is not None else last_inference_options.stop,
         ),
         extra_parameters=request.extra_parameters,
-        content=request.content or json.loads(request.encoded_content) if request.encoded_content else "",
+        content=parse_content(request),
         role=cast(message.Role, request.role),
         original=request.original,
         private=private,

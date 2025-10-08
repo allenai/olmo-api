@@ -416,26 +416,7 @@ def stream_assistant_response(
             thinking = thinking_part.content if thinking_part is not None else ""
             # TODO finish reason https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse.vendor_details should be here but isn't
         except ModelHTTPError as e:
-            max_content_snippet = "This model's maximum context length is"
-            if e.body is not None and isinstance(e.body, dict):
-                msg = e.body["message"]
-                if max_content_snippet in msg:
-                    err = "Context limit reached"
-                    yield MessageStreamError(message=reply.id, error=err, reason="Model context limit reached")
-                    raise
-
-            current_app.logger.exception(
-                "Http call to LLM failed",
-                extra={
-                    "message_id": reply.id,
-                    "model": model.id,
-                    "host": model.host,
-                    "event": "inference.stream-error",
-                },
-            )
-
-            err = f"http error: {e}"
-            yield MessageStreamError(message=reply.id, error=err, reason="Model http error")
+            yield from pydnatic_ai_http_error_handling(e, reply, model)
             raise
         except Exception as e:
             current_app.logger.exception(
@@ -609,3 +590,35 @@ def find_last_matching(arr: list[Message], condition: Callable[[Message], bool])
         if condition(item):
             return item
     return None  # or raise an exception if not found
+
+
+def pydnatic_ai_http_error_handling(e: ModelHTTPError, reply: Message, model: ModelConfig):
+    """
+    Handles errors from http errors and yields appropriate MessageStreamError instances. Currently there is not a
+    unified way of handling errors, so we are left with parsing the error messages to see what is going on.
+    """
+    if e.body is not None and isinstance(e.body, dict):
+        msg = e.body["message"]
+
+        max_tokens_setting_error = "'max_tokens' or 'max_completion_tokens' is too large"
+        if max_tokens_setting_error in msg:
+            yield MessageStreamError(message=reply.id, error=msg, reason=FinishReason.ValueError)
+            return
+
+        max_content_snippet = "This model's maximum context length is"
+        if max_content_snippet in msg:
+            yield MessageStreamError(message=reply.id, error=msg, reason=FinishReason.Length)
+            return
+
+    current_app.logger.exception(
+        "Http call to LLM failed",
+        extra={
+            "message_id": reply.id,
+            "model": model.id,
+            "host": model.host,
+            "event": "inference.stream-error",
+        },
+    )
+
+    err = f"http error: {e}"
+    yield MessageStreamError(message=reply.id, error=err, reason="Model http error")

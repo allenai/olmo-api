@@ -88,6 +88,11 @@ class CreateMessageRequest(APIInterface):
 
         return self
 
+    @model_validator(mode="after")
+    def process_new_lines(self) -> Self:
+        self.content = self.content.replace("\r\n", "\n")
+        return self
+
 
 class CreateMessageRequestWithFullMessages(BaseModel):
     parent_id: str | None = Field(default=None)

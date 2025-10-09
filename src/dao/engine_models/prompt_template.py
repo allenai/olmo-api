@@ -12,12 +12,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src import obj
 from src.dao.engine_models.model_config import ModelType
-from src.dao.engine_models.tool_definitions import ToolDefinition
 
 from .base import Base
 
 if TYPE_CHECKING:
     from src.dao.engine_models.message import Message
+    from src.dao.engine_models.tool_definitions import ToolDefinition
 
 
 class PromptTemplate(Base, kw_only=True):
@@ -35,10 +35,10 @@ class PromptTemplate(Base, kw_only=True):
     opts: Mapped[dict]
     model_type: Mapped[ModelType]
     file_urls: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True, default=None)
-    tool_definitions: Mapped[list[ToolDefinition] | None] = relationship(
+    tool_definitions: Mapped[list["ToolDefinition"] | None] = relationship(
         "ToolDefinition",
-        secondary="message_tool_definition_association",
-        back_populates="messages",
+        secondary="prompt_template_tool_definition_association",
+        back_populates="prompt_templates",
         default_factory=list,
     )
 

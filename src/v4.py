@@ -6,6 +6,7 @@ from src.admin.admin_blueprint import create_admin_blueprint
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.v4_message_blueprint import create_v4_message_blueprint
 from src.model_config.model_config_blueprint import create_model_config_blueprint
+from src.prompt_template.prompt_template_blueprint import create_prompt_template_blueprint
 from src.thread.threads_blueprint import create_threads_blueprint
 from src.transcription.transcription_blueprint import create_transcription_blueprint
 
@@ -34,6 +35,10 @@ def create_v4_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage, sess
 
     v4_blueprint.register_blueprint(
         blueprint=create_transcription_blueprint(), url_prefix="/transcribe", name="transcribe"
+    )
+
+    v4_blueprint.register_blueprint(
+        create_prompt_template_blueprint(), url_prefix="/prompt-template", name="prompt-template"
     )
 
     return v4_blueprint

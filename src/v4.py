@@ -38,7 +38,7 @@ def create_v4_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage, sess
     )
 
     v4_blueprint.register_blueprint(
-        create_prompt_template_blueprint(), url_prefix="/prompt-template", name="prompt-template"
+        create_prompt_template_blueprint(), url_prefix="/prompt-templates", name="prompt-template"
     )
 
     return v4_blueprint

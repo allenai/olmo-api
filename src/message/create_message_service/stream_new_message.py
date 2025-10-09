@@ -620,5 +620,5 @@ def pydnatic_ai_http_error_handling(e: ModelHTTPError, reply: Message, model: Mo
         },
     )
 
-    err = f"http error: {e}"
+    err = f"http error: {e.message}"
     yield MessageStreamError(message=reply.id, error=err, reason="Model http error")

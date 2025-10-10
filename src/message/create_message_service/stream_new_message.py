@@ -425,6 +425,7 @@ def stream_assistant_response(
                     "message_id": reply.id,
                     "model": model.id,
                     "host": model.host,
+                    "is_internal": model.internal,
                     "event": "inference.stream-error",
                 },
             )
@@ -616,6 +617,7 @@ def pydnatic_ai_http_error_handling(e: ModelHTTPError, reply: Message, model: Mo
             "message_id": reply.id,
             "model": model.id,
             "host": model.host,
+            "is_internal": model.internal,
             "event": "inference.stream-error",
         },
     )

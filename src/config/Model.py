@@ -18,6 +18,7 @@ from src.dao.engine_models.model_config import FileRequiredToPromptOption, Model
 
 class AvailableTool(APIInterface):
     name: str
+    mcp_server_id: str | None = None
     description: str | None = None
 
 

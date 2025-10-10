@@ -29,9 +29,10 @@ class PromptTemplateResponseList(RootModel):
     root: list[PromptTemplateResponse]
 
 
-def get_prompt_templates() -> list[PromptTemplateResponse]:
+def get_prompt_templates_list() -> PromptTemplateResponseList:
     prompt_templates = current_session.query(PromptTemplate).where(PromptTemplate.deleted == None).all()  # noqa: E711
-    return []
+
+    return PromptTemplateResponseList.model_validate(prompt_templates)
 
 
 def create_prompt_template_blueprint() -> Blueprint:
@@ -44,6 +45,6 @@ def create_prompt_template_blueprint() -> Blueprint:
         model_dump_kwargs={"by_alias": True},
     )
     def get_prompt_templates() -> PromptTemplateResponseList:
-        return PromptTemplateResponseList([])
+        return get_prompt_templates_list()
 
     return prompt_template_blueprint

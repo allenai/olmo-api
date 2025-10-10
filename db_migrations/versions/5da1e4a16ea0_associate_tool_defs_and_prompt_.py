@@ -30,6 +30,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["tool_definition_id"], ["tool_definition.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("prompt_template_id", "tool_definition_id"),
     )
+    op.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE prompt_template_tool_definition_association TO app")
     # ### end Alembic commands ###
 
 

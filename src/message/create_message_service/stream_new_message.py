@@ -3,7 +3,7 @@ import os
 from collections.abc import Callable, Generator
 from dataclasses import asdict
 from time import time_ns
-from typing import Any, cast
+from typing import Any
 
 from flask import current_app
 from opentelemetry import trace
@@ -17,11 +17,12 @@ from src import db, parse
 from src.auth.token import Token
 from src.dao.completion import CompletionOutput
 from src.dao.engine_models.message import Message
-from src.dao.engine_models.model_config import ModelConfig, ModelHost
+from src.dao.engine_models.model_config import ModelConfig
 from src.dao.engine_models.tool_call import ToolCall
 from src.dao.engine_models.tool_definitions import ToolSource
 from src.dao.message.message_models import MessageChunk, MessageStreamError, Role, TokenLogProbs
 from src.dao.message.message_repository import BaseMessageRepository
+from src.inference.InferenceEngine import FinishReason
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )

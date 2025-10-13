@@ -3,12 +3,13 @@ from collections.abc import AsyncIterable, AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, Literal, assert_never, cast
+from typing import Any, assert_never, cast
 
 from beaker import Beaker
 from beaker.config import Config as BeakerConfig
 from google.protobuf import json_format
 from openai.types.chat import ChatCompletionChunk
+from pydantic_ai import RunContext
 from pydantic_ai.messages import (
     AudioUrl,
     BinaryContent,
@@ -89,6 +90,7 @@ class BeakerQueuesModel(Model):
         messages: list[ModelMessage],
         model_settings: ModelSettings | None,
         model_request_parameters: ModelRequestParameters,
+        run_context: RunContext[Any] | None = None,
     ) -> AsyncIterator[OpenAIStreamedResponse]:
         """Make a streaming request to the model."""
         check_allow_model_requests()  # Required for testing
@@ -99,10 +101,12 @@ class BeakerQueuesModel(Model):
             model_request_parameters=model_request_parameters,
         )
         result = OpenAIStreamedResponse(
+            model_request_parameters=model_request_parameters,
             _model_profile=self._model_profile,
             _model_name=self._model_name,
             _response=response,
             _timestamp=datetime.now(UTC),
+            _provider_name="beaker_queues",
         )
         yield result
 

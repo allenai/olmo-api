@@ -1,8 +1,8 @@
 from collections.abc import Sequence
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, cast
+from typing import Any
 
 from src import obj
 from src.api_interface import APIInterface
@@ -10,7 +10,6 @@ from src.dao import label, paged
 from src.dao.engine_models.message import Message as SQLAMessage
 from src.dao.engine_models.model_config import ModelType
 from src.dao.message.inference_opts_model import InferenceOpts
-from src.message.map_text_snippet import text_snippet
 
 
 class ToolCall(APIInterface):

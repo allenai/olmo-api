@@ -23,7 +23,7 @@ brew install postgresql
 In the python .venv you can simply run these tests by writing 
 
 ```sh
-pytest --ignore e2e --ignore src/attribution
+export FLASK_CONFIG_PATH="test.config.json" && pytest --ignore e2e --ignore src/attribution
 ```
 
 Integration Tests can be placed anywhere in the app. 

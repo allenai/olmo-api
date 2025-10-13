@@ -10,7 +10,6 @@ from flask import (
 )
 from werkzeug import exceptions
 
-import src.dao.message.message_models as message
 from src import db, util
 from src.attribution.attribution_blueprint import attribution_blueprint
 from src.auth.auth_service import authn
@@ -21,7 +20,7 @@ from src.dao.message.message_repository import MessageRepository
 from src.log import logging_blueprint
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.v3_message_blueprint import create_v3_message_blueprint
-from src.user import UserBlueprint
+from src.user.user_blueprint import UserBlueprint
 
 
 class Server(Blueprint):

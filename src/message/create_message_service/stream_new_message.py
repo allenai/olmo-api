@@ -3,7 +3,7 @@ import os
 from collections.abc import Callable, Generator
 from dataclasses import asdict
 from time import time_ns
-from typing import Any
+from typing import Any, cast
 
 from flask import current_app
 from opentelemetry import trace
@@ -22,7 +22,9 @@ from src.dao.engine_models.tool_call import ToolCall
 from src.dao.engine_models.tool_definitions import ToolSource
 from src.dao.message.message_models import MessageChunk, MessageStreamError, Role, TokenLogProbs
 from src.dao.message.message_repository import BaseMessageRepository
-from src.inference.InferenceEngine import FinishReason
+from src.inference.InferenceEngine import (
+    FinishReason,
+)
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
@@ -362,10 +364,11 @@ def stream_assistant_response(
     start_generation_ns = time_ns()
 
     tool_parts: list[ToolCall] = []
-    finish_reason: None = None
+    finish_reason: FinishReason | None = None
     logprobs: list[list[TokenLogProbs]] = []
     # We keep track of each chunk and the timing information per-chunk
     # so that we can manifest a completion at the end.
+
     try:
         pydantic_chunks: list[Chunk] = []
         pydantic_inference_engine = get_pydantic_model(model)
@@ -377,8 +380,9 @@ def stream_assistant_response(
         with model_request_stream_sync(
             model=pydantic_inference_engine,
             messages=pydantic_messages,
-            model_settings=pydantic_settings_map(request.opts, model),
+            model_settings=pydantic_settings_map(request.opts, model, extra_body=request.extra_parameters),
             model_request_parameters=ModelRequestParameters(function_tools=tools, allow_text_output=True),
+            instrument=instrumentation_settings,
         ) as stream:
             for generator_chunk_pydantic in stream:
                 if first_chunk_ns is None:
@@ -404,18 +408,7 @@ def stream_assistant_response(
         thinking = thinking_part.content if thinking_part is not None else ""
         # TODO finish reason https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse.vendor_details should be here but isn't
     except ModelHTTPError as e:
-        current_app.logger.exception(
-            "Http call to LLM failed",
-            extra={
-                "message_id": reply.id,
-                "model": model.id,
-                "host": model.host,
-                "event": "inference.stream-error",
-            },
-        )
-
-        err = f"http error: {e}"
-        yield MessageStreamError(message=reply.id, error=err, reason="Model http error")
+        yield from pydnatic_ai_http_error_handling(e, reply, model)
         raise
     except Exception as e:
         current_app.logger.exception(
@@ -424,6 +417,7 @@ def stream_assistant_response(
                 "message_id": reply.id,
                 "model": model.id,
                 "host": model.host,
+                "is_internal": model.internal,
                 "event": "inference.stream-error",
             },
         )

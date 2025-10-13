@@ -48,6 +48,8 @@ So `sql_alchemy` var will get you the sql_alchemy session for this test.
 
 I also added `dbc` fixture which will give you access to the old Client. We are moving away from using the dbc client in the backend but this is here if you need it.
 
+These fixtures are set up to automatically add the "integration" mark to your test if used.
+
 This database is pre populated from our sql files
 01-local.sql
 02-schema.sql

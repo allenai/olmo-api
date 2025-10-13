@@ -56,7 +56,7 @@ from .database import (
 MAX_REPEATED_TOOL_CALLS = 10
 
 instrumentation_settings = InstrumentationSettings(
-    include_content=False, include_binary_content=False, tracer_provider=trace.get_tracer_provider()
+    version=3, include_content=False, include_binary_content=False, tracer_provider=trace.get_tracer_provider()
 )
 
 

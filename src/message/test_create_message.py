@@ -1,4 +1,4 @@
-from src.dao.message.message import Role
+from src.dao.message.message_models import Role
 
 from .create_message_request import CreateMessageRequest
 

@@ -7,7 +7,10 @@ from psycopg_pool import ConnectionPool
 
 from src import obj
 
-from .message.message import InferenceOpts, TokenLogProbs
+from src.dao.message.message_models import (
+    InferenceOpts,
+    TokenLogProbs,
+)
 
 CompletionRow = tuple[
     str,

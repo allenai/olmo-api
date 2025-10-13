@@ -10,16 +10,17 @@ from flask import (
 )
 from werkzeug import exceptions
 
-import src.dao.message.message_models as message
 from src import db, util
 from src.attribution.attribution_blueprint import attribution_blueprint
 from src.auth.auth_service import authn
 from src.config import get_config
 from src.dao import datachip, label, paged
+from src.dao.flask_sqlalchemy_session import current_session
+from src.dao.message.message_repository import MessageRepository
 from src.log import logging_blueprint
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.v3_message_blueprint import create_v3_message_blueprint
-from src.user import UserBlueprint
+from src.user.user_blueprint import UserBlueprint
 
 
 class Server(Blueprint):
@@ -33,8 +34,6 @@ class Server(Blueprint):
         self.patch("/templates/prompt/<string:id>")(self.update_prompt)
         self.delete("/templates/prompt/<string:id>")(self.delete_prompt)
         self.get("/templates/prompts")(self.prompts)
-
-        self.get("/messages")(self.messages)
 
         self.post("/label")(self.create_label)
         self.get("/label/<string:id>")(self.label)
@@ -104,24 +103,15 @@ class Server(Blueprint):
         prompt = self.dbc.template.create_prompt(request.json.get("name"), request.json.get("content"), agent.client)
         return jsonify(prompt)
 
-    def messages(self):
-        agent = authn()
-        message_list = self.dbc.message.get_list(
-            creator=request.args.get("creator"),
-            deleted="deleted" in request.args,
-            opts=paged.parse_opts_from_querystring(request),
-            agent=agent.client,
-        )
-        return jsonify(message_list)
-
     def create_label(self):
         agent = authn()
         if request.json is None:
             msg = "missing JSON body"
             raise exceptions.BadRequest(msg)
 
+        message_repository = MessageRepository(current_session)
         mid = request.json.get("message")
-        msg = self.dbc.message.get(mid)
+        msg = message_repository.get_message_by_id(mid)
         if msg is None:
             msg = f"message {mid} not found"
             raise exceptions.BadRequest(msg)

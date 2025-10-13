@@ -5,13 +5,17 @@ from werkzeug import exceptions
 from src import db
 from src.auth.auth_service import authn
 from src.dao.flask_sqlalchemy_session import current_session
-from src.dao.message.message_repository import MessageRepository
+from src.dao.message.message_repository import MessageRepository, map_sqla_to_old
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 
 
-def get_message(id: str, dbc: db.Client):
+def get_message(id: str):
     agent = authn()
-    message = dbc.message.get(id, agent=agent.client)
+    message_repository = MessageRepository(current_session)
+    message = message_repository.get_message_by_id(id)
+
+    if message is None:
+        raise exceptions.NotFound
 
     if message is None:
         raise exceptions.NotFound
@@ -20,13 +24,15 @@ def get_message(id: str, dbc: db.Client):
         msg = "You do not have access to that private message."
         raise exceptions.Forbidden(msg)
 
-    return message
+    return map_sqla_to_old(message)
 
 
 def delete_message(id: str, dbc: db.Client, storage_client: GoogleCloudStorage):
     agent = authn()
+    message_repository = MessageRepository(current_session)
 
-    message_list = dbc.message.get_by_root(id)
+    message_list = message_repository.get_messages_by_root_for_delete(id)
+
     root_message = next((m for m in message_list if m.id == id), None)
 
     if root_message is None:
@@ -46,9 +52,6 @@ def delete_message(id: str, dbc: db.Client, storage_client: GoogleCloudStorage):
     ]
 
     storage_client.delete_multiple_files_by_url(files_to_delete)
-
-    message_repository = MessageRepository(current_session)
-    # Remove messages
 
     for m in message_list:
         message_repository.delete(m.id)

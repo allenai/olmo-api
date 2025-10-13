@@ -28,6 +28,10 @@ class BaseMessageRepository(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
+    def get_messages_by_root_for_delete(self, message_id: obj.ID) -> Sequence[Message]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def get_message_with_children(self, message_id: obj.ID, user_id: str) -> Sequence[Message] | None:
         raise NotImplementedError
 
@@ -58,6 +62,10 @@ class BaseMessageRepository(abc.ABC):
     def migrate_messages_to_new_user(self, previous_user_id: str, new_user_id: str) -> int:
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def get_by_creator(self, creator_id: str) -> Sequence[Message]:
+        raise NotImplementedError
+
 
 class MessageRepository(BaseMessageRepository):
     session: Session
@@ -80,6 +88,11 @@ class MessageRepository(BaseMessageRepository):
             .options(joinedload(Message.labels.and_(Label.deleted == None, Label.creator == user_id)))  # noqa: E711
             .order_by(Message.created.asc())
         )
+
+        return self.session.scalars(query).unique().all()
+
+    def get_messages_by_root_for_delete(self, message_id: obj.ID) -> Sequence[Message]:
+        query = select(Message).where(Message.root == message_id)
 
         return self.session.scalars(query).unique().all()
 
@@ -175,6 +188,10 @@ class MessageRepository(BaseMessageRepository):
         self.session.commit()
 
         return count
+
+    def get_by_creator(self, creator_id: str):
+        query = select(Message).where(Message.creator == creator_id)
+        return self.session.scalars(query).unique().all()
 
 
 def map_sqla_to_old(message: Message) -> OldMessage:

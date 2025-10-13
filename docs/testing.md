@@ -3,8 +3,8 @@
 
 
 ## Setup 
-Two types of testing...
-## e2e
+Two ways of runnnings tests...
+### e2e
 Requires a fully working app and has real world side effects. 
 
 ```
@@ -13,7 +13,7 @@ docker compose exec api pytest -m "not integration"
 
 All e2e tests should live in the e2e folder.
 
-## Integration Tests
+### Unit & Integration Tests
 This setup extends unit tests to also have access to the database. To run them you need to install postgres.
 
 ```sh
@@ -34,10 +34,9 @@ These new tests leverage pytest fixtures to give you access to a database.
 
 This database is isolated to just a single tests, so you don't need to clean anything up and you don't have to worry about other test messing things up.
 
-To use the database simple add the following to the start of your test
+To use the database simple add the following fixtures to your tests.
 
 ```python
-@pytest.mark.integration
 class TestDatabase:
     def test_thread_setup(self, sql_alchemy: Session): # <-- This line 
         message_repo = MessageRepository(sql_alchemy)

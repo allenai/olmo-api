@@ -29,7 +29,7 @@ from src.dao.engine_models.model_config import ModelConfig
 from src.dao.engine_models.tool_call import ToolCall
 from src.dao.message.message_models import InferenceOpts, Role
 from src.message.create_message_service.files import FileUploadResult
-from src.message.message_chunk import Chunk, ModelResponseChunk, StreamEndChunk, ThinkingChunk, ToolCallChunk
+from src.message.message_chunk import Chunk, ModelResponseChunk, ThinkingChunk, ToolCallChunk
 
 
 def pydantic_settings_map(
@@ -51,14 +51,14 @@ def pydantic_settings_map(
     )
 
 
-def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent | FinalResultEvent, message: Message) -> Chunk:
+def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent | FinalResultEvent, message: Message) -> Chunk | None:
     match chunk:
         case PartStartEvent():
             return pydantic_map_part(chunk.part, message)
         case PartDeltaEvent():
             return pydantic_map_delta(chunk.delta, message)
-        case FinalResultEvent():
-            return StreamEndChunk(message="")  # HACK: IDK what to put here so I'm just mapping to something convenient
+        case _:
+            return None
 
 
 def find_tool_def_by_name(message: Message, tool_name: str):

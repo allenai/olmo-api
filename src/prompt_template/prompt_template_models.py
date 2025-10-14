@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import RootModel
+from pydantic import Field, RootModel
 
 from src.api_interface import APIInterface
 from src.dao.engine_models.model_config import ModelType
@@ -20,6 +20,8 @@ class PromptTemplateResponse(APIInterface):
     model_type: ModelType
     file_urls: list[str] | None
     tool_definitions: list[ToolDefinition]
+
+    extra_parameters: dict[str, Any] | None = Field(default=None)
 
 
 class PromptTemplateResponseList(RootModel):

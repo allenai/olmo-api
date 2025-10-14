@@ -53,7 +53,7 @@ from .database import (
     setup_msg_thread,
 )
 
-MAX_REPEATED_TOOL_CALLS = 10
+MAX_REPEATED_TOOL_CALLS = 25
 
 instrumentation_settings = InstrumentationSettings(
     include_content=False, include_binary_content=False, tracer_provider=trace.get_tracer_provider()
@@ -289,8 +289,8 @@ def stream_new_message(
         tool_calls_made += 1
 
     if tool_calls_made == MAX_REPEATED_TOOL_CALLS:
-        msg = f"Call exceed the max tool call limit of {MAX_REPEATED_TOOL_CALLS}"
-        yield MessageStreamError(message=message_chain[0].id, error=msg, reason=FinishReason.Length)
+        msg = f"Call exceed the max tool call limit of {MAX_REPEATED_TOOL_CALLS}."
+        yield MessageStreamError(message=message_chain[0].id, error=msg, reason=FinishReason.ToolError)
         return
     yield StreamEndChunk(message=message_chain[0].id)
 

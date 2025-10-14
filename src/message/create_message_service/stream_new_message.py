@@ -53,7 +53,7 @@ from .database import (
     setup_msg_thread,
 )
 
-MAX_REPEATED_TOOL_CALLS = 25
+MAX_REPEATED_TOOL_CALLS = 10
 
 instrumentation_settings = InstrumentationSettings(
     include_content=False, include_binary_content=False, tracer_provider=trace.get_tracer_provider()

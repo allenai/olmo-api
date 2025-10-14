@@ -1,4 +1,4 @@
-insert into prompt_template (
+INSERT INTO prompt_template (
     id,
     name,
     content,
@@ -7,7 +7,7 @@ insert into prompt_template (
     model_type,
     file_urls,
     extra_parameters
-) values (
+) VALUES (
     'p_tpl_12345',
     'test prompt template',
     'Tell me about lions',
@@ -18,7 +18,7 @@ insert into prompt_template (
     NULL
 ) ON CONFLICT DO NOTHING;
 
-insert into prompt_template (
+INSERT INTO prompt_template (
     id,
     name,
     content,
@@ -27,7 +27,7 @@ insert into prompt_template (
     model_type,
     file_urls,
     extra_parameters
-) values (
+) VALUES (
     'p_tpl_tool_definitions',
     'prompt template with tool definitions',
     'Tell me the weather',
@@ -38,13 +38,13 @@ insert into prompt_template (
     NULL
 ) ON CONFLICT DO NOTHING;
 
-insert into tool_definition (
+INSERT INTO tool_definition (
     id,
     name,
     description,
     parameters,
     tool_source
-) values (
+) VALUES (
     'td_template_tool',
     'get_weather',
     'Get the current weather in a given location',
@@ -52,10 +52,10 @@ insert into tool_definition (
     'USER_DEFINED'
 ) ON CONFLICT DO NOTHING;
 
-insert into prompt_template_tool_definition_association (
+INSERT INTO prompt_template_tool_definition_association (
     prompt_template_id,
     tool_definition_id
-) values (
+) VALUES (
     'p_tpl_tool_definitions',
     'td_template_tool'
 ) ON CONFLICT DO NOTHING;

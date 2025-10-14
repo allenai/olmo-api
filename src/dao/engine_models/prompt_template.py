@@ -45,4 +45,4 @@ class PromptTemplate(Base, kw_only=True):
     # NOTE: JSONB changes aren't tracked by SQLAlchemy automatically
     extra_parameters: Mapped[dict[str, Any] | None] = mapped_column(nullable=True, default=None)
 
-    message: Mapped[list["Message"]] = relationship("Message", back_populates="prompt_template")
+    messages: Mapped[list["Message"]] = relationship("Message", back_populates="prompt_template")

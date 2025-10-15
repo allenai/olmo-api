@@ -33,6 +33,9 @@ class FinishReason(StrEnum):
     # Value error can be like when context length is too long
     ValueError = "value error"
 
+    # Something related to tools had an error
+    ToolError = "tool error"
+
     # General exceptions
     Unknown = "unknown"
 

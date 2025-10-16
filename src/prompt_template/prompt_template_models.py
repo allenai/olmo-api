@@ -5,7 +5,7 @@ from pydantic import Field, RootModel
 
 from src.api_interface import APIInterface
 from src.dao.engine_models.model_config import ModelType
-from src.thread.thread_models import ToolDefinition
+from src.thread.thread_models import InferenceOptionsResponse, ToolDefinition
 
 
 class PromptTemplateResponse(APIInterface):
@@ -16,7 +16,7 @@ class PromptTemplateResponse(APIInterface):
     created: datetime
     updated: datetime
 
-    opts: dict[str, Any]
+    opts: InferenceOptionsResponse
     model_type: ModelType
     file_urls: list[str] | None
     tool_definitions: list[ToolDefinition]

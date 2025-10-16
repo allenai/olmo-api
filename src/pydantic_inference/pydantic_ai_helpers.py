@@ -3,6 +3,7 @@ from typing import Any
 
 from pydantic_ai.messages import (
     BinaryContent,
+    FinalResultEvent,
     ImageUrl,
     ModelMessage,
     ModelRequest,
@@ -50,12 +51,14 @@ def pydantic_settings_map(
     )
 
 
-def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent, message: Message) -> Chunk:
+def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent | FinalResultEvent, message: Message) -> Chunk | None:
     match chunk:
         case PartStartEvent():
             return pydantic_map_part(chunk.part, message)
         case PartDeltaEvent():
             return pydantic_map_delta(chunk.delta, message)
+        case _:
+            return None
 
 
 def find_tool_def_by_name(message: Message, tool_name: str):

@@ -1,5 +1,5 @@
 from pydantic_ai.models import Model
-from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from src.config.get_config import get_config
@@ -12,7 +12,7 @@ VLLM_MODEL_NAME = "llm"
 def get_modal_openai_model(model_config: ModelConfig) -> Model:
     cfg = get_config()
 
-    return OpenAIModel(
+    return OpenAIChatModel(
         model_name=VLLM_MODEL_NAME,
         provider=OpenAIProvider(
             # For Modal OpenAI APIs the "model_id" is the URL

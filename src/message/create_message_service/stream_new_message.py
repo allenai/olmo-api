@@ -56,7 +56,7 @@ from .database import (
 MAX_REPEATED_TOOL_CALLS = 10
 
 instrumentation_settings = InstrumentationSettings(
-    include_content=False, include_binary_content=False, tracer_provider=trace.get_tracer_provider()
+    version=3, include_content=False, include_binary_content=False, tracer_provider=trace.get_tracer_provider()
 )
 
 
@@ -393,8 +393,9 @@ def stream_assistant_response(
                     first_chunk_ns = time_ns()
 
                 pydantic_chunk = pydantic_map_chunk(generator_chunk_pydantic, message=reply)
-                pydantic_chunks.append(pydantic_chunk)
-                yield pydantic_chunk
+                if pydantic_chunk is not None:
+                    pydantic_chunks.append(pydantic_chunk)
+                    yield pydantic_chunk
 
         full_response = stream.get()
         text_part = next((part for part in full_response.parts if part.part_kind == "text"), None)

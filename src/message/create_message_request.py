@@ -7,6 +7,10 @@ from werkzeug import exceptions
 from src.api_interface import APIInterface
 from src.config.get_config import get_config
 from src.dao.engine_models.message import Message
+
+# We import PromptTemplate and ToolDefinition so Pydantic knows how to resolve them, preventing some model definition errors
+from src.dao.engine_models.prompt_template import PromptTemplate  # noqa: F401
+from src.dao.engine_models.tool_definitions import ToolDefinition  # noqa: F401
 from src.dao.message.inference_opts_model import (
     InferenceOpts,
 )

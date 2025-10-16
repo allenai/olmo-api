@@ -95,7 +95,7 @@ class Message(Base, kw_only=True):
     )
 
     prompt_template: Mapped[PromptTemplate | None] = relationship(
-        "PromptTemplate", back_populates="message", init=False
+        "PromptTemplate", back_populates="messages", init=False
     )
     labels: Mapped[list[Label]] = relationship(
         "Label",

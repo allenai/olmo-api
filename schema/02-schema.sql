@@ -986,5 +986,36 @@ ALTER TABLE model_config ADD COLUMN stop_default VARCHAR[];
 
 UPDATE alembic_version SET version_num='13971fd04e39' WHERE alembic_version.version_num = 'dc5ccc64fa6f';
 
+-- Running upgrade 13971fd04e39 -> 5a5c5b3e5614
+
+ALTER TABLE prompt_template ADD COLUMN creator VARCHAR NOT NULL;
+
+ALTER TABLE prompt_template ADD COLUMN opts JSONB NOT NULL;
+
+ALTER TABLE prompt_template ADD COLUMN model_type modeltype NOT NULL;
+
+ALTER TABLE prompt_template ADD COLUMN file_urls TEXT[];
+
+ALTER TABLE prompt_template ADD COLUMN extra_parameters JSONB;
+
+ALTER TABLE prompt_template DROP COLUMN author;
+
+UPDATE alembic_version SET version_num='5a5c5b3e5614' WHERE alembic_version.version_num = '13971fd04e39';
+
+-- Running upgrade 5a5c5b3e5614 -> 5da1e4a16ea0
+
+CREATE TABLE prompt_template_tool_definition_association (
+    prompt_template_id TEXT NOT NULL, 
+    tool_definition_id TEXT NOT NULL, 
+    created TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
+    PRIMARY KEY (prompt_template_id, tool_definition_id), 
+    FOREIGN KEY(prompt_template_id) REFERENCES prompt_template (id) ON DELETE CASCADE, 
+    FOREIGN KEY(tool_definition_id) REFERENCES tool_definition (id) ON DELETE CASCADE
+);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE prompt_template_tool_definition_association TO app;
+
+UPDATE alembic_version SET version_num='5da1e4a16ea0' WHERE alembic_version.version_num = '5a5c5b3e5614';
+
 COMMIT;
 

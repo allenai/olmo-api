@@ -10,6 +10,7 @@ from src import obj
 
 if TYPE_CHECKING:
     from src.dao.engine_models.message import Message
+    from src.dao.engine_models.prompt_template import PromptTemplate
 
 from .base import Base
 
@@ -26,6 +27,22 @@ class MessageToolDefinition(Base, kw_only=True):
     __tablename__ = "message_tool_definition_association"
 
     message_id: Mapped[str] = mapped_column(Text, ForeignKey("message.id", ondelete="CASCADE"), primary_key=True)
+    tool_definition_id: Mapped[str] = mapped_column(
+        Text, ForeignKey("tool_definition.id", ondelete="CASCADE"), primary_key=True
+    )
+
+    created: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), nullable=False, server_default=text("now()"), init=False
+    )
+
+
+class PromptTemplateToolDefinition(Base, kw_only=True):
+    __tablename__ = "prompt_template_tool_definition_association"
+
+    prompt_template_id: Mapped[str] = mapped_column(
+        Text, ForeignKey(column="prompt_template.id", ondelete="CASCADE"), primary_key=True
+    )
+
     tool_definition_id: Mapped[str] = mapped_column(
         Text, ForeignKey("tool_definition.id", ondelete="CASCADE"), primary_key=True
     )
@@ -57,6 +74,14 @@ class ToolDefinition(Base, kw_only=True):
         "Message",
         back_populates="tool_definitions",
         secondary="message_tool_definition_association",
+        default_factory=list,
+        passive_deletes=True,
+    )
+
+    prompt_templates: Mapped[list["PromptTemplate"] | None] = relationship(
+        "PromptTemplate",
+        back_populates="tool_definitions",
+        secondary="prompt_template_tool_definition_association",
         default_factory=list,
         passive_deletes=True,
     )

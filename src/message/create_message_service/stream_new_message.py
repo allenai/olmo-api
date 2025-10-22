@@ -3,7 +3,7 @@ import os
 from collections.abc import Callable, Generator
 from dataclasses import asdict
 from time import time_ns
-from typing import Any, cast
+from typing import Any
 
 from flask import current_app
 from opentelemetry import trace
@@ -398,8 +398,6 @@ def stream_assistant_response(
                     yield pydantic_chunk
 
         full_response = stream.get()
-        text_part = next((part for part in full_response.parts if part.part_kind == "text"), None)
-        thinking_part = next((part for part in full_response.parts if part.part_kind == "thinking"), None)
         tool_parts = [
             map_pydantic_tool_to_db_tool(reply, part) for part in full_response.parts if isinstance(part, ToolCallPart)
         ]
@@ -409,8 +407,8 @@ def stream_assistant_response(
         stream_metrics.output_token_count = -1
         stream_metrics.total_generation_ns = time_ns() - start_generation_ns
 
-        output = text_part.content if text_part is not None else ""
-        thinking = thinking_part.content if thinking_part is not None else ""
+        output = full_response.text if full_response.text is not None else ""
+        thinking = full_response.thinking if full_response.thinking is not None else ""
         # TODO finish reason https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse.vendor_details should be here but isn't
     except ModelHTTPError as e:
         yield from pydnatic_ai_http_error_handling(e, reply, model)

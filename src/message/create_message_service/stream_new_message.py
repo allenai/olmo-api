@@ -385,7 +385,6 @@ def stream_assistant_response(
     sha = os.environ.get("SHA") or "DEV"
     start_generation_ns = time_ns()
 
-    tool_parts: list[ToolCall] = []
     finish_reason: FinishReason | None = None
     logprobs: list[list[TokenLogProbs]] = []
     # We keep track of each chunk and the timing information per-chunk
@@ -468,7 +467,7 @@ def stream_assistant_response(
     reply.content = final_stream_output.text
     reply.logprobs = new_log_props
     reply.finish_reason = finish_reason
-    reply.tool_calls = tool_parts
+    reply.tool_calls = final_stream_output.tool_parts
     reply.final = True
     reply.completion = message_completion.id if message_completion is not None else None
     reply.thinking = final_stream_output.thinking or None

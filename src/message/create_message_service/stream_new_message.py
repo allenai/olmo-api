@@ -3,14 +3,15 @@ import os
 from collections.abc import Callable, Generator
 from dataclasses import asdict
 from time import time_ns
-from typing import Any, cast
+from typing import Any
 
 from flask import current_app
 from opentelemetry import trace
+from pydantic import BaseModel
 from pydantic_ai.agent import InstrumentationSettings
 from pydantic_ai.direct import model_request_stream_sync
 from pydantic_ai.exceptions import ModelHTTPError
-from pydantic_ai.messages import ToolCallPart
+from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models import ModelRequestParameters
 
 from src import db, parse
@@ -348,6 +349,23 @@ def finalize_messages(message_repository: BaseMessageRepository, message_chain: 
             raise final_message_error
 
 
+class FinalStreamOutput(BaseModel):
+    tool_parts: list[ToolCall]
+    text: str
+    thinking: str | None
+
+
+def map_response_to_final_output(response: ModelResponse, reply: Message) -> FinalStreamOutput:
+    tool_parts = [
+        map_pydantic_tool_to_db_tool(reply, part) for part in response.parts if isinstance(part, ToolCallPart)
+    ]
+
+    text = response.text if response.text is not None else ""
+    thinking = response.thinking
+
+    return FinalStreamOutput(tool_parts=tool_parts, text=text, thinking=thinking)
+
+
 def stream_assistant_response(
     request: CreateMessageRequestWithFullMessages,
     dbc: db.Client,
@@ -367,7 +385,6 @@ def stream_assistant_response(
     sha = os.environ.get("SHA") or "DEV"
     start_generation_ns = time_ns()
 
-    tool_parts: list[ToolCall] = []
     finish_reason: FinishReason | None = None
     logprobs: list[list[TokenLogProbs]] = []
     # We keep track of each chunk and the timing information per-chunk
@@ -397,20 +414,13 @@ def stream_assistant_response(
                     pydantic_chunks.append(pydantic_chunk)
                     yield pydantic_chunk
 
-        full_response = stream.get()
-        text_part = next((part for part in full_response.parts if part.part_kind == "text"), None)
-        thinking_part = next((part for part in full_response.parts if part.part_kind == "thinking"), None)
-        tool_parts = [
-            map_pydantic_tool_to_db_tool(reply, part) for part in full_response.parts if isinstance(part, ToolCallPart)
-        ]
+        final_stream_output = map_response_to_final_output(stream.get(), reply)
 
         stream_metrics.first_chunk_ns = first_chunk_ns
         stream_metrics.input_token_count = -1
         stream_metrics.output_token_count = -1
         stream_metrics.total_generation_ns = time_ns() - start_generation_ns
 
-        output = text_part.content if text_part is not None else ""
-        thinking = thinking_part.content if thinking_part is not None else ""
         # TODO finish reason https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse.vendor_details should be here but isn't
     except ModelHTTPError as e:
         yield from pydnatic_ai_http_error_handling(e, reply, model)
@@ -440,7 +450,7 @@ def stream_assistant_response(
     if not agent.is_anonymous_user:
         message_completion = dbc.completion.create(
             prompt,
-            [CompletionOutput(output, str(finish_reason), logprobs)],
+            [CompletionOutput(final_stream_output.text, str(finish_reason), logprobs)],
             request.opts,
             model.model_id_on_host,
             sha,
@@ -454,13 +464,13 @@ def stream_assistant_response(
     for log_prop_set in logprobs:
         new_log_props.append([asdict(log_prop) for log_prop in log_prop_set])
 
-    reply.content = output
+    reply.content = final_stream_output.text
     reply.logprobs = new_log_props
     reply.finish_reason = finish_reason
-    reply.tool_calls = tool_parts
+    reply.tool_calls = final_stream_output.tool_parts
     reply.final = True
     reply.completion = message_completion.id if message_completion is not None else None
-    reply.thinking = thinking or None
+    reply.thinking = final_stream_output.thinking or None
 
     final_reply = message_repository.update(reply)
 

@@ -12,6 +12,7 @@ from src.dao.label import Rating
 from src.dao.message.message_models import InferenceOpts, Message, Role
 from src.inference.InferenceEngine import FinishReason
 from src.message.map_text_snippet import text_snippet
+from src.message.message_chunk import ErrorCode, ErrorSeverity
 
 
 class LabelResponse(APIInterface):
@@ -75,6 +76,9 @@ class FlatMessage(APIInterface):
     thinking: str | None = Field(default=None)
     tool_definitions: list[ToolDefinition] | None = Field(default=None)
     extra_parameters: dict[str, Any] | None = Field(default=None)
+    error_code: ErrorCode | None = Field(default=None)
+    error_description: str | None = Field(default=None)
+    error_severity: ErrorSeverity | None = Field(default=None)
 
     @field_validator("children", mode="before")
     @classmethod

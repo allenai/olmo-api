@@ -32,7 +32,7 @@ from src.message.create_message_request import (
 from src.message.create_message_service.files import FileUploadResult, upload_request_files
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.inference_logging import log_inference_timing
-from src.message.message_chunk import Chunk, StreamEndChunk, StreamStartChunk
+from src.message.message_chunk import Chunk, ResponseWithErrorChunk, StreamEndChunk, StreamStartChunk
 from src.message.SafetyChecker import (
     SafetyCheckerType,
 )
@@ -237,7 +237,7 @@ def stream_new_message(
         yield prepare_yield_message_chain(message_chain, created_message)
 
         start_message_generation_ns = time_ns()
-        yield from stream_assistant_response(
+        error_chunk = yield from stream_assistant_response(
             request,
             dbc,
             message_repository,
@@ -249,6 +249,11 @@ def stream_new_message(
             reply,
             stream_metrics,
         )
+
+        # If an error_chunk is encountered during streaming, end early
+        if error_chunk is not None:
+            yield StreamEndChunk(message=message_chain[0].id)
+            return
 
         if reply.tool_calls is not None and len(reply.tool_calls) > 0:
             last_msg = reply
@@ -377,9 +382,10 @@ def stream_assistant_response(
     input_message: Message,
     reply: Message,
     stream_metrics: StreamMetrics,
-) -> Generator[MessageChunk | MessageStreamError | Chunk, Any, None]:
+) -> Generator[MessageChunk | MessageStreamError | Chunk, Any, ResponseWithErrorChunk | None]:
     """
     Adds a new assistant message to the conversation, and streams the llm response to the api
+    Returns the ResponseWithErrorChunk if an error was encountered, otherwise None
     """
     # Capture the SHA and logger, as the current_app context is lost in the generator.
     sha = os.environ.get("SHA") or "DEV"
@@ -389,6 +395,9 @@ def stream_assistant_response(
     logprobs: list[list[TokenLogProbs]] = []
     # We keep track of each chunk and the timing information per-chunk
     # so that we can manifest a completion at the end.
+
+    # Track error information from ResponseWithErrorChunk for later inclusion in combined message
+    encountered_error: ResponseWithErrorChunk | None = None
 
     try:
         pydantic_chunks: list[Chunk] = []
@@ -411,6 +420,13 @@ def stream_assistant_response(
 
                 pydantic_chunk = pydantic_map_chunk(generator_chunk_pydantic, message=reply)
                 if pydantic_chunk is not None:
+                    if isinstance(pydantic_chunk, ResponseWithErrorChunk):
+                        # Store error details for later inclusion in combined message
+                        encountered_error = pydantic_chunk
+                        pydantic_chunks.append(pydantic_chunk)
+                        yield pydantic_chunk
+                        # Exit the stream without raising an error and return the error chunk
+                        return encountered_error
                     pydantic_chunks.append(pydantic_chunk)
                     yield pydantic_chunk
 
@@ -478,6 +494,9 @@ def stream_assistant_response(
         final_reply_error = RuntimeError(f"failed to finalize message {reply.id}")
         yield MessageStreamError(message=reply.id, error=str(final_reply_error), reason="finalization failure")
         raise final_reply_error
+
+    # # Return None if no error occurred
+    return None
 
 
 def prepare_yield_message_chain(message_chain: list[Message], user_message: Message):

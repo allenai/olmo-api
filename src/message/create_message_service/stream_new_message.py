@@ -250,10 +250,11 @@ def stream_new_message(
             stream_metrics,
         )
 
-        # If an error_chunk is encountered during streaming, end early
+        # If an error_chunk is encountered during streaming, persist it on the full assistant message
         if error_chunk is not None:
-            yield StreamEndChunk(message=message_chain[0].id)
-            return
+            reply.error_code = error_chunk.error_code
+            reply.error_description = error_chunk.error_description
+            reply.error_severity = error_chunk.error_severity
 
         if reply.tool_calls is not None and len(reply.tool_calls) > 0:
             last_msg = reply

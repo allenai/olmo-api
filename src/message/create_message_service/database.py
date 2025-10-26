@@ -181,6 +181,9 @@ def create_tool_response_message(
         tool_calls=[clone_tool_call(source_tool)],
         tool_definitions=parent.tool_definitions,
         extra_parameters=parent.extra_parameters,
+        error_code=parent.error_code,
+        error_description=parent.error_description,
+        error_severity=parent.error_severity,
     )
 
     return message_repository.add(message)

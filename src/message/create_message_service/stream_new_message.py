@@ -32,7 +32,7 @@ from src.message.create_message_request import (
 from src.message.create_message_service.files import FileUploadResult, upload_request_files
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.inference_logging import log_inference_timing
-from src.message.message_chunk import Chunk, ResponseWithErrorChunk, StreamEndChunk, StreamStartChunk
+from src.message.message_chunk import Chunk, ErrorChunk, StreamEndChunk, StreamStartChunk
 from src.message.SafetyChecker import (
     SafetyCheckerType,
 )
@@ -383,10 +383,10 @@ def stream_assistant_response(
     input_message: Message,
     reply: Message,
     stream_metrics: StreamMetrics,
-) -> Generator[MessageChunk | MessageStreamError | Chunk, Any, ResponseWithErrorChunk | None]:
+) -> Generator[MessageChunk | MessageStreamError | Chunk, Any, ErrorChunk | None]:
     """
     Adds a new assistant message to the conversation, and streams the llm response to the api
-    Returns the ResponseWithErrorChunk if an error was encountered, otherwise None
+    Returns the ErrorChunk if an error was encountered, otherwise None
     """
     # Capture the SHA and logger, as the current_app context is lost in the generator.
     sha = os.environ.get("SHA") or "DEV"
@@ -397,8 +397,8 @@ def stream_assistant_response(
     # We keep track of each chunk and the timing information per-chunk
     # so that we can manifest a completion at the end.
 
-    # Track error information from ResponseWithErrorChunk for later inclusion in combined message
-    encountered_error: ResponseWithErrorChunk | None = None
+    # Track error information from ErrorChunk for later inclusion in combined message
+    encountered_error: ErrorChunk | None = None
 
     try:
         pydantic_chunks: list[Chunk] = []
@@ -421,7 +421,7 @@ def stream_assistant_response(
 
                 pydantic_chunk = pydantic_map_chunk(generator_chunk_pydantic, message=reply)
                 if pydantic_chunk is not None:
-                    if isinstance(pydantic_chunk, ResponseWithErrorChunk):
+                    if isinstance(pydantic_chunk, ErrorChunk):
                         # Store error details for later inclusion in combined message
                         encountered_error = pydantic_chunk
                         pydantic_chunks.append(pydantic_chunk)
@@ -438,7 +438,7 @@ def stream_assistant_response(
         stream_metrics.output_token_count = -1
         stream_metrics.total_generation_ns = time_ns() - start_generation_ns
 
-        # TODO finish reason https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse.vendor_details should be here but isn't
+        # TODO: finish reason https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse.vendor_details should be here but isn't
     except ModelHTTPError as e:
         yield from pydnatic_ai_http_error_handling(e, reply, model)
         raise

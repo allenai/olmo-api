@@ -20,10 +20,12 @@ class ChunkType(StrEnum):
 class ErrorCode(StrEnum):
     TOOL_CALL_ERROR = "toolCallError"
 
+
 class ErrorSeverity(StrEnum):
     WARNING = "warning"
     ERROR = "error"
     INFO = "info"
+
 
 class BaseChunk(APIInterface):
     message: obj.ID
@@ -65,7 +67,7 @@ class ToolCallChunk(BaseChunk):
     tool_source: ToolSource | None
 
 
-class ResponseWithErrorChunk(BaseChunk):
+class ErrorChunk(BaseChunk):
     # HACK: This lets us make `type` required in the schema while also not requiring it in the init
     @computed_field  # type: ignore
     @property
@@ -107,4 +109,4 @@ class StreamEndChunk(BaseChunk):
         return ChunkType.END
 
 
-Chunk = ModelResponseChunk | ToolCallChunk | ResponseWithErrorChunk | ThinkingChunk | StreamStartChunk | StreamEndChunk
+Chunk = ModelResponseChunk | ToolCallChunk | ErrorChunk | ThinkingChunk | StreamStartChunk | StreamEndChunk

@@ -31,10 +31,10 @@ from src.dao.message.message_models import InferenceOpts, Role
 from src.message.create_message_service.files import FileUploadResult
 from src.message.message_chunk import (
     Chunk,
+    ErrorChunk,
     ErrorCode,
     ErrorSeverity,
     ModelResponseChunk,
-    ResponseWithErrorChunk,
     ThinkingChunk,
     ToolCallChunk,
 )
@@ -157,7 +157,7 @@ def pydantic_map_part(part: ModelResponsePart, message: Message) -> Chunk:
             try:
                 tool_def = find_tool_def_by_name(message, part.tool_name)
             except RuntimeError as e:
-                return ResponseWithErrorChunk(
+                return ErrorChunk(
                     message=message.id,
                     error_code=ErrorCode.TOOL_CALL_ERROR,
                     error_description=str(e),
@@ -186,7 +186,7 @@ def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDel
             try:
                 tool_def = find_tool_def_by_name(message, part.tool_name_delta) if part.tool_name_delta else None
             except RuntimeError as e:
-                return ResponseWithErrorChunk(
+                return ErrorChunk(
                     message=message.id,
                     error_code=ErrorCode.TOOL_CALL_ERROR,
                     error_description=str(e),

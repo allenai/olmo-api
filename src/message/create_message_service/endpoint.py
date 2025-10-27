@@ -1,4 +1,3 @@
-import json
 from dataclasses import dataclass, field
 from enum import StrEnum
 from time import time_ns
@@ -10,7 +9,7 @@ from werkzeug import exceptions
 
 import src.dao.message.message_models as message
 from otel.default_tracer import get_default_tracer
-from src import db, util
+from src import db
 from src.auth.auth_service import authn
 from src.config.get_config import cfg
 from src.config.get_models import get_model_by_id
@@ -37,10 +36,6 @@ from src.model_config.base_model_config import (
 )
 
 tracer = get_default_tracer()
-
-
-def format_message(obj) -> str:
-    return json.dumps(obj=obj, cls=util.CustomEncoder) + "\n"
 
 
 class MessageType(StrEnum):

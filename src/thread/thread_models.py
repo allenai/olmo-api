@@ -58,6 +58,7 @@ class FlatMessage(APIInterface):
     created: AwareDatetime
     model_id: str
     model_host: str
+    agent_id: str
     deleted: AwareDatetime | None = Field(default=None)
     parent: str | None = Field(default=None)
     template: str | None = Field(default=None)

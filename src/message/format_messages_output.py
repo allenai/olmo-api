@@ -2,12 +2,18 @@ from collections.abc import Generator
 from logging import getLogger
 from typing import Any
 
+from flask import json
+
 import src.dao.message.message_models as message
 from src.api_interface import APIInterface
 from src.dao.engine_models.message import Message
-from src.message.create_message_service.endpoint import format_message
 from src.message.message_chunk import Chunk
 from src.thread.thread_models import Thread
+from src.util import CustomEncoder
+
+
+def format_message(obj) -> str:
+    return json.dumps(obj=obj, cls=CustomEncoder) + "\n"
 
 
 def format_messages(

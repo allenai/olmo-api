@@ -27,10 +27,12 @@ from src.message.WildGuard import WildGuard
 tracer = get_default_tracer()
 
 
+@tracer.start_as_current_span("check_text_safety")
 def check_message_safety(
     text: str,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
 ) -> bool | None:
+    trace.get_current_span().set_attribute("safety_checker_type", checker_type)
     safety_checker: SafetyChecker = GoogleModerateText()
     request = SafetyCheckRequest(content=text)
 
@@ -48,6 +50,7 @@ def check_message_safety(
     return None
 
 
+@tracer.start_as_current_span("check_image_safety")
 def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
     checker = GoogleVisionSafeSearch()
 
@@ -124,8 +127,6 @@ def validate_message_security_and_safety(
     user_ip_address: str | None = None,
     user_agent: str | None = None,
 ):
-    trace.get_current_span().set_attribute("safety_checker_type", checker_type)
-
     evaluate_prompt_submission_captcha(
         captcha_token=request.captcha_token,
         user_ip_address=user_ip_address,

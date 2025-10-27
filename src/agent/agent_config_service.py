@@ -28,7 +28,21 @@ available_agents = [
         top_p=1,
         stop=[],
         n=1,
-    )
+    ),
+    Agent(
+        id="fake-test-agent",
+        name="Fake Test Agent",
+        description="Fake agent for testing",
+        short_summary="Fake",
+        information_url=None,
+        mcp_server_id=None,
+        model_id="test-model",
+        max_tokens=2048,
+        temperature=0,
+        top_p=1,
+        stop=[],
+        n=1,
+    ),
 ]
 
 

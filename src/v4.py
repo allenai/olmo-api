@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from src import db
 from src.admin.admin_blueprint import create_admin_blueprint
+from src.agent.agent_blueprint import create_agents_blueprint
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.model_config.model_config_blueprint import create_model_config_blueprint
 from src.prompt_template.prompt_template_blueprint import create_prompt_template_blueprint
@@ -32,6 +33,10 @@ def create_v4_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage, sess
 
     v4_blueprint.register_blueprint(
         create_prompt_template_blueprint(), url_prefix="/prompt-templates", name="prompt-template"
+    )
+
+    v4_blueprint.register_blueprint(
+        create_agents_blueprint(dbc=dbc, storage_client=storage_client), url_prefix="/agents", name="agent"
     )
 
     return v4_blueprint

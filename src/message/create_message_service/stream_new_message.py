@@ -7,6 +7,7 @@ from typing import Any
 
 from flask import current_app
 from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
 from pydantic import BaseModel
 from pydantic_ai.agent import InstrumentationSettings
 from pydantic_ai.direct import model_request_stream_sync
@@ -59,6 +60,8 @@ MAX_REPEATED_TOOL_CALLS = 10
 instrumentation_settings = InstrumentationSettings(
     version=3, include_content=False, include_binary_content=False, tracer_provider=trace.get_tracer_provider()
 )
+
+current_span = trace.get_current_span()
 
 
 @dataclasses.dataclass
@@ -427,6 +430,7 @@ def stream_assistant_response(
                         pydantic_chunks.append(pydantic_chunk)
                         yield pydantic_chunk
                         # Exit the stream without raising an error and return the error chunk
+                        current_span.set_status(Status(StatusCode.ERROR))
                         return encountered_error
                     pydantic_chunks.append(pydantic_chunk)
                     yield pydantic_chunk

@@ -1,6 +1,8 @@
 import json
 from typing import Any
 
+from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
 from pydantic_ai.messages import (
     BinaryContent,
     FinalResultEvent,
@@ -38,6 +40,8 @@ from src.message.message_chunk import (
     ThinkingChunk,
     ToolCallChunk,
 )
+
+current_span = trace.get_current_span()
 
 
 def pydantic_settings_map(
@@ -157,6 +161,8 @@ def pydantic_map_part(part: ModelResponsePart, message: Message) -> Chunk:
             try:
                 tool_def = find_tool_def_by_name(message, part.tool_name)
             except RuntimeError as e:
+                current_span.set_status(Status(StatusCode.ERROR))
+                current_span.record_exception(e)
                 return ErrorChunk(
                     message=message.id,
                     error_code=ErrorCode.TOOL_CALL_ERROR,
@@ -186,6 +192,8 @@ def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDel
             try:
                 tool_def = find_tool_def_by_name(message, part.tool_name_delta) if part.tool_name_delta else None
             except RuntimeError as e:
+                current_span.set_status(Status(StatusCode.ERROR))
+                current_span.record_exception(e)
                 return ErrorChunk(
                     message=message.id,
                     error_code=ErrorCode.TOOL_CALL_ERROR,

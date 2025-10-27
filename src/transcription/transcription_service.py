@@ -31,7 +31,7 @@ def get_transcription(request: GetTranscriptionRequest):
 
     olmo_asr_engine = OlmoAsrModalEngine()
 
-    model = get_model_by_id(host="modal", id=OLMO_ASR_MODEL_ID)
+    model = get_model_by_id(id=OLMO_ASR_MODEL_ID)
     messages = [InferenceEngineMessage(role=Role.User, content="", files=[converted_audio_file.read()])]
 
     start_generation_ns = time_ns()

@@ -3,9 +3,11 @@ from collections.abc import Sequence
 from time import time_ns
 
 from flask import current_app
+from opentelemetry import trace
 from werkzeug import exceptions
 from werkzeug.datastructures import FileStorage
 
+from otel.default_tracer import get_default_tracer
 from src.auth.auth_utils import Permissions, user_has_permission
 from src.auth.token import Token
 from src.bot_detection.create_assessment import create_assessment
@@ -21,6 +23,8 @@ from src.message.SafetyChecker import (
     SafetyCheckRequest,
 )
 from src.message.WildGuard import WildGuard
+
+tracer = get_default_tracer()
 
 
 def check_message_safety(
@@ -70,6 +74,7 @@ def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
     return True
 
 
+@tracer.start_as_current_span("evaluate_prompt_submission_captcha")
 def evaluate_prompt_submission_captcha(
     captcha_token: str | None, user_ip_address: str | None, user_agent: str | None, *, is_anonymous_user: bool
 ):
@@ -111,6 +116,7 @@ INAPPROPRIATE_FILE_ERROR = "inappropriate_prompt_file"
 FORRBIDDEN_SETTING = "User is not allowed to change this setting"
 
 
+@tracer.start_as_current_span("validate_message_security_and_safety")
 def validate_message_security_and_safety(
     request: CreateMessageRequestWithFullMessages,
     agent: Token,
@@ -118,6 +124,8 @@ def validate_message_security_and_safety(
     user_ip_address: str | None = None,
     user_agent: str | None = None,
 ):
+    trace.get_current_span().set_attribute("safety_checker_type", checker_type)
+
     evaluate_prompt_submission_captcha(
         captcha_token=request.captcha_token,
         user_ip_address=user_ip_address,

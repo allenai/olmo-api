@@ -22,6 +22,6 @@ def format_messages(
                     yield format_message(flat_messages)
                 case APIInterface():
                     yield format_message(stream_message)
-    except Exception as e:
+    except Exception:
         getLogger().exception("Error when streaming")
-        raise e
+        raise

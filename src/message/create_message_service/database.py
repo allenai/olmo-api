@@ -25,20 +25,21 @@ def setup_msg_thread(
     message_repository: BaseMessageRepository,
     model: ModelConfig,
     request: CreateMessageRequestWithFullMessages,
-    agent: Token,
+    creator_token: Token,
+    agent_id: str | None,
     is_msg_harmful: bool | None = None,
 ) -> list[Message]:
     system_msg = None
     message_chain: list[Message] = []
 
     msg_id = obj.NewID("msg")
-    message_expiration_time = get_expiration_time(agent)
+    message_expiration_time = get_expiration_time(creator_token)
 
     if request.parent is None and model.default_system_prompt is not None:
         system_msg = Message(
             id=msg_id,
             content=model.default_system_prompt,
-            creator=agent.client,
+            creator=creator_token.client,
             role=Role.System,
             opts=request.opts.model_dump(),
             model_id=model.id,
@@ -51,6 +52,7 @@ def setup_msg_thread(
             private=request.private,
             harmful=is_msg_harmful,
             expiration_time=message_expiration_time,
+            agent_id=agent_id,
         )
 
         message_repository.add(system_msg)
@@ -62,7 +64,7 @@ def setup_msg_thread(
         message_chain.append(parent)
 
     if request.root is not None:
-        messages = message_repository.get_messages_by_root(request.root.id, agent.client) or []
+        messages = message_repository.get_messages_by_root(request.root.id, creator_token.client) or []
         msgs: dict[str, Message] = {}
         for message in messages:
             msgs[message.id] = message
@@ -117,8 +119,9 @@ def create_user_message(
     message_repository: BaseMessageRepository,
     request: CreateMessageRequestWithFullMessages,
     parent: Message | None,
-    agent: Token,
+    creator_token: Token,
     model: ModelConfig,
+    agent_id: str | None,
     *,
     is_msg_harmful: bool | None = None,
 ):
@@ -130,13 +133,13 @@ def create_user_message(
         msg = f"tool name conflict detected for name in list {tool_names}"
         raise RuntimeError(msg)
 
-    message_expiration_time = get_expiration_time(agent)
+    message_expiration_time = get_expiration_time(creator_token)
 
     msg_id = obj.NewID("msg")
     message = Message(
         id=msg_id,
         content=request.content,
-        creator=agent.client,
+        creator=creator_token.client,
         role=Role.User,
         opts=request.opts.model_dump(),
         model_id=model.id,
@@ -151,6 +154,7 @@ def create_user_message(
         expiration_time=message_expiration_time,
         tool_definitions=tool_list,
         extra_parameters=request.extra_parameters,
+        agent_id=agent_id,
     )
     return message_repository.add(message)
 
@@ -161,6 +165,7 @@ def create_tool_response_message(
     content: str,
     source_tool: ToolCall,
     creator: str,
+    agent_id: str | None,
 ):
     message = Message(
         content=content,
@@ -181,6 +186,7 @@ def create_tool_response_message(
         tool_calls=[clone_tool_call(source_tool)],
         tool_definitions=parent.tool_definitions,
         extra_parameters=parent.extra_parameters,
+        agent_id=agent_id,
         error_code=parent.error_code,
         error_description=parent.error_description,
         error_severity=parent.error_severity,
@@ -194,13 +200,14 @@ def create_assistant_message(
     content: str,
     parent: Message,
     model: ModelConfig,
-    agent: Token,
+    agent_id: str | None,
+    creator_token: Token,
 ):
-    message_expiration_time = get_expiration_time(agent)
+    message_expiration_time = get_expiration_time(creator_token)
 
     message = Message(
         content=content,
-        creator=agent.client,
+        creator=creator_token.client,
         role=Role.Assistant,
         opts=parent.opts,
         model_id=model.id,
@@ -213,6 +220,7 @@ def create_assistant_message(
         expiration_time=message_expiration_time,
         tool_definitions=parent.tool_definitions,
         extra_parameters=parent.extra_parameters,
+        agent_id=agent_id,
     )
     return message_repository.add(message)
 

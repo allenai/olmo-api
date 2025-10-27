@@ -17,8 +17,8 @@ from src.message.create_message_service.endpoint import (
     ModelMessageStreamInput,
     stream_message_from_model,
 )
+from src.message.format_messages_output import format_messages
 from src.message.GoogleCloudStorage import GoogleCloudStorage
-from src.message.v4_message_blueprint import format_messages
 from src.thread.get_thread_service import get_thread
 from src.thread.get_threads_service import GetThreadsRequest, GetThreadsResponse, get_threads
 from src.thread.thread_models import Thread

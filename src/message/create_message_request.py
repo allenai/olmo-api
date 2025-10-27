@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from typing import Annotated, Any, Self
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, Json, field_validator, model_validator
+from pydantic import AfterValidator, BaseModel, Field, Json, field_validator, model_validator
 from werkzeug import exceptions
 
 from src.api_interface import APIInterface
@@ -111,6 +111,7 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     root: Message | None = Field(default=None)
     template: str | None = Field(default=None)
     model: str
+    agent: str | None
     files: Sequence[UploadedFile] | None = Field(default=None)
     client: str
     captcha_token: str | None = Field()
@@ -120,8 +121,6 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     create_tool_definitions: list[CreateToolDefinition] | None
     selected_tools: list[str] | None
     enable_tool_calling: bool
-
-    model_config = ConfigDict(validate_assignment=True)
 
     @model_validator(mode="after")
     def parent_exists_if_parent_id_is_set(self) -> Self:

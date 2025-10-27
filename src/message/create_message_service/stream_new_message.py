@@ -61,8 +61,6 @@ instrumentation_settings = InstrumentationSettings(
     version=3, include_content=False, include_binary_content=False, tracer_provider=trace.get_tracer_provider()
 )
 
-current_span = trace.get_current_span()
-
 
 @dataclasses.dataclass
 class ParsedMessage:
@@ -430,6 +428,7 @@ def stream_assistant_response(
                         pydantic_chunks.append(pydantic_chunk)
                         yield pydantic_chunk
                         # Exit the stream without raising an error and return the error chunk
+                        current_span = trace.get_current_span()
                         current_span.set_status(Status(StatusCode.ERROR))
                         return encountered_error
                     pydantic_chunks.append(pydantic_chunk)

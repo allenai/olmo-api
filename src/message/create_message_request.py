@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from typing import Annotated, Any, Self
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, Json, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, Json, field_validator, model_validator
 from werkzeug import exceptions
 
 from src.api_interface import APIInterface
@@ -50,7 +50,7 @@ class CreateMessageRequest(APIInterface):
     private: bool = Field(default=False)
     template: str | None = Field(default=None)
     model: str
-    host: str
+    host: str | None = Field(default=None, deprecated=True)
     tool_call_id: str | None = Field(default=None)
     tool_definitions: Json[list[CreateToolDefinition]] | None = Field(default=None)
     selected_tools: list[str] | None = Field(default=None)
@@ -92,10 +92,10 @@ class CreateMessageRequest(APIInterface):
 
         return self
 
-    @model_validator(mode="after")
-    def process_new_lines(self) -> Self:
-        self.content = self.content.replace("\r\n", "\n")
-        return self
+    @field_validator("content", mode="after")
+    @classmethod
+    def standardize_newlines(cls, value: str) -> str:
+        return value.replace("\r\n", "\n")
 
 
 class CreateMessageRequestWithFullMessages(BaseModel):
@@ -111,7 +111,6 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     root: Message | None = Field(default=None)
     template: str | None = Field(default=None)
     model: str
-    host: str
     files: Sequence[UploadedFile] | None = Field(default=None)
     client: str
     captcha_token: str | None = Field()

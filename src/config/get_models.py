@@ -7,13 +7,13 @@ from src.dao.flask_sqlalchemy_session import current_session
 from src.model_config.get_model_config_service import get_single_model_config_admin
 
 
-def get_model_by_host_and_id(host: str, id: str) -> ModelConfig | MultiModalModelConfig:
+def get_model_by_id(id: str) -> ModelConfig | MultiModalModelConfig:
     model = get_single_model_config_admin(current_session, id)
 
-    if model is None or model.host != host:
-        logging.getLogger().error("Couldn't find model/host combination %s/%s", id, host)
+    if model is None:
+        logging.getLogger().error("Couldn't find model %s", id)
 
-        invalid_model_and_host_message = f"Invalid model/host combination {id}/{host}"
-        raise exceptions.BadRequest(invalid_model_and_host_message)
+        invalid_model_message = f"Invalid model {id}"
+        raise exceptions.BadRequest(invalid_model_message)
 
     return model

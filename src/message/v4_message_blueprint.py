@@ -14,7 +14,7 @@ from src.flask_pydantic_api.api_wrapper import pydantic_api
 from src.message.create_message_request import (
     CreateMessageRequest,
 )
-from src.message.create_message_service.endpoint import create_message_v4, format_message
+from src.message.create_message_service.model_stream_service import format_message, stream_model_message
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 
 
@@ -37,7 +37,7 @@ def create_v4_message_blueprint(dbc: db.Client, storage_client: GoogleCloudStora
         create_message_request: CreateMessageRequest,
     ) -> ResponseReturnValue:
         try:
-            stream_response = create_message_v4(
+            stream_response = stream_model_message(
                 create_message_request,
                 dbc,
                 storage_client=storage_client,

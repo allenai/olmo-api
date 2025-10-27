@@ -48,7 +48,8 @@ def create_threads_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage)
         create_message_request: CreateMessageRequest,
     ) -> ResponseReturnValue:
         model_message_stream_input = ModelMessageStreamInput(
-            **create_message_request.model_dump(), request_type=MessageType.MODEL
+            **create_message_request.model_dump(exclude={"host", "n", "logprobs"}, by_alias=False),
+            request_type=MessageType.MODEL,
         )
 
         try:

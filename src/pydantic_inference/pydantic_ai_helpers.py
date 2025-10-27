@@ -161,7 +161,7 @@ def pydantic_map_part(part: ModelResponsePart, message: Message) -> Chunk:
                     message=message.id,
                     error_code=ErrorCode.TOOL_CALL_ERROR,
                     error_description=str(e),
-                    error_severity=ErrorSeverity.WARNING,
+                    error_severity=ErrorSeverity.ERROR,
                 )
 
             return ToolCallChunk(
@@ -190,7 +190,7 @@ def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDel
                     message=message.id,
                     error_code=ErrorCode.TOOL_CALL_ERROR,
                     error_description=str(e),
-                    error_severity=ErrorSeverity.WARNING,
+                    error_severity=ErrorSeverity.ERROR,
                 )
 
             return ToolCallChunk(

@@ -22,8 +22,8 @@ class ErrorCode(StrEnum):
 
 
 class ErrorSeverity(StrEnum):
-    WARNING = "warning"
     ERROR = "error"
+    WARNING = "warning"
     INFO = "info"
 
 

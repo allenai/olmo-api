@@ -139,7 +139,7 @@ def test_pydantic_map_part_should_return_error_chunk_when_tool_not_found():
     assert isinstance(chunk, ErrorChunk)
     assert chunk.error_code == ErrorCode.TOOL_CALL_ERROR
     assert "unknown_tool" in chunk.error_description or "Could not find tool" in chunk.error_description
-    assert chunk.error_severity == ErrorSeverity.WARNING
+    assert chunk.error_severity == ErrorSeverity.ERROR
     assert chunk.message == "fake_message"
 
 
@@ -184,5 +184,5 @@ def test_pydantic_map_delta_should_return_error_chunk_when_tool_not_found():
 
     assert isinstance(chunk, ErrorChunk)
     assert chunk.error_code == ErrorCode.TOOL_CALL_ERROR
-    assert chunk.error_severity == ErrorSeverity.WARNING
+    assert chunk.error_severity == ErrorSeverity.ERROR
     assert chunk.message == "fake_message"

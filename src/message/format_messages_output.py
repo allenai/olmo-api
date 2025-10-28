@@ -13,7 +13,8 @@ from src.util import CustomEncoder
 
 
 def format_message(obj) -> str:
-    return json.dumps(obj=obj, cls=CustomEncoder) + "\n"
+    # indent=None forces this to output without newlines which could cause issues when parsing the output
+    return json.dumps(obj=obj, cls=CustomEncoder, indent=None) + "\n"
 
 
 def format_messages(

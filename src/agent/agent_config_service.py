@@ -46,8 +46,8 @@ available_agents = [
 ]
 
 
-def get_agent_by_id(agent_id: str) -> Agent:
-    agent = next(agent for agent in available_agents if agent.id == agent_id)
+def get_agent_by_id(agent_id: str) -> Agent | None:
+    agent = next((agent for agent in available_agents if agent.id == agent_id), None)
 
     if agent is None:
         logging.getLogger().error("Couldn't find agent %s", id)

@@ -16,7 +16,7 @@ class AgentDTO(APIInterface):
 
 available_agents = [
     Agent(
-        id="tulu-deep-research",
+        id="deep-research",
         name="Tülu Deep Research",
         description="Description",
         short_summary="Summary",

@@ -42,19 +42,22 @@ def _is_mcp_server_for_general_use(mcp_server: McpServer) -> bool:
 def get_general_mcp_tools() -> list[Ai2ToolDefinition]:
     mcp_tools: list[Ai2ToolDefinition] = []
 
-    # mcp_tools = [
-    #     tool
-    #     for server in cfg.mcp.servers
-    #     if _is_mcp_server_for_general_use(server)
-    #     for tool in list_mcp_server_tools(server)
-    # ]
+    # TODO: There's probably a way to share this logic with get_tools_from_mcp_servers
+    # It may be nice to pass in a condition for the mcp servers?
+    mcp_tools = [
+        tool
+        for server in cfg.mcp.servers
+        if _is_mcp_server_for_general_use(server)
+        for tool in list_mcp_server_tools(server)
+    ]
 
-    for server in cfg.mcp.servers:
-        if not _is_mcp_server_for_general_use(server):
-            continue
+    return mcp_tools
 
-        mapped_tools = list_mcp_server_tools(server)
-        mcp_tools.extend(mapped_tools)
+
+def get_tools_from_mcp_servers(mcp_server_ids: set[str]) -> list[Ai2ToolDefinition]:
+    mcp_tools = [
+        tool for server in cfg.mcp.servers if server.id in mcp_server_ids for tool in list_mcp_server_tools(server)
+    ]
 
     return mcp_tools
 

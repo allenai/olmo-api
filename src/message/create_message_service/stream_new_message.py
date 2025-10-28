@@ -117,6 +117,7 @@ def create_new_message(
             model=model,
             is_msg_harmful=is_message_harmful,
             agent_id=request.agent,
+            include_mcp_servers=request.mcp_server_ids,
         )
         message_chain.append(user_message)
 

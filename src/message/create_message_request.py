@@ -122,6 +122,9 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     selected_tools: list[str] | None
     enable_tool_calling: bool
 
+    mcp_server_ids: set[str] | None
+    """Intended to be used by agent flows to pass MCP servers in"""
+
     @model_validator(mode="after")
     def parent_exists_if_parent_id_is_set(self) -> Self:
         if self.parent_id is not None and self.parent is None:

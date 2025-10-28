@@ -52,10 +52,14 @@ class ModelMessageStreamInput:
     private: bool = False
     template: str | None = None
     model: str
+
     tool_call_id: str | None = None
     tool_definitions: list[CreateToolDefinition] | None = None
     selected_tools: list[str] | None = None
     enable_tool_calling: bool = False
+
+    mcp_server_ids: set[str] | None = None
+    """Intended to be used by agent flows to pass MCP servers in"""
 
     bypass_safety_check: bool = False
 
@@ -144,6 +148,7 @@ def stream_message_from_model(
         enable_tool_calling=request.enable_tool_calling,
         selected_tools=request.selected_tools,
         bypass_safety_check=request.bypass_safety_check,
+        mcp_server_ids=request.mcp_server_ids,
     )
 
     if model.prompt_type == PromptType.FILES_ONLY and not cfg.feature_flags.allow_files_only_model_in_thread:

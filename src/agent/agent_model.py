@@ -8,7 +8,7 @@ class Agent:
     description: str
     short_summary: str
     information_url: str | None
-    mcp_server_id: str | None
+    mcp_server_ids: list[str] | None
     model_id: str
     max_tokens: int
     temperature: float

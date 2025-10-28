@@ -21,6 +21,7 @@ from src.message.create_message_service.endpoint import (
 )
 from src.message.format_messages_output import format_messages
 from src.message.GoogleCloudStorage import GoogleCloudStorage
+from src.tools.mcp_service import find_mcp_config_by_id, list_mcp_server_tools
 
 
 class AgentChatRequest(APIInterface):
@@ -47,6 +48,13 @@ def create_agents_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage) 
     @pydantic_api(name="Stream a chat agent response", tags=["v4", "agents"])
     def stream_chat_agent_response(request: AgentChatRequest):
         agent = get_agent_by_id(request.agent_id)
+        agent_mcp_servers = [find_mcp_config_by_id(mcp_server_id) for mcp_server_id in (agent.mcp_server_ids or [])]
+        tools_available_to_agent = [
+            tool_definition
+            for mcp_server in agent_mcp_servers
+            if mcp_server is not None  # TODO: What should happen if this mcp server isn't available anymore?
+            for tool_definition in list_mcp_server_tools(mcp_server)
+        ]
 
         stream_model_message_request = ModelMessageStreamInput(
             parent=request.parent,
@@ -57,6 +65,7 @@ def create_agents_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage) 
             template=request.template,
             model=agent.model_id,
             request_type=MessageType.AGENT,
+            tool_definitions=tools_available_to_agent,
         )
 
         try:

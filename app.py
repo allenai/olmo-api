@@ -4,6 +4,10 @@ import os
 
 from flask import Flask
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from sqlalchemy.orm import sessionmaker
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -28,9 +32,14 @@ def create_app():
     setup_otel()
 
     FlaskInstrumentor().instrument_app(app)
+    HTTPXClientInstrumentor().instrument()
+    RequestsInstrumentor().instrument()
+    PsycopgInstrumentor().instrument(enable_commenter=True)
 
     dbc = db.Client.from_config(cfg.db)
     db_engine = make_db_engine(cfg.db, pool=dbc.pool, sql_alchemy=cfg.sql_alchemy)
+    SQLAlchemyInstrumentor().instrument(engine=db_engine, enable_commenter=True)
+
     session_maker = sessionmaker(db_engine, expire_on_commit=False, autoflush=True)
     flask_scoped_session(session_maker, app=app)
 

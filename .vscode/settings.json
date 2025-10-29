@@ -11,7 +11,8 @@
         "getpid",
         "drivername",
         "sessionmaker",
-        "Cirrascale"
+        "Cirrascale",
+        "instrumentor"
     ],
     "ruff.configurationPreference": "filesystemFirst",
     "ruff.format.preview": true,

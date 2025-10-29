@@ -36,6 +36,7 @@ class Message(Base, kw_only=True):
         ForeignKeyConstraint(["template"], ["prompt_template.id"], name="message_template_fkey"),
         PrimaryKeyConstraint("id", name="message_pkey"),
         Index("message_created_ix", "created"),
+        Index("message_creator_ix", "creator"),
         Index("message_original_fkey_ix", "original"),
         Index("message_parent_fkey_ix", "parent"),
         Index("message_root_fkey_ix", "root"),

@@ -27,6 +27,7 @@ class TestDatabase:
             selected_tools=None,
             enable_tool_calling=False,
             agent=None,
+            mcp_server_ids=None,
         )
 
         model = ModelConfig(
@@ -82,6 +83,7 @@ class TestDatabase:
             selected_tools=None,
             enable_tool_calling=False,
             agent=None,
+            mcp_server_ids=None,
         )
 
         model = ModelConfig(
@@ -118,6 +120,7 @@ class TestDatabase:
             request=request,
             creator_token=token,
             agent_id=None,
+            include_mcp_servers=None,
         )
 
         result = sql_alchemy.query(Message).all()

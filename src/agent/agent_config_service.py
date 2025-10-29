@@ -46,7 +46,7 @@ available_agents = [
 ]
 
 
-def get_agent_by_id(agent_id: str) -> Agent | None:
+def get_agent_by_id(agent_id: str) -> Agent:
     agent = next((agent for agent in available_agents if agent.id == agent_id), None)
 
     if agent is None:

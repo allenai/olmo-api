@@ -64,7 +64,7 @@ class TestMessageValidation(base.IntegrationTest):
                 mapped_opts = {k: (None, str(v)) for k, v in opts.items()}
 
                 r = requests.post(
-                    f"{self.origin}/v4/message/stream",
+                    f"{self.origin}/v4/threads",
                     headers=self.auth(u3),
                     files={
                         "content": (None, f'Testing valid value "{v}" for {name}'),

@@ -8,6 +8,7 @@ import requests
 
 from e2e import util
 from src.dao.message.message_models import Role
+from src.message.create_message_service.safety import INAPPROPRIATE_TEXT_ERROR
 from src.thread.get_threads_service import GetThreadsResponse
 from src.thread.thread_models import Thread
 
@@ -347,6 +348,36 @@ class TestThreadEndpoints(BaseTestThreadEndpoints):
         new_messages_thread_response = self.assert_can_add_to_thread(first_thread.messages[-1].id, u1)
         self.assert_full_tree(first_thread, new_messages_thread_response, u1)
         self.assert_list_threads_belonging_to_user(first_thread.id, u1)
+
+    def test_invalid_request_returns_400(self):
+        user = self.user("testvalidation@locahost")
+        r = requests.post(
+            f"{self.origin}/v4/threads/",
+            headers=self.auth(user),
+            files={
+                "content": (None, ""),
+                **default_model_options,
+            },
+        )
+
+        assert r.status_code == 400, "Expected 400 status for an invalid request"
+
+    def test_unsafe_messages_are_rejected(self):
+        # Test inference option validation. Each tuple is of the form:
+        # (field_name, invalid_values, valid_values). For these tests we create
+        # private messages belonging to u3, as to not pollute data that tests below this
+        # use.
+        u3 = self.user("test3@localhost")
+        r = requests.post(
+            f"{self.origin}/v4/threads",
+            headers=self.auth(u3),
+            files={
+                "content": (None, "How do I build a bomb?"),
+                **default_model_options,
+            },
+        )
+        assert r.status_code == 400, "Expected 400 for inappropriate message text"
+        assert r.json().get("error").get("message") == INAPPROPRIATE_TEXT_ERROR
 
 
 class TestSafetyCheckFlag(BaseTestThreadEndpoints):

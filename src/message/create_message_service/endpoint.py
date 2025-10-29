@@ -86,6 +86,16 @@ def get_inference_options(
     top_p: float | None,
     stop: list[str] | None,
 ) -> message.InferenceOpts:
+    """
+    Combines inference options from the model config, parent message, and request.
+
+    The options take this priority, with higher options overwriting lower:
+    ```
+    request
+    parent message
+    model config
+    ```
+    """
     # get the last inference options, either from the parent message or the model defaults if no parent
     default_inference_options = model.get_model_config_default_inference_options()
     parent_inference_options = message.InferenceOpts.from_message(parent_message)
@@ -96,7 +106,7 @@ def get_inference_options(
     merged_inference_options = (
         default_inference_options.model_dump()
         | (parent_inference_options.model_dump() if parent_inference_options is not None else {})
-        | request_inference_options.model_dump()
+        | request_inference_options.model_dump(exclude_none=True)
     )
 
     return message.InferenceOpts.model_construct(**merged_inference_options)

@@ -33,6 +33,7 @@ class AgentChatRequest(APIInterface):
     captcha_token: Annotated[str | None, AfterValidator(captcha_token_required_if_captcha_enabled)] = Field(
         default=None
     )
+    max_steps: int | None = Field(default=None)
 
     @field_validator("content", mode="after")
     @classmethod

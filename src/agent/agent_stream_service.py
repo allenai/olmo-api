@@ -1,9 +1,14 @@
+from typing import Annotated
+
+from pydantic import AfterValidator, Field, field_validator
+
 from src import db
-from src.agent.agent_blueprint import AgentChatRequest
 from src.agent.agent_config_service import get_agent_by_id
+from src.api_interface import APIInterface
 from src.dao.flask_sqlalchemy_session import current_session
 from src.dao.message.message_models import Role
 from src.dao.message.message_repository import MessageRepository
+from src.message.create_message_request import captcha_token_required_if_captcha_enabled
 from src.message.create_message_service.endpoint import (
     MessageType,
     ModelMessageStreamInput,
@@ -11,6 +16,23 @@ from src.message.create_message_service.endpoint import (
 )
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.tools.mcp_service import find_mcp_config_by_id
+
+
+class AgentChatRequest(APIInterface):
+    agent_id: str
+    parent: str | None = Field(default=None)
+    content: str = Field(min_length=1)
+    template: str | None = Field(default=None)
+    bypass_safety_check: bool = Field(default=False)
+    captcha_token: Annotated[str | None, AfterValidator(captcha_token_required_if_captcha_enabled)] = Field(
+        default=None
+    )
+    max_steps: int | None = Field(default=None)
+
+    @field_validator("content", mode="after")
+    @classmethod
+    def standardize_newlines(cls, value: str) -> str:
+        return value.replace("\r\n", "\n")
 
 
 def stream_agent_chat(request: AgentChatRequest, dbc: db.Client, storage_client: GoogleCloudStorage):

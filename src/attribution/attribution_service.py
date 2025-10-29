@@ -26,7 +26,7 @@ from src.attribution.infini_gram_api_client.models.available_infini_gram_index_i
 )
 from src.attribution.infini_gram_api_client.models.problem import Problem
 from src.attribution.infini_gram_api_client.models.request_validation_error import RequestValidationError
-from src.config.get_config import get_config
+from src.config.get_config import cfg
 from src.dao.engine_models.model_config import ModelConfig
 from src.util.pii_regex import does_contain_pii
 
@@ -83,7 +83,7 @@ class ResponseAttributionDocument:
         }:
             source = metadata.get("source", None)
 
-        source_detail = get_config.infini_gram.source_map[source]
+        source_detail = cfg.infini_gram.source_map[source]
 
         return cls(
             text_long=document.text_long,

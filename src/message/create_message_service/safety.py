@@ -11,7 +11,7 @@ from otel.default_tracer import get_default_tracer
 from src.auth.auth_utils import Permissions, user_has_permission
 from src.auth.token import Token
 from src.bot_detection.create_assessment import create_assessment
-from src.config.get_config import get_config
+from src.config.get_config import cfg
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
@@ -82,17 +82,17 @@ def evaluate_prompt_submission_captcha(
     captcha_token: str | None, user_ip_address: str | None, user_agent: str | None, *, is_anonymous_user: bool
 ):
     prompt_submission_action = "prompt_submission"
-    if get_config.google_cloud_services.recaptcha_key is not None and captcha_token is not None:
+    if cfg.google_cloud_services.recaptcha_key is not None and captcha_token is not None:
         captcha_assessment = create_assessment(
             project_id="ai2-reviz",
-            recaptcha_key=get_config.google_cloud_services.recaptcha_key,
+            recaptcha_key=cfg.google_cloud_services.recaptcha_key,
             token=captcha_token,
             recaptcha_action=prompt_submission_action,
             user_ip_address=user_ip_address,
             user_agent=user_agent,
         )
 
-        if not is_anonymous_user or not get_config.google_cloud_services.enable_recaptcha:
+        if not is_anonymous_user or not cfg.google_cloud_services.enable_recaptcha:
             return
 
         logger = current_app.logger

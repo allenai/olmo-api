@@ -11,7 +11,7 @@ import src.dao.message.message_models as message
 from otel.default_tracer import get_default_tracer
 from src import db
 from src.auth.auth_service import authn
-from src.config.get_config import get_config
+from src.config.get_config import cfg
 from src.config.get_models import get_model_by_id
 from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import ModelConfig, PromptType
@@ -162,7 +162,7 @@ def stream_message_from_model(
         mcp_server_ids=request.mcp_server_ids,
     )
 
-    if model.prompt_type == PromptType.FILES_ONLY and not get_config.feature_flags.allow_files_only_model_in_thread:
+    if model.prompt_type == PromptType.FILES_ONLY and not cfg.feature_flags.allow_files_only_model_in_thread:
         current_app.logger.error("Tried to use a files only model in a normal thread stream %s/%s", id, model)
 
         # HACK: I want OLMoASR to be set up like a normal model but don't want people to stream to it yet

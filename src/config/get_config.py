@@ -12,4 +12,4 @@ def get_config():
     return Config.load(path=os.environ.get("FLASK_CONFIG_PATH", default=DEFAULT_CONFIG_PATH))
 
 
-get_config = cast(Config, LocalProxy(get_config))
+cfg = cast(Config, LocalProxy(get_config))

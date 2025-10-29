@@ -41,7 +41,7 @@ class GoogleVisionSafeSearch(SafetyChecker):
     def check_request(self, req: SafetyCheckRequest):
         headers = {
             "Content-Type": "application/json",
-            "X-goog-api-key": get_config.get_config.google_cloud_services.api_key,
+            "X-goog-api-key": get_config.cfg.google_cloud_services.api_key,
         }
 
         request = {

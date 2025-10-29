@@ -7,7 +7,7 @@ from flask import Request, current_app, request
 from werkzeug import exceptions
 
 from src.auth.resource_protectors import anonymous_auth_protector
-from src.config.get_config import get_config
+from src.config.get_config import cfg
 
 from .token import Token
 
@@ -69,7 +69,7 @@ def authn() -> Token:
 def get_user_info() -> UserInfo | None:
     auth = request.headers.get("Authorization")
     headers = {"Authorization": f"{auth}", "Content-Type": "application/json"}
-    response = requests.get(f"https://{get_config().auth.domain}/userinfo", headers=headers)
+    response = requests.get(f"https://{cfg.auth.domain}/userinfo", headers=headers)
 
     if response.status_code == HTTPStatus.OK:
         user_info = response.json()

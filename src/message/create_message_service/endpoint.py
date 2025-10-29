@@ -89,11 +89,11 @@ def get_inference_options(
     """
     Combines inference options from the model config, parent message, and request.
 
-    The options take this priority, with higher options overwriting lower:
+    The options are applied in this order this priority, with lower options overwriting higher:
     ```
-    request
-    parent message
     model config
+    parent message
+    request
     ```
     """
     # get the last inference options, either from the parent message or the model defaults if no parent
@@ -105,11 +105,12 @@ def get_inference_options(
 
     merged_inference_options = (
         default_inference_options.model_dump()
-        | (parent_inference_options.model_dump() if parent_inference_options is not None else {})
+        # Excluding None from these lets us keep the options from the higher set of options
+        | (parent_inference_options.model_dump(exclude_none=True) if parent_inference_options is not None else {})
         | request_inference_options.model_dump(exclude_none=True)
     )
 
-    return message.InferenceOpts.model_construct(**merged_inference_options)
+    return message.InferenceOpts.model_validate(merged_inference_options)
 
 
 @tracer.start_as_current_span("stream_message_from_model")
@@ -122,10 +123,10 @@ def stream_message_from_model(
     # HACK: I'm getting agent support in quickly. Ideally we'd have a different, better way of handling requests for agents instead of models
     agent_id: str | None = None,
 ):
-    client_agent = authn()
+    client_auth = authn()
     model = get_model_by_id(request.model)
     parent_message, root_message, private = get_parent_and_root_messages_and_private(
-        request.parent, message_repository, request.private, is_anonymous_user=client_agent.is_anonymous_user
+        request.parent, message_repository, request.private, is_anonymous_user=client_auth.is_anonymous_user
     )
 
     inference_options = get_inference_options(
@@ -150,7 +151,7 @@ def stream_message_from_model(
         template=request.template,
         model=request.model,
         agent=agent_id,
-        client=client_agent.client,
+        client=client_auth.client,
         files=request.files,
         captcha_token=request.captcha_token,
         tool_call_id=request.tool_call_id,
@@ -188,7 +189,7 @@ def stream_message_from_model(
 
     safety_check_elapsed_time, is_message_harmful = validate_message_security_and_safety(
         request=mapped_request,
-        agent=client_agent,
+        client_auth=client_auth,
         checker_type=checker_type,
         user_ip_address=user_ip_address,
         user_agent=user_agent,
@@ -203,7 +204,7 @@ def stream_message_from_model(
         safety_check_elapsed_time=safety_check_elapsed_time,
         is_message_harmful=is_message_harmful,
         start_time_ns=start_time_ns,
-        client_token=client_agent,
+        client_auth=client_auth,
         message_repository=message_repository,
     )
 

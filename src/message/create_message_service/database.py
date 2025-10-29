@@ -18,16 +18,16 @@ from src.tools.mcp_service import get_tools_from_mcp_servers
 from src.tools.tools_service import get_available_tools
 
 
-def get_expiration_time(agent: Token):
+def get_expiration_time(client_auth: Token):
     # We currently want anonymous users' messages to expire after 1 days
-    return datetime.now(UTC) + timedelta(days=1) if agent.is_anonymous_user else None
+    return datetime.now(UTC) + timedelta(days=1) if client_auth.is_anonymous_user else None
 
 
 def setup_msg_thread(
     message_repository: BaseMessageRepository,
     model: ModelConfig,
     request: CreateMessageRequestWithFullMessages,
-    creator_token: Token,
+    client_auth: Token,
     agent_id: str | None,
     is_msg_harmful: bool | None = None,
 ) -> list[Message]:
@@ -35,13 +35,13 @@ def setup_msg_thread(
     message_chain: list[Message] = []
 
     msg_id = obj.NewID("msg")
-    message_expiration_time = get_expiration_time(creator_token)
+    message_expiration_time = get_expiration_time(client_auth)
 
     if request.parent is None and model.default_system_prompt is not None:
         system_msg = Message(
             id=msg_id,
             content=model.default_system_prompt,
-            creator=creator_token.client,
+            creator=client_auth.client,
             role=Role.System,
             opts=request.opts.model_dump(),
             model_id=model.id,
@@ -66,7 +66,7 @@ def setup_msg_thread(
         message_chain.append(parent)
 
     if request.root is not None:
-        messages = message_repository.get_messages_by_root(request.root.id, creator_token.client) or []
+        messages = message_repository.get_messages_by_root(request.root.id, client_auth.client) or []
         msgs: dict[str, Message] = {}
         for message in messages:
             msgs[message.id] = message

@@ -122,7 +122,7 @@ FORRBIDDEN_SETTING = "User is not allowed to change this setting"
 @tracer.start_as_current_span("validate_message_security_and_safety")
 def validate_message_security_and_safety(
     request: CreateMessageRequestWithFullMessages,
-    agent: Token,
+    client_auth: Token,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     user_ip_address: str | None = None,
     user_agent: str | None = None,
@@ -131,10 +131,10 @@ def validate_message_security_and_safety(
         captcha_token=request.captcha_token,
         user_ip_address=user_ip_address,
         user_agent=user_agent,
-        is_anonymous_user=agent.is_anonymous_user,
+        is_anonymous_user=client_auth.is_anonymous_user,
     )
 
-    can_bypass_safety_checks = user_has_permission(agent.token, Permissions.WRITE_BYPASS_SAFETY_CHECKS)
+    can_bypass_safety_checks = user_has_permission(client_auth.token, Permissions.WRITE_BYPASS_SAFETY_CHECKS)
 
     if can_bypass_safety_checks is False and request.bypass_safety_check is True:
         raise exceptions.Forbidden(FORRBIDDEN_SETTING)

@@ -177,7 +177,7 @@ class Server(Blueprint):
         agent = authn()
         # TODO: OEUI-141 we need to use Auth0 permissions instead of checking this list
         # Only admins can view completions, since they might be related to private messages.
-        if agent.client not in get_config.cfg.server.admins:
+        if agent.client not in get_config.get_config.server.admins:
             raise exceptions.Forbidden
         c = self.dbc.completion.get(id)
         if c is None:

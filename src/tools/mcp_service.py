@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 
 from src.config.Config import McpServer
-from src.config.get_config import cfg
+from src.config.get_config import get_config
 from src.dao.engine_models.tool_call import ToolCall
 from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 from src.dao.engine_models.tool_definitions import ToolSource
@@ -46,7 +46,7 @@ def get_general_mcp_tools() -> list[Ai2ToolDefinition]:
     # It may be nice to pass in a condition for the mcp servers?
     mcp_tools = [
         tool
-        for server in cfg.mcp.servers
+        for server in get_config.mcp.servers
         if _is_mcp_server_for_general_use(server)
         for tool in list_mcp_server_tools(server)
     ]
@@ -56,7 +56,10 @@ def get_general_mcp_tools() -> list[Ai2ToolDefinition]:
 
 def get_tools_from_mcp_servers(mcp_server_ids: set[str]) -> list[Ai2ToolDefinition]:
     mcp_tools = [
-        tool for server in cfg.mcp.servers if server.id in mcp_server_ids for tool in list_mcp_server_tools(server)
+        tool
+        for server in get_config.mcp.servers
+        if server.id in mcp_server_ids
+        for tool in list_mcp_server_tools(server)
     ]
 
     return mcp_tools
@@ -66,7 +69,7 @@ def find_mcp_config_by_id(mcp_id: str | None) -> McpServer | None:
     if mcp_id is None:
         return None
 
-    return next((config for config in cfg.mcp.servers if config.id == mcp_id), None)
+    return next((config for config in get_config.mcp.servers if config.id == mcp_id), None)
 
 
 def call_mcp_tool(tool_call: ToolCall, tool_definition: Ai2ToolDefinition):

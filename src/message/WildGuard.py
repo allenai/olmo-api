@@ -44,7 +44,9 @@ class WildGuard(SafetyChecker):
     client: modal.Client
 
     def __init__(self) -> None:
-        self.client = modal.Client.from_credentials(get_config.cfg.modal.token, get_config.cfg.modal.token_secret)
+        self.client = modal.Client.from_credentials(
+            get_config.get_config.modal.token, get_config.get_config.modal.token_secret
+        )
 
     def check_request(self, req: SafetyCheckRequest) -> SafetyCheckResponse:
         f = modal.Function.lookup("wildguard", "wildguard_api", client=self.client)

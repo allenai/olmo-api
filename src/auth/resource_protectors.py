@@ -2,9 +2,9 @@ from authlib.integrations.flask_oauth2 import ResourceProtector
 
 from src.auth.allow_anonymous_resource_provider import AllowAnonymousResourceProtector
 from src.auth.auth0_bearer_token_validator import Auth0JWTBearerTokenValidator
-from src.config.get_config import cfg
+from src.config.get_config import get_config
 
-validator = Auth0JWTBearerTokenValidator(domain=cfg.auth.domain, audience=cfg.auth.audience)
+validator = Auth0JWTBearerTokenValidator(domain=get_config.auth.domain, audience=get_config.auth.audience)
 
 
 required_auth_protector = ResourceProtector()

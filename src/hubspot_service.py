@@ -4,7 +4,7 @@ import requests
 from flask import current_app
 
 from src.auth.auth_service import UserInfo, get_user_info
-from src.config.get_config import cfg
+from src.config.get_config import get_config
 
 HUBSPOT_URL = "https://api.hubapi.com"
 
@@ -16,7 +16,7 @@ def get_contact(user_info: UserInfo | None):
         return
 
     headers = {
-        "Authorization": f"Bearer {cfg.hubspot.token}",
+        "Authorization": f"Bearer {get_config.hubspot.token}",
         "Content-Type": "application/json",
     }
     data = {
@@ -49,7 +49,7 @@ def create_contact():
 
     url = f"{HUBSPOT_URL}/crm/v3/objects/contacts"
     headers = {
-        "Authorization": f"Bearer {cfg.hubspot.token}",
+        "Authorization": f"Bearer {get_config.hubspot.token}",
         "Content-Type": "application/json",
     }
     if user_info is None:

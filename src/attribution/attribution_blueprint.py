@@ -2,7 +2,7 @@ from flask import Blueprint, Response, jsonify
 from werkzeug import exceptions
 
 from src.attribution.attribution_service import GetAttributionRequest, get_attribution
-from src.config.get_config import cfg
+from src.config.get_config import get_config
 from src.dao.flask_sqlalchemy_session import current_session
 from src.flask_pydantic_api.api_wrapper import pydantic_api
 from src.model_config.get_model_config_service import get_single_model_config_admin
@@ -25,7 +25,7 @@ def get_attribution_for_model_response(
         msg = f"Model {config.id} does not have an infini gram index configured"
         raise ValueError(msg)
 
-    infini_gram_client = Client(base_url=cfg.infini_gram.api_url, raise_on_unexpected_status=True)
+    infini_gram_client = Client(base_url=get_config.infini_gram.api_url, raise_on_unexpected_status=True)
 
     attribution_response = get_attribution(
         request=corpuslink_request, infini_gram_client=infini_gram_client, model_config=config

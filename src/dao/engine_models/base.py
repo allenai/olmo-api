@@ -1,7 +1,7 @@
 import datetime
 from typing import Any, Optional
 
-from sqlalchemy import DateTime, Dialect, TypeDecorator
+from sqlalchemy import DateTime, Dialect, MetaData, TypeDecorator
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, MappedAsDataclass
 
@@ -42,3 +42,5 @@ class Base(MappedAsDataclass, DeclarativeBase):
         dict: JSONB,
         dict[str, Any]: JSONB,
     }
+
+    metadata = MetaData(naming_convention={"ix": "%(column_0_label)s_ix"})

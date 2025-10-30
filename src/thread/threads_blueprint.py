@@ -48,7 +48,7 @@ def create_threads_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage)
 
     @threads_blueprint.get("/")
     @anonymous_auth_protector()
-    @pydantic_api(name="Get messages", tags=["v4", "threads"])
+    @pydantic_api(name="Get messages", tags=["v4", "threads"], get_request_model_from_query_string=True)
     def list_threads(request: GetThreadsRequest) -> GetThreadsResponse:
         authn()
         return get_threads(request, message_repository=MessageRepository(current_session))

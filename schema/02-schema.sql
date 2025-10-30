@@ -1017,5 +1017,11 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE prompt_template_tool_definition_as
 
 UPDATE alembic_version SET version_num='5da1e4a16ea0' WHERE alembic_version.version_num = '5a5c5b3e5614';
 
+-- Running upgrade 5da1e4a16ea0 -> 4ecb303b4164
+
+CREATE INDEX message_creator_ix ON message (creator);
+
+UPDATE alembic_version SET version_num='4ecb303b4164' WHERE alembic_version.version_num = '5da1e4a16ea0';
+
 COMMIT;
 

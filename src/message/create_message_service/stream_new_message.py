@@ -308,9 +308,9 @@ def stream_new_message(
         tool_calls_made += 1
 
     if tool_calls_made == max_repeated_tool_calls:
-        msg = f"Call exceed the max tool call limit of {max_repeated_tool_calls}."
+        msg = f"Call exceeded the max tool call limit of {max_repeated_tool_calls}."
         yield MessageStreamError(message=message_chain[0].id, error=msg, reason=FinishReason.ToolError)
-        return
+
     yield StreamEndChunk(message=message_chain[0].id)
 
 

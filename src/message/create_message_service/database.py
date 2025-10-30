@@ -109,13 +109,13 @@ def map_tools_for_user_message(
     )
 
     if include_mcp_servers is None:
-        # This is an agent request, we should only use tools in the MCP servers for now
         selected_tools = (
             (tool for tool in get_available_tools(model) if tool.name in request.selected_tools)
             if request.selected_tools is not None
             else []
         )
     else:
+        # Only use tools in the specified MCP servers
         selected_tools = get_tools_from_mcp_servers(include_mcp_servers)
 
     tool_list: list[ToolDefinition] = list(chain(selected_tools, user_defined_tools))

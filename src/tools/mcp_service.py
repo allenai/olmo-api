@@ -22,7 +22,7 @@ def get_mcp_servers() -> dict[str, MCPServerStreamableHTTP]:
 
 def get_tools_from_mcp_server(server: PydanticMCPServer) -> list[Ai2ToolDefinition]:
     # HACK: get_tools wants the context but doesn't actually use it yet
-    tools = asyncio.run(server.get_tools(None))
+    tools = asyncio.run(server.get_tools(None))  # type: ignore
 
     return [
         Ai2ToolDefinition(

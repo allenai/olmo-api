@@ -197,6 +197,7 @@ def create_new_message(
             message_repository,
             message_chain,
             tool_message,
+            request.max_steps,
             checker_type,
         )
     msg = "Unsupported role"
@@ -226,9 +227,10 @@ def stream_new_message(
         yield StreamEndChunk(message=message_chain[0].id)
         return
 
+    max_repeated_tool_calls = max_steps if max_steps is not None else DEFAULT_MAX_REPEATED_TOOL_CALLS
     # Finalize the messages and yield
     tool_calls_made = 0
-    while tool_calls_made < DEFAULT_MAX_REPEATED_TOOL_CALLS:
+    while tool_calls_made < max_repeated_tool_calls:
         stream_metrics = StreamMetrics(
             first_chunk_ns=None, input_token_count=None, output_token_count=None, total_generation_ns=None
         )
@@ -305,9 +307,8 @@ def stream_new_message(
 
         tool_calls_made += 1
 
-    max_repeated_tool_calls = max_steps if max_steps is not None else DEFAULT_MAX_REPEATED_TOOL_CALLS
     if tool_calls_made == max_repeated_tool_calls:
-        msg = f"Call exceed the max tool call limit of {DEFAULT_MAX_REPEATED_TOOL_CALLS}."
+        msg = f"Call exceed the max tool call limit of {max_repeated_tool_calls}."
         yield MessageStreamError(message=message_chain[0].id, error=msg, reason=FinishReason.ToolError)
         return
     yield StreamEndChunk(message=message_chain[0].id)

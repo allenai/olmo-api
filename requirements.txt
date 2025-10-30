@@ -33,13 +33,6 @@ pydub==0.25.1
 openai==1.107.2
 pydantic-ai==1.0.18
 pytest-postgresql==7.0.2
-||||||| Stash base
-openai==1.93.0
-pydantic-ai==0.6.2
-=======
-openai==1.107.0
-pydantic-ai==1.0.2
->>>>>>> Stashed changes
 mcp==1.13.1
 beaker-py==2.5.0
 opentelemetry-api==1.38.0

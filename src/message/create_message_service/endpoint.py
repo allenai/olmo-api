@@ -70,6 +70,7 @@ class ModelMessageStreamInput:
     temperature: float | None = None
     top_p: float | None = None
     stop: list[str] | None = field(default_factory=list)
+    max_steps: int | None = None
     # n and logprobs are deliberately excluded since we don't currently support them
 
     extra_parameters: dict[str, Any] | None = None
@@ -126,6 +127,7 @@ def stream_message_from_model(
         selected_tools=request.selected_tools,
         bypass_safety_check=request.bypass_safety_check,
         mcp_server_ids=request.mcp_server_ids,
+        max_steps=request.max_steps,
     )
 
     if model.prompt_type == PromptType.FILES_ONLY and not cfg.feature_flags.allow_files_only_model_in_thread:

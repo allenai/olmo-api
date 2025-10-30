@@ -55,7 +55,7 @@ from .database import (
     setup_msg_thread,
 )
 
-MAX_REPEATED_TOOL_CALLS = 10
+DEFAULT_MAX_REPEATED_TOOL_CALLS = 10
 
 instrumentation_settings = InstrumentationSettings(
     version=3, include_content=False, include_binary_content=False, tracer_provider=trace.get_tracer_provider()
@@ -145,6 +145,7 @@ def create_new_message(
             message_repository,
             message_chain,
             user_message,
+            request.max_steps,
             checker_type,
             blob_map,
         )
@@ -212,6 +213,7 @@ def stream_new_message(
     message_repository: BaseMessageRepository,
     message_chain: list[Message],
     created_message: Message,
+    max_steps: int | None,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     blob_map: dict[str, FileUploadResult] | None = None,
 ) -> Generator[Message | MessageChunk | MessageStreamError | Chunk]:
@@ -226,7 +228,7 @@ def stream_new_message(
 
     # Finalize the messages and yield
     tool_calls_made = 0
-    while tool_calls_made < MAX_REPEATED_TOOL_CALLS:
+    while tool_calls_made < DEFAULT_MAX_REPEATED_TOOL_CALLS:
         stream_metrics = StreamMetrics(
             first_chunk_ns=None, input_token_count=None, output_token_count=None, total_generation_ns=None
         )
@@ -303,8 +305,9 @@ def stream_new_message(
 
         tool_calls_made += 1
 
-    if tool_calls_made == MAX_REPEATED_TOOL_CALLS:
-        msg = f"Call exceed the max tool call limit of {MAX_REPEATED_TOOL_CALLS}."
+    max_repeated_tool_calls = max_steps if max_steps is not None else DEFAULT_MAX_REPEATED_TOOL_CALLS
+    if tool_calls_made == max_repeated_tool_calls:
+        msg = f"Call exceed the max tool call limit of {DEFAULT_MAX_REPEATED_TOOL_CALLS}."
         yield MessageStreamError(message=message_chain[0].id, error=msg, reason=FinishReason.ToolError)
         return
     yield StreamEndChunk(message=message_chain[0].id)

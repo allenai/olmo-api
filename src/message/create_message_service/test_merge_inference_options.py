@@ -2,7 +2,7 @@ from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import ModelConfig, ModelHost, ModelType, PromptType
 from src.dao.message.inference_opts_model import InferenceOpts
 from src.dao.message.message_models import Role
-from src.message.create_message_service.endpoint import merge_inference_options
+from src.message.create_message_service.merge_inference_options import merge_inference_options
 
 test_model = ModelConfig(
     id="test-model",

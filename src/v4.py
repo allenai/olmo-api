@@ -1,44 +1,43 @@
-from flask import Blueprint
-from sqlalchemy.orm import Session, sessionmaker
+"""
+V4 API Router (FastAPI)
+-----------------------
 
-from src import db
-from src.admin.admin_blueprint import create_admin_blueprint
-from src.message.GoogleCloudStorage import GoogleCloudStorage
-from src.message.v4_message_blueprint import create_v4_message_blueprint
-from src.model_config.model_config_blueprint import create_model_config_blueprint
-from src.prompt_template.prompt_template_blueprint import create_prompt_template_blueprint
-from src.thread.threads_blueprint import create_threads_blueprint
-from src.transcription.transcription_blueprint import create_transcription_blueprint
+Main router for v4 API endpoints.
+Includes all v4 routers converted from Flask blueprints.
+"""
+
+from fastapi import APIRouter
+
+from src.message.v4_message_router import router as message_router
+from src.model_config.model_config_admin_router import router as admin_models_router
+from src.model_config.model_config_router import router as models_router
+from src.prompt_template.prompt_template_router import router as prompt_template_router
+from src.thread.threads_router import router as threads_router
+from src.transcription.transcription_router import router as transcription_router
+from src.user.v4_user_router import router as user_router
 
 
-def create_v4_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage, session_maker: sessionmaker[Session]):
-    v4_blueprint = Blueprint(name="v4", import_name=__name__)
+def create_v4_router() -> APIRouter:
+    """Create v4 API router with all sub-routers"""
+    v4_router = APIRouter(prefix="/v4")
 
-    v4_blueprint.register_blueprint(
-        blueprint=create_v4_message_blueprint(dbc, storage_client=storage_client),
-        url_prefix="/message",
-        name="message",
-    )
+    # Message endpoints
+    v4_router.include_router(message_router, prefix="/message")
 
-    v4_blueprint.register_blueprint(create_model_config_blueprint(session_maker), url_prefix="/models", name="models")
-    v4_blueprint.register_blueprint(
-        create_admin_blueprint(session_maker),
-        url_prefix="/admin/models",
-        name="admin/models",
-    )
+    # Model configuration endpoints
+    v4_router.include_router(models_router, prefix="/models")
+    v4_router.include_router(admin_models_router, prefix="/admin/models")
 
-    v4_blueprint.register_blueprint(
-        blueprint=create_threads_blueprint(dbc=dbc, storage_client=storage_client),
-        url_prefix="/threads",
-        name="threads",
-    )
+    # Thread endpoints
+    v4_router.include_router(threads_router, prefix="/threads")
 
-    v4_blueprint.register_blueprint(
-        blueprint=create_transcription_blueprint(), url_prefix="/transcribe", name="transcribe"
-    )
+    # Transcription endpoints
+    v4_router.include_router(transcription_router, prefix="/transcribe")
 
-    v4_blueprint.register_blueprint(
-        create_prompt_template_blueprint(), url_prefix="/prompt-templates", name="prompt-template"
-    )
+    # Prompt template endpoints
+    v4_router.include_router(prompt_template_router, prefix="/prompt-templates")
 
-    return v4_blueprint
+    # User endpoints
+    v4_router.include_router(user_router)
+
+    return v4_router

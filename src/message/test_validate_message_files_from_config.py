@@ -15,8 +15,8 @@ from src.dao.engine_models.model_config import (
     MultiModalModelConfig,
     PromptType,
 )
-from src.flask_pydantic_api.utils import UploadedFile
 from src.message.validate_message_files_from_config import validate_message_files_from_config
+from src.uploaded_file import UploadedFile
 
 default_inference_constraints = {
     "max_tokens_default": 2048,

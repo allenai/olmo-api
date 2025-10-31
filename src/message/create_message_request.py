@@ -15,7 +15,7 @@ from src.dao.message.inference_opts_model import (
     InferenceOpts,
 )
 from src.dao.message.message_models import Role
-from src.flask_pydantic_api.utils import UploadedFile
+from src.uploaded_file import UploadedFile
 
 
 def captcha_token_required_if_captcha_enabled(value: str | None):
@@ -42,6 +42,7 @@ class CreateToolDefinition(APIInterface):
 
 
 class CreateMessageRequest(APIInterface):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     # TODO: Validate that the parent role is different from this role and that it exists
     parent: str | None = Field(default=None)
     content: str = Field(min_length=1)
@@ -99,6 +100,8 @@ class CreateMessageRequest(APIInterface):
 
 
 class CreateMessageRequestWithFullMessages(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     parent_id: str | None = Field(default=None)
     parent: Message | None = Field(default=None)
     opts: InferenceOpts = Field(default_factory=InferenceOpts)

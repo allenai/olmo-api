@@ -1,10 +1,20 @@
+import logging
+from dataclasses import dataclass
+from http import HTTPStatus
 from typing import cast
 
 import requests
-from flask import current_app
 
-from src.auth.auth_service import UserInfo, get_user_info
 from src.config.get_config import cfg
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class UserInfo:
+    email: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
 
 HUBSPOT_URL = "https://api.hubapi.com"
 
@@ -41,8 +51,24 @@ def get_contact(user_info: UserInfo | None):
     return False
 
 
-def create_contact():
-    user_info = get_user_info()
+def get_user_info(auth_header: str) -> UserInfo | None:
+    """Get user info from Auth0 using the Authorization header"""
+    headers = {"Authorization": auth_header, "Content-Type": "application/json"}
+    response = requests.get(f"https://{cfg.auth.domain}/userinfo", headers=headers)
+
+    if response.status_code == HTTPStatus.OK:
+        user_info = response.json()
+        email = user_info.get("email")
+        first_name = user_info.get("given_name")
+        last_name = user_info.get("family_name")
+
+        return UserInfo(email=email, first_name=first_name, last_name=last_name)
+    logger.error("Error fetching user info: %s %s", response.status_code, response.text)
+    return None
+
+
+def create_contact(auth_header: str):
+    user_info = get_user_info(auth_header)
 
     if get_contact(user_info):
         return
@@ -67,6 +93,6 @@ def create_contact():
     response = requests.post(url, headers=headers, json=contact_data)
 
     if response.status_code == 201:
-        current_app.logger.info("Contact created successfully:", response.json())
+        logger.info("Contact created successfully: %s", response.json())
     else:
-        current_app.logger.error("Error creating contact:", response.status_code, response.text)
+        logger.error("Error creating contact: %s %s", response.status_code, response.text)

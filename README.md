@@ -2,6 +2,19 @@
 
 The HTTP API used by http://playground.allenai.org
 
+**Framework:** FastAPI 0.116+ with Python 3.11+
+
+## Features
+
+- **FastAPI** with async/await support for high performance
+- **Pydantic V2** for data validation and serialization
+- **OpenAPI/Swagger** automatic documentation at `/docs`
+- **Auth0** JWT authentication
+- **PostgreSQL** database with SQLAlchemy ORM
+- **Google Cloud Storage** for file uploads
+- **OpenTelemetry** distributed tracing
+- **Docker Compose** for local development
+
 ## Contributing
 
 ### Getting Started
@@ -22,6 +35,11 @@ To start a local server, follow these steps:
     ```
     docker compose up --build
     ```
+
+3. The API will be available at:
+   - **API:** http://localhost:8000
+   - **OpenAPI Docs:** http://localhost:8000/docs
+   - **Health Check:** http://localhost:8000/health
 
 ### Reset Schema
 
@@ -55,21 +73,54 @@ mypy . --config ./pyproject.toml
 
 ## Running the API outside of Docker:
 
-Change `db.conninfo` in `config.json` to "postgres://app:llmz@127.0.0.1:5555/llmx?sslmode=disable"
+1. Change `db.conninfo` in `config.json` to:
+   ```
+   "postgres://app:llmz@127.0.0.1:5555/llmx?sslmode=disable"
+   ```
 
-start the postgres container with `docker compose start db`
+2. Start the postgres container:
+   ```bash
+   docker compose start db
+   ```
 
-make sure you're in the venv by running `.venv/bin/activate`
+3. Activate the virtual environment:
+   ```bash
+   source .venv/bin/activate
+   ```
 
-Start the server by running `FLASK_APP=app.py python -m flask run -p 8000`
+4. Start the FastAPI server:
+   ```bash
+   uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+   ```
 
-Note: If you run e2e tests with a local server it's possible for the containers and local server to be out of sync. Make sure you run e2e tests in the docker-compose
+**Note:** If you run e2e tests with a local server it's possible for the containers and local server to be out of sync. Make sure you run e2e tests in docker-compose.
 
 ### Debugging the API in VSCode:
 
 Ensure you have the [Python Extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python) installed.
 
-Instead of starting the server with the `python` command above, launch the `Python Debugger: Flask` debug task in VSCode's debug menu.
+Create a launch configuration in `.vscode/launch.json`:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "FastAPI",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["app:app", "--reload"],
+      "jinja": true,
+      "env": {
+        "FLASK_CONFIG_PATH": "./config.json"
+      }
+    }
+  ]
+}
+```
+
+Then launch the "FastAPI" debug task in VSCode's debug menu.
 
 ## Regenerating infinigram-api-client
 

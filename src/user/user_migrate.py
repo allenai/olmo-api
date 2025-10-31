@@ -1,8 +1,8 @@
 from pydantic import Field
+from sqlalchemy.orm import Session
 
 from src import db
 from src.api_interface import APIInterface
-from src.dao.flask_sqlalchemy_session import current_session
 from src.dao.message.message_repository import MessageRepository
 from src.dao.user import User
 from src.message.GoogleCloudStorage import GoogleCloudStorage
@@ -19,7 +19,7 @@ class MigrateFromAnonymousUserResponse(APIInterface):
 
 
 def migrate_user_from_anonymous_user(
-    dbc: db.Client, storage_client: GoogleCloudStorage, anonymous_user_id: str, new_user_id: str
+    dbc: db.Client, storage_client: GoogleCloudStorage, session: Session, anonymous_user_id: str, new_user_id: str
 ):
     # migrate tos
     previous_user = dbc.user.get_by_client(anonymous_user_id)
@@ -58,7 +58,7 @@ def migrate_user_from_anonymous_user(
     elif previous_user is None and new_user is not None:
         updated_user = new_user
 
-    message_repository = MessageRepository(current_session)
+    message_repository = MessageRepository(session)
 
     msgs_to_be_migrated = message_repository.get_by_creator(anonymous_user_id)
 

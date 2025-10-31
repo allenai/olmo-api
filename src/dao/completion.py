@@ -6,7 +6,6 @@ from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool
 
 from src import obj
-
 from src.dao.message.message_models import (
     InferenceOpts,
     TokenLogProbs,

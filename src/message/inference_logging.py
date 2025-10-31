@@ -1,16 +1,21 @@
+import logging
 import os
 
-from flask import current_app
-from flask import request as flask_request
+logger = logging.getLogger(__name__)
 
 
 def log_inference_timing(
-    event_type: str, ttft_ns: int, total_ns: int, input_token_count: int, output_token_count: int, model: str, **kwargs
+    event_type: str,
+    ttft_ns: int,
+    total_ns: int,
+    input_token_count: int,
+    output_token_count: int,
+    model: str,
+    remote_address: str | None = None,
+    **kwargs,
 ):
-    logger = current_app.logger
     ttft_ms = ttft_ns // 1e6
     total_ms = total_ns // 1e6
-    remote_address = flask_request.remote_addr
 
     event_log = dict(
         event="inference.timing",

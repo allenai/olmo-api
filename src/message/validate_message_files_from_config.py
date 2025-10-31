@@ -11,9 +11,9 @@ from src.dao.engine_models.model_config import (
     MultiModalModelConfig,
     PromptType,
 )
-from src.flask_pydantic_api.utils import UploadedFile
 from src.message.file_validation.check_is_file_in_allowed_file_types import check_is_file_in_allowed_file_types
 from src.model_config.response_model import MultiModalResponseModel, ResponseModel, TextOnlyResponseModel
+from src.uploaded_file import UploadedFile
 
 
 def get_file_size(file: UploadedFile):
@@ -31,7 +31,7 @@ class CreateMessageRequestFilesValidator(BaseModel):
     # named with our_ in front so it doesn't conflict with pydantic's model_config
     our_model_config: TextOnlyResponseModel | MultiModalResponseModel | MultiModalModel
 
-    model_config = ConfigDict(hide_input_in_errors=True)
+    model_config = ConfigDict(hide_input_in_errors=True, arbitrary_types_allowed=True)
 
     @model_validator(mode="after")
     def validate_no_files_when_not_accepted(self) -> Self:

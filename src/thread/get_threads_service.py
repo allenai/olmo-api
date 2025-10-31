@@ -1,7 +1,7 @@
 from pydantic import Field
 
 from src.api_interface import APIInterface
-from src.auth.auth_service import authn
+from src.auth.token import Token
 from src.dao.message.message_repository import BaseMessageRepository, ThreadList
 from src.dao.paged import ListMeta, Opts, SortOptions
 from src.thread.thread_models import Thread
@@ -17,12 +17,10 @@ class GetThreadsResponse(APIInterface):
     meta: ListMeta
 
 
-def get_threads(request: GetThreadsRequest, message_repository: BaseMessageRepository) -> GetThreadsResponse:
-    agent = authn()
-
+def get_threads(request: GetThreadsRequest, message_repository: BaseMessageRepository, token: Token) -> GetThreadsResponse:
     thread_list: ThreadList
 
-    thread_list = message_repository.get_threads_for_user(agent.client, Opts.from_sort_options(request))
+    thread_list = message_repository.get_threads_for_user(token.client, Opts.from_sort_options(request))
     return GetThreadsResponse(
         threads=[Thread.from_message(message) for message in thread_list.threads], meta=thread_list.meta
     )

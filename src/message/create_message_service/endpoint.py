@@ -1,14 +1,16 @@
 import json
+import logging
 from time import time_ns
 from typing import cast
 
-from flask import current_app
-from flask import request as flask_request
+from sqlalchemy.orm import Session
 from werkzeug import exceptions
+
+logger = logging.getLogger(__name__)
 
 import src.dao.message.message_models as message
 from src import db, util
-from src.auth.auth_service import authn
+from src.auth.token import Token
 from src.config.get_config import cfg
 from src.config.get_models import get_model_by_host_and_id
 from src.dao.engine_models.message import Message
@@ -42,12 +44,15 @@ def create_message_v4(
     dbc: db.Client,
     storage_client: GoogleCloudStorage,
     message_repository: BaseMessageRepository,
+    session: Session,
+    token: Token,
+    user_ip_address: str | None = None,
+    user_agent: str | None = None,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
 ):
-    agent = authn()
-    model = get_model_by_host_and_id(request.host, request.model)
+    model = get_model_by_host_and_id(session, request.host, request.model)
     parent_message, root_message, private = get_parent_and_root_messages_and_private(
-        request.parent, message_repository, request.private, is_anonymous_user=agent.is_anonymous_user
+        request.parent, message_repository, request.private, is_anonymous_user=token.is_anonymous_user
     )
 
     # get the last inference options, either from the parent message or the model defaults if no parent
@@ -86,7 +91,7 @@ def create_message_v4(
         template=request.template,
         model=request.model,
         host=request.host,
-        client=agent.client,
+        client=token.client,
         files=request.files,
         captcha_token=request.captcha_token,
         tool_call_id=request.tool_call_id,
@@ -97,7 +102,7 @@ def create_message_v4(
     )
 
     if model.prompt_type == PromptType.FILES_ONLY and not cfg.feature_flags.allow_files_only_model_in_thread:
-        current_app.logger.error("Tried to use a files only model in a normal thread stream %s/%s", id, model)
+        logger.error("Tried to use a files only model in a normal thread stream %s/%s", id, model)
 
         # HACK: I want OLMoASR to be set up like a normal model but don't want people to stream to it yet
         model_not_available_message = "This model isn't available yet"
@@ -116,14 +121,11 @@ def create_message_v4(
         ),
     )
 
-    user_ip_address = flask_request.remote_addr
-    user_agent = flask_request.user_agent.string
-
     start_time_ns = time_ns()
 
     safety_check_elapsed_time, is_message_harmful = validate_message_security_and_safety(
         request=mapped_request,
-        agent=agent,
+        agent=token,
         checker_type=checker_type,
         user_ip_address=user_ip_address,
         user_agent=user_agent,
@@ -138,7 +140,7 @@ def create_message_v4(
         safety_check_elapsed_time=safety_check_elapsed_time,
         is_message_harmful=is_message_harmful,
         start_time_ns=start_time_ns,
-        agent=agent,
+        agent=token,
         message_repository=message_repository,
     )
 

@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from flask import request
 from werkzeug import exceptions
 
 from src import db
@@ -18,8 +17,10 @@ class UpsertUserRequest(APIInterface):
     data_collection_acceptance_revoked_date: datetime | None = None
 
 
-def upsert_user(dbc: db.Client, client: str, *, should_create_contact: bool) -> User | None:
-    request = _map_and_validate_upsert_user_request(client)
+def upsert_user(
+    dbc: db.Client, client: str, request_data: dict, *, should_create_contact: bool
+) -> User | None:
+    request = _map_and_validate_upsert_user_request(client, request_data)
 
     user = dbc.user.get_by_client(request.client)
 
@@ -47,9 +48,9 @@ def upsert_user(dbc: db.Client, client: str, *, should_create_contact: bool) -> 
     return new_user
 
 
-def _map_and_validate_upsert_user_request(client: str):
-    if request.json is None:
+def _map_and_validate_upsert_user_request(client: str, request_data: dict):
+    if request_data is None:
         msg = "no request body"
         raise exceptions.BadRequest(msg)
 
-    return UpsertUserRequest(client=client, **request.json)
+    return UpsertUserRequest(client=client, **request_data)

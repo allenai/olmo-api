@@ -1,6 +1,6 @@
 from enum import StrEnum
+from typing import Any
 
-from flask import Request
 from pydantic import BaseModel, Field
 from pydantic.dataclasses import dataclass
 from werkzeug import exceptions
@@ -55,9 +55,9 @@ class Opts:
         )
 
 
-def parse_opts_from_querystring(request: Request, max_limit: int = 100) -> Opts:
+def parse_opts_from_querystring(query_params: dict[str, Any], max_limit: int = 100) -> Opts:
     try:
-        offset = int(request.args.get("offset", 0))
+        offset = int(query_params.get("offset", 0))
     except ValueError as e:
         msg = f"invalid offset: {e}"
         raise exceptions.BadRequest(msg)
@@ -66,7 +66,7 @@ def parse_opts_from_querystring(request: Request, max_limit: int = 100) -> Opts:
         raise exceptions.BadRequest(msg)
 
     try:
-        limit = int(request.args.get("limit", 10))
+        limit = int(query_params.get("limit", 10))
     except ValueError as e:
         msg = f"invalid limit: {e}"
         raise exceptions.BadRequest(msg)
@@ -78,8 +78,9 @@ def parse_opts_from_querystring(request: Request, max_limit: int = 100) -> Opts:
         raise exceptions.BadRequest(msg)
 
     try:
-        field = request.args.get("sort")
-        dir = request.args.get("order", None, type=lambda s: s.upper())
+        field = query_params.get("sort")
+        dir_str = query_params.get("order")
+        dir = dir_str.upper() if dir_str is not None else None
         if field is None and dir is not None:
             msg = "order specified without sort"
             raise ValueError(msg)

@@ -1,8 +1,8 @@
 import dataclasses
+import logging
 from time import time_ns
 
 import modal
-from flask import current_app
 
 from src.config import get_config
 from src.message.SafetyChecker import (
@@ -10,6 +10,8 @@ from src.message.SafetyChecker import (
     SafetyCheckRequest,
     SafetyCheckResponse,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -60,7 +62,7 @@ class WildGuard(SafetyChecker):
             response_harmful=result["response_harmful"],
         )
 
-        current_app.logger.info({
+        logger.info({
             "checker": "WildGuard",
             "prompt": req.content,
             "duration_ms": (end_ns - start_ns) / 1_000_000,

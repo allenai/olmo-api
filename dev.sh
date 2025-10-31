@@ -1,10 +1,5 @@
 #!/bin/bash
-exec \
-    gunicorn \
-    --workers 1 \
-    --timeout 0 \
-    --bind 0.0.0.0:8000 \
-    --enable-stdio-inheritance \
-    --access-logfile - \
-    --reload \
-    'app:create_app()'
+set -e
+
+echo "Starting FastAPI with uvicorn..."
+exec uvicorn app:app --host 0.0.0.0 --port 8000 --reload

@@ -1,248 +1,49 @@
-import io
-import json
-from datetime import UTC, datetime
+"""
+V3 API Router (FastAPI)
+-----------------------
 
-from flask import (
-    Blueprint,
-    jsonify,
-    request,
-    send_file,
-)
-from werkzeug import exceptions
+Main router for V3 API endpoints (legacy).
+Includes all V3 routers converted from Flask blueprints.
+"""
 
-from src import db, util
-from src.attribution.attribution_blueprint import attribution_blueprint
-from src.auth.auth_service import authn
-from src.config import get_config
-from src.dao import datachip, label, paged
-from src.dao.flask_sqlalchemy_session import current_session
-from src.dao.message.message_repository import MessageRepository
-from src.log import logging_blueprint
-from src.message.GoogleCloudStorage import GoogleCloudStorage
-from src.message.v3_message_blueprint import create_v3_message_blueprint
-from src.user.user_blueprint import UserBlueprint
+from fastapi import APIRouter
+
+from src.attribution.attribution_router import router as attribution_router
+from src.completions.v3_completions_router import router as completions_router
+from src.datachips.v3_datachips_router import router as datachips_router
+from src.labels.v3_labels_router import router as labels_router
+from src.log.logging_router import router as logging_router
+from src.message.v3_message_router import router as v3_message_router
+from src.templates.v3_templates_router import router as templates_router
+from src.user.v4_user_router import router as user_router
 
 
-class Server(Blueprint):
-    def __init__(self, dbc: db.Client, storage_client: GoogleCloudStorage):
-        super().__init__("v3", __name__)
+def create_v3_router() -> APIRouter:
+    """Create V3 API router with all sub-routers"""
+    v3_router = APIRouter(prefix="/v3")
 
-        self.dbc = dbc
+    # Templates (prompts) endpoints
+    v3_router.include_router(templates_router, prefix="/templates")
 
-        self.post("/templates/prompt")(self.create_prompt)
-        self.get("/templates/prompt/<string:id>")(self.prompt)
-        self.patch("/templates/prompt/<string:id>")(self.update_prompt)
-        self.delete("/templates/prompt/<string:id>")(self.delete_prompt)
-        self.get("/templates/prompts")(self.prompts)
+    # Labels endpoints
+    v3_router.include_router(labels_router)
 
-        self.post("/label")(self.create_label)
-        self.get("/label/<string:id>")(self.label)
-        self.delete("/label/<string:id>")(self.delete_label)
-        self.get("/labels")(self.labels)
+    # Completions endpoints
+    v3_router.include_router(completions_router)
 
-        self.get("/completion/<string:id>")(self.completion)
+    # Datachips endpoints
+    v3_router.include_router(datachips_router)
 
-        self.post("/datachip")(self.create_datachip)
-        self.get("/datachip/<string:id>")(self.datachip)
-        self.patch("/datachip/<string:id>")(self.patch_datachip)
-        self.get("/datachips")(self.datachips)
+    # Message endpoints
+    v3_router.include_router(v3_message_router, prefix="/message")
 
-        self.register_blueprint(logging_blueprint, url_prefix="/log")
-        self.register_blueprint(
-            blueprint=create_v3_message_blueprint(dbc, storage_client=storage_client),
-            url_prefix="/message",
-        )
-        self.register_blueprint(blueprint=UserBlueprint(dbc=dbc, storage_client=storage_client))
-        self.register_blueprint(blueprint=attribution_blueprint, url_prefix="/attribution")
+    # User endpoints (shared with V4)
+    v3_router.include_router(user_router)
 
-    def prompts(self):
-        return jsonify(self.dbc.template.prompts(deleted="deleted" in request.args))
+    # Attribution (CorpusLink) endpoints
+    v3_router.include_router(attribution_router, prefix="/attribution")
 
-    def prompt(self, id: str):
-        prompt = self.dbc.template.prompt(id)
-        if prompt is None:
-            raise exceptions.NotFound
-        return jsonify(prompt)
+    # Logging endpoints
+    v3_router.include_router(logging_router, prefix="/log")
 
-    def update_prompt(self, id: str):
-        agent = authn()
-        if request.json is None:
-            msg = "missing JSON body"
-            raise exceptions.BadRequest(msg)
-        prompt = self.dbc.template.prompt(id)
-        if prompt is None:
-            raise exceptions.NotFound
-        if prompt.author != agent.client:
-            raise exceptions.Forbidden
-
-        prompt = self.dbc.template.update_prompt(
-            id,
-            request.json.get("name"),
-            request.json.get("content"),
-            request.json.get("deleted"),
-        )
-        if prompt is None:
-            raise exceptions.NotFound
-        return jsonify(prompt)
-
-    def delete_prompt(self, id: str):
-        agent = authn()
-        prompt = self.dbc.template.prompt(id)
-        if prompt is None:
-            raise exceptions.NotFound
-        if prompt.author != agent.client:
-            raise exceptions.Forbidden
-        return jsonify(self.dbc.template.update_prompt(id, deleted=True))
-
-    def create_prompt(self):
-        agent = authn()
-        if request.json is None:
-            msg = "missing JSON body"
-            raise exceptions.BadRequest(msg)
-
-        prompt = self.dbc.template.create_prompt(request.json.get("name"), request.json.get("content"), agent.client)
-        return jsonify(prompt)
-
-    def create_label(self):
-        agent = authn()
-        if request.json is None:
-            msg = "missing JSON body"
-            raise exceptions.BadRequest(msg)
-
-        message_repository = MessageRepository(current_session)
-        mid = request.json.get("message")
-        msg = message_repository.get_message_by_id(mid)
-        if msg is None:
-            msg = f"message {mid} not found"
-            raise exceptions.BadRequest(msg)
-
-        try:
-            rating = label.Rating(request.json.get("rating"))
-        except ValueError as e:
-            raise exceptions.BadRequest(str(e))
-
-        existing = self.dbc.label.get_list(
-            message=mid,
-            creator=agent.client,
-        )
-        if existing.meta.total != 0:
-            msg = f"message {mid} already has label {existing.labels[0].id}"
-            raise exceptions.UnprocessableEntity(msg)
-        lbl = self.dbc.label.create(msg.id, rating, agent.client, request.json.get("comment"))
-        return jsonify(lbl)
-
-    def label(self, id: str):
-        label = self.dbc.label.get(id)
-        if label is None:
-            raise exceptions.NotFound
-        return jsonify(label)
-
-    def labels(self):
-        try:
-            rr = request.args.get("rating")
-            rating = label.Rating(int(rr)) if rr is not None else None
-        except ValueError as e:
-            raise exceptions.BadRequest(str(e))
-
-        ll = self.dbc.label.get_list(
-            message=request.args.get("message"),
-            creator=request.args.get("creator"),
-            deleted="deleted" in request.args,
-            rating=rating,
-            opts=paged.parse_opts_from_querystring(request, max_limit=1_000_000),
-        )
-
-        if "export" not in request.args:
-            return jsonify(ll)
-
-        labels = "\n".join([json.dumps(l, cls=util.CustomEncoder) for l in ll.labels])
-        filename = f"labels-{int(datetime.now(UTC).timestamp())}.jsonl"
-        body = io.BytesIO(labels.encode("utf-8"))
-
-        return send_file(body, as_attachment=True, download_name=filename)
-
-    def delete_label(self, id: str):
-        agent = authn()
-        label = self.dbc.label.get(id)
-        if label is None:
-            raise exceptions.NotFound
-        if label.creator != agent.client:
-            raise exceptions.Forbidden
-        deleted = self.dbc.label.delete(id)
-        if deleted is None:
-            raise exceptions.NotFound
-        return jsonify(deleted)
-
-    def completion(self, id: str):
-        agent = authn()
-        # TODO: OEUI-141 we need to use Auth0 permissions instead of checking this list
-        # Only admins can view completions, since they might be related to private messages.
-        if agent.client not in get_config.cfg.server.admins:
-            raise exceptions.Forbidden
-        c = self.dbc.completion.get(id)
-        if c is None:
-            raise exceptions.NotFound
-        return jsonify(c)
-
-    def create_datachip(self):
-        agent = authn()
-        if request.json is None:
-            msg = "missing JSON body"
-            raise exceptions.BadRequest(msg)
-
-        name = request.json.get("name", "").strip()
-        if name == "":
-            msg = "must specify a non-empty name"
-            raise exceptions.BadRequest(msg)
-
-        content = request.json.get("content", "").strip()
-        if content == "":
-            msg = "must specify non-empty content"
-            raise exceptions.BadRequest(msg)
-
-        if len(content.encode("utf-8")) > 500 * 1024 * 1024:
-            msg = "content must be < 500MB"
-            raise exceptions.RequestEntityTooLarge(msg)
-
-        return jsonify(self.dbc.datachip.create(name, content, agent.client))
-
-    def datachip(self, id: str):
-        chips = self.dbc.datachip.get([id])
-        if len(chips) == 0:
-            raise exceptions.NotFound
-        if len(chips) > 1:
-            msg = "multiple chips with same ID"
-            raise exceptions.InternalServerError(msg)
-        return jsonify(chips[0])
-
-    def patch_datachip(self, id: str):
-        agent = authn()
-        if request.json is None:
-            msg = "missing JSON body"
-            raise exceptions.BadRequest(msg)
-
-        chips = self.dbc.datachip.get([id])
-        if len(chips) == 0:
-            raise exceptions.NotFound
-        if len(chips) > 1:
-            msg = "multiple chips with same ID"
-            raise exceptions.InternalServerError(msg)
-
-        chip = chips[0]
-        if chip.creator != agent.client:
-            raise exceptions.Forbidden
-
-        deleted = request.json.get("deleted")
-        updated = self.dbc.datachip.update(id, datachip.Update(deleted))
-        if updated is None:
-            raise exceptions.NotFound
-        return jsonify(updated)
-
-    def datachips(self):
-        return jsonify(
-            self.dbc.datachip.list_all(
-                creator=request.args.get("creator"),
-                deleted="deleted" in request.args,
-                opts=paged.parse_opts_from_querystring(request),
-            )
-        )
+    return v3_router

@@ -1,11 +1,13 @@
+import logging
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Annotated, Self, cast
 
-from flask import current_app
 from pydantic import AfterValidator, Field
 from rank_bm25 import BM25Okapi  # type: ignore
 from werkzeug import exceptions
+
+logger = logging.getLogger(__name__)
 
 from src.api_interface import APIInterface
 from src.attribution.infini_gram_api_client.api.default import (
@@ -196,7 +198,7 @@ def get_attribution(request: GetAttributionRequest, infini_gram_client: Client, 
         raise exceptions.BadGateway(msg) from e
 
     if isinstance(attribution_response, RequestValidationError):
-        current_app.logger.error(
+        logger.error(
             "Validation error from infini-gram %s, errors %s",
             attribution_response.title,
             str(attribution_response.errors),
@@ -207,7 +209,7 @@ def get_attribution(request: GetAttributionRequest, infini_gram_client: Client, 
         )
 
     if isinstance(attribution_response, Problem):
-        current_app.logger.error(
+        logger.error(
             "Problem from infini-gram %s, detail %s",
             attribution_response.title,
             str(attribution_response.detail),

@@ -1,11 +1,11 @@
 import dataclasses
+import logging
 import os
 from collections.abc import Callable, Generator
 from dataclasses import asdict
 from time import time_ns
 from typing import Any
 
-from flask import current_app
 from opentelemetry import trace
 from pydantic import BaseModel
 from pydantic_ai.agent import InstrumentationSettings
@@ -13,6 +13,8 @@ from pydantic_ai.direct import model_request_stream_sync
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models import ModelRequestParameters
+
+logger = logging.getLogger(__name__)
 
 from src import db, parse
 from src.auth.token import Token
@@ -426,7 +428,7 @@ def stream_assistant_response(
         yield from pydnatic_ai_http_error_handling(e, reply, model)
         raise
     except Exception as e:
-        current_app.logger.exception(
+        logger.exception(
             "Unknown error",
             extra={
                 "message_id": reply.id,
@@ -548,7 +550,7 @@ def pydnatic_ai_http_error_handling(e: ModelHTTPError, reply: Message, model: Mo
             yield MessageStreamError(message=reply.id, error=msg, reason=FinishReason.Length)
             return
 
-    current_app.logger.exception(
+    logger.exception(
         "Http call to LLM failed",
         extra={
             "message_id": reply.id,

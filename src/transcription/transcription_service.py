@@ -2,19 +2,24 @@ from time import time_ns
 from typing import IO, cast
 
 from pydub import AudioSegment  # type: ignore
+from sqlalchemy.orm import Session
 
 from src.api_interface import APIInterface
 from src.config.get_models import get_model_by_host_and_id
 from src.constants import OLMO_ASR_MODEL_ID
 from src.dao.message.message_models import Role
-from src.flask_pydantic_api.utils import UploadedFile
 from src.inference.InferenceEngine import InferenceEngineMessage, InferenceOptions
 from src.inference.olmo_asr_engine import OlmoAsrModalEngine
 from src.message.inference_logging import log_inference_timing
 from src.message.validate_message_files_from_config import get_file_size
+from pydantic import ConfigDict
+
+from src.uploaded_file import UploadedFile
 
 
 class GetTranscriptionRequest(APIInterface):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     audio: UploadedFile
 
 
@@ -22,7 +27,7 @@ class GetTranscriptionResponse(APIInterface):
     text: str
 
 
-def get_transcription(request: GetTranscriptionRequest):
+def get_transcription(session: Session, request: GetTranscriptionRequest):
     start_all_ns = time_ns()
     segment = AudioSegment.from_file_using_temporary_files(request.audio)
 
@@ -31,7 +36,7 @@ def get_transcription(request: GetTranscriptionRequest):
 
     olmo_asr_engine = OlmoAsrModalEngine()
 
-    model = get_model_by_host_and_id(host="modal", id=OLMO_ASR_MODEL_ID)
+    model = get_model_by_host_and_id(session, host="modal", id=OLMO_ASR_MODEL_ID)
     messages = [InferenceEngineMessage(role=Role.User, content="", files=[converted_audio_file.read()])]
 
     start_generation_ns = time_ns()

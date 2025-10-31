@@ -2,9 +2,7 @@ import json
 import os
 from dataclasses import asdict, is_dataclass
 from datetime import UTC, datetime
-from typing import Any
 
-from flask.json.provider import JSONProvider
 from pydantic import BaseModel
 from pythonjsonlogger import jsonlogger
 from werkzeug.datastructures import FileStorage
@@ -29,6 +27,9 @@ class CustomEncoder(json.JSONEncoder):
     Custom JSONEncoder that:
     - emits datetime objects as ISO strings
     - handles dataclasses implicitly by calling asdict()
+
+    Note: This is kept for backward compatibility but FastAPI uses
+    src/fastapi_json_response.py for JSON serialization.
     """
 
     def default(self, obj):
@@ -36,24 +37,8 @@ class CustomEncoder(json.JSONEncoder):
             return obj.isoformat()
         if isinstance(obj, BaseModel):
             return obj.model_dump()
-        if is_dataclass(obj):
+        if is_dataclass(obj) and not isinstance(obj, type):
             return asdict(obj)
         if isinstance(obj, FileStorage):
             return obj.filename
         return json.JSONEncoder.default(self, obj)
-
-
-class CustomJSONProvider(JSONProvider):
-    """
-    Flask JSONProvider that uses CustomEncoder.
-    """
-
-    def dumps(self, obj: Any, **kwargs: Any) -> str:
-        kwargs.setdefault("ensure_ascii", True)
-        kwargs.setdefault("sort_keys", True)
-        kwargs.setdefault("indent", 2 if self._app.debug else None)
-        kwargs.setdefault("cls", CustomEncoder)
-        return json.dumps(obj, **kwargs)
-
-    def loads(self, s: str | bytes, **kwargs: Any) -> Any:
-        return json.loads(s, **kwargs)

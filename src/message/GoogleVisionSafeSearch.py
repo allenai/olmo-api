@@ -1,5 +1,6 @@
+import logging
+
 import requests
-from flask import current_app
 from google.cloud.vision import Likelihood, SafeSearchAnnotation
 
 from src.config import get_config
@@ -8,6 +9,8 @@ from src.message.SafetyChecker import (
     SafetyCheckRequest,
     SafetyCheckResponse,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class GoogleVisionSafeSearchResponse(SafetyCheckResponse):
@@ -64,7 +67,7 @@ class GoogleVisionSafeSearch(SafetyChecker):
 
         response = GoogleVisionSafeSearchResponse(result)
 
-        current_app.logger.info({
+        logger.info({
             "checker": "GoogleVisionSafeSearch",
             "request": req.name,
             "duration_ms": result.elapsed / 1_000_000,

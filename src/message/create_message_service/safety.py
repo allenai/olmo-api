@@ -1,10 +1,12 @@
 import base64
+import logging
 from collections.abc import Sequence
 from time import time_ns
 
-from flask import current_app
 from werkzeug import exceptions
 from werkzeug.datastructures import FileStorage
+
+logger = logging.getLogger(__name__)
 
 from src.auth.auth_utils import Permissions, user_has_permission
 from src.auth.token import Token
@@ -39,7 +41,7 @@ def check_message_safety(
         return result.is_safe()
 
     except Exception as e:
-        current_app.logger.exception("Skipped message safety check due to error: %s. ", repr(e))
+        logger.exception("Skipped message safety check due to error: %s. ", repr(e))
 
     return None
 
@@ -59,7 +61,7 @@ def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
                 return False
 
         except Exception as e:
-            current_app.logger.exception(
+            logger.exception(
                 "Skipped image safety check over %s due to error: %s. ",
                 file.filename,
                 repr(e),
@@ -86,8 +88,6 @@ def evaluate_prompt_submission_captcha(
 
         if not is_anonymous_user or not cfg.google_cloud_services.enable_recaptcha:
             return
-
-        logger = current_app.logger
 
         if captcha_assessment is None or not captcha_assessment.token_properties.valid:
             logger.info("rejecting message request due to invalid captcha", extra={"assessment": captcha_assessment})

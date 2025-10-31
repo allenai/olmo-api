@@ -1,17 +1,16 @@
 from datetime import UTC, datetime, timedelta
 
+from sqlalchemy.orm import Session
 from werkzeug import exceptions
 
 from src import db
-from src.auth.auth_service import authn
-from src.dao.flask_sqlalchemy_session import current_session
+from src.auth.token import Token
 from src.dao.message.message_repository import MessageRepository, map_sqla_to_old
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 
 
-def get_message(id: str):
-    agent = authn()
-    message_repository = MessageRepository(current_session)
+def get_message(id: str, token: Token, session: Session):
+    message_repository = MessageRepository(session)
     message = message_repository.get_message_by_id(id)
 
     if message is None:
@@ -20,16 +19,15 @@ def get_message(id: str):
     if message is None:
         raise exceptions.NotFound
 
-    if message.creator != agent.client and message.private:
+    if message.creator != token.client and message.private:
         msg = "You do not have access to that private message."
         raise exceptions.Forbidden(msg)
 
     return map_sqla_to_old(message)
 
 
-def delete_message(id: str, dbc: db.Client, storage_client: GoogleCloudStorage):
-    agent = authn()
-    message_repository = MessageRepository(current_session)
+def delete_message(id: str, dbc: db.Client, storage_client: GoogleCloudStorage, token: Token, session: Session):
+    message_repository = MessageRepository(session)
 
     message_list = message_repository.get_messages_by_root_for_delete(id)
 
@@ -38,7 +36,7 @@ def delete_message(id: str, dbc: db.Client, storage_client: GoogleCloudStorage):
     if root_message is None:
         raise exceptions.NotFound
 
-    if root_message.creator != agent.client:
+    if root_message.creator != token.client:
         msg = "The current thread was not created by the current user. You do not have permission to delete the current thread."
         raise exceptions.Forbidden(msg)
 

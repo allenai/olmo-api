@@ -1,7 +1,5 @@
 from datetime import datetime, timezone
-from unittest.mock import Mock, patch
-
-import pytest
+from unittest.mock import Mock
 
 from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import ModelHost
@@ -76,10 +74,9 @@ class TestMigrateUserFromAnonymousUser:
         mock_storage.migrate_anonymous_file.return_value = None
 
         # Execute migration
-        with patch("src.user.user_migrate.current_session", sql_alchemy):
-            result = migrate_user_from_anonymous_user(
-                dbc=dbc, storage_client=mock_storage, anonymous_user_id=anonymous_user_id, new_user_id=new_user_id
-            )
+        result = migrate_user_from_anonymous_user(
+            dbc=dbc, storage_client=mock_storage, session=sql_alchemy, anonymous_user_id=anonymous_user_id, new_user_id=new_user_id
+        )
 
         # Verify results
         assert result.updated_user is not None
@@ -140,10 +137,9 @@ class TestMigrateUserFromAnonymousUser:
         mock_storage.migrate_anonymous_file.return_value = None
 
         # Execute migration
-        with patch("src.user.user_migrate.current_session", sql_alchemy):
-            result = migrate_user_from_anonymous_user(
-                dbc=dbc, storage_client=mock_storage, anonymous_user_id=anonymous_user_id, new_user_id=new_user_id
-            )
+        result = migrate_user_from_anonymous_user(
+            dbc=dbc, storage_client=mock_storage, session=sql_alchemy, anonymous_user_id=anonymous_user_id, new_user_id=new_user_id
+        )
 
         # Verify results
         assert result.updated_user is not None
@@ -177,10 +173,9 @@ class TestMigrateUserFromAnonymousUser:
         mock_storage.migrate_anonymous_file.return_value = None
 
         # Execute migration
-        with patch("src.user.user_migrate.current_session", sql_alchemy):
-            result = migrate_user_from_anonymous_user(
-                dbc=dbc, storage_client=mock_storage, anonymous_user_id=anonymous_user_id, new_user_id=new_user_id
-            )
+        result = migrate_user_from_anonymous_user(
+            dbc=dbc, storage_client=mock_storage, session=sql_alchemy, anonymous_user_id=anonymous_user_id, new_user_id=new_user_id
+        )
 
         # Verify results
         assert result.updated_user is not None
@@ -205,10 +200,9 @@ class TestMigrateUserFromAnonymousUser:
         mock_storage.migrate_anonymous_file.return_value = None
 
         # Execute migration
-        with patch("src.user.user_migrate.current_session", sql_alchemy):
-            result = migrate_user_from_anonymous_user(
-                dbc=dbc, storage_client=mock_storage, anonymous_user_id=anonymous_user_id, new_user_id=new_user_id
-            )
+        result = migrate_user_from_anonymous_user(
+            dbc=dbc, storage_client=mock_storage, session=sql_alchemy, anonymous_user_id=anonymous_user_id, new_user_id=new_user_id
+        )
 
         # Verify results
         assert result.updated_user is None
@@ -263,10 +257,9 @@ class TestMigrateUserFromAnonymousUser:
         mock_storage.migrate_anonymous_file.return_value = None
 
         # Execute migration
-        with patch("src.user.user_migrate.current_session", sql_alchemy):
-            result = migrate_user_from_anonymous_user(
-                dbc=dbc, storage_client=mock_storage, anonymous_user_id=anonymous_user_id, new_user_id=new_user_id
-            )
+        result = migrate_user_from_anonymous_user(
+            dbc=dbc, storage_client=mock_storage, session=sql_alchemy, anonymous_user_id=anonymous_user_id, new_user_id=new_user_id
+        )
 
         # Verify results
         assert result.updated_user is not None

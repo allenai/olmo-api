@@ -17,7 +17,7 @@ class AttributionSpan:
         left (int):
         right (int):
         length (int):
-        count (int):
+        count (int | None):
         unigram_logprob_sum (float):
         text (str):
         token_ids (list[int]):
@@ -27,8 +27,8 @@ class AttributionSpan:
     left: int
     right: int
     length: int
-    count: int
-    unigram_logprob_sum: float
+    count: int | None
+    unigram_logprob_sum: float | None
     text: str
     token_ids: list[int]
     documents: list["AttributionDocument"]
@@ -80,9 +80,9 @@ class AttributionSpan:
 
         length = d.pop("length")
 
-        count = d.pop("count")
+        count = d.pop("count", None)
 
-        unigram_logprob_sum = d.pop("unigramLogprobSum")
+        unigram_logprob_sum = d.pop("unigramLogprobSum", None)
 
         text = d.pop("text")
 

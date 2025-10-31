@@ -1,5 +1,9 @@
 beautifulsoup4==4.12.2
-Flask==2.3.3
+fastapi>=0.116.0
+uvicorn[standard]>=0.34.0
+python-multipart==0.0.20
+starlette>=0.45.3
+werkzeug>=3.0.0
 python-json-logger==2.0.7
 requests==2.32.4
 psycopg[binary,pool]==3.2.4
@@ -15,7 +19,6 @@ gunicorn==23.0.0
 google-cloud-language==2.15.0
 google-cloud-storage==2.19.0
 google-cloud-vision==3.9.0
-flask-pydantic-api==1.7.0
 rank_bm25==0.2.2
 time-machine==2.16.0
 google-cloud-recaptcha-enterprise==1.27.0
@@ -39,7 +42,7 @@ opentelemetry-api==1.38.0
 opentelemetry-sdk==1.38.0
 opentelemetry-exporter-otlp==1.38.0
 opentelemetry-exporter-gcp-trace==1.10.0
-opentelemetry-instrumentation-flask==0.59b0
+opentelemetry-instrumentation-fastapi==0.59b0
 opentelemetry-instrumentation-httpx==0.59b0
 opentelemetry-instrumentation-requests==0.59b0
 opentelemetry-instrumentation-sqlalchemy==0.59b0

@@ -1,6 +1,6 @@
+import logging
 from time import time_ns
 
-from flask import current_app
 from google.cloud.language_v2 import (
     Document,
     LanguageServiceClient,
@@ -15,6 +15,8 @@ from src.message.SafetyChecker import (
     SafetyCheckRequest,
     SafetyCheckResponse,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ViolationInfo(APIInterface):
@@ -84,7 +86,7 @@ class GoogleModerateText(SafetyChecker):
 
         response = GoogleModerateTextResponse(result)
 
-        current_app.logger.info({
+        logger.info({
             "event": "safety-check.results",
             "checker": "GoogleModerateText",
             "prompt": req.content,

@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, cast
 
-from pydantic import AwareDatetime, Field, computed_field, field_validator
+from pydantic import AwareDatetime, Field, computed_field, field_serializer, field_validator
 
 from src.api_interface import APIInterface
 from src.dao.engine_models.message import Message as SQLAMessage
@@ -45,6 +45,10 @@ class ToolDefinition(APIInterface):
     description: str
     parameters: dict[str, Any] | None = None
     tool_source: ToolSource
+
+
+BAD_TOOL_NAME = "bad_tool_name"
+CONTENT_TRUNCATION_LIMIT = 150
 
 
 class FlatMessage(APIInterface):
@@ -112,6 +116,16 @@ class FlatMessage(APIInterface):
     @staticmethod
     def from_message_with_children(message: Message | SQLAMessage) -> list["FlatMessage"]:
         return _map_messages(message)
+
+    @field_serializer("content")
+    def truncate_legally_required_tool_responses(self, v: str) -> str:
+        if self.role == Role.ToolResponse and any(
+            tool_call.tool_name == BAD_TOOL_NAME for tool_call in self.tool_calls or []
+        ):
+            words = v.split(" ")
+            return " ".join(words[: CONTENT_TRUNCATION_LIMIT - 1])
+
+        return v
 
 
 def _map_messages(message: Message | SQLAMessage) -> list[FlatMessage]:

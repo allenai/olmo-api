@@ -1,7 +1,7 @@
 """Add error fields to message table
 
 Revision ID: 440e4ee34a13
-Revises: 5da1e4a16ea0
+Revises: 4ecb303b4164
 Create Date: 2025-10-24 10:24:50.462116
 
 """
@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "440e4ee34a13"
-down_revision: str | None = "5da1e4a16ea0"
+down_revision: str | None = "4ecb303b4164"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

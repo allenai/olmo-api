@@ -102,6 +102,8 @@ def get_pydantic_api_path_operations(
 
                 elif view_func_config.get_request_model_from_query_string:
                     # For query string parameters, we'll store the schema and convert to parameters later
+                    # TODO: revert when https://github.com/openapi-ts/openapi-typescript/issues/2361 closes
+                    # https://github.com/adamsussman/flask-pydantic-api
                     request_body = {"schema": schema, "model_title": title}
                 else:
                     request_body = {
@@ -189,6 +191,8 @@ def get_pydantic_api_path_operations(
             if request_body:
                 if view_func_config.get_request_model_from_query_string:
                     # Convert schema properties to individual query parameters
+                    # TODO: revert when https://github.com/openapi-ts/openapi-typescript/issues/2361 closes
+                    # https://github.com/adamsussman/flask-pydantic-api
                     schema = request_body["schema"]
                     properties = schema.get("properties", {})
                     required_fields = schema.get("required", [])

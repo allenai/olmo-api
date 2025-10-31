@@ -35,7 +35,7 @@ def test_truncates_content_if_required():
 
     serialized_message = message.model_dump()
 
-    assert serialized_message.get("content") == LOREM_IPSUM_150_WORDS
+    assert serialized_message.get("content") == LOREM_IPSUM_150_WORDS + "…"
 
 
 def test_keeps_content_if_tool_call_name_does_not_match():

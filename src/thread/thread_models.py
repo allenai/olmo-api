@@ -123,7 +123,7 @@ class FlatMessage(APIInterface):
             tool_call.tool_name == BAD_TOOL_NAME for tool_call in self.tool_calls or []
         ):
             words = v.split(" ")
-            return " ".join(words[: CONTENT_TRUNCATION_LIMIT - 1])
+            return " ".join(words[: CONTENT_TRUNCATION_LIMIT - 1]) + "…"
 
         return v
 

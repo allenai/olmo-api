@@ -11,7 +11,7 @@ from src.dao.engine_models.tool_definitions import ToolSource
 class ChunkType(StrEnum):
     MODEL_RESPONSE = "modelResponse"
     TOOL_CALL = "toolCall"
-    RESPONSE_WITH_ERROR = "responseWithError"
+    ERROR = "error"
     THINKING = "thinking"
     START = "start"
     END = "end"
@@ -71,8 +71,8 @@ class ErrorChunk(BaseChunk):
     # HACK: This lets us make `type` required in the schema while also not requiring it in the init
     @computed_field  # type: ignore
     @property
-    def type(self) -> Literal[ChunkType.RESPONSE_WITH_ERROR]:
-        return ChunkType.RESPONSE_WITH_ERROR
+    def type(self) -> Literal[ChunkType.ERROR]:
+        return ChunkType.ERROR
 
     error_code: ErrorCode
     error_description: str

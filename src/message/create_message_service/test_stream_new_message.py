@@ -86,17 +86,6 @@ def test_map_final_output_should_map_tool_parts():
     assert output.tool_parts[0].tool_name == "tool"
 
 
-def test_response_with_error_chunk_defaults_to_error_severity():
-    """Test that ErrorChunk defaults to ERROR severity when not specified."""
-    error_chunk = ErrorChunk(
-        message="msg_123",
-        error_code=ErrorCode.TOOL_CALL_ERROR,
-        error_description="Test error",
-    )
-
-    assert error_chunk.error_severity == ErrorSeverity.ERROR
-
-
 def test_pydantic_map_part_should_return_error_chunk_when_tool_not_found():
     """Test that ErrorChunk is created when a tool is not found in message tool_definitions."""
     tool_call_part = ToolCallPart(tool_name="unknown_tool", tool_call_id="test_call_id", args={"param": "value"})

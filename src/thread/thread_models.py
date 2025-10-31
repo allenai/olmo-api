@@ -123,7 +123,13 @@ class FlatMessage(APIInterface):
             tool_call.tool_name in TOOL_NAMES_TO_TRUNCATE for tool_call in self.tool_calls or []
         ):
             words = v.split(" ")
-            return " ".join(words[: CONTENT_TRUNCATION_LIMIT - 1]) + "…"
+            truncated_text = " ".join(words[: CONTENT_TRUNCATION_LIMIT - 1])
+
+            if v != truncated_text:
+                # We only want to add the … if the text has been shortened
+                truncated_text += "…"
+
+            return truncated_text
 
         return v
 

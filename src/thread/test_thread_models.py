@@ -43,6 +43,32 @@ def test_truncates_content_if_required():
     assert serialized_message.get("content") == LOREM_IPSUM_150_WORDS + "…"
 
 
+def test_does_not_add_ellipsis_if_less_than_or_equal_to_150_words():
+    message = FlatMessage(
+        id="message",
+        content=LOREM_IPSUM_150_WORDS,
+        role=Role.ToolResponse,
+        opts=InferenceOptionsResponse(),
+        root="message",
+        created=datetime.now(UTC),
+        model_id="test-model",
+        model_host="test_backend",
+        creator="test-user",
+        tool_calls=[
+            ToolCall(
+                tool_name="tulu-deep-research_serper_google_webpage_search",
+                args={},
+                tool_call_id="tool_call_1",
+                tool_source=ToolSource.MCP,
+            )
+        ],
+    )
+
+    serialized_message = message.model_dump()
+
+    assert serialized_message.get("content") == message.content
+
+
 def test_keeps_content_if_tool_call_name_does_not_match():
     message = FlatMessage(
         id="message",

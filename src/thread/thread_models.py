@@ -47,7 +47,7 @@ class ToolDefinition(APIInterface):
     tool_source: ToolSource
 
 
-BAD_TOOL_NAME = "bad_tool_name"
+TOOL_NAMES_TO_TRUNCATE = {"tulu-deep-research_serper_google_webpage_search", "serper_google_webpage_search"}
 CONTENT_TRUNCATION_LIMIT = 150
 
 
@@ -120,7 +120,7 @@ class FlatMessage(APIInterface):
     @field_serializer("content")
     def truncate_legally_required_tool_responses(self, v: str) -> str:
         if self.role == Role.ToolResponse and any(
-            tool_call.tool_name == BAD_TOOL_NAME for tool_call in self.tool_calls or []
+            tool_call.tool_name in TOOL_NAMES_TO_TRUNCATE for tool_call in self.tool_calls or []
         ):
             words = v.split(" ")
             return " ".join(words[: CONTENT_TRUNCATION_LIMIT - 1]) + "…"

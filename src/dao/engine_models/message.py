@@ -85,6 +85,10 @@ class Message(Base, kw_only=True):
         cascade="all, delete",
     )
 
+    error_code: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
+    error_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
+    error_severity: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
+
     # NOTE: JSONB changes aren't tracked by SQLAlchemy automatically
     extra_parameters: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True, default=None)
 

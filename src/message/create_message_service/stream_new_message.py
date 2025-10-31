@@ -7,6 +7,7 @@ from typing import Any
 
 from flask import current_app
 from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
 from pydantic import BaseModel
 from pydantic_ai.agent import InstrumentationSettings
 from pydantic_ai.direct import model_request_stream_sync
@@ -32,7 +33,7 @@ from src.message.create_message_request import (
 from src.message.create_message_service.files import FileUploadResult, upload_request_files
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.inference_logging import log_inference_timing
-from src.message.message_chunk import Chunk, StreamEndChunk, StreamStartChunk
+from src.message.message_chunk import Chunk, ErrorChunk, StreamEndChunk, StreamStartChunk
 from src.message.SafetyChecker import (
     SafetyCheckerType,
 )
@@ -237,7 +238,7 @@ def stream_new_message(
         yield prepare_yield_message_chain(message_chain, created_message)
 
         start_message_generation_ns = time_ns()
-        yield from stream_assistant_response(
+        error_chunk = yield from stream_assistant_response(
             request,
             dbc,
             message_repository,
@@ -249,6 +250,12 @@ def stream_new_message(
             reply,
             stream_metrics,
         )
+
+        # If an error_chunk is encountered during streaming, persist it on the full assistant message
+        if error_chunk is not None:
+            reply.error_code = error_chunk.error_code
+            reply.error_description = error_chunk.error_description
+            reply.error_severity = error_chunk.error_severity
 
         if reply.tool_calls is not None and len(reply.tool_calls) > 0:
             last_msg = reply
@@ -377,9 +384,10 @@ def stream_assistant_response(
     input_message: Message,
     reply: Message,
     stream_metrics: StreamMetrics,
-) -> Generator[MessageChunk | MessageStreamError | Chunk, Any, None]:
+) -> Generator[MessageChunk | MessageStreamError | Chunk, Any, ErrorChunk | None]:
     """
     Adds a new assistant message to the conversation, and streams the llm response to the api
+    Returns the ErrorChunk if an error was encountered, otherwise None
     """
     # Capture the SHA and logger, as the current_app context is lost in the generator.
     sha = os.environ.get("SHA") or "DEV"
@@ -389,6 +397,9 @@ def stream_assistant_response(
     logprobs: list[list[TokenLogProbs]] = []
     # We keep track of each chunk and the timing information per-chunk
     # so that we can manifest a completion at the end.
+
+    # Track error information from ErrorChunk for later inclusion in combined message
+    encountered_error: ErrorChunk | None = None
 
     try:
         pydantic_chunks: list[Chunk] = []
@@ -411,6 +422,15 @@ def stream_assistant_response(
 
                 pydantic_chunk = pydantic_map_chunk(generator_chunk_pydantic, message=reply)
                 if pydantic_chunk is not None:
+                    if isinstance(pydantic_chunk, ErrorChunk):
+                        # Store error details for later inclusion in combined message
+                        encountered_error = pydantic_chunk
+                        pydantic_chunks.append(pydantic_chunk)
+                        yield pydantic_chunk
+                        # Exit the stream without raising an error and return the error chunk
+                        current_span = trace.get_current_span()
+                        current_span.set_status(Status(StatusCode.ERROR))
+                        return encountered_error
                     pydantic_chunks.append(pydantic_chunk)
                     yield pydantic_chunk
 
@@ -421,7 +441,7 @@ def stream_assistant_response(
         stream_metrics.output_token_count = -1
         stream_metrics.total_generation_ns = time_ns() - start_generation_ns
 
-        # TODO finish reason https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse.vendor_details should be here but isn't
+        # TODO: finish reason https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse.vendor_details should be here but isn't
     except ModelHTTPError as e:
         yield from pydnatic_ai_http_error_handling(e, reply, model)
         raise
@@ -478,6 +498,9 @@ def stream_assistant_response(
         final_reply_error = RuntimeError(f"failed to finalize message {reply.id}")
         yield MessageStreamError(message=reply.id, error=str(final_reply_error), reason="finalization failure")
         raise final_reply_error
+
+    # # Return None if no error occurred
+    return None
 
 
 def prepare_yield_message_chain(message_chain: list[Message], user_message: Message):

@@ -1,6 +1,8 @@
 import json
 from typing import Any
 
+from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
 from pydantic_ai.messages import (
     BinaryContent,
     FinalResultEvent,
@@ -29,7 +31,15 @@ from src.dao.engine_models.model_config import ModelConfig
 from src.dao.engine_models.tool_call import ToolCall
 from src.dao.message.message_models import InferenceOpts, Role
 from src.message.create_message_service.files import FileUploadResult
-from src.message.message_chunk import Chunk, ModelResponseChunk, ThinkingChunk, ToolCallChunk
+from src.message.message_chunk import (
+    Chunk,
+    ErrorChunk,
+    ErrorCode,
+    ErrorSeverity,
+    ModelResponseChunk,
+    ThinkingChunk,
+    ToolCallChunk,
+)
 
 
 def pydantic_settings_map(
@@ -65,7 +75,7 @@ def find_tool_def_by_name(message: Message, tool_name: str):
     tool_def = next((tool_def for tool_def in message.tool_definitions or [] if tool_def.name == tool_name), None)
 
     if tool_def is None:
-        msg = f"Could not find tool '{tool_name}' in message"
+        msg = f"Could not find tool '{tool_name}'. The model tried to call a tool that is not defined."
         raise RuntimeError(msg)
 
     return tool_def
@@ -146,7 +156,18 @@ def pydantic_map_part(part: ModelResponsePart, message: Message) -> Chunk:
                 content=part.content or "",
             )
         case ToolCallPart():
-            tool_def = find_tool_def_by_name(message, part.tool_name)
+            try:
+                tool_def = find_tool_def_by_name(message, part.tool_name)
+            except RuntimeError as e:
+                current_span = trace.get_current_span()
+                current_span.set_status(Status(StatusCode.ERROR))
+                current_span.record_exception(e)
+                return ErrorChunk(
+                    message=message.id,
+                    error_code=ErrorCode.TOOL_CALL_ERROR,
+                    error_description=str(e),
+                    error_severity=ErrorSeverity.ERROR,
+                )
 
             return ToolCallChunk(
                 message=message.id,
@@ -167,7 +188,18 @@ def pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDel
         case ThinkingPartDelta():
             return ThinkingChunk(message=message.id, content=part.content_delta or "")
         case ToolCallPartDelta():
-            tool_def = find_tool_def_by_name(message, part.tool_name_delta) if part.tool_name_delta else None
+            try:
+                tool_def = find_tool_def_by_name(message, part.tool_name_delta) if part.tool_name_delta else None
+            except RuntimeError as e:
+                current_span = trace.get_current_span()
+                current_span.set_status(Status(StatusCode.ERROR))
+                current_span.record_exception(e)
+                return ErrorChunk(
+                    message=message.id,
+                    error_code=ErrorCode.TOOL_CALL_ERROR,
+                    error_description=str(e),
+                    error_severity=ErrorSeverity.ERROR,
+                )
 
             return ToolCallChunk(
                 message=message.id,

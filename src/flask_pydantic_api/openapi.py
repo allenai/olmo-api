@@ -101,7 +101,10 @@ def get_pydantic_api_path_operations(
                     request_body["content"][content_type] = {"schema": {"$ref": f"#/components/schemas/{title}"}}
 
                 elif view_func_config.get_request_model_from_query_string:
-                    request_body = {"schema": {"$ref": f"#/components/schemas/{title}"}}
+                    # For query string parameters, we'll store the schema and convert to parameters later
+                    # TODO: revert when https://github.com/openapi-ts/openapi-typescript/issues/2361 closes
+                    # https://github.com/adamsussman/flask-pydantic-api
+                    request_body = {"schema": schema, "model_title": title}
                 else:
                     request_body = {
                         "description": f"A {title}",
@@ -187,12 +190,26 @@ def get_pydantic_api_path_operations(
             }
             if request_body:
                 if view_func_config.get_request_model_from_query_string:
-                    paths[path][method]["parameters"].append({
-                        "in": "query",
-                        "type": "form",
-                        "explode": "true",
-                        **request_body,
-                    })
+                    # Convert schema properties to individual query parameters
+                    # TODO: revert when https://github.com/openapi-ts/openapi-typescript/issues/2361 closes
+                    # https://github.com/adamsussman/flask-pydantic-api
+                    schema = request_body["schema"]
+                    properties = schema.get("properties", {})
+                    required_fields = schema.get("required", [])
+
+                    for prop_name, prop_schema in properties.items():
+                        query_param = {
+                            "name": prop_name,
+                            "in": "query",
+                            "required": prop_name in required_fields,
+                            "schema": prop_schema,
+                        }
+
+                        # Add description if available
+                        if "description" in prop_schema:
+                            query_param["description"] = prop_schema["description"]
+
+                        paths[path][method]["parameters"].append(query_param)
                 else:
                     paths[path][method]["requestBody"] = request_body
 

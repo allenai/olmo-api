@@ -44,3 +44,4 @@ opentelemetry-instrumentation-httpx==0.59b0
 opentelemetry-instrumentation-requests==0.59b0
 opentelemetry-instrumentation-sqlalchemy==0.59b0
 opentelemetry-instrumentation-psycopg==0.59b0
+pytest-mock==3.15.1

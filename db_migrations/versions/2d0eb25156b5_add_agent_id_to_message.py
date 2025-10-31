@@ -1,7 +1,7 @@
 """add agent_id to message
 
 Revision ID: 2d0eb25156b5
-Revises: 5da1e4a16ea0
+Revises: 440e4ee34a13
 Create Date: 2025-10-27 16:32:43.945463
 
 """
@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "2d0eb25156b5"
-down_revision: str | None = "5da1e4a16ea0"
+down_revision: str | None = "440e4ee34a13"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

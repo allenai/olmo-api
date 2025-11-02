@@ -13,21 +13,21 @@ from fastapi import APIRouter, Body, HTTPException, status
 
 from src.attribution.attribution_service import GetAttributionRequest, get_attribution
 from src.attribution.infini_gram_api_client import Client
-from src.dependencies import AppConfig, DBSession
-from src.model_config.get_model_config_service import get_single_model_config_admin
+from src.dependencies import AppConfig
+from src.model_config.get_model_config_service import ModelConfigServiceDep
 
 router = APIRouter(tags=["v3", "CorpusLink"])
 
 
 @router.post("")
 async def get_attribution_for_model_response(
-    session: DBSession,
+    model_service: ModelConfigServiceDep,
     config: AppConfig,
     corpuslink_request: GetAttributionRequest = Body(...),
 ) -> Any:
     """Get CorpusLink spans and documents from a prompt"""
     model_config = await asyncio.to_thread(
-        get_single_model_config_admin, session, corpuslink_request.model_id
+        model_service.get_by_id, corpuslink_request.model_id
     )
     if model_config is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Model not found")

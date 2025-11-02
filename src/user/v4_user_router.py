@@ -16,10 +16,11 @@ from src.auth.auth_utils import get_permissions
 from src.auth.authenticated_client import AuthenticatedClient
 from src.auth.fastapi_dependencies import RequiredAuth
 from src.dao.user import User
-from src.dependencies import DBClient, DBSession, StorageClient
+from src.dependencies import DBClient, StorageClient
 from src.user.user_migrate import (
     MigrateFromAnonymousUserRequest,
     MigrateFromAnonymousUserResponse,
+    UserMigrationServiceDep,
     migrate_user_from_anonymous_user,
 )
 from src.user.user_service import UpsertUserRequest
@@ -93,7 +94,7 @@ async def update_user(
 @router.put("/migrate-user", response_model=MigrateFromAnonymousUserResponse)
 async def migrate_from_anonymous_user(
     token: RequiredAuth,
-    session: DBSession,
+    service: UserMigrationServiceDep,
     dbc: DBClient,
     storage_client: StorageClient,
     migration_request: MigrateFromAnonymousUserRequest = Body(...),
@@ -103,10 +104,9 @@ async def migrate_from_anonymous_user(
     migration_request.new_user_id = token.token.sub if hasattr(token.token, "sub") else token.client
 
     return await asyncio.to_thread(
-        migrate_user_from_anonymous_user,
+        service.migrate_user_from_anonymous_user,
         dbc=dbc,
         storage_client=storage_client,
-        session=session,
         anonymous_user_id=migration_request.anonymous_user_id,
         new_user_id=migration_request.new_user_id,
     )

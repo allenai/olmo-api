@@ -1,5 +1,6 @@
 from typing import Annotated
 
+from fastapi import Depends
 from pydantic import Field, RootModel, TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectin_polymorphic, sessionmaker
@@ -10,6 +11,7 @@ from src.dao.engine_models.model_config import (
     ModelConfig,
     MultiModalModelConfig,
 )
+from src.dependencies import DBSession
 from src.model_config.response_model import ResponseModel
 from src.tools.tools_service import get_available_tools
 
@@ -64,3 +66,31 @@ def get_single_model_config_admin(session: Session, model_id: str) -> ModelConfi
     stmt = select(ModelConfig).options(polymorphic_loader_opt).where(ModelConfig.id == model_id)
 
     return session.scalars(stmt).one_or_none()
+
+
+# Service class with dependency injection
+class ModelConfigService:
+    """
+    Model configuration service with dependency-injected database session.
+
+    This service encapsulates all model config operations and receives
+    its dependencies through constructor injection.
+    """
+
+    def __init__(self, session: Session):
+        self.session = session
+
+    def get_by_id(self, model_id: str) -> ModelConfig | MultiModalModelConfig | None:
+        """Get a single model config by ID"""
+        polymorphic_loader_opt = selectin_polymorphic(ModelConfig, [ModelConfig, MultiModalModelConfig])
+        stmt = select(ModelConfig).options(polymorphic_loader_opt).where(ModelConfig.id == model_id)
+        return self.session.scalars(stmt).one_or_none()
+
+
+def get_model_config_service(session: DBSession) -> ModelConfigService:
+    """Dependency provider for ModelConfigService"""
+    return ModelConfigService(session)
+
+
+# Type alias for dependency injection
+ModelConfigServiceDep = Annotated[ModelConfigService, Depends(get_model_config_service)]

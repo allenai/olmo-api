@@ -21,7 +21,11 @@ from src.dao.message import message_models
 from src.dao.message.message_repository import MessageRepository
 from src.dependencies import DBClient, DBSession, StorageClient
 from src.message.create_message_request import CreateMessageRequest
-from src.message.create_message_service.endpoint import create_message_v4, format_message
+from src.message.create_message_service.endpoint import (
+    MessageCreationServiceDep,
+    create_message_v4,
+    format_message,
+)
 from src.message.message_chunk import Chunk
 from src.thread.get_thread_service import get_thread
 from src.thread.get_threads_service import GetThreadsRequest, GetThreadsResponse, get_threads
@@ -82,7 +86,7 @@ async def create_message_in_thread(
     request: Request,
     dbc: DBClient,
     storage: StorageClient,
-    session: DBSession,
+    service: MessageCreationServiceDep,
     token: RequiredAuth,
     # Form fields - same as message router
     content: str = Form(...),
@@ -161,12 +165,11 @@ async def create_message_in_thread(
 
     # Call service (wrapped in asyncio.to_thread to avoid blocking)
     stream_response = await asyncio.to_thread(
-        create_message_v4,
+        service.create_message,
         create_message_request,
         dbc,
         storage_client=storage,
-        message_repository=MessageRepository(session),
-        session=session,
+        message_repository=MessageRepository(service.session),
         token=token,
         user_ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),

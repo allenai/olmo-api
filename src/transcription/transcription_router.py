@@ -10,16 +10,20 @@ import asyncio
 
 from fastapi import APIRouter, File, UploadFile
 
-from src.dependencies import DBSession
-from src.transcription.transcription_service import GetTranscriptionRequest, GetTranscriptionResponse, get_transcription
+from src.transcription.transcription_service import (
+    GetTranscriptionRequest,
+    GetTranscriptionResponse,
+    TranscriptionServiceDep,
+    get_transcription,
+)
 
 router = APIRouter(tags=["v4", "transcribe"])
 
 
 @router.post("/", response_model=GetTranscriptionResponse)
-async def transcribe(session: DBSession, audio: UploadFile = File(...)) -> GetTranscriptionResponse:
+async def transcribe(service: TranscriptionServiceDep, audio: UploadFile = File(...)) -> GetTranscriptionResponse:
     """Transcribe audio file to text"""
     # The service expects a file-like object with .read() method
     # UploadFile.file is a SpooledTemporaryFile which works with pydub
     request = GetTranscriptionRequest(audio=audio.file)
-    return await asyncio.to_thread(get_transcription, session, request)
+    return await asyncio.to_thread(service.get_transcription, request)

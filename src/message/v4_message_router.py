@@ -16,9 +16,13 @@ from fastapi.responses import StreamingResponse
 from src.auth.fastapi_dependencies import RequiredAuth
 from src.dao.engine_models.message import Message as SQLAMessage
 from src.dao.message.message_repository import MessageRepository, map_sqla_to_old
-from src.dependencies import DBClient, DBSession, StorageClient
+from src.dependencies import DBClient, StorageClient
 from src.message.create_message_request import CreateMessageRequest
-from src.message.create_message_service.endpoint import create_message_v4, format_message
+from src.message.create_message_service.endpoint import (
+    MessageCreationServiceDep,
+    create_message_v4,
+    format_message,
+)
 
 router = APIRouter(tags=["v4", "message"])
 
@@ -39,7 +43,7 @@ async def create_message(
     request: Request,
     dbc: DBClient,
     storage: StorageClient,
-    session: DBSession,
+    service: MessageCreationServiceDep,
     token: RequiredAuth,
     # Form fields
     content: str = Form(...),
@@ -119,12 +123,11 @@ async def create_message(
 
     # Call service in thread pool to avoid blocking event loop
     stream_response = await asyncio.to_thread(
-        create_message_v4,
+        service.create_message,
         create_message_request,
         dbc,
         storage_client=storage,
-        message_repository=MessageRepository(session),
-        session=session,
+        message_repository=MessageRepository(service.session),
         token=token,
         user_ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),

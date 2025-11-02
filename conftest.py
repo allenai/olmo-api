@@ -1,16 +1,25 @@
 import os
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
+from fastapi.testclient import TestClient
 from psycopg import Connection
 from psycopg_pool import ConnectionPool
 from pytest_postgresql import factories
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
+from app import create_app
 from src.config import get_config
 from src.config.Config import Config
 from src.db import Client
 from src.db.init_sqlalchemy import make_db_engine
+from src.dependencies import (
+    get_app_config,
+    get_db_client,
+    get_db_session,
+    get_storage_client,
+)
 
 postgresql_proc = factories.postgresql_proc(
     load=[
@@ -60,3 +69,35 @@ def sql_alchemy(dbc: Client, cfg: Config):
     with session_maker() as session:
         yield session
     db_engine.dispose()
+
+
+# FastAPI Test Fixtures with Dependency Overrides
+
+
+@pytest.fixture
+def test_storage_client():
+    """Mock storage client for tests"""
+    return Mock()
+
+
+@pytest.fixture(params=[pytest.param("", marks=pytest.mark.integration)])
+def test_client(sql_alchemy: Session, dbc: Client, cfg: Config, test_storage_client):
+    """
+    FastAPI TestClient with all dependencies overridden for integration tests.
+
+    This fixture provides a configured TestClient that overrides all dependency
+    injection functions to use test fixtures instead of real services.
+    """
+    app = create_app()
+
+    # Override all dependencies with test fixtures
+    app.dependency_overrides[get_db_session] = lambda: sql_alchemy
+    app.dependency_overrides[get_db_client] = lambda: dbc
+    app.dependency_overrides[get_storage_client] = lambda: test_storage_client
+    app.dependency_overrides[get_app_config] = lambda: cfg
+
+    with TestClient(app) as client:
+        yield client
+
+    # Clean up overrides
+    app.dependency_overrides.clear()

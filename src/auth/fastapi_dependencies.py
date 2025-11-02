@@ -4,41 +4,46 @@ FastAPI Authentication Dependencies
 
 Provides FastAPI dependencies for authentication and authorization,
 replacing Flask's resource protectors with FastAPI's dependency injection system.
+
+Uses PyJWT for JWT validation instead of Authlib.
 """
 
 from datetime import UTC, datetime
+from functools import lru_cache
 from typing import Annotated, Optional
 
-from authlib.oauth2 import OAuth2Error
-from fastapi import Depends, Header, HTTPException, Request, status
+import jwt
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jwt import PyJWKClient
 
-from src.auth.auth0_bearer_token_validator import Auth0JWTBearerTokenValidator
 from src.auth.token import Token
-from src.config.get_config import cfg
 from src.constants import ANONYMOUS_USER_ID_HEADER
+from src.dependencies import AppConfig
 
 # HTTPBearer security scheme (auto_error=False means it won't raise 401 automatically)
 security = HTTPBearer(auto_error=False)
 
+# Old Auth0 issuer for backward compatibility
+OLD_AUTH0_ISSUER = "https://allenai-public.us.auth0.com/"
 
-def get_auth0_validator(request: Request) -> Auth0JWTBearerTokenValidator:
-    """
-    Get Auth0 validator from app state or create new one.
 
-    The validator is cached in app state to avoid fetching JWKS repeatedly.
+@lru_cache
+def get_jwks_client(domain: str) -> PyJWKClient:
     """
-    if not hasattr(request.app.state, "auth0_validator"):
-        request.app.state.auth0_validator = Auth0JWTBearerTokenValidator(
-            domain=cfg.auth.domain, audience=cfg.auth.audience
-        )
-    return request.app.state.auth0_validator
+    Get PyJWKClient for fetching JWKS (JSON Web Key Set).
+
+    Cached singleton to avoid repeated JWKS fetches.
+    """
+    issuer = f"https://{domain}/"
+    jwks_url = f"{issuer}.well-known/jwks.json"
+    return PyJWKClient(jwks_url)
 
 
 def get_optional_token(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     anonymous_user_id: Optional[str] = Header(None, alias=ANONYMOUS_USER_ID_HEADER),
-    validator: Auth0JWTBearerTokenValidator = Depends(get_auth0_validator),
+    config: AppConfig = None,
 ) -> Optional[Token]:
     """
     Get token from Authorization header or anonymous user header.
@@ -53,23 +58,49 @@ def get_optional_token(
         Token object if authenticated (either way), None if no credentials provided
     """
     if credentials:
-        # Try to validate JWT token
+        # Try to validate JWT token using PyJWT
         try:
             token_string = credentials.credentials
-            token_data = validator.authenticate_token(token_string, request=None, scopes=None)
 
-            if token_data:
-                # Successfully authenticated with Auth0
-                return Token(
-                    client=token_data.sub,
-                    is_anonymous_user=False,
-                    created=datetime.fromtimestamp(token_data.iat, tz=UTC),
-                    expires=datetime.fromtimestamp(token_data.exp, tz=UTC),
-                    creator=token_data.iss,
-                    token=token_data,
-                )
-        except OAuth2Error:
-            # Invalid token, fall through to check anonymous
+            # Get JWKS client for token verification
+            jwks_client = get_jwks_client(config.auth.domain)
+
+            # Get signing key from token header
+            signing_key = jwks_client.get_signing_key_from_jwt(token_string)
+
+            # Decode and validate token
+            issuer = f"https://{config.auth.domain}/"
+
+            # Note: PyJWT doesn't support multiple issuers in jwt.decode()
+            # We'll verify issuer manually after decoding
+            token_data = jwt.decode(
+                token_string,
+                signing_key.key,
+                algorithms=["RS256"],
+                audience=config.auth.audience,
+                options={
+                    "verify_signature": True,
+                    "verify_exp": True,
+                    "verify_aud": True,
+                    "verify_iss": False,  # We'll verify manually below
+                }
+            )
+
+            # Manually verify issuer supports both old and new domains
+            if token_data.get("iss") not in [issuer, OLD_AUTH0_ISSUER]:
+                raise jwt.InvalidIssuerError(f"Invalid issuer: {token_data.get('iss')}")
+
+            # Successfully authenticated with Auth0
+            return Token(
+                client=token_data["sub"],
+                is_anonymous_user=False,
+                created=datetime.fromtimestamp(token_data["iat"], tz=UTC),
+                expires=datetime.fromtimestamp(token_data["exp"], tz=UTC),
+                creator=token_data["iss"],
+                token=token_data,
+            )
+        except (jwt.PyJWTError, KeyError):
+            # Invalid token or missing required claims, fall through to check anonymous
             pass
 
     if anonymous_user_id:

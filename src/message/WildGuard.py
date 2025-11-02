@@ -1,5 +1,5 @@
 import dataclasses
-import logging
+import structlog
 from time import time_ns
 
 import modal
@@ -11,7 +11,7 @@ from src.message.SafetyChecker import (
     SafetyCheckResponse,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclasses.dataclass
@@ -62,11 +62,12 @@ class WildGuard(SafetyChecker):
             response_harmful=result["response_harmful"],
         )
 
-        logger.info({
-            "checker": "WildGuard",
-            "prompt": req.content,
-            "duration_ms": (end_ns - start_ns) / 1_000_000,
-            "is_safe": response.is_safe(),
-        })
+        logger.info(
+            "wildguard_check",
+            checker="WildGuard",
+            prompt=req.content,
+            duration_ms=(end_ns - start_ns) / 1_000_000,
+            is_safe=response.is_safe(),
+        )
 
         return response

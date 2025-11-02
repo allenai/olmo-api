@@ -6,10 +6,13 @@ FastAPI router for model configuration endpoints.
 Converted from Flask blueprint in model_config_blueprint.py.
 """
 
-from fastapi import APIRouter, Request
+import asyncio
+
+from fastapi import APIRouter
 
 from src.auth.auth_utils import Permissions, user_has_permission
 from src.auth.fastapi_dependencies import OptionalAuth
+from src.dependencies import SessionFactory
 from src.model_config.get_model_config_service import ModelResponse, get_model_configs
 
 router = APIRouter(tags=["v4", "models"])
@@ -17,7 +20,7 @@ router = APIRouter(tags=["v4", "models"])
 
 @router.get("/", response_model=ModelResponse)
 async def get_models(
-    request: Request,
+    session_maker: SessionFactory,
     token: OptionalAuth = None,
 ) -> ModelResponse:
     """
@@ -28,7 +31,8 @@ async def get_models(
     """
     should_include_internal_models = user_has_permission(token.token if token else None, Permissions.READ_INTERNAL_MODELS)
 
-    return get_model_configs(
-        session_maker=request.app.state.session_maker,
+    return await asyncio.to_thread(
+        get_model_configs,
+        session_maker=session_maker,
         include_internal_models=should_include_internal_models,
     )

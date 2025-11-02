@@ -1,4 +1,4 @@
-import logging
+import structlog
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Annotated, Self, cast
@@ -7,7 +7,7 @@ from pydantic import AfterValidator, Field
 from rank_bm25 import BM25Okapi  # type: ignore
 from werkzeug import exceptions
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 from src.api_interface import APIInterface
 from src.attribution.infini_gram_api_client.api.default import (
@@ -199,9 +199,9 @@ def get_attribution(request: GetAttributionRequest, infini_gram_client: Client, 
 
     if isinstance(attribution_response, RequestValidationError):
         logger.error(
-            "Validation error from infini-gram %s, errors %s",
-            attribution_response.title,
-            str(attribution_response.errors),
+            "infinigram_validation_error",
+            title=attribution_response.title,
+            errors=str(attribution_response.errors),
         )
         # validation error handling
         raise exceptions.InternalServerError(
@@ -210,9 +210,9 @@ def get_attribution(request: GetAttributionRequest, infini_gram_client: Client, 
 
     if isinstance(attribution_response, Problem):
         logger.error(
-            "Problem from infini-gram %s, detail %s",
-            attribution_response.title,
-            str(attribution_response.detail),
+            "infinigram_problem",
+            title=attribution_response.title,
+            detail=str(attribution_response.detail),
         )
 
         if attribution_response.type_ == "server-overloaded":

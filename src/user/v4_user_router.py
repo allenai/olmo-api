@@ -7,17 +7,16 @@ and anonymous user migration.
 Converted from Flask blueprint in user_blueprint.py.
 """
 
+import asyncio
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Body, Request
 
-from src import db
 from src.auth.auth_utils import get_permissions
 from src.auth.authenticated_client import AuthenticatedClient
 from src.auth.fastapi_dependencies import RequiredAuth
-from src.dao.fastapi_sqlalchemy_session import DBSession
 from src.dao.user import User
-from src.message.GoogleCloudStorage import GoogleCloudStorage
+from src.dependencies import DBClient, DBSession, StorageClient
 from src.user.user_migrate import (
     MigrateFromAnonymousUserRequest,
     MigrateFromAnonymousUserResponse,
@@ -29,25 +28,13 @@ from src.user.v4_user_service import upsert_user_v4
 router = APIRouter(tags=["v4", "user"])
 
 
-def get_db_client(request: Request) -> db.Client:
-    """Get psycopg3 database client from app state"""
-    return request.app.state.dbc
-
-
-def get_storage_client(request: Request) -> GoogleCloudStorage:
-    """Get storage client from app state"""
-    return request.app.state.storage_client
-
-
 @router.get("/whoami", response_model=AuthenticatedClient)
 async def whoami(
-    request: Request,
     token: RequiredAuth,
+    dbc: DBClient,
 ) -> AuthenticatedClient:
     """Get info for the current user"""
-    dbc = get_db_client(request)
-
-    user = dbc.user.get_by_client(token.client)
+    user = await asyncio.to_thread(dbc.user.get_by_client, token.client)
     last_terms_update_date = datetime(2025, 7, 11, tzinfo=UTC)
 
     # A user is considered to have accepted the latest terms if:
@@ -86,10 +73,10 @@ async def whoami(
 async def update_user(
     request: Request,
     token: RequiredAuth,
+    dbc: DBClient,
     user_request: UpsertUserRequest = Body(...),
 ) -> User | None:
     """Create or update user"""
-    dbc = get_db_client(request)
     should_create_contact = not token.is_anonymous_user
 
     # Override client from token (security measure)
@@ -98,24 +85,25 @@ async def update_user(
     # Get auth header for hubspot
     auth_header = request.headers.get("Authorization", "")
 
-    return upsert_user_v4(dbc, user_request=user_request, should_create_contact=should_create_contact, auth_header=auth_header)
+    return await asyncio.to_thread(
+        upsert_user_v4, dbc, user_request=user_request, should_create_contact=should_create_contact, auth_header=auth_header
+    )
 
 
 @router.put("/migrate-user", response_model=MigrateFromAnonymousUserResponse)
 async def migrate_from_anonymous_user(
-    request: Request,
     token: RequiredAuth,
     session: DBSession,
+    dbc: DBClient,
+    storage_client: StorageClient,
     migration_request: MigrateFromAnonymousUserRequest = Body(...),
 ) -> MigrateFromAnonymousUserResponse:
     """Migrate data from anonymous user to authenticated user"""
-    dbc = get_db_client(request)
-    storage_client = get_storage_client(request)
-
     # Override new_user_id from token (security measure)
     migration_request.new_user_id = token.token.sub if hasattr(token.token, "sub") else token.client
 
-    return migrate_user_from_anonymous_user(
+    return await asyncio.to_thread(
+        migrate_user_from_anonymous_user,
         dbc=dbc,
         storage_client=storage_client,
         session=session,

@@ -1,5 +1,5 @@
 import dataclasses
-import logging
+import structlog
 import os
 from collections.abc import Callable, Generator
 from dataclasses import asdict
@@ -14,7 +14,7 @@ from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models import ModelRequestParameters
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 from src import db, parse
 from src.auth.token import Token
@@ -428,15 +428,15 @@ def stream_assistant_response(
         yield from pydnatic_ai_http_error_handling(e, reply, model)
         raise
     except Exception as e:
-        logger.exception(
-            "Unknown error",
-            extra={
-                "message_id": reply.id,
-                "model": model.id,
-                "host": model.host,
-                "is_internal": model.internal,
-                "event": "inference.stream-error",
-            },
+        logger.error(
+            "unknown_error",
+            message_id=reply.id,
+            model=model.id,
+            host=model.host,
+            is_internal=model.internal,
+            event="inference.stream-error",
+            error=str(e),
+            exc_info=True,
         )
 
         err = f"Unknown Error {e}"
@@ -550,15 +550,15 @@ def pydnatic_ai_http_error_handling(e: ModelHTTPError, reply: Message, model: Mo
             yield MessageStreamError(message=reply.id, error=msg, reason=FinishReason.Length)
             return
 
-    logger.exception(
-        "Http call to LLM failed",
-        extra={
-            "message_id": reply.id,
-            "model": model.id,
-            "host": model.host,
-            "is_internal": model.internal,
-            "event": "inference.stream-error",
-        },
+    logger.error(
+        "http_call_to_llm_failed",
+        message_id=reply.id,
+        model=model.id,
+        host=model.host,
+        is_internal=model.internal,
+        event="inference.stream-error",
+        error=e.message,
+        exc_info=True,
     )
 
     err = f"http error: {e.message}"

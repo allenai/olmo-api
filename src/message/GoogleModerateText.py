@@ -1,4 +1,4 @@
-import logging
+import structlog
 from time import time_ns
 
 from google.cloud.language_v2 import (
@@ -16,7 +16,7 @@ from src.message.SafetyChecker import (
     SafetyCheckResponse,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ViolationInfo(APIInterface):
@@ -86,13 +86,14 @@ class GoogleModerateText(SafetyChecker):
 
         response = GoogleModerateTextResponse(result)
 
-        logger.info({
-            "event": "safety-check.results",
-            "checker": "GoogleModerateText",
-            "prompt": req.content,
-            "duration_ms": (end_ns - start_ns) / 1_000_000,
-            "violations": [info.model_dump() for info in response.get_violations()],
-            "scores": response.get_scores(),
-        })
+        logger.info(
+            "safety_check_results",
+            event="safety-check.results",
+            checker="GoogleModerateText",
+            prompt=req.content,
+            duration_ms=(end_ns - start_ns) / 1_000_000,
+            violations=[info.model_dump() for info in response.get_violations()],
+            scores=response.get_scores(),
+        )
 
         return response

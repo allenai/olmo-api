@@ -1,5 +1,5 @@
 import json
-import logging
+import structlog
 from typing import Any
 
 from pydantic_ai import Tool
@@ -9,6 +9,8 @@ from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefi
 from src.dao.engine_models.tool_definitions import ToolSource
 
 from .internal_tools import CreateRandomNumber
+
+logger = structlog.get_logger(__name__)
 
 TOOL_REGISTRY: list[Tool[Any]] = [CreateRandomNumber]
 
@@ -43,7 +45,7 @@ def call_internal_tool(tool_call: ToolCall) -> str:
         return "Tool setup incorrect"
 
     except Exception as e:
-        logging.exception("Tool call failed")
+        logger.error("tool_call_failed", error=str(e), exc_info=True)
         return str(e)  # This returns the error to LLM
 
 

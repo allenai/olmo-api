@@ -1,4 +1,4 @@
-import logging
+import structlog
 
 import requests
 from google.cloud.vision import Likelihood, SafeSearchAnnotation
@@ -10,7 +10,7 @@ from src.message.SafetyChecker import (
     SafetyCheckResponse,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class GoogleVisionSafeSearchResponse(SafetyCheckResponse):
@@ -67,11 +67,12 @@ class GoogleVisionSafeSearch(SafetyChecker):
 
         response = GoogleVisionSafeSearchResponse(result)
 
-        logger.info({
-            "checker": "GoogleVisionSafeSearch",
-            "request": req.name,
-            "duration_ms": result.elapsed / 1_000_000,
-            "violations": response.get_violation_categories(),
-        })
+        logger.info(
+            "vision_safe_search_check",
+            checker="GoogleVisionSafeSearch",
+            request=req.name,
+            duration_ms=result.elapsed.total_seconds() * 1000,
+            violations=response.get_violation_categories(),
+        )
 
         return response

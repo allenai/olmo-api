@@ -1,7 +1,7 @@
-import logging
+import structlog
 import os
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def log_inference_timing(
@@ -17,7 +17,8 @@ def log_inference_timing(
     ttft_ms = ttft_ns // 1e6
     total_ms = total_ns // 1e6
 
-    event_log = dict(
+    logger.info(
+        "inference_timing",
         event="inference.timing",
         event_type=event_type,
         sha=os.environ.get("SHA", "DEV"),
@@ -29,5 +30,3 @@ def log_inference_timing(
         remote_address=remote_address,
         **kwargs,
     )
-
-    logger.info(event_log)

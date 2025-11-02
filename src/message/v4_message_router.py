@@ -6,20 +6,19 @@ FastAPI router for message creation with streaming support.
 Converted from Flask blueprint in v4_message_blueprint.py.
 """
 
+import asyncio
 from collections.abc import Generator
 from typing import Any
 
 from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import StreamingResponse
 
-from src import db
 from src.auth.fastapi_dependencies import RequiredAuth
 from src.dao.engine_models.message import Message as SQLAMessage
-from src.dao.fastapi_sqlalchemy_session import DBSession
 from src.dao.message.message_repository import MessageRepository, map_sqla_to_old
+from src.dependencies import DBClient, DBSession, StorageClient
 from src.message.create_message_request import CreateMessageRequest
 from src.message.create_message_service.endpoint import create_message_v4, format_message
-from src.message.GoogleCloudStorage import GoogleCloudStorage
 
 router = APIRouter(tags=["v4", "message"])
 
@@ -35,19 +34,11 @@ def format_messages(stream_generator: Generator) -> Generator[str, Any, None]:
                 yield format_message(message)
 
 
-def get_db_client(request: Request) -> db.Client:
-    """Get psycopg3 database client from app state"""
-    return request.app.state.dbc
-
-
-def get_storage_client(request: Request) -> GoogleCloudStorage:
-    """Get storage client from app state"""
-    return request.app.state.storage_client
-
-
 @router.post("/stream", response_model=None)
 async def create_message(
     request: Request,
+    dbc: DBClient,
+    storage: StorageClient,
     session: DBSession,
     token: RequiredAuth,
     # Form fields
@@ -60,18 +51,18 @@ async def create_message(
     private: bool = Form(False),
     template: str | None = Form(None),
     tool_call_id: str | None = Form(None),
-    tool_definitions: str | None = Form(None),  # JSON string
-    selected_tools: str | None = Form(None),  # JSON string
+    tool_definitions: str | None = Form(None),  # JSON string (Pydantic will parse)
+    selected_tools: str | None = Form(None),  # JSON string (Pydantic will parse)
     enable_tool_calling: bool = Form(False),
     bypass_safety_check: bool = Form(False),
     captcha_token: str | None = Form(None),
     max_tokens: int | None = Form(None),
     temperature: float | None = Form(None),
     top_p: float | None = Form(None),
-    stop: str | None = Form(None),  # JSON string
+    stop: str | None = Form(None),  # JSON string (Pydantic will parse)
     n: int | None = Form(1),
     logprobs: int | None = Form(None),
-    extra_parameters: str | None = Form(None),  # JSON string
+    extra_parameters: str | None = Form(None),  # JSON string (Pydantic will parse)
     # File uploads
     files: list[UploadFile] | None = File(None),
 ) -> StreamingResponse | Any:
@@ -81,15 +72,13 @@ async def create_message(
     Accepts multipart/form-data with optional file uploads.
     Returns JSONL stream of message chunks.
     """
-    # Convert FastAPI UploadFile to UploadedFile format expected by service
-    # Note: We'll need to convert UploadFile objects to match Flask's FileStorage interface
+    # Convert FastAPI UploadFile to Werkzeug FileStorage
     from werkzeug.datastructures import FileStorage
 
     uploaded_files = None
     if files:
         uploaded_files = []
         for file in files:
-            # Convert FastAPI UploadFile to Werkzeug FileStorage
             file_storage = FileStorage(
                 stream=file.file,
                 filename=file.filename,
@@ -98,26 +87,8 @@ async def create_message(
             )
             uploaded_files.append(file_storage)
 
-    # Parse JSON fields
-    import json
-
-    parsed_tool_definitions = None
-    if tool_definitions:
-        parsed_tool_definitions = json.loads(tool_definitions)
-
-    parsed_selected_tools = None
-    if selected_tools:
-        parsed_selected_tools = json.loads(selected_tools)
-
-    parsed_stop = None
-    if stop:
-        parsed_stop = json.loads(stop)
-
-    parsed_extra_parameters = None
-    if extra_parameters:
-        parsed_extra_parameters = json.loads(extra_parameters)
-
     # Build request object - exclude role if None to use default
+    # JSON fields are passed as strings and will be parsed by Pydantic's Json[] type
     request_kwargs = {
         "parent": parent,
         "content": content,
@@ -127,18 +98,18 @@ async def create_message(
         "model": model,
         "host": host,
         "tool_call_id": tool_call_id,
-        "tool_definitions": parsed_tool_definitions,
-        "selected_tools": parsed_selected_tools,
+        "tool_definitions": tool_definitions,  # Pydantic parses JSON
+        "selected_tools": selected_tools,  # Pydantic parses JSON
         "enable_tool_calling": enable_tool_calling,
         "bypass_safety_check": bypass_safety_check,
         "captcha_token": captcha_token,
         "max_tokens": max_tokens,
         "temperature": temperature,
         "top_p": top_p,
-        "stop": parsed_stop,
+        "stop": stop,  # Pydantic parses JSON
         "n": n,
         "logprobs": logprobs,
-        "extra_parameters": parsed_extra_parameters,
+        "extra_parameters": extra_parameters,  # Pydantic parses JSON
         "files": uploaded_files,
     }
     if role is not None:
@@ -146,15 +117,12 @@ async def create_message(
 
     create_message_request = CreateMessageRequest(**request_kwargs)
 
-    # Get dependencies
-    dbc = get_db_client(request)
-    storage_client = get_storage_client(request)
-
-    # Call service
-    stream_response = create_message_v4(
+    # Call service in thread pool to avoid blocking event loop
+    stream_response = await asyncio.to_thread(
+        create_message_v4,
         create_message_request,
         dbc,
-        storage_client=storage_client,
+        storage_client=storage,
         message_repository=MessageRepository(session),
         session=session,
         token=token,

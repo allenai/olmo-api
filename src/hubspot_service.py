@@ -1,4 +1,4 @@
-import logging
+import structlog
 from dataclasses import dataclass
 from http import HTTPStatus
 from typing import cast
@@ -7,7 +7,7 @@ import requests
 
 from src.config.get_config import cfg
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass
@@ -63,7 +63,7 @@ def get_user_info(auth_header: str) -> UserInfo | None:
         last_name = user_info.get("family_name")
 
         return UserInfo(email=email, first_name=first_name, last_name=last_name)
-    logger.error("Error fetching user info: %s %s", response.status_code, response.text)
+    logger.error("error_fetching_user_info", status_code=response.status_code, response_text=response.text)
     return None
 
 
@@ -93,6 +93,6 @@ def create_contact(auth_header: str):
     response = requests.post(url, headers=headers, json=contact_data)
 
     if response.status_code == 201:
-        logger.info("Contact created successfully: %s", response.json())
+        logger.info("contact_created_successfully", response_data=response.json())
     else:
-        logger.error("Error creating contact: %s %s", response.status_code, response.text)
+        logger.error("error_creating_contact", status_code=response.status_code, response_text=response.text)

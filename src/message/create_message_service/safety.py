@@ -1,12 +1,12 @@
 import base64
-import logging
+import structlog
 from collections.abc import Sequence
 from time import time_ns
 
 from werkzeug import exceptions
 from werkzeug.datastructures import FileStorage
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 from src.auth.auth_utils import Permissions, user_has_permission
 from src.auth.token import Token
@@ -41,7 +41,7 @@ def check_message_safety(
         return result.is_safe()
 
     except Exception as e:
-        logger.exception("Skipped message safety check due to error: %s. ", repr(e))
+        logger.error("safety_check_skipped", error=repr(e), exc_info=True)
 
     return None
 
@@ -61,10 +61,11 @@ def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
                 return False
 
         except Exception as e:
-            logger.exception(
-                "Skipped image safety check over %s due to error: %s. ",
-                file.filename,
-                repr(e),
+            logger.error(
+                "image_safety_check_skipped",
+                filename=file.filename,
+                error=repr(e),
+                exc_info=True,
             )
 
             return None
@@ -90,7 +91,7 @@ def evaluate_prompt_submission_captcha(
             return
 
         if captcha_assessment is None or not captcha_assessment.token_properties.valid:
-            logger.info("rejecting message request due to invalid captcha", extra={"assessment": captcha_assessment})
+            logger.info("rejecting_message_invalid_captcha", assessment=str(captcha_assessment))
             invalid_captcha_message = "invalid_captcha"
             raise exceptions.BadRequest(invalid_captcha_message)
 
@@ -99,7 +100,8 @@ def evaluate_prompt_submission_captcha(
             or captcha_assessment.token_properties.action != prompt_submission_action
         ):
             logger.info(
-                "rejecting message request due to failed captcha assessment", extra={"assessment": captcha_assessment}
+                "rejecting_message_failed_captcha_assessment",
+                assessment=str(captcha_assessment),
             )
             failed_captcha_assessment_message = "failed_captcha_assessment"
             raise exceptions.BadRequest(failed_captcha_assessment_message)

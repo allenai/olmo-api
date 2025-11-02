@@ -1,12 +1,12 @@
 import json
-import logging
+import structlog
 from time import time_ns
 from typing import cast
 
 from sqlalchemy.orm import Session
 from werkzeug import exceptions
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 import src.dao.message.message_models as message
 from src import db, util
@@ -102,7 +102,7 @@ def create_message_v4(
     )
 
     if model.prompt_type == PromptType.FILES_ONLY and not cfg.feature_flags.allow_files_only_model_in_thread:
-        logger.error("Tried to use a files only model in a normal thread stream %s/%s", id, model)
+        logger.error("files_only_model_in_thread_attempt", model_id=request.model, model=str(model))
 
         # HACK: I want OLMoASR to be set up like a normal model but don't want people to stream to it yet
         model_not_available_message = "This model isn't available yet"

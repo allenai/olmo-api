@@ -5,14 +5,14 @@ FastAPI Exception Handlers
 Global exception handlers for FastAPI that match Flask's error handling behavior.
 """
 
-import logging
+import structlog
 
 from fastapi import Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import ValidationError
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 async def validation_exception_handler(_request: Request, exc: RequestValidationError | ValidationError):
@@ -22,7 +22,7 @@ async def validation_exception_handler(_request: Request, exc: RequestValidation
     Returns a 400 Bad Request with validation error details in the same format
     as Flask's error handler.
     """
-    logger.exception(exc)
+    logger.error("validation_error", error=str(exc), errors=exc.errors(), exc_info=True)
 
     errors = exc.errors()
 
@@ -38,7 +38,7 @@ async def value_error_handler(_request: Request, exc: ValueError):
 
     This matches Flask's behavior where ValueError is treated as a client error.
     """
-    logger.exception(exc)
+    logger.error("value_error", error=str(exc), exc_info=True)
     return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": {"code": 400, "message": str(exc)}})
 
 
@@ -48,7 +48,7 @@ async def not_implemented_error_handler(_request: Request, exc: NotImplementedEr
 
     This matches Flask's behavior.
     """
-    logger.exception(exc)
+    logger.error("not_implemented_error", error=str(exc), exc_info=True)
     return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": {"code": 400, "message": str(exc)}})
 
 
@@ -59,7 +59,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
     Supports content negotiation: returns HTML if Accept header includes text/html,
     otherwise returns JSON.
     """
-    logger.exception(exc)
+    logger.error("generic_exception", error=str(exc), exc_info=True)
 
     # Check Accept header for content negotiation
     accept = request.headers.get("accept", "application/json")

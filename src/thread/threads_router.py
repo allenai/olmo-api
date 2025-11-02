@@ -6,6 +6,7 @@ FastAPI router for thread/conversation management.
 Converted from Flask blueprint in threads_blueprint.py.
 """
 
+import asyncio
 from collections.abc import Generator
 from logging import getLogger
 from typing import Any
@@ -13,16 +14,14 @@ from typing import Any
 from fastapi import APIRouter, File, Form, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
 
-from src import db
 from src.api_interface import APIInterface
 from src.auth.fastapi_dependencies import RequiredAuth
 from src.dao.engine_models.message import Message
-from src.dao.fastapi_sqlalchemy_session import DBSession
 from src.dao.message import message_models
 from src.dao.message.message_repository import MessageRepository
+from src.dependencies import DBClient, DBSession, StorageClient
 from src.message.create_message_request import CreateMessageRequest
 from src.message.create_message_service.endpoint import create_message_v4, format_message
-from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.message_chunk import Chunk
 from src.thread.get_thread_service import get_thread
 from src.thread.get_threads_service import GetThreadsRequest, GetThreadsResponse, get_threads
@@ -46,16 +45,6 @@ def format_messages(
     except Exception:
         getLogger().exception("Error when streaming")
         raise
-
-
-def get_db_client(request: Request) -> db.Client:
-    """Get psycopg3 database client from app state"""
-    return request.app.state.dbc
-
-
-def get_storage_client(request: Request) -> GoogleCloudStorage:
-    """Get storage client from app state"""
-    return request.app.state.storage_client
 
 
 @router.get("/", response_model=GetThreadsResponse)
@@ -91,6 +80,8 @@ async def get_single_thread(
 @router.post("/", response_model=None)
 async def create_message_in_thread(
     request: Request,
+    dbc: DBClient,
+    storage: StorageClient,
     session: DBSession,
     token: RequiredAuth,
     # Form fields - same as message router
@@ -138,15 +129,8 @@ async def create_message_in_thread(
             )
             uploaded_files.append(file_storage)
 
-    # Parse JSON fields
-    import json
-
-    parsed_tool_definitions = json.loads(tool_definitions) if tool_definitions else None
-    parsed_selected_tools = json.loads(selected_tools) if selected_tools else None
-    parsed_stop = json.loads(stop) if stop else None
-    parsed_extra_parameters = json.loads(extra_parameters) if extra_parameters else None
-
     # Build request object - exclude role if None to use default
+    # JSON fields are passed as strings and will be parsed by Pydantic's Json[] type
     request_kwargs = {
         "parent": parent,
         "content": content,
@@ -156,18 +140,18 @@ async def create_message_in_thread(
         "model": model,
         "host": host,
         "tool_call_id": tool_call_id,
-        "tool_definitions": parsed_tool_definitions,
-        "selected_tools": parsed_selected_tools,
+        "tool_definitions": tool_definitions,  # Pydantic parses JSON
+        "selected_tools": selected_tools,  # Pydantic parses JSON
         "enable_tool_calling": enable_tool_calling,
         "bypass_safety_check": bypass_safety_check,
         "captcha_token": captcha_token,
         "max_tokens": max_tokens,
         "temperature": temperature,
         "top_p": top_p,
-        "stop": parsed_stop,
+        "stop": stop,  # Pydantic parses JSON
         "n": n,
         "logprobs": logprobs,
-        "extra_parameters": parsed_extra_parameters,
+        "extra_parameters": extra_parameters,  # Pydantic parses JSON
         "files": uploaded_files,
     }
     if role is not None:
@@ -175,15 +159,12 @@ async def create_message_in_thread(
 
     create_message_request = CreateMessageRequest(**request_kwargs)
 
-    # Get dependencies
-    dbc = get_db_client(request)
-    storage_client = get_storage_client(request)
-
-    # Call service
-    stream_response = create_message_v4(
+    # Call service (wrapped in asyncio.to_thread to avoid blocking)
+    stream_response = await asyncio.to_thread(
+        create_message_v4,
         create_message_request,
         dbc,
-        storage_client=storage_client,
+        storage_client=storage,
         message_repository=MessageRepository(session),
         session=session,
         token=token,

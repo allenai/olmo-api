@@ -6,31 +6,27 @@ FastAPI router for V3 label operations (message ratings and feedback).
 Converted from Flask blueprint in v3.py.
 """
 
+import asyncio
 import io
 import json
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException, Query, Request, status
+from fastapi import APIRouter, Body, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
-from src import db, util
+from src import util
 from src.auth.fastapi_dependencies import RequiredAuth
 from src.dao import label, paged
-from src.dao.fastapi_sqlalchemy_session import DBSession
 from src.dao.message.message_repository import MessageRepository
+from src.dependencies import DBClient, DBSession
 
 router = APIRouter(tags=["v3", "labels"])
 
 
-def get_db_client(request: Request) -> db.Client:
-    """Get psycopg3 database client from app state"""
-    return request.app.state.dbc
-
-
 @router.get("/labels")
 async def list_labels(
-    request: Request,
+    dbc: DBClient,
     message: str | None = Query(None),
     creator: str | None = Query(None),
     rating: int | None = Query(None),
@@ -40,8 +36,6 @@ async def list_labels(
     limit: int = Query(50, ge=1, le=1_000_000),
 ) -> Any:
     """Get list of labels with optional filtering"""
-    dbc = get_db_client(request)
-
     try:
         rating_enum = label.Rating(rating) if rating is not None else None
     except ValueError as e:
@@ -49,7 +43,8 @@ async def list_labels(
 
     opts = paged.Opts(offset=offset, limit=limit)
 
-    ll = dbc.label.get_list(
+    ll = await asyncio.to_thread(
+        dbc.label.get_list,
         message=message,
         creator=creator,
         deleted=deleted,
@@ -73,12 +68,11 @@ async def list_labels(
 
 @router.get("/label/{id}")
 async def get_label(
-    request: Request,
+    dbc: DBClient,
     id: str,
 ) -> Any:
     """Get a specific label by ID"""
-    dbc = get_db_client(request)
-    lbl = dbc.label.get(id)
+    lbl = await asyncio.to_thread(dbc.label.get, id)
     if lbl is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Label not found")
     return lbl
@@ -86,14 +80,12 @@ async def get_label(
 
 @router.post("/label", status_code=status.HTTP_201_CREATED)
 async def create_label(
-    request: Request,
+    dbc: DBClient,
     session: DBSession,
     token: RequiredAuth,
     body: dict = Body(...),
 ) -> Any:
     """Create a new label for a message"""
-    dbc = get_db_client(request)
-
     message_id = body.get("message")
     if not message_id:
         raise HTTPException(
@@ -103,7 +95,7 @@ async def create_label(
 
     # Check if message exists
     message_repository = MessageRepository(session)
-    msg = message_repository.get_message_by_id(message_id)
+    msg = await asyncio.to_thread(message_repository.get_message_by_id, message_id)
     if msg is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -117,7 +109,8 @@ async def create_label(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
     # Check for existing label
-    existing = dbc.label.get_list(
+    existing = await asyncio.to_thread(
+        dbc.label.get_list,
         message=message_id,
         creator=token.client,
     )
@@ -127,27 +120,25 @@ async def create_label(
             detail=f"Message {message_id} already has label {existing.labels[0].id}"
         )
 
-    lbl = dbc.label.create(msg.id, rating_value, token.client, body.get("comment"))
+    lbl = await asyncio.to_thread(dbc.label.create, msg.id, rating_value, token.client, body.get("comment"))
     return lbl
 
 
 @router.delete("/label/{id}")
 async def delete_label(
-    request: Request,
+    dbc: DBClient,
     token: RequiredAuth,
     id: str,
 ) -> Any:
     """Delete a label (soft delete)"""
-    dbc = get_db_client(request)
-
-    lbl = dbc.label.get(id)
+    lbl = await asyncio.to_thread(dbc.label.get, id)
     if lbl is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Label not found")
 
     if lbl.creator != token.client:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
-    deleted = dbc.label.delete(id)
+    deleted = await asyncio.to_thread(dbc.label.delete, id)
     if deleted is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Label not found")
 

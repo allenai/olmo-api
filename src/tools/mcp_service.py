@@ -2,6 +2,7 @@ import asyncio
 from functools import lru_cache
 from logging import getLogger
 
+from attr import dataclass
 from pydantic_ai.mcp import MCPServer as PydanticMCPServer
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 
@@ -11,18 +12,30 @@ from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefi
 from src.dao.engine_models.tool_definitions import ToolSource
 
 
+@dataclass
+class MCPServerWithConfig:
+    id: str
+    server: MCPServerStreamableHTTP
+    enabled: bool
+    available_for_all_models: bool
+
+
 @lru_cache
-def get_mcp_servers() -> dict[str, MCPServerStreamableHTTP]:
+def get_mcp_servers() -> dict[str, MCPServerWithConfig]:
     return {
-        server.id: MCPServerStreamableHTTP(server.url, headers=server.headers, tool_prefix=server.id)
+        server.id: MCPServerWithConfig(
+            id=server.id,
+            server=MCPServerStreamableHTTP(server.url, headers=server.headers, tool_prefix=server.id),
+            enabled=server.enabled,
+            available_for_all_models=server.available_for_all_models,
+        )
         for server in get_config().mcp.servers
-        if server.enabled
     }
 
 
 def get_tools_from_mcp_server(server: PydanticMCPServer) -> list[Ai2ToolDefinition]:
     # HACK: get_tools wants the context but doesn't actually use it yet
-    tools = asyncio.run(server.get_tools(None))  # type: ignore
+    tools = asyncio.run(server.get_tools(None))  # type:ignore
 
     return [
         Ai2ToolDefinition(
@@ -36,56 +49,62 @@ def get_tools_from_mcp_server(server: PydanticMCPServer) -> list[Ai2ToolDefiniti
     ]
 
 
-def get_mcp_tools() -> list[Ai2ToolDefinition]:
-    return [tool for server in get_mcp_servers().values() for tool in get_tools_from_mcp_server(server)]
-
-
-def _is_mcp_server_for_general_use(mcp_server: McpServer) -> bool:
+def _is_mcp_server_for_general_use(mcp_server: MCPServerWithConfig) -> bool:
     return mcp_server.enabled and mcp_server.available_for_all_models
 
 
 def get_general_mcp_tools() -> list[Ai2ToolDefinition]:
     mcp_tools: list[Ai2ToolDefinition] = []
 
+    mcp_servers = get_mcp_servers()
+
     # TODO: There's probably a way to share this logic with get_tools_from_mcp_servers
     # It may be nice to pass in a condition for the mcp servers?
     mcp_tools = [
         tool
-        for server in cfg.mcp.servers
-        if _is_mcp_server_for_general_use(server)
-        for tool in list_mcp_server_tools(server)
+        for server_id, server_config in mcp_servers.items()
+        if _is_mcp_server_for_general_use(server_config)
+        for tool in get_tools_from_mcp_server(server_config.server)
     ]
 
     return mcp_tools
 
 
 def get_tools_from_mcp_servers(mcp_server_ids: set[str]) -> list[Ai2ToolDefinition]:
+    mcp_servers = get_mcp_servers()
+
     mcp_tools = [
-        tool for server in cfg.mcp.servers if server.id in mcp_server_ids for tool in list_mcp_server_tools(server)
+        tool
+        for server_id, server_config in mcp_servers.items()
+        if server_id in mcp_server_ids
+        for tool in get_tools_from_mcp_server(server_config.server)
     ]
 
     return mcp_tools
 
 
-def find_mcp_config_by_id(mcp_server_id: str | None) -> MCPServerStreamableHTTP | None:
-    if mcp_server_id is None:
+def find_mcp_config_by_id(mcp_id: str | None) -> MCPServerWithConfig | None:
+    if mcp_id is None:
         return None
 
     mcp_servers = get_mcp_servers()
-    return mcp_servers.get(mcp_server_id, None)
+    return mcp_servers.get(mcp_id, None)
 
 
 def call_mcp_tool(tool_call: ToolCall, tool_definition: Ai2ToolDefinition):
-    server = find_mcp_config_by_id(tool_definition.mcp_server_id)
+    mcp_config = find_mcp_config_by_id(tool_definition.mcp_server_id)
 
-    if server is None:
+    if mcp_config is None:
         msg = "Could not find mcp config."
         raise RuntimeError(msg)
 
+    if mcp_config.enabled is False:
+        msg = "the selected mcp server is not enabled"
+        raise RuntimeError(msg)
+
     try:
-        tool_name_without_prefix = tool_call.tool_name.removeprefix(f"{server.tool_prefix}_")
-        tool_result = asyncio.run(server.direct_call_tool(name=tool_name_without_prefix, args=tool_call.args or {}))
-        return str(tool_result)
-    except Exception:
+        server = mcp_config.server
+        return str(asyncio.run(server.direct_call_tool(name=tool_call.tool_name, args=tool_call.args or {})))
+    except Exception as _e:
         getLogger().exception("Failed to call mcp tool.", extra={"tool_name": tool_call.tool_name})
         return f"Failed to call remote tool {tool_call.tool_name}"

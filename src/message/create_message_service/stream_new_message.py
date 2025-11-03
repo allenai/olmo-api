@@ -55,7 +55,7 @@ from .database import (
     setup_msg_thread,
 )
 
-DEFAULT_MAX_REPEATED_TOOL_CALLS = 10
+DEFAULT_MAX_STEPS = 10
 
 instrumentation_settings = InstrumentationSettings(
     version=3, include_content=False, include_binary_content=False, tracer_provider=trace.get_tracer_provider()
@@ -227,10 +227,10 @@ def stream_new_message(
         yield StreamEndChunk(message=message_chain[0].id)
         return
 
-    max_repeated_tool_calls = max_steps if max_steps is not None else DEFAULT_MAX_REPEATED_TOOL_CALLS
+    actual_max_steps = max_steps if max_steps is not None else DEFAULT_MAX_STEPS
     # Finalize the messages and yield
-    tool_calls_made = 0
-    while tool_calls_made < max_repeated_tool_calls:
+    step_count = 0
+    while step_count < actual_max_steps:
         stream_metrics = StreamMetrics(
             first_chunk_ns=None, input_token_count=None, output_token_count=None, total_generation_ns=None
         )
@@ -305,10 +305,10 @@ def stream_new_message(
         ):
             break
 
-        tool_calls_made += 1
+        step_count += 1
 
-    if tool_calls_made == max_repeated_tool_calls:
-        msg = f"Call exceeded the max tool call limit of {max_repeated_tool_calls}."
+    if step_count == actual_max_steps:
+        msg = f"Call exceeded the max tool call limit of {actual_max_steps}."
         yield MessageStreamError(message=message_chain[0].id, error=msg, reason=FinishReason.ToolError)
 
     yield StreamEndChunk(message=message_chain[0].id)

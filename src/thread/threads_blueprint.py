@@ -1,46 +1,27 @@
 from collections.abc import Generator
-from logging import getLogger
-from typing import Any
 
 from flask import Blueprint, Response, jsonify, stream_with_context
 from flask.typing import ResponseReturnValue
 from pydantic import ValidationError
-from sqlalchemy.orm import Session, sessionmaker
 
-import src.dao.message.message_models as message
 from src import db
-from src.api_interface import APIInterface
 from src.auth.auth_service import authn
 from src.auth.resource_protectors import anonymous_auth_protector
-from src.dao.engine_models.message import Message
 from src.dao.flask_sqlalchemy_session import current_session
 from src.dao.message.message_repository import MessageRepository
 from src.error import handle_validation_error
 from src.flask_pydantic_api.api_wrapper import pydantic_api
 from src.message.create_message_request import CreateMessageRequest
-from src.message.create_message_service.endpoint import create_message_v4, format_message
+from src.message.create_message_service.endpoint import (
+    MessageType,
+    ModelMessageStreamInput,
+    stream_message_from_model,
+)
+from src.message.format_messages_output import format_messages
 from src.message.GoogleCloudStorage import GoogleCloudStorage
-from src.message.message_chunk import Chunk
 from src.thread.get_thread_service import get_thread
 from src.thread.get_threads_service import GetThreadsRequest, GetThreadsResponse, get_threads
 from src.thread.thread_models import Thread
-
-
-def format_messages(
-    stream_generator: Generator[Message | message.MessageChunk | message.MessageStreamError | Chunk],
-) -> Generator[str, Any, None]:
-    try:
-        for stream_message in stream_generator:
-            match stream_message:
-                case Message():
-                    flat_messages = Thread.from_message(stream_message)
-
-                    yield format_message(flat_messages)
-                case APIInterface():
-                    yield format_message(stream_message)
-    except Exception as e:
-        getLogger().exception("Error when streaming")
-        raise e
 
 
 def create_threads_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage) -> Blueprint:
@@ -66,9 +47,14 @@ def create_threads_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage)
     def create_message(
         create_message_request: CreateMessageRequest,
     ) -> ResponseReturnValue:
+        model_message_stream_input = ModelMessageStreamInput(
+            **create_message_request.model_dump(exclude={"host", "n", "logprobs"}, by_alias=False),
+            request_type=MessageType.MODEL,
+        )
+
         try:
-            stream_response = create_message_v4(
-                create_message_request,
+            stream_response = stream_message_from_model(
+                model_message_stream_input,
                 dbc,
                 storage_client=storage_client,
                 message_repository=MessageRepository(current_session),

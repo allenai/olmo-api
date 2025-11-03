@@ -75,7 +75,7 @@ def create_new_message(
     model: ModelConfig,
     safety_check_elapsed_time: float,
     start_time_ns: int,
-    agent: Token,
+    client_auth: Token,
     message_repository: BaseMessageRepository,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     *,
@@ -85,8 +85,9 @@ def create_new_message(
         message_repository,
         model=model,
         request=request,
-        agent=agent,
+        client_auth=client_auth,
         is_msg_harmful=is_message_harmful,
+        agent_id=request.agent,
     )
 
     if request.role == Role.Assistant:
@@ -99,7 +100,8 @@ def create_new_message(
             request.content,
             request.parent,
             model,
-            agent,
+            creator_token=client_auth,
+            agent_id=request.agent,
         )
         assistant_message.final = True
         message_repository.update(assistant_message)
@@ -111,9 +113,11 @@ def create_new_message(
             message_repository,
             parent=message_chain[-1] if len(message_chain) > 0 else None,
             request=request,
-            agent=agent,
+            creator_token=client_auth,
             model=model,
             is_msg_harmful=is_message_harmful,
+            agent_id=request.agent,
+            include_mcp_servers=request.mcp_server_ids,
         )
         message_chain.append(user_message)
 
@@ -122,7 +126,7 @@ def create_new_message(
             message_id=user_message.id,
             storage_client=storage_client,
             root_message_id=message_chain[0].id,
-            is_anonymous=agent.is_anonymous_user,
+            is_anonymous=client_auth.is_anonymous_user,
         )
         file_urls = [file.file_url for file in file_uploads or []]
         user_message.file_urls = file_urls
@@ -137,7 +141,7 @@ def create_new_message(
             model,
             safety_check_elapsed_time,
             start_time_ns,
-            agent,
+            client_auth,
             message_repository,
             message_chain,
             user_message,
@@ -177,7 +181,8 @@ def create_new_message(
             parent=message_chain[-1],
             content=request.content,
             source_tool=source_tool,
-            creator=agent.client,
+            creator=client_auth.client,
+            agent_id=request.agent,
         )
         message_chain.append(tool_message)
 
@@ -187,7 +192,7 @@ def create_new_message(
             model,
             safety_check_elapsed_time,
             start_time_ns,
-            agent,
+            client_auth,
             message_repository,
             message_chain,
             tool_message,
@@ -203,7 +208,7 @@ def stream_new_message(
     model: ModelConfig,
     safety_check_elapsed_time: float,
     start_time_ns: int,
-    agent: Token,
+    client_token: Token,
     message_repository: BaseMessageRepository,
     message_chain: list[Message],
     created_message: Message,
@@ -231,7 +236,8 @@ def stream_new_message(
             content="",
             parent=parent,
             model=model,
-            agent=agent,
+            creator_token=client_token,
+            agent_id=request.agent,
         )
         message_chain.append(reply)
 
@@ -244,7 +250,7 @@ def stream_new_message(
             message_repository,
             message_chain,
             model,
-            agent,
+            client_token,
             blob_map,
             created_message,
             reply,
@@ -268,7 +274,8 @@ def stream_new_message(
                         content=tool_response.content,
                         parent=last_msg,
                         source_tool=tool,
-                        creator=agent.client,
+                        creator=client_token.client,
+                        agent_id=request.agent,
                     )
                     message_chain.append(tool_msg)
 
@@ -379,7 +386,7 @@ def stream_assistant_response(
     message_repository: BaseMessageRepository,
     message_chain: list[Message],
     model: ModelConfig,
-    agent: Token,
+    client_auth: Token,
     blob_map: dict[str, FileUploadResult] | None,
     input_message: Message,
     reply: Message,
@@ -467,7 +474,7 @@ def stream_assistant_response(
 
     message_completion = None
 
-    if not agent.is_anonymous_user:
+    if not client_auth.is_anonymous_user:
         message_completion = dbc.completion.create(
             prompt,
             [CompletionOutput(final_stream_output.text, str(finish_reason), logprobs)],

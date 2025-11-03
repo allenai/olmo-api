@@ -118,6 +118,7 @@ class McpServer:
     name: str
     id: str
     enabled: bool
+    available_for_all_models: bool
 
 
 @dataclass
@@ -263,6 +264,7 @@ class Config:
                             name=server["name"],
                             id=server["id"],
                             enabled=server["enabled"],
+                            available_for_all_models=server.get("available_for_all_models", True),
                         )
                         for server in data["mcp"]["servers"]
                     ]

@@ -3,9 +3,11 @@ from collections.abc import Sequence
 from time import time_ns
 
 from flask import current_app
+from opentelemetry import trace
 from werkzeug import exceptions
 from werkzeug.datastructures import FileStorage
 
+from otel.default_tracer import get_default_tracer
 from src.auth.auth_utils import Permissions, user_has_permission
 from src.auth.token import Token
 from src.bot_detection.create_assessment import create_assessment
@@ -22,11 +24,15 @@ from src.message.SafetyChecker import (
 )
 from src.message.WildGuard import WildGuard
 
+tracer = get_default_tracer()
 
+
+@tracer.start_as_current_span("check_text_safety")
 def check_message_safety(
     text: str,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
 ) -> bool | None:
+    trace.get_current_span().set_attribute("safety_checker_type", checker_type)
     safety_checker: SafetyChecker = GoogleModerateText()
     request = SafetyCheckRequest(content=text)
 
@@ -44,6 +50,7 @@ def check_message_safety(
     return None
 
 
+@tracer.start_as_current_span("check_image_safety")
 def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
     checker = GoogleVisionSafeSearch()
 
@@ -70,6 +77,7 @@ def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
     return True
 
 
+@tracer.start_as_current_span("evaluate_prompt_submission_captcha")
 def evaluate_prompt_submission_captcha(
     captcha_token: str | None, user_ip_address: str | None, user_agent: str | None, *, is_anonymous_user: bool
 ):
@@ -111,9 +119,10 @@ INAPPROPRIATE_FILE_ERROR = "inappropriate_prompt_file"
 FORRBIDDEN_SETTING = "User is not allowed to change this setting"
 
 
+@tracer.start_as_current_span("validate_message_security_and_safety")
 def validate_message_security_and_safety(
     request: CreateMessageRequestWithFullMessages,
-    agent: Token,
+    client_auth: Token,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     user_ip_address: str | None = None,
     user_agent: str | None = None,
@@ -122,10 +131,10 @@ def validate_message_security_and_safety(
         captcha_token=request.captcha_token,
         user_ip_address=user_ip_address,
         user_agent=user_agent,
-        is_anonymous_user=agent.is_anonymous_user,
+        is_anonymous_user=client_auth.is_anonymous_user,
     )
 
-    can_bypass_safety_checks = user_has_permission(agent.token, Permissions.WRITE_BYPASS_SAFETY_CHECKS)
+    can_bypass_safety_checks = user_has_permission(client_auth.token, Permissions.WRITE_BYPASS_SAFETY_CHECKS)
 
     if can_bypass_safety_checks is False and request.bypass_safety_check is True:
         raise exceptions.Forbidden(FORRBIDDEN_SETTING)

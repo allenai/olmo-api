@@ -14,27 +14,50 @@ if TYPE_CHECKING:
     from mcp import Tool as MCPTool
 
 
-def get_mcp_tools() -> list[Ai2ToolDefinition]:
-    mcp_tools: list[Ai2ToolDefinition] = []
-    for server in cfg.mcp.servers:
-        if server.enabled is False:
-            continue
-        mcp_server = MCPServerStreamableHTTP(
-            url=server.url,
-            headers=server.headers,
+def list_mcp_server_tools(mcp_server_config: McpServer) -> list[Ai2ToolDefinition]:
+    mcp_server = MCPServerStreamableHTTP(
+        url=mcp_server_config.url,
+        headers=mcp_server_config.headers,
+    )
+
+    tool_list: list[MCPTool] = asyncio.run(mcp_server.list_tools())
+    mapped_tools = [
+        Ai2ToolDefinition(
+            name=tool.name,
+            tool_source=ToolSource.MCP,
+            mcp_server_id=mcp_server_config.id,
+            description=tool.description or "",
+            parameters=tool.inputSchema,
         )
-        tool_list: list[MCPTool] = asyncio.run(mcp_server.list_tools())
-        mapped_tools = [
-            Ai2ToolDefinition(
-                name=tool.name,
-                tool_source=ToolSource.MCP,
-                mcp_server_id=server.id,
-                description=tool.description or "",
-                parameters=tool.inputSchema,
-            )
-            for tool in tool_list
-        ]
-        mcp_tools.extend(mapped_tools)
+        for tool in tool_list
+    ]
+
+    return mapped_tools
+
+
+def _is_mcp_server_for_general_use(mcp_server: McpServer) -> bool:
+    return mcp_server.enabled and mcp_server.available_for_all_models
+
+
+def get_general_mcp_tools() -> list[Ai2ToolDefinition]:
+    mcp_tools: list[Ai2ToolDefinition] = []
+
+    # TODO: There's probably a way to share this logic with get_tools_from_mcp_servers
+    # It may be nice to pass in a condition for the mcp servers?
+    mcp_tools = [
+        tool
+        for server in cfg.mcp.servers
+        if _is_mcp_server_for_general_use(server)
+        for tool in list_mcp_server_tools(server)
+    ]
+
+    return mcp_tools
+
+
+def get_tools_from_mcp_servers(mcp_server_ids: set[str]) -> list[Ai2ToolDefinition]:
+    mcp_tools = [
+        tool for server in cfg.mcp.servers if server.id in mcp_server_ids for tool in list_mcp_server_tools(server)
+    ]
 
     return mcp_tools
 

@@ -43,6 +43,25 @@ To run schema migrations:
     ```bash
     psql "postgres://postgres:$PASSWD@localhost:5555/llmx?sslmode=disable" < schema/schema.sql
     ```
+    
+
+### Running a single migration on Production
+
+1. Get the SQL:
+    `alembic upgrade <previous-revision>:head --sql`
+
+2. Follow the same connection steps as above
+
+3. Wrap the upgrade SQL in a transaction with a lock timeout, then execute it:
+    ```sql
+    BEGIN;
+    SET LOCAL lock_timeout = '30s';
+    
+    <upgrade SQL here>
+
+    COMMIT;
+    ```
+
 
 ### Reverting a migration on Production
 If you know which revision caused the problem, run 

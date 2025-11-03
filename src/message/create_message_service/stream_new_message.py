@@ -55,7 +55,7 @@ from .database import (
     setup_msg_thread,
 )
 
-MAX_REPEATED_TOOL_CALLS = 10
+DEFAULT_MAX_STEPS = 10
 
 instrumentation_settings = InstrumentationSettings(
     version=3, include_content=False, include_binary_content=False, tracer_provider=trace.get_tracer_provider()
@@ -145,6 +145,7 @@ def create_new_message(
             message_repository,
             message_chain,
             user_message,
+            request.max_steps,
             checker_type,
             blob_map,
         )
@@ -196,6 +197,7 @@ def create_new_message(
             message_repository,
             message_chain,
             tool_message,
+            request.max_steps,
             checker_type,
         )
     msg = "Unsupported role"
@@ -212,6 +214,7 @@ def stream_new_message(
     message_repository: BaseMessageRepository,
     message_chain: list[Message],
     created_message: Message,
+    max_steps: int | None,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     blob_map: dict[str, FileUploadResult] | None = None,
 ) -> Generator[Message | MessageChunk | MessageStreamError | Chunk]:
@@ -224,9 +227,10 @@ def stream_new_message(
         yield StreamEndChunk(message=message_chain[0].id)
         return
 
+    actual_max_steps = max_steps if max_steps is not None else DEFAULT_MAX_STEPS
     # Finalize the messages and yield
-    tool_calls_made = 0
-    while tool_calls_made < MAX_REPEATED_TOOL_CALLS:
+    step_count = 0
+    while step_count < actual_max_steps:
         stream_metrics = StreamMetrics(
             first_chunk_ns=None, input_token_count=None, output_token_count=None, total_generation_ns=None
         )
@@ -301,12 +305,12 @@ def stream_new_message(
         ):
             break
 
-        tool_calls_made += 1
+        step_count += 1
 
-    if tool_calls_made == MAX_REPEATED_TOOL_CALLS:
-        msg = f"Call exceed the max tool call limit of {MAX_REPEATED_TOOL_CALLS}."
+    if step_count == actual_max_steps:
+        msg = f"Call exceeded the max tool call limit of {actual_max_steps}."
         yield MessageStreamError(message=message_chain[0].id, error=msg, reason=FinishReason.ToolError)
-        return
+
     yield StreamEndChunk(message=message_chain[0].id)
 
 

@@ -51,6 +51,7 @@ def stream_agent_chat(request: AgentChatRequest, dbc: db.Client, storage_client:
         request_type=MessageType.AGENT,
         mcp_server_ids=mcp_server_ids,
         enable_tool_calling=True,
+        max_steps=request.max_steps,
     )
 
     return stream_message_from_model(

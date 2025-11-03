@@ -102,6 +102,7 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     parent_id: str | None = Field(default=None)
     parent: Message | None = Field(default=None)
     opts: InferenceOpts = Field(default_factory=InferenceOpts)
+    max_steps: int | None = Field(default=None)
     extra_parameters: dict[str, Any] | None = Field(default=None)
 
     content: str = Field(min_length=1)

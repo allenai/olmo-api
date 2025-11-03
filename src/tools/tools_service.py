@@ -9,19 +9,24 @@ from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefi
 from src.dao.engine_models.tool_definitions import ToolSource
 
 from .internal_tools_service import call_internal_tool, get_internal_tools
-from .mcp_service import call_mcp_tool, get_mcp_tools
+from .mcp_service import call_mcp_tool, get_general_mcp_tools
 
 if TYPE_CHECKING:
     from src.config.Model import ModelBase
     from src.dao.engine_models.model_config import ModelConfig
 
 
-def map_tool_def_to_pydantic(tool: Ai2ToolDefinition):
-    return ToolDefinition(
+def map_tool_def_to_pydantic(tool: Ai2ToolDefinition) -> ToolDefinition:
+    tool_definition = ToolDefinition(
         name=tool.name,
         description=tool.description,
-        parameters_json_schema=tool.parameters or {},
     )
+
+    if tool.parameters is not None:
+        # Pydantic-AI applies its own empty default if we don't provide anything. This lets us use that default without recreating it
+        tool_definition.parameters_json_schema = tool.parameters
+
+    return tool_definition
 
 
 def get_pydantic_tool_defs(message: Message) -> list[ToolDefinition]:
@@ -37,7 +42,7 @@ def get_available_tools(model: "ModelConfig | ModelBase") -> list[Ai2ToolDefinit
         return []
 
     internal_tools = get_internal_tools()
-    mcp_tools = get_mcp_tools()
+    mcp_tools = get_general_mcp_tools()
 
     return internal_tools + mcp_tools
 

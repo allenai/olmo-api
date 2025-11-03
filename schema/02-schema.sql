@@ -1023,5 +1023,21 @@ CREATE INDEX message_creator_ix ON message (creator);
 
 UPDATE alembic_version SET version_num='4ecb303b4164' WHERE alembic_version.version_num = '5da1e4a16ea0';
 
+-- Running upgrade 4ecb303b4164 -> 440e4ee34a13
+
+ALTER TABLE message ADD COLUMN error_code TEXT;
+
+ALTER TABLE message ADD COLUMN error_description TEXT;
+
+ALTER TABLE message ADD COLUMN error_severity TEXT;
+
+UPDATE alembic_version SET version_num='440e4ee34a13' WHERE alembic_version.version_num = '4ecb303b4164';
+
+-- Running upgrade 440e4ee34a13 -> 2d0eb25156b5
+
+ALTER TABLE message ADD COLUMN agent_id VARCHAR;
+
+UPDATE alembic_version SET version_num='2d0eb25156b5' WHERE alembic_version.version_num = '440e4ee34a13';
+
 COMMIT;
 

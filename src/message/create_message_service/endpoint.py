@@ -1,24 +1,28 @@
-import json
+from dataclasses import dataclass, field
+from enum import StrEnum
 from time import time_ns
-from typing import cast
+from typing import Any, cast
 
 from flask import current_app
 from flask import request as flask_request
 from werkzeug import exceptions
 
 import src.dao.message.message_models as message
-from src import db, util
+from otel.default_tracer import get_default_tracer
+from src import db
 from src.auth.auth_service import authn
 from src.config.get_config import cfg
-from src.config.get_models import get_model_by_host_and_id
+from src.config.get_models import get_model_by_id
 from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import PromptType
 from src.dao.message.inference_opts_model import InferenceOpts
 from src.dao.message.message_repository import BaseMessageRepository
+from src.flask_pydantic_api.utils import UploadedFile
 from src.message.create_message_request import (
-    CreateMessageRequest,
     CreateMessageRequestWithFullMessages,
+    CreateToolDefinition,
 )
+from src.message.create_message_service.merge_inference_options import merge_inference_options
 from src.message.create_message_service.safety import validate_message_security_and_safety
 from src.message.create_message_service.stream_new_message import create_new_message
 from src.message.GoogleCloudStorage import GoogleCloudStorage
@@ -32,51 +36,79 @@ from src.model_config.base_model_config import (
     validate_inference_parameters_against_model_constraints,
 )
 
-
-def format_message(obj) -> str:
-    return json.dumps(obj=obj, cls=util.CustomEncoder) + "\n"
+tracer = get_default_tracer()
 
 
-def create_message_v4(
-    request: CreateMessageRequest,
+class MessageType(StrEnum):
+    MODEL = "model"
+    AGENT = "agent"
+
+
+@dataclass(kw_only=True)
+class ModelMessageStreamInput:
+    parent: str | None = None
+    content: str
+    role: message.Role | None = message.Role.User
+    original: str | None = None
+    private: bool = False
+    template: str | None = None
+    model: str
+
+    tool_call_id: str | None = None
+    tool_definitions: list[CreateToolDefinition] | None = None
+    selected_tools: list[str] | None = None
+    enable_tool_calling: bool = False
+
+    mcp_server_ids: set[str] | None = None
+    """Intended to be used by agent flows to pass MCP servers in"""
+
+    bypass_safety_check: bool = False
+
+    captcha_token: str | None = None
+
+    max_tokens: int | None = None
+    temperature: float | None = None
+    top_p: float | None = None
+    stop: list[str] | None = field(default_factory=list)
+    max_steps: int | None = None
+    # n and logprobs are deliberately excluded since we don't currently support them
+
+    extra_parameters: dict[str, Any] | None = None
+
+    files: list[UploadedFile] | None = None
+
+    request_type: MessageType
+
+
+@tracer.start_as_current_span("stream_message_from_model")
+def stream_message_from_model(
+    request: ModelMessageStreamInput,
     dbc: db.Client,
     storage_client: GoogleCloudStorage,
     message_repository: BaseMessageRepository,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
+    # HACK: I'm getting agent support in quickly. Ideally we'd have a different, better way of handling requests for agents instead of models
+    agent_id: str | None = None,
 ):
-    agent = authn()
-    model = get_model_by_host_and_id(request.host, request.model)
+    client_auth = authn()
+    model = get_model_by_id(request.model)
     parent_message, root_message, private = get_parent_and_root_messages_and_private(
-        request.parent, message_repository, request.private, is_anonymous_user=agent.is_anonymous_user
+        request.parent, message_repository, request.private, is_anonymous_user=client_auth.is_anonymous_user
     )
 
-    # get the last inference options, either from the parent message or the model defaults if no parent
-    last_inference_options = model.get_model_config_default_inference_options()
-    if parent_message is not None and parent_message.opts is not None:
-        if parent_message.opts.get("max_tokens") is not None:
-            last_inference_options.max_tokens = parent_message.opts.get("max_tokens")
-        if parent_message.opts.get("temperature") is not None:
-            last_inference_options.temperature = parent_message.opts.get("temperature")
-        if parent_message.opts.get("top_p") is not None:
-            last_inference_options.top_p = parent_message.opts.get("top_p")
-        if parent_message.opts.get("stop") is not None:
-            last_inference_options.stop = parent_message.opts.get("stop")
-        if parent_message.opts.get("n") is not None:
-            last_inference_options.n = parent_message.opts.get("n") or last_inference_options.n
-        if parent_message.opts.get("logprobs") is not None:
-            last_inference_options.logprobs = parent_message.opts.get("logprobs")
+    inference_options = merge_inference_options(
+        model,
+        parent_message=parent_message,
+        max_tokens=request.max_tokens,
+        temperature=request.temperature,
+        top_p=request.top_p,
+        stop=request.stop,
+    )
 
     mapped_request = CreateMessageRequestWithFullMessages(
         parent_id=request.parent,
         parent=parent_message,
-        opts=message.InferenceOpts(
-            max_tokens=request.max_tokens if request.max_tokens is not None else last_inference_options.max_tokens,
-            temperature=request.temperature if request.temperature is not None else last_inference_options.temperature,
-            n=request.n if request.n is not None else last_inference_options.n,
-            top_p=request.top_p if request.top_p is not None else last_inference_options.top_p,
-            logprobs=request.logprobs if request.logprobs is not None else last_inference_options.logprobs,
-            stop=request.stop if request.stop is not None else last_inference_options.stop,
-        ),
+        opts=inference_options,
         extra_parameters=request.extra_parameters,
         content=request.content,
         role=cast(message.Role, request.role),
@@ -85,8 +117,8 @@ def create_message_v4(
         root=root_message,
         template=request.template,
         model=request.model,
-        host=request.host,
-        client=agent.client,
+        agent=agent_id,
+        client=client_auth.client,
         files=request.files,
         captcha_token=request.captcha_token,
         tool_call_id=request.tool_call_id,
@@ -94,6 +126,8 @@ def create_message_v4(
         enable_tool_calling=request.enable_tool_calling,
         selected_tools=request.selected_tools,
         bypass_safety_check=request.bypass_safety_check,
+        mcp_server_ids=request.mcp_server_ids,
+        max_steps=request.max_steps,
     )
 
     if model.prompt_type == PromptType.FILES_ONLY and not cfg.feature_flags.allow_files_only_model_in_thread:
@@ -123,7 +157,7 @@ def create_message_v4(
 
     safety_check_elapsed_time, is_message_harmful = validate_message_security_and_safety(
         request=mapped_request,
-        agent=agent,
+        client_auth=client_auth,
         checker_type=checker_type,
         user_ip_address=user_ip_address,
         user_agent=user_agent,
@@ -138,7 +172,7 @@ def create_message_v4(
         safety_check_elapsed_time=safety_check_elapsed_time,
         is_message_harmful=is_message_harmful,
         start_time_ns=start_time_ns,
-        agent=agent,
+        client_auth=client_auth,
         message_repository=message_repository,
     )
 

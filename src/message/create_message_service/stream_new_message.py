@@ -7,6 +7,7 @@ from typing import Any
 
 from flask import current_app
 from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
 from pydantic import BaseModel
 from pydantic_ai.agent import InstrumentationSettings
 from pydantic_ai.direct import model_request_stream_sync
@@ -32,7 +33,7 @@ from src.message.create_message_request import (
 from src.message.create_message_service.files import FileUploadResult, upload_request_files
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.inference_logging import log_inference_timing
-from src.message.message_chunk import Chunk, StreamEndChunk, StreamStartChunk
+from src.message.message_chunk import Chunk, ErrorChunk, StreamEndChunk, StreamStartChunk
 from src.message.SafetyChecker import (
     SafetyCheckerType,
 )
@@ -54,7 +55,7 @@ from .database import (
     setup_msg_thread,
 )
 
-MAX_REPEATED_TOOL_CALLS = 10
+DEFAULT_MAX_STEPS = 10
 
 instrumentation_settings = InstrumentationSettings(
     version=3, include_content=False, include_binary_content=False, tracer_provider=trace.get_tracer_provider()
@@ -74,7 +75,7 @@ def create_new_message(
     model: ModelConfig,
     safety_check_elapsed_time: float,
     start_time_ns: int,
-    agent: Token,
+    client_auth: Token,
     message_repository: BaseMessageRepository,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     *,
@@ -84,8 +85,9 @@ def create_new_message(
         message_repository,
         model=model,
         request=request,
-        agent=agent,
+        client_auth=client_auth,
         is_msg_harmful=is_message_harmful,
+        agent_id=request.agent,
     )
 
     if request.role == Role.Assistant:
@@ -98,7 +100,8 @@ def create_new_message(
             request.content,
             request.parent,
             model,
-            agent,
+            creator_token=client_auth,
+            agent_id=request.agent,
         )
         assistant_message.final = True
         message_repository.update(assistant_message)
@@ -110,9 +113,11 @@ def create_new_message(
             message_repository,
             parent=message_chain[-1] if len(message_chain) > 0 else None,
             request=request,
-            agent=agent,
+            creator_token=client_auth,
             model=model,
             is_msg_harmful=is_message_harmful,
+            agent_id=request.agent,
+            include_mcp_servers=request.mcp_server_ids,
         )
         message_chain.append(user_message)
 
@@ -121,7 +126,7 @@ def create_new_message(
             message_id=user_message.id,
             storage_client=storage_client,
             root_message_id=message_chain[0].id,
-            is_anonymous=agent.is_anonymous_user,
+            is_anonymous=client_auth.is_anonymous_user,
         )
         file_urls = [file.file_url for file in file_uploads or []]
         user_message.file_urls = file_urls
@@ -136,10 +141,11 @@ def create_new_message(
             model,
             safety_check_elapsed_time,
             start_time_ns,
-            agent,
+            client_auth,
             message_repository,
             message_chain,
             user_message,
+            request.max_steps,
             checker_type,
             blob_map,
         )
@@ -176,7 +182,8 @@ def create_new_message(
             parent=message_chain[-1],
             content=request.content,
             source_tool=source_tool,
-            creator=agent.client,
+            creator=client_auth.client,
+            agent_id=request.agent,
         )
         message_chain.append(tool_message)
 
@@ -186,10 +193,11 @@ def create_new_message(
             model,
             safety_check_elapsed_time,
             start_time_ns,
-            agent,
+            client_auth,
             message_repository,
             message_chain,
             tool_message,
+            request.max_steps,
             checker_type,
         )
     msg = "Unsupported role"
@@ -202,10 +210,11 @@ def stream_new_message(
     model: ModelConfig,
     safety_check_elapsed_time: float,
     start_time_ns: int,
-    agent: Token,
+    client_token: Token,
     message_repository: BaseMessageRepository,
     message_chain: list[Message],
     created_message: Message,
+    max_steps: int | None,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     blob_map: dict[str, FileUploadResult] | None = None,
 ) -> Generator[Message | MessageChunk | MessageStreamError | Chunk]:
@@ -218,9 +227,10 @@ def stream_new_message(
         yield StreamEndChunk(message=message_chain[0].id)
         return
 
+    actual_max_steps = max_steps if max_steps is not None else DEFAULT_MAX_STEPS
     # Finalize the messages and yield
-    tool_calls_made = 0
-    while tool_calls_made < MAX_REPEATED_TOOL_CALLS:
+    step_count = 0
+    while step_count < actual_max_steps:
         stream_metrics = StreamMetrics(
             first_chunk_ns=None, input_token_count=None, output_token_count=None, total_generation_ns=None
         )
@@ -230,25 +240,32 @@ def stream_new_message(
             content="",
             parent=parent,
             model=model,
-            agent=agent,
+            creator_token=client_token,
+            agent_id=request.agent,
         )
         message_chain.append(reply)
 
         yield prepare_yield_message_chain(message_chain, created_message)
 
         start_message_generation_ns = time_ns()
-        yield from stream_assistant_response(
+        error_chunk = yield from stream_assistant_response(
             request,
             dbc,
             message_repository,
             message_chain,
             model,
-            agent,
+            client_token,
             blob_map,
             created_message,
             reply,
             stream_metrics,
         )
+
+        # If an error_chunk is encountered during streaming, persist it on the full assistant message
+        if error_chunk is not None:
+            reply.error_code = error_chunk.error_code
+            reply.error_description = error_chunk.error_description
+            reply.error_severity = error_chunk.error_severity
 
         if reply.tool_calls is not None and len(reply.tool_calls) > 0:
             last_msg = reply
@@ -261,7 +278,8 @@ def stream_new_message(
                         content=tool_response.content,
                         parent=last_msg,
                         source_tool=tool,
-                        creator=agent.client,
+                        creator=client_token.client,
+                        agent_id=request.agent,
                     )
                     message_chain.append(tool_msg)
 
@@ -287,12 +305,12 @@ def stream_new_message(
         ):
             break
 
-        tool_calls_made += 1
+        step_count += 1
 
-    if tool_calls_made == MAX_REPEATED_TOOL_CALLS:
-        msg = f"Call exceed the max tool call limit of {MAX_REPEATED_TOOL_CALLS}."
+    if step_count == actual_max_steps:
+        msg = f"Call exceeded the max tool call limit of {actual_max_steps}."
         yield MessageStreamError(message=message_chain[0].id, error=msg, reason=FinishReason.ToolError)
-        return
+
     yield StreamEndChunk(message=message_chain[0].id)
 
 
@@ -372,14 +390,15 @@ def stream_assistant_response(
     message_repository: BaseMessageRepository,
     message_chain: list[Message],
     model: ModelConfig,
-    agent: Token,
+    client_auth: Token,
     blob_map: dict[str, FileUploadResult] | None,
     input_message: Message,
     reply: Message,
     stream_metrics: StreamMetrics,
-) -> Generator[MessageChunk | MessageStreamError | Chunk, Any, None]:
+) -> Generator[MessageChunk | MessageStreamError | Chunk, Any, ErrorChunk | None]:
     """
     Adds a new assistant message to the conversation, and streams the llm response to the api
+    Returns the ErrorChunk if an error was encountered, otherwise None
     """
     # Capture the SHA and logger, as the current_app context is lost in the generator.
     sha = os.environ.get("SHA") or "DEV"
@@ -389,6 +408,9 @@ def stream_assistant_response(
     logprobs: list[list[TokenLogProbs]] = []
     # We keep track of each chunk and the timing information per-chunk
     # so that we can manifest a completion at the end.
+
+    # Track error information from ErrorChunk for later inclusion in combined message
+    encountered_error: ErrorChunk | None = None
 
     try:
         pydantic_chunks: list[Chunk] = []
@@ -411,6 +433,15 @@ def stream_assistant_response(
 
                 pydantic_chunk = pydantic_map_chunk(generator_chunk_pydantic, message=reply)
                 if pydantic_chunk is not None:
+                    if isinstance(pydantic_chunk, ErrorChunk):
+                        # Store error details for later inclusion in combined message
+                        encountered_error = pydantic_chunk
+                        pydantic_chunks.append(pydantic_chunk)
+                        yield pydantic_chunk
+                        # Exit the stream without raising an error and return the error chunk
+                        current_span = trace.get_current_span()
+                        current_span.set_status(Status(StatusCode.ERROR))
+                        return encountered_error
                     pydantic_chunks.append(pydantic_chunk)
                     yield pydantic_chunk
 
@@ -421,7 +452,7 @@ def stream_assistant_response(
         stream_metrics.output_token_count = -1
         stream_metrics.total_generation_ns = time_ns() - start_generation_ns
 
-        # TODO finish reason https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse.vendor_details should be here but isn't
+        # TODO: finish reason https://ai.pydantic.dev/api/messages/#pydantic_ai.messages.ModelResponse.vendor_details should be here but isn't
     except ModelHTTPError as e:
         yield from pydnatic_ai_http_error_handling(e, reply, model)
         raise
@@ -447,7 +478,7 @@ def stream_assistant_response(
 
     message_completion = None
 
-    if not agent.is_anonymous_user:
+    if not client_auth.is_anonymous_user:
         message_completion = dbc.completion.create(
             prompt,
             [CompletionOutput(final_stream_output.text, str(finish_reason), logprobs)],
@@ -478,6 +509,9 @@ def stream_assistant_response(
         final_reply_error = RuntimeError(f"failed to finalize message {reply.id}")
         yield MessageStreamError(message=reply.id, error=str(final_reply_error), reason="finalization failure")
         raise final_reply_error
+
+    # # Return None if no error occurred
+    return None
 
 
 def prepare_yield_message_chain(message_chain: list[Message], user_message: Message):

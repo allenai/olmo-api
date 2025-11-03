@@ -11,9 +11,20 @@ from src.dao.engine_models.tool_definitions import ToolSource
 class ChunkType(StrEnum):
     MODEL_RESPONSE = "modelResponse"
     TOOL_CALL = "toolCall"
+    ERROR = "error"
     THINKING = "thinking"
     START = "start"
     END = "end"
+
+
+class ErrorCode(StrEnum):
+    TOOL_CALL_ERROR = "toolCallError"
+
+
+class ErrorSeverity(StrEnum):
+    ERROR = "error"
+    WARNING = "warning"
+    INFO = "info"
 
 
 class BaseChunk(APIInterface):
@@ -56,6 +67,18 @@ class ToolCallChunk(BaseChunk):
     tool_source: ToolSource | None
 
 
+class ErrorChunk(BaseChunk):
+    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
+    @computed_field  # type: ignore
+    @property
+    def type(self) -> Literal[ChunkType.ERROR]:
+        return ChunkType.ERROR
+
+    error_code: ErrorCode
+    error_description: str
+    error_severity: ErrorSeverity = ErrorSeverity.ERROR
+
+
 class ThinkingChunk(BaseChunk):
     # HACK: This lets us make `type` required in the schema while also not requiring it in the init
     @computed_field  # type: ignore
@@ -86,4 +109,4 @@ class StreamEndChunk(BaseChunk):
         return ChunkType.END
 
 
-Chunk = ModelResponseChunk | ToolCallChunk | ThinkingChunk | StreamStartChunk | StreamEndChunk
+Chunk = ModelResponseChunk | ToolCallChunk | ErrorChunk | ThinkingChunk | StreamStartChunk | StreamEndChunk

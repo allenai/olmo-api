@@ -55,6 +55,7 @@ class Message(Base, kw_only=True):
     private: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"), default=False)
     model_id: Mapped[str] = mapped_column(Text, nullable=False)
     model_host: Mapped[str] = mapped_column(Text, nullable=False)
+    agent_id: Mapped[str | None] = mapped_column(default=None)
     deleted: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True), default=None)
     parent: Mapped[Optional[str]] = mapped_column(Text)
     template: Mapped[Optional[str]] = mapped_column(Text, default=None)
@@ -84,6 +85,10 @@ class Message(Base, kw_only=True):
         default_factory=list,
         cascade="all, delete",
     )
+
+    error_code: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
+    error_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
+    error_severity: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
 
     # NOTE: JSONB changes aren't tracked by SQLAlchemy automatically
     extra_parameters: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True, default=None)

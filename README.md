@@ -57,7 +57,7 @@ mypy . --config ./pyproject.toml
 
 Change `db.conninfo` in `config.json` to "postgres://app:llmz@127.0.0.1:5555/llmx?sslmode=disable"
 
-start the postgres container with `docker compose start db`
+start the postgres container with `docker compose up db`
 
 make sure you're in the venv by running `.venv/bin/activate`
 

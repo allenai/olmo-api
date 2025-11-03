@@ -1,4 +1,3 @@
-import pytest
 from sqlalchemy.orm import Session
 
 from src.auth.token import Token
@@ -23,11 +22,12 @@ class TestDatabase:
             content="Hello world",
             role=Role.User,
             model="123",
-            host="123",
             client="xyz",
             create_tool_definitions=None,
             selected_tools=None,
             enable_tool_calling=False,
+            agent=None,
+            mcp_server_ids=None,
         )
 
         model = ModelConfig(
@@ -57,7 +57,9 @@ class TestDatabase:
 
         token = Token(client="1234", is_anonymous_user=False, token="hello")
 
-        thread_setup = setup_msg_thread(message_repository=message_repo, model=model, request=request, agent=token)
+        thread_setup = setup_msg_thread(
+            message_repository=message_repo, model=model, request=request, client_auth=token, agent_id=None
+        )
 
         assert len(thread_setup) == 1
         assert thread_setup[0].role == Role.System
@@ -76,11 +78,12 @@ class TestDatabase:
             content="Hello world",
             role=Role.User,
             model="123",
-            host="123",
             client="xyz",
             create_tool_definitions=None,
             selected_tools=None,
             enable_tool_calling=False,
+            agent=None,
+            mcp_server_ids=None,
         )
 
         model = ModelConfig(
@@ -111,7 +114,13 @@ class TestDatabase:
         token = Token(client="1234", is_anonymous_user=False, token="hello")
 
         user_message = create_user_message(
-            message_repository=message_repo, parent=None, model=model, request=request, agent=token
+            message_repository=message_repo,
+            parent=None,
+            model=model,
+            request=request,
+            creator_token=token,
+            agent_id=None,
+            include_mcp_servers=None,
         )
 
         result = sql_alchemy.query(Message).all()

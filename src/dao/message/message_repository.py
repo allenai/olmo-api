@@ -261,4 +261,7 @@ def map_sqla_to_old(message: Message) -> OldMessage:
         labels=mapped_labels,
         file_urls=message.file_urls,
         thinking=message.thinking,
+        error_code=message.error_code,
+        error_description=message.error_description,
+        error_severity=message.error_severity,
     )

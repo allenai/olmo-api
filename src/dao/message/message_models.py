@@ -72,6 +72,9 @@ class Message:
     labels: list[label.Label] = field(default_factory=list)
     file_urls: list[str] | None = None
     thinking: str | None = None
+    error_code: str | None = None
+    error_description: str | None = None
+    error_severity: str | None = None
 
 
 @dataclass

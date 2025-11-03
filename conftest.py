@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import pytest
+from flask import Flask
 from psycopg import Connection
 from psycopg_pool import ConnectionPool
 from pytest_postgresql import factories
@@ -60,3 +61,10 @@ def sql_alchemy(dbc: Client, cfg: Config):
     with session_maker() as session:
         yield session
     db_engine.dispose()
+
+
+@pytest.fixture
+def flask_request_context():
+    app = Flask(__name__)
+    with app.test_request_context("/"):
+        yield

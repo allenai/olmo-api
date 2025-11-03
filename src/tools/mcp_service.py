@@ -40,6 +40,33 @@ def get_mcp_tools() -> list[Ai2ToolDefinition]:
     return [tool for server in get_mcp_servers().values() for tool in get_tools_from_mcp_server(server)]
 
 
+def _is_mcp_server_for_general_use(mcp_server: McpServer) -> bool:
+    return mcp_server.enabled and mcp_server.available_for_all_models
+
+
+def get_general_mcp_tools() -> list[Ai2ToolDefinition]:
+    mcp_tools: list[Ai2ToolDefinition] = []
+
+    # TODO: There's probably a way to share this logic with get_tools_from_mcp_servers
+    # It may be nice to pass in a condition for the mcp servers?
+    mcp_tools = [
+        tool
+        for server in cfg.mcp.servers
+        if _is_mcp_server_for_general_use(server)
+        for tool in list_mcp_server_tools(server)
+    ]
+
+    return mcp_tools
+
+
+def get_tools_from_mcp_servers(mcp_server_ids: set[str]) -> list[Ai2ToolDefinition]:
+    mcp_tools = [
+        tool for server in cfg.mcp.servers if server.id in mcp_server_ids for tool in list_mcp_server_tools(server)
+    ]
+
+    return mcp_tools
+
+
 def find_mcp_config_by_id(mcp_server_id: str | None) -> MCPServerStreamableHTTP | None:
     if mcp_server_id is None:
         return None

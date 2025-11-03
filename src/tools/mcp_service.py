@@ -103,8 +103,11 @@ def call_mcp_tool(tool_call: ToolCall, tool_definition: Ai2ToolDefinition):
         raise RuntimeError(msg)
 
     try:
-        server = mcp_config.server
-        return str(asyncio.run(server.direct_call_tool(name=tool_call.tool_name, args=tool_call.args or {})))
+        tool_name_without_prefix = tool_call.tool_name.removeprefix(f"{mcp_config.server.tool_prefix}_")
+        tool_result = asyncio.run(
+            mcp_config.server.direct_call_tool(name=tool_name_without_prefix, args=tool_call.args or {})
+        )
+        return str(tool_result)
     except Exception as _e:
         getLogger().exception("Failed to call mcp tool.", extra={"tool_name": tool_call.tool_name})
         return f"Failed to call remote tool {tool_call.tool_name}"

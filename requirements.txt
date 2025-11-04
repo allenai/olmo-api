@@ -31,9 +31,8 @@ alembic==1.15.2
 alembic-postgresql-enum==1.7.0
 pydub==0.25.1
 openai==1.107.2
-pydantic-ai==1.0.18
+pydantic-ai[mcp]==1.0.18
 pytest-postgresql==7.0.2
-mcp==1.13.1
 beaker-py==2.5.0
 opentelemetry-api==1.38.0
 opentelemetry-sdk==1.38.0

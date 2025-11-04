@@ -119,6 +119,8 @@ class McpServer:
     id: str
     enabled: bool
     available_for_all_models: bool
+    # Some agents require very specific tool names
+    skip_tool_name_prefix: bool = False
 
 
 @dataclass
@@ -265,6 +267,7 @@ class Config:
                             id=server["id"],
                             enabled=server["enabled"],
                             available_for_all_models=server.get("available_for_all_models", True),
+                            skip_tool_name_prefix=server.get("skip_tool_name_prefix", False),
                         )
                         for server in data["mcp"]["servers"]
                     ]

@@ -25,7 +25,12 @@ def get_mcp_servers() -> dict[str, MCPServerWithConfig]:
     return {
         server.id: MCPServerWithConfig(
             id=server.id,
-            server=MCPServerStreamableHTTP(server.url, headers=server.headers, tool_prefix=server.id),
+            server=MCPServerStreamableHTTP(
+                id=server.id,
+                url=server.url,
+                headers=server.headers,
+                tool_prefix=server.id if server.skip_tool_name_prefix is False else None,
+            ),
             enabled=server.enabled,
             available_for_all_models=server.available_for_all_models,
         )

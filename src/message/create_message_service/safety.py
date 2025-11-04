@@ -16,6 +16,7 @@ from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
 from src.message.GoogleModerateText import GoogleModerateText
+from src.message.GoogleVideoIntellegence import GoogleVideoIntellegence, upload_to_safety_bucket
 from src.message.GoogleVisionSafeSearch import GoogleVisionSafeSearch
 from src.message.SafetyChecker import (
     SafetyChecker,
@@ -79,14 +80,14 @@ def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
 
 @tracer.start_as_current_span("check_video_safety")
 def check_video_safety(files: Sequence[FileStorage]) -> bool | None:
-    checker = GoogleVisionSafeSearch()
+    checker = GoogleVideoIntellegence()
 
     for file in files:
         try:
-            image = base64.b64encode(file.stream.read()).decode("utf-8")
-            file.stream.seek(0)
+            # uplaod to bucket
+            bucket_path = upload_to_safety_bucket(file)
 
-            request = SafetyCheckRequest(image, file.filename)
+            request = SafetyCheckRequest(bucket_path, file.filename)
             result = checker.check_request(request)
 
             if not result.is_safe():
@@ -171,13 +172,23 @@ def validate_message_security_and_safety(
 
     safety_check_start_time = time_ns()
     is_content_safe = check_message_safety(request.content, checker_type=checker_type)
-    is_image_safe = check_image_safety(files=request.files or [])
+
+    # TODO find out if files is video or image
+
+    is_video_safe = check_video_safety(files=request.files or [])
+
+    # is_image_safe = check_image_safety(files=request.files or [])
+    is_image_safe = True
+
     safety_check_elapsed_time = (time_ns() - safety_check_start_time) // 1_000_000
 
     if is_content_safe is False:
         raise exceptions.BadRequest(INAPPROPRIATE_TEXT_ERROR)
 
     if is_image_safe is False:
+        raise exceptions.BadRequest(INAPPROPRIATE_FILE_ERROR)
+
+    if is_video_safe is False:
         raise exceptions.BadRequest(INAPPROPRIATE_FILE_ERROR)
 
     is_message_harmful = None if is_content_safe is None or is_image_safe is None else False

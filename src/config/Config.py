@@ -244,6 +244,7 @@ class Config:
                     ),
                     enable_recaptcha=data["google_cloud_services"].get("enable_recaptcha", True),
                     require_recaptcha=data["google_cloud_services"].get("require_recaptcha", True),
+                    safety_storage_bucket=data["google_cloud_services"].get("safety_storage_bucket", ""),
                 ),
                 feature_flags=FeatureFlags(
                     allow_files_only_model_in_thread=data.get("feature_flags", {}).get(

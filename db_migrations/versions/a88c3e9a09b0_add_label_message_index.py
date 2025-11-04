@@ -1,7 +1,7 @@
 """add label.message index
 
 Revision ID: a88c3e9a09b0
-Revises: 4ecb303b4164
+Revises: 2d0eb25156b5
 Create Date: 2025-10-30 12:47:02.477305
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "a88c3e9a09b0"
-down_revision: str | None = "4ecb303b4164"
+down_revision: str | None = "2d0eb25156b5"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

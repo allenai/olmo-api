@@ -37,7 +37,7 @@ def create_app():
     PsycopgInstrumentor().instrument(enable_commenter=True)
 
     dbc = db.Client.from_config(cfg.db)
-    db_engine = make_db_engine(cfg.db, pool=dbc.pool, sql_alchemy=cfg.sql_alchemy)
+    db_engine = make_db_engine(cfg.db, pool=dbc.pool)
     SQLAlchemyInstrumentor().instrument(engine=db_engine, enable_commenter=True)
 
     session_maker = sessionmaker(db_engine, expire_on_commit=False, autoflush=True)

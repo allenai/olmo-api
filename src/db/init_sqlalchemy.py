@@ -1,7 +1,7 @@
 from psycopg_pool import ConnectionPool
-from sqlalchemy import URL, Engine, create_engine, make_url
+from sqlalchemy import URL, Engine, NullPool, create_engine, make_url
 
-from src.config.Config import Database, SQLAlchemyConfig
+from src.config.Config import Database
 
 
 def make_psycopg3_url(conninfo) -> URL:
@@ -12,9 +12,11 @@ def make_psycopg3_url(conninfo) -> URL:
     )
 
 
-def make_db_engine(config: Database, pool: ConnectionPool, sql_alchemy: SQLAlchemyConfig) -> Engine:
+def make_db_engine(config: Database, pool: ConnectionPool) -> Engine:
     url = make_psycopg3_url(config.conninfo)
 
     return create_engine(
-        url, creator=pool.getconn, pool_size=sql_alchemy.pool_size, max_overflow=sql_alchemy.max_overflow
+        url,
+        creator=pool.getconn,
+        poolclass=NullPool,
     )

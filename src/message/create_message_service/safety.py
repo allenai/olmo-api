@@ -77,6 +77,33 @@ def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
     return True
 
 
+@tracer.start_as_current_span("check_video_safety")
+def check_video_safety(files: Sequence[FileStorage]) -> bool | None:
+    checker = GoogleVisionSafeSearch()
+
+    for file in files:
+        try:
+            image = base64.b64encode(file.stream.read()).decode("utf-8")
+            file.stream.seek(0)
+
+            request = SafetyCheckRequest(image, file.filename)
+            result = checker.check_request(request)
+
+            if not result.is_safe():
+                return False
+
+        except Exception as e:
+            current_app.logger.exception(
+                "Skipped image safety check over %s due to error: %s. ",
+                file.filename,
+                repr(e),
+            )
+
+            return None
+
+    return True
+
+
 @tracer.start_as_current_span("evaluate_prompt_submission_captcha")
 def evaluate_prompt_submission_captcha(
     captcha_token: str | None, user_ip_address: str | None, user_agent: str | None, *, is_anonymous_user: bool

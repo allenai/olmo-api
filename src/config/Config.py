@@ -93,6 +93,7 @@ class GoogleCloudServices:
     recaptcha_key: str
     enable_recaptcha: bool
     require_recaptcha: bool
+    safety_storage_bucket: str
 
 
 @dataclass

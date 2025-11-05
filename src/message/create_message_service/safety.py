@@ -1,6 +1,5 @@
 import base64
 from collections.abc import Sequence
-from time import time_ns
 
 from flask import current_app
 from opentelemetry import trace
@@ -104,7 +103,7 @@ def check_video_safety(files: Sequence[FileStorage]) -> bool:
             if file_path:
                 delete_from_safety_bucket(file_path)
 
-            return False
+            return False  # QUESTION: Shouldn't we be failing if the check errors?
 
     return True
 
@@ -174,17 +173,35 @@ def validate_message_security_and_safety(
     if can_bypass_safety_checks is True and request.bypass_safety_check is True:
         return 0, None
 
-    safety_check_start_time = time_ns()
     is_content_safe = check_message_safety(request.content, checker_type=checker_type)
 
-    # TODO find out if files is video or image
+    # Sort files by type
+    video_files: list[FileStorage] = []
+    image_files: list[FileStorage] = []
+    unsupported_files: list[FileStorage] = []
 
-    is_video_safe = check_video_safety(files=request.files or [])
+    for file in request.files or []:
+        mime_type = file.mimetype or file.content_type or ""
 
-    # is_image_safe = check_image_safety(files=request.files or [])
-    is_image_safe = True
+        if mime_type.startswith("video/"):
+            video_files.append(file)
+        elif mime_type.startswith("image/"):
+            image_files.append(file)
+        else:
+            unsupported_files.append(file)
 
-    safety_check_elapsed_time = (time_ns() - safety_check_start_time) // 1_000_000
+    if unsupported_files:
+        unsupported_names = [f.filename for f in unsupported_files]
+        current_app.logger.warning(
+            "Unsupported file types in request: %s",
+            unsupported_names,
+        )
+        msg = "Unsupported file types in input"
+        raise exceptions.BadRequest(msg)
+
+    # Check video and image safety
+    is_video_safe = check_video_safety(files=video_files)
+    is_image_safe = check_image_safety(files=image_files)
 
     if is_content_safe is False:
         raise exceptions.BadRequest(INAPPROPRIATE_TEXT_ERROR)
@@ -195,6 +212,4 @@ def validate_message_security_and_safety(
     if is_video_safe is False:
         raise exceptions.BadRequest(INAPPROPRIATE_FILE_ERROR)
 
-    is_message_harmful = None if is_content_safe is None or is_image_safe is None else False
-
-    return safety_check_elapsed_time, is_message_harmful
+    return

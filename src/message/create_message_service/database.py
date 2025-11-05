@@ -29,7 +29,6 @@ def setup_msg_thread(
     request: CreateMessageRequestWithFullMessages,
     client_auth: Token,
     agent_id: str | None,
-    is_msg_harmful: bool | None = None,
 ) -> list[Message]:
     system_msg = None
     message_chain: list[Message] = []
@@ -52,7 +51,7 @@ def setup_msg_thread(
             final=False,
             original=request.original,
             private=request.private,
-            harmful=is_msg_harmful,
+            harmful=False,
             expiration_time=message_expiration_time,
             agent_id=agent_id,
         )

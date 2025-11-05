@@ -16,7 +16,11 @@ from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
 from src.message.GoogleModerateText import GoogleModerateText
-from src.message.GoogleVideoIntellegence import GoogleVideoIntellegence, upload_to_safety_bucket
+from src.message.GoogleVideoIntellegence import (
+    GoogleVideoIntellegence,
+    delete_from_safety_bucket,
+    upload_to_safety_bucket,
+)
 from src.message.GoogleVisionSafeSearch import GoogleVisionSafeSearch
 from src.message.SafetyChecker import (
     SafetyChecker,
@@ -79,28 +83,28 @@ def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
 
 
 @tracer.start_as_current_span("check_video_safety")
-def check_video_safety(files: Sequence[FileStorage]) -> bool | None:
+def check_video_safety(files: Sequence[FileStorage]) -> bool:
     checker = GoogleVideoIntellegence()
 
+    file_path = ""
     for file in files:
         try:
-            # uplaod to bucket
-            bucket_path = upload_to_safety_bucket(file)
+            file_path = upload_to_safety_bucket(file)
 
-            request = SafetyCheckRequest(bucket_path, file.filename)
+            request = SafetyCheckRequest(file_path, file.filename)
             result = checker.check_request(request)
 
             if not result.is_safe():
+                delete_from_safety_bucket(file_path)
                 return False
 
-        except Exception as e:
-            current_app.logger.exception(
-                "Skipped image safety check over %s due to error: %s. ",
-                file.filename,
-                repr(e),
-            )
+        except Exception:
+            current_app.logger.exception("Video safety error")
 
-            return None
+            if file_path:
+                delete_from_safety_bucket(file_path)
+
+            return False
 
     return True
 

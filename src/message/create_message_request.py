@@ -2,6 +2,7 @@ from collections.abc import Sequence
 from typing import Annotated, Any, Self
 
 from pydantic import AfterValidator, BaseModel, Field, Json, field_validator, model_validator
+from pydantic_ai import Tool
 from werkzeug import exceptions
 
 from src.api_interface import APIInterface
@@ -123,8 +124,7 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     selected_tools: list[str] | None
     enable_tool_calling: bool
 
-    mcp_server_ids: set[str] | None
-    """Intended to be used by agent flows to pass MCP servers in"""
+    tools: list[Tool] | None
 
     @model_validator(mode="after")
     def parent_exists_if_parent_id_is_set(self) -> Self:

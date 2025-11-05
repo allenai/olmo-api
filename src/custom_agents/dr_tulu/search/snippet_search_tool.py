@@ -1,12 +1,12 @@
-from pydantic_ai import RunContext, ToolReturn
+from pydantic_ai import RunContext, Tool, ToolReturn
 
 from src.custom_agents.dr_tulu.dr_tulu_mcp_server import get_dr_tulu_mcp_server
 from src.custom_agents.dr_tulu.search.format import format_search_output
 
 
 async def snippet_search(
-    query: str,
     ctx: RunContext,
+    query: str,
     year: str | None = None,
     paper_ids: str | None = None,
     venue: str | None = None,
@@ -29,3 +29,6 @@ async def snippet_search(
     output = format_search_output(result, ctx)
 
     return ToolReturn(output, metadata={"raw_result": result})
+
+
+snippet_search_tool = Tool(snippet_search)

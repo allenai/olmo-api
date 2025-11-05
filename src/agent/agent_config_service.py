@@ -4,6 +4,7 @@ from werkzeug import exceptions
 
 from src.agent.agent_model import Agent
 from src.api_interface import APIInterface
+from src.custom_agents.dr_tulu.dr_tulu_toolset import DR_TULU_TOOLS
 
 
 class AgentDTO(APIInterface):
@@ -28,6 +29,7 @@ available_agents = [
         top_p=1,
         stop=[],
         n=1,
+        toolset=DR_TULU_TOOLS,
     ),
     Agent(
         id="fake-test-agent",

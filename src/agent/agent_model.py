@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from pydantic_ai import Tool
+
 
 @dataclass(kw_only=True)
 class Agent:
@@ -15,3 +17,4 @@ class Agent:
     top_p: int
     stop: list[str]
     n: int
+    toolset: list[Tool] | None = None

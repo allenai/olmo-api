@@ -13,7 +13,8 @@
         "puremagic",
         "sessionmaker",
         "usefixtures",
-        "instrumentor"
+        "instrumentor",
+        "tulu"
     ],
     "ruff.configurationPreference": "filesystemFirst",
     "ruff.format.preview": true,

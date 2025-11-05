@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from pydantic import BaseModel
-from pydantic_ai import RunContext, ToolReturn
+from pydantic_ai import RunContext, Tool, ToolReturn
 
 from src.custom_agents.dr_tulu.dr_tulu_mcp_server import get_dr_tulu_mcp_server
 from src.custom_agents.dr_tulu.search.document import Document
@@ -55,8 +55,8 @@ def _extract_metadata_from_document(raw_output: Crawl4aiApiResult) -> tuple[str 
 
 
 async def browse_website(
-    url: str,
     ctx: RunContext,
+    url: str,
     base_url: str | None = None,
     bypass_cache: bool = True,
     ignore_links: bool = True,
@@ -64,7 +64,7 @@ async def browse_website(
     bm25_query: str | None = None,
     timeout_ms: int = 80000,
     include_html: bool = False,
-):
+) -> ToolReturn:
     mcp_server = get_dr_tulu_mcp_server()
 
     result = await mcp_server.direct_call_tool(
@@ -102,3 +102,6 @@ async def browse_website(
         return_value=output,
         metadata={"should_truncate": True, "raw_result": parsed_result},
     )
+
+
+browse_website_tool = Tool(browse_website)

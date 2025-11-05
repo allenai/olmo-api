@@ -14,7 +14,6 @@ from src.dao.message.message_repository import BaseMessageRepository
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
-from src.tools.mcp_service import get_tools_from_mcp_servers
 from src.tools.tools_service import get_available_tools
 
 
@@ -86,8 +85,6 @@ def map_tools_for_user_message(
     request: CreateMessageRequestWithFullMessages,
     parent: Message | None,
     model: ModelConfig,
-    *,
-    include_mcp_servers: set[str] | None,
 ) -> list[ToolDefinition]:
     is_new_thread = request.parent is None
 
@@ -108,15 +105,14 @@ def map_tools_for_user_message(
         for tool_def in request.create_tool_definitions or []
     )
 
-    if include_mcp_servers is None:
+    if request.tools is None:
         selected_tools = (
             (tool for tool in get_available_tools(model) if tool.name in request.selected_tools)
             if request.selected_tools is not None
             else []
         )
     else:
-        # Only use tools in the specified MCP servers
-        selected_tools = get_tools_from_mcp_servers(include_mcp_servers)
+        selected_tools = (tool for tool in request.tools)
 
     tool_list: list[ToolDefinition] = list(chain(selected_tools, user_defined_tools))
 

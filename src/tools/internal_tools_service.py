@@ -13,6 +13,9 @@ from .internal_tools import CreateRandomNumber
 TOOL_REGISTRY: list[Tool[Any]] = [CreateRandomNumber]
 
 
+def map_tools_to_definitions(tools: list[Tool]): ...
+
+
 def get_internal_tools():
     return [
         Ai2ToolDefinition(

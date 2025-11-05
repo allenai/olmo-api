@@ -5,6 +5,7 @@ from typing import Any, cast
 
 from flask import current_app
 from flask import request as flask_request
+from pydantic_ai import Tool
 from werkzeug import exceptions
 
 import src.dao.message.message_models as message
@@ -59,8 +60,7 @@ class ModelMessageStreamInput:
     selected_tools: list[str] | None = None
     enable_tool_calling: bool = False
 
-    mcp_server_ids: set[str] | None = None
-    """Intended to be used by agent flows to pass MCP servers in"""
+    tools: list[Tool] | None = None
 
     bypass_safety_check: bool = False
 
@@ -126,8 +126,8 @@ def stream_message_from_model(
         enable_tool_calling=request.enable_tool_calling,
         selected_tools=request.selected_tools,
         bypass_safety_check=request.bypass_safety_check,
-        mcp_server_ids=request.mcp_server_ids,
         max_steps=request.max_steps,
+        tools=request.tools,
     )
 
     if model.prompt_type == PromptType.FILES_ONLY and not cfg.feature_flags.allow_files_only_model_in_thread:
@@ -135,7 +135,7 @@ def stream_message_from_model(
 
         # HACK: I want OLMoASR to be set up like a normal model but don't want people to stream to it yet
         model_not_available_message = "This model isn't available yet"
-        raise exceptions.BadRequest(model_not_available_message)
+        raise exceptions.BadRequest(description=model_not_available_message)
 
     validate_message_files_from_config(request.files, config=model, has_parent=mapped_request.parent is not None)
     validate_inference_parameters_against_model_constraints(

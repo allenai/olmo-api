@@ -44,30 +44,37 @@ def delete_from_safety_bucket(path: str):
     blob.delete()
 
 
-class GoogleVideoIntellegenceResponse(SafetyCheckResponse):
-    def __init__(self):
-        pass
+class GoogleVideoIntelligenceResponse(SafetyCheckResponse):
+    response: videointelligence.AnnotateVideoResponse
+
+    def __init__(self, response: videointelligence.AnnotateVideoResponse):
+        self.response = response
 
     def is_safe(self) -> bool:
-        return False
+        return self.has_viloation()
 
-    def get_violation_categories(self) -> list[str]:
-        violations = []
-        return violations
+    def has_viloation(self) -> bool:
+        explicit_content_detected = False
 
-    # if self.result.adult is Likelihood.VERY_LIKELY:
-    #     violations.append("adult")
+        if len(self.response.annotation_results) != 1:
+            msg = "Unexpected mulitiple video response"
+            raise Exception(msg)
 
-    # if self.result.racy is Likelihood.VERY_LIKELY:
-    #     violations.append("racy")
+        # Retrieve first result because a single video was processed
+        for frame in self.response.annotation_results[0].explicit_annotation.frames:
+            likelihood = videointelligence.Likelihood(frame.pornography_likelihood)
 
-    # if self.result.violence is Likelihood.VERY_LIKELY:
-    #     violations.append("violence")
+            if likelihood in {
+                videointelligence.Likelihood.POSSIBLE,
+                videointelligence.Likelihood.VERY_LIKELY,
+                videointelligence.Likelihood.LIKELY,
+            }:
+                explicit_content_detected = True
 
-    # return violations
+        return explicit_content_detected
 
 
-class GoogleVideoIntellegence(SafetyChecker):
+class GoogleVideoIntelligence(SafetyChecker):
     def check_request(self, req: SafetyCheckRequest):
         with tracer.start_as_current_span("video annotate"):
             operation = video_client.annotate_video(
@@ -79,6 +86,7 @@ class GoogleVideoIntellegence(SafetyChecker):
 
             result = operation.result(timeout=180)
 
-            print(result)
+            if isinstance(result, videointelligence.AnnotateVideoResponse):
+                return GoogleVideoIntelligenceResponse(result)
 
-            return GoogleVideoIntellegenceResponse()
+            raise Exception("failed")

@@ -15,8 +15,8 @@ from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
 from src.message.GoogleModerateText import GoogleModerateText
-from src.message.GoogleVideoIntellegence import (
-    GoogleVideoIntellegence,
+from src.message.GoogleVideoIntelligence import (
+    GoogleVideoIntelligence,
     delete_from_safety_bucket,
     upload_to_safety_bucket,
 )
@@ -83,7 +83,7 @@ def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
 
 @tracer.start_as_current_span("check_video_safety")
 def check_video_safety(files: Sequence[FileStorage]) -> bool:
-    checker = GoogleVideoIntellegence()
+    checker = GoogleVideoIntelligence()
 
     file_path = ""
     for file in files:

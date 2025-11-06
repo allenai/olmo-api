@@ -2,9 +2,12 @@ from typing import Annotated
 
 from pydantic import AfterValidator, Field, field_validator
 
+from pydantic_ai import Agent
 from src import db
 from src.agent.agent_config_service import get_agent_by_id
 from src.api_interface import APIInterface
+from src.auth.auth_service import authn
+from src.config.get_models import get_model_by_id, get_pydantic_model_by_id
 from src.dao.flask_sqlalchemy_session import current_session
 from src.dao.message.message_models import Role
 from src.dao.message.message_repository import MessageRepository
@@ -13,9 +16,11 @@ from src.message.create_message_service.endpoint import (
     MessageType,
     ModelMessageStreamInput,
     stream_message_from_model,
+    validate_chat_stream_request,
 )
 from src.message.GoogleCloudStorage import GoogleCloudStorage
-from src.tools.mcp_service import find_mcp_config_by_id
+from src.pydantic_ai.playground_ui_adapter import PlaygroundUIAdapter
+from src.pydantic_inference.pydantic_ai_helpers import pydantic_settings_map
 
 
 class AgentChatRequest(APIInterface):
@@ -37,8 +42,6 @@ class AgentChatRequest(APIInterface):
 
 def stream_agent_chat(request: AgentChatRequest, dbc: db.Client, storage_client: GoogleCloudStorage):
     agent = get_agent_by_id(request.agent_id)
-    agent_mcp_servers = [find_mcp_config_by_id(mcp_server_id) for mcp_server_id in (agent.mcp_server_ids or [])]
-    mcp_server_ids = {mcp_server.id for mcp_server in agent_mcp_servers if mcp_server is not None}
 
     stream_model_message_request = ModelMessageStreamInput(
         parent=request.parent,
@@ -49,11 +52,29 @@ def stream_agent_chat(request: AgentChatRequest, dbc: db.Client, storage_client:
         template=request.template,
         model=agent.model_id,
         request_type=MessageType.AGENT,
-        mcp_server_ids=mcp_server_ids,
         enable_tool_calling=True,
         max_steps=request.max_steps,
     )
 
+    model = get_model_by_id(agent.model_id)
+    client_auth = authn()
+    mapped_request, start_time_ns, safety_check_elapsed_time, is_message_harmful = validate_chat_stream_request(
+        request=stream_model_message_request,
+        message_repository=MessageRepository(current_session),
+        model=model,
+        client_auth=client_auth,
+        agent_id=agent.id,
+    )
+
+    pydantic_model = get_pydantic_model_by_id(agent.id)
+
+    pydantic_agent = Agent(
+        model=pydantic_model,
+        toolsets=agent.toolsets,
+        model_settings=pydantic_settings_map(opts=mapped_request.opts, model_config=model, extra_body=agent),
+    )
+
+    stream_adapter = PlaygroundUIAdapter()
     return stream_message_from_model(
         stream_model_message_request,
         dbc,

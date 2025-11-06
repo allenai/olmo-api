@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from pydantic_ai import Tool
+from pydantic_ai.toolsets import AbstractToolset
 
 
 @dataclass(kw_only=True)
@@ -17,4 +17,4 @@ class Agent:
     top_p: int
     stop: list[str]
     n: int
-    toolset: list[Tool] | None = None
+    toolsets: list[AbstractToolset] | None = None

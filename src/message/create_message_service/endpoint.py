@@ -5,17 +5,18 @@ from typing import Any, cast
 
 from flask import current_app
 from flask import request as flask_request
-from pydantic_ai import Tool
 from werkzeug import exceptions
 
 import src.dao.message.message_models as message
 from otel.default_tracer import get_default_tracer
+from pydantic_ai import Tool
 from src import db
 from src.auth.auth_service import authn
+from src.auth.token import Token
 from src.config.get_config import cfg
 from src.config.get_models import get_model_by_id
 from src.dao.engine_models.message import Message
-from src.dao.engine_models.model_config import PromptType
+from src.dao.engine_models.model_config import ModelConfig, MultiModalModelConfig, PromptType
 from src.dao.message.inference_opts_model import InferenceOpts
 from src.dao.message.message_repository import BaseMessageRepository
 from src.flask_pydantic_api.utils import UploadedFile
@@ -80,18 +81,16 @@ class ModelMessageStreamInput:
     request_type: MessageType
 
 
-@tracer.start_as_current_span("stream_message_from_model")
-def stream_message_from_model(
+@tracer.start_as_current_span("validate_stream_request")
+def validate_chat_stream_request(
     request: ModelMessageStreamInput,
-    dbc: db.Client,
-    storage_client: GoogleCloudStorage,
     message_repository: BaseMessageRepository,
+    model: ModelConfig | MultiModalModelConfig,
+    client_auth: Token,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     # HACK: I'm getting agent support in quickly. Ideally we'd have a different, better way of handling requests for agents instead of models
     agent_id: str | None = None,
 ):
-    client_auth = authn()
-    model = get_model_by_id(request.model)
     parent_message, root_message, private = get_parent_and_root_messages_and_private(
         request.parent, message_repository, request.private, is_anonymous_user=client_auth.is_anonymous_user
     )
@@ -160,6 +159,30 @@ def stream_message_from_model(
         checker_type=checker_type,
         user_ip_address=user_ip_address,
         user_agent=user_agent,
+    )
+
+    return mapped_request, start_time_ns, safety_check_elapsed_time, is_message_harmful
+
+
+@tracer.start_as_current_span("stream_message_from_model")
+def stream_message_from_model(
+    request: ModelMessageStreamInput,
+    dbc: db.Client,
+    storage_client: GoogleCloudStorage,
+    message_repository: BaseMessageRepository,
+    checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
+    # HACK: I'm getting agent support in quickly. Ideally we'd have a different, better way of handling requests for agents instead of models
+    agent_id: str | None = None,
+):
+    client_auth = authn()
+    model = get_model_by_id(request.model)
+    mapped_request, start_time_ns, safety_check_elapsed_time, is_message_harmful = validate_chat_stream_request(
+        request=request,
+        message_repository=message_repository,
+        model=model,
+        client_auth=client_auth,
+        checker_type=checker_type,
+        agent_id=agent_id,
     )
 
     return create_new_message(

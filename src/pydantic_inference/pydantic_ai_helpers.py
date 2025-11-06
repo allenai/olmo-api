@@ -1,8 +1,10 @@
 import json
+from collections.abc import Sequence
 from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
+
 from pydantic_ai.messages import (
     BinaryContent,
     FinalResultEvent,
@@ -25,7 +27,6 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 from pydantic_ai.models.openai import OpenAIModelSettings
-
 from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import ModelConfig
 from src.dao.engine_models.tool_call import ToolCall
@@ -81,7 +82,9 @@ def find_tool_def_by_name(message: Message, tool_name: str):
     return tool_def
 
 
-def pydantic_map_messages(messages: list[Message], blob_map: dict[str, FileUploadResult] | None) -> list[ModelMessage]:
+def pydantic_map_messages(
+    messages: Sequence[Message], blob_map: dict[str, FileUploadResult] | None
+) -> list[ModelMessage]:
     model_messages: list[ModelMessage] = []
     for message in messages:
         if message.role == Role.User:

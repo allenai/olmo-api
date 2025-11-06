@@ -19,7 +19,6 @@ from src import obj
 from src.dao.engine_models.message import Message
 from src.dao.message.message_models import MessageStreamError, Role
 from src.inference.InferenceEngine import FinishReason
-from src.message.create_message_request import CreateMessageRequestWithFullMessages
 from src.message.format_messages_output import format_message
 from src.message.message_chunk import (
     ModelResponseChunk,
@@ -39,7 +38,7 @@ JSONL_CONTENT_TYPE = "application/jsonl"
 @dataclass
 class PlaygroundUIEventStream(
     UIEventStream[
-        CreateMessageRequestWithFullMessages,
+        list[Message],
         StreamReturnType,
         AgentDepsT,
         OutputDataT,

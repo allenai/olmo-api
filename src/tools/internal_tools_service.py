@@ -3,20 +3,18 @@ import logging
 from typing import Any
 
 from pydantic_ai import Tool
-
+from src.custom_agents.dr_tulu.dr_tulu_toolset import DR_TULU_TOOLS
 from src.dao.engine_models.tool_call import ToolCall
 from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 from src.dao.engine_models.tool_definitions import ToolSource
 
 from .internal_tools import CreateRandomNumber
 
-TOOL_REGISTRY: list[Tool[Any]] = [CreateRandomNumber]
+PUBLIC_TOOLS: list[Tool[Any]] = [CreateRandomNumber]
+TOOL_REGISTRY: list[Tool[Any]] = [*PUBLIC_TOOLS, *DR_TULU_TOOLS]
 
 
-def map_tools_to_definitions(tools: list[Tool]): ...
-
-
-def get_internal_tools():
+def get_public_internal_tools():
     return [
         Ai2ToolDefinition(
             name=tool.name,
@@ -24,7 +22,7 @@ def get_internal_tools():
             description=tool.description or "",
             parameters=tool.tool_def.parameters_json_schema or {},
         )
-        for tool in TOOL_REGISTRY
+        for tool in PUBLIC_TOOLS
     ]
 
 

@@ -15,7 +15,6 @@ from src.message.create_message_service.endpoint import (
     stream_message_from_model,
 )
 from src.message.GoogleCloudStorage import GoogleCloudStorage
-from src.tools.mcp_service import find_mcp_config_by_id
 
 
 class AgentChatRequest(APIInterface):
@@ -37,8 +36,6 @@ class AgentChatRequest(APIInterface):
 
 def stream_agent_chat(request: AgentChatRequest, dbc: db.Client, storage_client: GoogleCloudStorage):
     agent = get_agent_by_id(request.agent_id)
-    agent_mcp_servers = [find_mcp_config_by_id(mcp_server_id) for mcp_server_id in (agent.mcp_server_ids or [])]
-    mcp_server_ids = {mcp_server.id for mcp_server in agent_mcp_servers if mcp_server is not None}
 
     stream_model_message_request = ModelMessageStreamInput(
         parent=request.parent,
@@ -49,7 +46,7 @@ def stream_agent_chat(request: AgentChatRequest, dbc: db.Client, storage_client:
         template=request.template,
         model=agent.model_id,
         request_type=MessageType.AGENT,
-        mcp_server_ids=mcp_server_ids,
+        selected_tools=[tool.name for tool in agent.toolset or []],
         enable_tool_calling=True,
         max_steps=request.max_steps,
     )

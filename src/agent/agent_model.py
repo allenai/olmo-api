@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 from pydantic_ai import Tool
 
@@ -17,4 +18,4 @@ class Agent:
     top_p: int
     stop: list[str]
     n: int
-    toolset: list[Tool] | None = None
+    toolset: list[Tool[Any]] | None = None

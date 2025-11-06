@@ -29,7 +29,7 @@ available_agents = [
         top_p=1,
         stop=["<call_output>", "<tool_output>"],
         n=1,
-        toolsets=[DR_TULU_TOOLS],
+        toolset=DR_TULU_TOOLS,
         extra_inference_opts={"include_stop_str_in_output": True},
     ),
     Agent(

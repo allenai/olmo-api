@@ -55,7 +55,7 @@ def _extract_metadata_from_document(raw_output: Crawl4aiApiResult) -> tuple[str 
     return webpage_title, None
 
 
-def browse_website(
+def browse_webpage(
     url: str,
     base_url: str | None = None,
     bypass_cache: bool = True,
@@ -106,4 +106,4 @@ def browse_website(
     )
 
 
-browse_website_tool = Tool(browse_website, takes_ctx=False)
+browse_website_tool = Tool(browse_webpage, takes_ctx=False)

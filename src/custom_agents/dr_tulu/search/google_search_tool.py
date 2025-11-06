@@ -2,7 +2,7 @@ import asyncio
 
 from pydantic_ai import Tool, ToolReturn
 from src.custom_agents.dr_tulu.dr_tulu_mcp_server import get_dr_tulu_mcp_server
-from src.custom_agents.dr_tulu.search.format import format_search_output
+from src.custom_agents.dr_tulu.search.format import format_google_search_output
 
 
 def google_search(
@@ -24,7 +24,8 @@ def google_search(
             },
         )
     )
-    output = format_search_output(result)
+
+    output = format_google_search_output(result)
 
     return ToolReturn(output, metadata={"raw_result": result})
 

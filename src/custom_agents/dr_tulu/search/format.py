@@ -5,7 +5,7 @@ from src.custom_agents.dr_tulu.search.document import Document
 create_search_snippet_id = obj.new_id_generator("snippet")
 
 
-def format_search_output(output: ToolResult):
+def format_snippet_search_output(output: ToolResult):
     data = output.get("data", [])  # type: ignore
     documents = []
 
@@ -38,6 +38,32 @@ def format_search_output(output: ToolResult):
                 if snippet_text:
                     doc = Document(title="", snippet=snippet_text, url="", text="", score=None)
                     documents.append(doc)
+
+    combined_snippet_text = []
+    for index, doc in enumerate(documents):
+        combined_snippet_text.append(
+            f"<snippet id={create_search_snippet_id()}-{index}>\n{doc.stringify()}\n</snippet>"
+        )
+    combined_texts = "\n".join(combined_snippet_text)
+
+    return combined_texts
+
+
+def format_google_search_output(output: ToolResult):
+    organic_results = output.get("organic", [])  # type: ignore
+    documents = []
+
+    for result in organic_results:
+        if isinstance(result, dict):
+            doc = Document(
+                title=result.get("title", "").strip(),
+                url=result.get("link", "").strip(),
+                snippet=result.get("snippet", "").strip(),
+                text=None,
+                score=None,
+            )
+            if doc.title or doc.snippet or doc.url:
+                documents.append(doc)
 
     combined_snippet_text = []
     for index, doc in enumerate(documents):

@@ -1,11 +1,12 @@
-from pydantic_ai import RunContext
 from pydantic_ai.mcp import ToolResult
-
+from src import obj
 from src.custom_agents.dr_tulu.format_tool_call_output import format_tool_call_output
 from src.custom_agents.dr_tulu.search.document import Document
 
+create_search_snippet_id = obj.new_id_generator("snippet")
 
-def format_search_output(output: ToolResult, ctx: RunContext):
+
+def format_search_output(output: ToolResult):
     data = output.get("data", [])  # type: ignore
     documents = []
 
@@ -41,7 +42,9 @@ def format_search_output(output: ToolResult, ctx: RunContext):
 
     combined_snippet_text = []
     for index, doc in enumerate(documents):
-        combined_snippet_text.append(f"<snippet id={ctx.tool_call_id}-{index}>\n{doc.stringify()}\n</snippet>")
+        combined_snippet_text.append(
+            f"<snippet id={create_search_snippet_id()}-{index}>\n{doc.stringify()}\n</snippet>"
+        )
     combined_texts = "\n".join(combined_snippet_text)
 
     return format_tool_call_output(combined_texts)

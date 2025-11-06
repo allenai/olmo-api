@@ -5,7 +5,6 @@ from typing import Any, cast
 
 from flask import current_app
 from flask import request as flask_request
-from pydantic_ai import Tool
 from werkzeug import exceptions
 
 import src.dao.message.message_models as message
@@ -59,8 +58,6 @@ class ModelMessageStreamInput:
     tool_definitions: list[CreateToolDefinition] | None = None
     selected_tools: list[str] | None = None
     enable_tool_calling: bool = False
-
-    tools: list[Tool] | None = None
 
     bypass_safety_check: bool = False
 
@@ -173,7 +170,6 @@ def stream_message_from_model(
         start_time_ns=start_time_ns,
         client_auth=client_auth,
         message_repository=message_repository,
-        tools=request.tools,
     )
 
 

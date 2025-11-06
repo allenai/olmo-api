@@ -50,6 +50,10 @@ def stream_agent_chat(request: AgentChatRequest, dbc: db.Client, storage_client:
         enable_tool_calling=True,
         max_steps=request.max_steps,
         extra_parameters=agent.extra_inference_opts,
+        stop=agent.stop,
+        temperature=agent.temperature,
+        top_p=agent.top_p,
+        max_tokens=agent.max_tokens,
     )
 
     return stream_message_from_model(

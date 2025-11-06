@@ -11,7 +11,7 @@ from src.dao.engine_models.model_config import (
     MultiModalModelConfig,
 )
 from src.model_config.response_model import ResponseModel
-from src.tools.tools_service import get_available_tools
+from src.tools.tools_service import get_public_tools
 
 
 class ModelResponse(RootModel):
@@ -37,7 +37,7 @@ def get_model_configs(session_maker: sessionmaker[Session], *, include_internal_
         available_tool_list_type_adapter = TypeAdapter(list[AvailableTool])
         for mapped_model in mapped_models.root:
             mapped_model.available_tools = available_tool_list_type_adapter.validate_python(
-                get_available_tools(mapped_model)
+                get_public_tools(mapped_model)
             )
 
         return mapped_models

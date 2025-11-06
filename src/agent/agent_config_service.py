@@ -30,7 +30,6 @@ available_agents = [
         stop=["<call_output>", "<tool_output>"],
         n=1,
         toolset=DR_TULU_TOOLS,
-        extra_inference_opts={"include_stop_str_in_output": True},
     ),
     Agent(
         id="fake-test-agent",

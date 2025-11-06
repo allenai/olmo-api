@@ -8,7 +8,7 @@ from src.dao.engine_models.tool_call import ToolCall
 from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 from src.dao.engine_models.tool_definitions import ToolSource
 
-from .internal_tools_service import call_internal_tool, get_public_internal_tools
+from .internal_tools_service import call_internal_tool, get_all_internal_tools, get_public_internal_tools
 from .mcp_service import call_mcp_tool, get_general_mcp_tools
 
 if TYPE_CHECKING:
@@ -48,11 +48,23 @@ def get_pydantic_tool_defs(message: Message) -> list[ToolDefinition]:
     )
 
 
-def get_available_tools(model: "ModelConfig | ModelBase") -> list[Ai2ToolDefinition]:
+def get_public_tools(model: "ModelConfig | ModelBase") -> list[Ai2ToolDefinition]:
+    """Get tools available to all models"""
     if model.can_call_tools is False:
         return []
 
     internal_tools = get_public_internal_tools()
+    mcp_tools = get_general_mcp_tools()
+
+    return internal_tools + mcp_tools
+
+
+def get_all_tools() -> list[Ai2ToolDefinition]:
+    """Get all tools registered internally"""
+
+    internal_tools = get_all_internal_tools()
+
+    return internal_tools
     mcp_tools = get_general_mcp_tools()
 
     return internal_tools + mcp_tools

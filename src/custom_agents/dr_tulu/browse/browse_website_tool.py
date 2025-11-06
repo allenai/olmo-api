@@ -1,8 +1,9 @@
+import asyncio
 from dataclasses import dataclass
 
 from pydantic import BaseModel
-from pydantic_ai import RunContext, Tool, ToolReturn
 
+from pydantic_ai import Tool, ToolReturn
 from src.custom_agents.dr_tulu.dr_tulu_mcp_server import get_dr_tulu_mcp_server
 from src.custom_agents.dr_tulu.format_tool_call_output import format_tool_call_output
 from src.custom_agents.dr_tulu.search.document import Document
@@ -55,8 +56,7 @@ def _extract_metadata_from_document(raw_output: Crawl4aiApiResult) -> tuple[str 
     return webpage_title, None
 
 
-async def browse_website(
-    ctx: RunContext,
+def browse_website(
     url: str,
     base_url: str | None = None,
     bypass_cache: bool = True,
@@ -68,18 +68,20 @@ async def browse_website(
 ) -> ToolReturn:
     mcp_server = get_dr_tulu_mcp_server()
 
-    result = await mcp_server.direct_call_tool(
-        "google_search",
-        args={
-            "url": url,
-            "base_url": base_url,
-            "bypass_cache": bypass_cache,
-            "ignore_links": ignore_links,
-            "use_pruning": use_pruning,
-            "bm25_query": bm25_query,
-            "timeout_ms": timeout_ms,
-            "include_html": include_html,
-        },
+    result = asyncio.run(
+        mcp_server.direct_call_tool(
+            "google_search",
+            args={
+                "url": url,
+                "base_url": base_url,
+                "bypass_cache": bypass_cache,
+                "ignore_links": ignore_links,
+                "use_pruning": use_pruning,
+                "bm25_query": bm25_query,
+                "timeout_ms": timeout_ms,
+                "include_html": include_html,
+            },
+        )
     )
 
     parsed_result = Crawl4aiApiResult.model_validate(result)
@@ -107,4 +109,4 @@ async def browse_website(
     )
 
 
-browse_website_tool = Tool(browse_website)
+browse_website_tool = Tool(browse_website, takes_ctx=False)

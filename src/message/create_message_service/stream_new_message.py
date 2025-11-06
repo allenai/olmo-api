@@ -9,13 +9,12 @@ from flask import current_app
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
 from pydantic import BaseModel
-from pydantic_ai import Tool
+
 from pydantic_ai.agent import InstrumentationSettings
 from pydantic_ai.direct import model_request_stream_sync
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models import ModelRequestParameters
-
 from src import db, parse
 from src.auth.token import Token
 from src.dao.completion import CompletionOutput
@@ -81,7 +80,6 @@ def create_new_message(
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     *,
     is_message_harmful: bool | None = None,
-    tools: list[Tool] | None,
 ) -> Message | Generator[Message | MessageChunk | MessageStreamError | Chunk]:
     message_chain = setup_msg_thread(
         message_repository,
@@ -119,7 +117,6 @@ def create_new_message(
             model=model,
             is_msg_harmful=is_message_harmful,
             agent_id=request.agent,
-            tools=tools,
         )
         message_chain.append(user_message)
 

@@ -27,9 +27,10 @@ available_agents = [
         max_tokens=32_768,
         temperature=0,
         top_p=1,
-        stop=[],
+        stop=["</call_tool>", "</call>"],
         n=1,
-        toolset=DR_TULU_TOOLS,
+        toolsets=[DR_TULU_TOOLS],
+        extra_inference_opts={"include_stop_str_in_output": True},
     ),
     Agent(
         id="fake-test-agent",

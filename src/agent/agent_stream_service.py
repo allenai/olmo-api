@@ -49,6 +49,7 @@ def stream_agent_chat(request: AgentChatRequest, dbc: db.Client, storage_client:
         selected_tools=[tool.name for tool in agent.toolset or []],
         enable_tool_calling=True,
         max_steps=request.max_steps,
+        extra_parameters=agent.extra_inference_opts,
     )
 
     return stream_message_from_model(

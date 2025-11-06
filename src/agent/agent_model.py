@@ -19,3 +19,4 @@ class Agent:
     stop: list[str]
     n: int
     toolset: list[Tool[Any]] | None = None
+    extra_inference_opts: dict[str, Any] | None = None

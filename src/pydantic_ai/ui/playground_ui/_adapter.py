@@ -27,10 +27,10 @@ from pydantic_ai.output import OutputDataT
 from pydantic_ai.tools import AgentDepsT
 from pydantic_ai.ui import MessagesBuilder, UIAdapter, UIEventStream
 from src.message.create_message_request import CreateMessageRequestWithFullMessages
-from src.message.message_chunk import BaseChunk
 from src.thread.thread_models import FlatMessage
 
 from ._event_stream import PlaygroundUIEventStream
+from ._util import StreamReturnType
 
 __all__ = ["PlaygroundUIAdapter"]
 
@@ -39,7 +39,7 @@ request_data_ta: TypeAdapter[CreateMessageRequestWithFullMessages] = TypeAdapter
 
 @dataclass
 class PlaygroundUIAdapter(
-    UIAdapter[CreateMessageRequestWithFullMessages, FlatMessage, BaseChunk, AgentDepsT, OutputDataT]
+    UIAdapter[CreateMessageRequestWithFullMessages, FlatMessage, StreamReturnType, AgentDepsT, OutputDataT]
 ):
     @classmethod
     def build_run_input(cls, body: bytes) -> CreateMessageRequestWithFullMessages:
@@ -48,7 +48,7 @@ class PlaygroundUIAdapter(
 
     def build_event_stream(
         self,
-    ) -> UIEventStream[CreateMessageRequestWithFullMessages, BaseChunk, AgentDepsT, OutputDataT]:
+    ) -> UIEventStream[CreateMessageRequestWithFullMessages, StreamReturnType, AgentDepsT, OutputDataT]:
         """Build a Vercel AI event stream transformer."""
         return PlaygroundUIEventStream(self.run_input, accept=self.accept)
 

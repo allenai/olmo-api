@@ -1,6 +1,5 @@
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import TypeAlias
 
 from pydantic_ai.messages import (
     BuiltinToolCallPart,
@@ -23,7 +22,6 @@ from src.inference.InferenceEngine import FinishReason
 from src.message.create_message_request import CreateMessageRequestWithFullMessages
 from src.message.format_messages_output import format_message
 from src.message.message_chunk import (
-    BaseChunk,
     ModelResponseChunk,
     StreamEndChunk,
     StreamStartChunk,
@@ -31,11 +29,11 @@ from src.message.message_chunk import (
     ToolCallChunk,
 )
 
+from ._util import StreamReturnType
+
 __all__ = ["PlaygroundUIEventStream"]
 
 JSONL_CONTENT_TYPE = "application/jsonl"
-
-StreamReturnType: TypeAlias = Message | MessageStreamError | BaseChunk
 
 
 @dataclass

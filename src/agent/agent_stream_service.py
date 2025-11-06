@@ -7,12 +7,12 @@ from src import db
 from src.agent.agent_config_service import get_agent_by_id
 from src.api_interface import APIInterface
 from src.auth.auth_service import authn
-from src.config.get_models import get_model_by_id, get_pydantic_model_by_id
+from src.config.get_models import get_model_by_id
 from src.dao.flask_sqlalchemy_session import current_session
 from src.dao.message.message_models import Role
 from src.dao.message.message_repository import MessageRepository
 from src.message.create_message_request import captcha_token_required_if_captcha_enabled
-from src.message.create_message_service.database import setup_msg_thread
+from src.message.create_message_service.database import create_user_message, setup_msg_thread
 from src.message.create_message_service.endpoint import (
     MessageType,
     ModelMessageStreamInput,
@@ -21,6 +21,7 @@ from src.message.create_message_service.endpoint import (
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.pydantic_ai.ui.playground_ui import PlaygroundUIAdapter
 from src.pydantic_inference.pydantic_ai_helpers import pydantic_settings_map
+from src.pydantic_inference.pydantic_model_service import get_pydantic_model
 
 
 class AgentChatRequest(APIInterface):
@@ -68,7 +69,7 @@ def get_agent_stream_adapter(
         agent_id=agent.id,
     )
 
-    pydantic_model = get_pydantic_model_by_id(agent.id)
+    pydantic_model = get_pydantic_model(model)
 
     pydantic_agent = Agent(
         model=pydantic_model,
@@ -88,9 +89,21 @@ def get_agent_stream_adapter(
         agent_id=agent.id,
     )
 
+    user_message = create_user_message(
+        message_repository,
+        parent=message_chain[-1] if len(message_chain) > 0 else None,
+        request=mapped_request,
+        creator_token=client_auth,
+        model=model,
+        is_msg_harmful=is_message_harmful,
+        agent_id=agent.id,
+        tools=None,
+    )
+    message_chain.append(user_message)
+
     stream_adapter = PlaygroundUIAdapter(
         agent=pydantic_agent,
-        run_input=[],
+        run_input=message_chain,
     )
 
     return stream_adapter

@@ -15,7 +15,7 @@ from src.pydantic_ai.ui.playground_ui._event_stream import JSONL_CONTENT_TYPE
 
 
 def iter_over_async(async_iterator: AsyncIterator) -> Iterator[AnyStr]:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
     ait = aiter(async_iterator)
 
     async def get_next():

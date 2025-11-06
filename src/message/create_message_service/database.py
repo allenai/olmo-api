@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from itertools import chain
 
+from pydantic_ai import Tool
 from werkzeug import exceptions
 
 from src import obj
@@ -14,7 +15,7 @@ from src.dao.message.message_repository import BaseMessageRepository
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
-from src.tools.tools_service import get_available_tools
+from src.tools.tools_service import get_available_tools, map_pydantic_tool_to_tool_definition
 
 
 def get_expiration_time(client_auth: Token):
@@ -82,9 +83,7 @@ def setup_msg_thread(
 
 
 def map_tools_for_user_message(
-    request: CreateMessageRequestWithFullMessages,
-    parent: Message | None,
-    model: ModelConfig,
+    request: CreateMessageRequestWithFullMessages, parent: Message | None, model: ModelConfig, tools: list[Tool] | None
 ) -> list[ToolDefinition]:
     is_new_thread = request.parent is None
 
@@ -105,14 +104,14 @@ def map_tools_for_user_message(
         for tool_def in request.create_tool_definitions or []
     )
 
-    if request.tools is None:
+    if tools is None:
         selected_tools = (
             (tool for tool in get_available_tools(model) if tool.name in request.selected_tools)
             if request.selected_tools is not None
             else []
         )
     else:
-        selected_tools = (tool for tool in request.tools)
+        selected_tools = (map_pydantic_tool_to_tool_definition(tool) for tool in tools)
 
     tool_list: list[ToolDefinition] = list(chain(selected_tools, user_defined_tools))
 
@@ -128,11 +127,9 @@ def create_user_message(
     agent_id: str | None,
     *,
     is_msg_harmful: bool | None = None,
-    include_mcp_servers: set[str] | None,
+    tools: list[Tool] | None,
 ):
-    tool_list: list[ToolDefinition] = map_tools_for_user_message(
-        request, parent, model, include_mcp_servers=include_mcp_servers
-    )
+    tool_list: list[ToolDefinition] = map_tools_for_user_message(request, parent, model, tools=tools)
 
     tool_names = [obj.name for obj in tool_list]
 

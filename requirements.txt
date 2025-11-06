@@ -4,9 +4,9 @@ python-json-logger==2.0.7
 requests==2.32.4
 psycopg[binary,pool]==3.2.4
 ./vendor/inferd-0.5.9-0_v0.5.9-py3-none-any.whl
-pydantic==2.11.5
-Authlib==1.3.2
-httpx~=0.28.0
+pydantic==2.11.7
+Authlib==1.5.2
+httpx~=0.28.1
 attrs>=21.3.0
 python-dateutil>=2.8.0
 pytest==8.3.2
@@ -19,7 +19,7 @@ flask-pydantic-api==1.7.0
 rank_bm25==0.2.2
 time-machine==2.16.0
 google-cloud-recaptcha-enterprise==1.27.0
-python-dotenv==1.0.1
+python-dotenv==1.1.0
 types-protobuf==5.29.1.20250208
 types-requests==2.32.0.20240914
 types-beautifulsoup4==4.12.0.20250204
@@ -31,7 +31,7 @@ alembic==1.15.2
 alembic-postgresql-enum==1.7.0
 pydub==0.25.1
 openai==1.107.2
-pydantic-ai==1.0.18
+pydantic-ai==1.11.0
 pytest-postgresql==7.0.2
 mcp==1.13.1
 beaker-py==2.5.0

@@ -127,7 +127,6 @@ def stream_message_from_model(
         selected_tools=request.selected_tools,
         bypass_safety_check=request.bypass_safety_check,
         max_steps=request.max_steps,
-        tools=request.tools,
     )
 
     if model.prompt_type == PromptType.FILES_ONLY and not cfg.feature_flags.allow_files_only_model_in_thread:
@@ -174,6 +173,7 @@ def stream_message_from_model(
         start_time_ns=start_time_ns,
         client_auth=client_auth,
         message_repository=message_repository,
+        tools=request.tools,
     )
 
 

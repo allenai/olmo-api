@@ -2,7 +2,6 @@ from collections.abc import Sequence
 from typing import Annotated, Any, Self
 
 from pydantic import AfterValidator, BaseModel, Field, Json, field_validator, model_validator
-from pydantic_ai import Tool
 from werkzeug import exceptions
 
 from src.api_interface import APIInterface
@@ -123,8 +122,6 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     create_tool_definitions: list[CreateToolDefinition] | None
     selected_tools: list[str] | None
     enable_tool_calling: bool
-
-    tools: list[Tool] | None
 
     @model_validator(mode="after")
     def parent_exists_if_parent_id_is_set(self) -> Self:

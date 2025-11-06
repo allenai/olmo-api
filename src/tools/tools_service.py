@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 
+from pydantic_ai import Tool
 from pydantic_ai.messages import ToolReturnPart
 from pydantic_ai.tools import ToolDefinition
 
@@ -14,6 +15,17 @@ from .mcp_service import call_mcp_tool, get_general_mcp_tools
 if TYPE_CHECKING:
     from src.config.Model import ModelBase
     from src.dao.engine_models.model_config import ModelConfig
+
+
+def map_pydantic_tool_to_tool_definition(tool: Tool) -> Ai2ToolDefinition:
+    ai2_tool_definition = Ai2ToolDefinition(
+        name=tool.name,
+        description=tool.description if tool.description is not None else "",
+        parameters=tool.function_schema.json_schema,
+        tool_source=ToolSource.INTERNAL,
+    )
+
+    return ai2_tool_definition
 
 
 def map_tool_def_to_pydantic(tool: Ai2ToolDefinition) -> ToolDefinition:

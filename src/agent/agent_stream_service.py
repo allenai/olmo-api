@@ -12,14 +12,14 @@ from src.dao.flask_sqlalchemy_session import current_session
 from src.dao.message.message_models import Role
 from src.dao.message.message_repository import MessageRepository
 from src.message.create_message_request import captcha_token_required_if_captcha_enabled
+from src.message.create_message_service.database import setup_msg_thread
 from src.message.create_message_service.endpoint import (
     MessageType,
     ModelMessageStreamInput,
-    stream_message_from_model,
     validate_chat_stream_request,
 )
 from src.message.GoogleCloudStorage import GoogleCloudStorage
-from src.pydantic_ai.playground_ui_adapter import PlaygroundUIAdapter
+from src.pydantic_ai.ui.playground_ui import PlaygroundUIAdapter
 from src.pydantic_inference.pydantic_ai_helpers import pydantic_settings_map
 
 
@@ -40,7 +40,9 @@ class AgentChatRequest(APIInterface):
         return value.replace("\r\n", "\n")
 
 
-def stream_agent_chat(request: AgentChatRequest, dbc: db.Client, storage_client: GoogleCloudStorage):
+def get_agent_stream_adapter(
+    request: AgentChatRequest, dbc: db.Client, storage_client: GoogleCloudStorage
+) -> PlaygroundUIAdapter[None, str]:
     agent = get_agent_by_id(request.agent_id)
 
     stream_model_message_request = ModelMessageStreamInput(
@@ -76,10 +78,19 @@ def stream_agent_chat(request: AgentChatRequest, dbc: db.Client, storage_client:
         ),
     )
 
-    stream_adapter = PlaygroundUIAdapter()
-    return stream_message_from_model(
-        stream_model_message_request,
-        dbc,
-        storage_client=storage_client,
-        message_repository=MessageRepository(current_session),
+    message_repository = MessageRepository(current_session)
+
+    message_chain = setup_msg_thread(
+        message_repository=message_repository,
+        model=model,
+        request=mapped_request,
+        client_auth=client_auth,
+        agent_id=agent.id,
     )
+
+    stream_adapter = PlaygroundUIAdapter(
+        agent=pydantic_agent,
+        run_input=[],
+    )
+
+    return stream_adapter

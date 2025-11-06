@@ -19,6 +19,9 @@ __all__ = ["PlaygroundUIAdapter"]
 
 @dataclass
 class PlaygroundUIAdapter(UIAdapter[list[Message], Message, StreamReturnType, AgentDepsT, OutputDataT]):
+    def build_run_input(cls, body: bytes) -> list[Message]:  # type: ignore # noqa: N805
+        raise NotImplementedError
+
     def build_event_stream(
         self,
     ) -> UIEventStream[list[Message], StreamReturnType, AgentDepsT, OutputDataT]:

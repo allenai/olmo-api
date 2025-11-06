@@ -1,78 +1,83 @@
 {
-    "db": {
-        "conninfo": "postgres://app:llmz@db:5432/llmx?sslmode=disable",
-        "min_size": 5,
-        "max_size": 10
-    },
-    "sql_alchemy": {
-        "pool_size": 3,
-        "max_overflow": 0
-    },
-    "inferd": {
-        "address": "",
-        "token": ""
-    },
-    "modal": {
-        "token": "",
-        "token_secret": ""
-    },
-    "beaker": {
-        "address": "",
-        "user_token": ""
-    },
-    "cirrascale": {
-        "base_url": "",
-        "api_key": ""
-    },
-    "cirrascale_public": {
-        "base_url": "",
-        "api_key": ""
-    },
-    "cirrascale_backend": {
-        "base_url": "",
-        "api_key": ""
-    },
-    "modal_openai": {
-        "api_key": ""
-    },
-    "server": {
-        "num_proxies": 1,
-        "admins": ["murphy@localhost"],
-        "origin": "http://localhost:8000",
-        "ui_origin": "http://localhost:8080",
-        "allowed_redirects": ["http://localhost:8080"],
-        "log_level": "INFO",
-        "proxies": 1
-    },
-    "auth": {
-        "auth0_domain": "",
-        "auth0_audience": ""
-    },
-    "wildguard": {
-        "address": "",
-        "token": "",
-        "compute_source_id": ""
-    },
-    "hubspot": {
-        "token": ""
-    },
-    "google_cloud_services": {
-        "api_key": "",
-        "storage_bucket": "",
-        "recaptcha_key": "",
-        "enable_recaptcha": false,
-        "require_recaptcha": false
-    },
-    "infini_gram": {
-        "api_url": "",
-        "sources": []
-    },
-    "models": [],
-    "mcp": {
-        "servers": []
-    },
-    "feature_flags": {
-        "enable_dynamic_model_config": true,
-        "enable_pydantic_inference": true
-    }
+  "db": {
+    "conninfo": "postgres://app:llmz@db:5432/llmx?sslmode=disable",
+    "min_size": 5,
+    "max_size": 10
+  },
+  "sql_alchemy": {
+    "pool_size": 3,
+    "max_overflow": 0
+  },
+  "inferd": {
+    "address": "",
+    "token": ""
+  },
+  "modal": {
+    "token": "",
+    "token_secret": ""
+  },
+  "beaker": {
+    "address": "",
+    "user_token": ""
+  },
+  "cirrascale": {
+    "base_url": "",
+    "api_key": ""
+  },
+  "cirrascale_public": {
+    "base_url": "",
+    "api_key": ""
+  },
+  "cirrascale_backend": {
+    "base_url": "",
+    "api_key": ""
+  },
+  "modal_openai": {
+    "api_key": ""
+  },
+  "server": {
+    "num_proxies": 1,
+    "admins": [
+      "murphy@localhost"
+    ],
+    "origin": "http://localhost:8000",
+    "ui_origin": "http://localhost:8080",
+    "allowed_redirects": [
+      "http://localhost:8080"
+    ],
+    "log_level": "INFO",
+    "proxies": 1
+  },
+  "auth": {
+    "auth0_domain": "",
+    "auth0_audience": ""
+  },
+  "wildguard": {
+    "address": "",
+    "token": "",
+    "compute_source_id": ""
+  },
+  "hubspot": {
+    "token": ""
+  },
+  "google_cloud_services": {
+    "api_key": "",
+    "storage_bucket": "",
+    "recaptcha_key": "",
+    "enable_recaptcha": false,
+    "require_recaptcha": false,
+    "safety_storage_bucket": ""
+  },
+  "infini_gram": {
+    "api_url": "",
+    "sources": []
+  },
+  "models": [],
+  "mcp": {
+    "servers": []
+  },
+  "feature_flags": {
+    "enable_dynamic_model_config": true,
+    "enable_pydantic_inference": true
+  }
 }

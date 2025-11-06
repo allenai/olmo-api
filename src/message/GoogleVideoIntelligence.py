@@ -16,10 +16,13 @@ from src.message.SafetyChecker import (
 tracer = get_default_tracer()
 bucket_name = get_config().google_cloud_services.safety_storage_bucket
 client = Client()
-safe_bucket = client.bucket(bucket_name)
 
 video_client = videointelligence.VideoIntelligenceServiceClient()
 features = [videointelligence.Feature.EXPLICIT_CONTENT_DETECTION]
+
+
+def get_safety_bucket():
+    return client.bucket(bucket_name)
 
 
 def generate_random_filename(original_filename: str) -> str:
@@ -30,6 +33,7 @@ def generate_random_filename(original_filename: str) -> str:
 
 def upload_to_safety_bucket(file: FileStorage):
     name = generate_random_filename(file.filename or ".unkown")
+    safe_bucket = get_safety_bucket()
     blob = safe_bucket.blob(name)
     file.seek(0)
     blob.upload_from_file(file.stream, content_type=file.content_type)
@@ -40,6 +44,7 @@ def upload_to_safety_bucket(file: FileStorage):
 
 def delete_from_safety_bucket(path: str):
     """This function removes videos from the safety bucket after they are checked. Files delete after 1-day in the buckets as a fall back"""
+    safe_bucket = get_safety_bucket()
     blob = safe_bucket.blob(path)
     blob.delete()
 
@@ -51,7 +56,7 @@ class GoogleVideoIntelligenceResponse(SafetyCheckResponse):
         self.response = response
 
     def is_safe(self) -> bool:
-        return self.has_viloation()
+        return not self.has_viloation()
 
     def has_viloation(self) -> bool:
         explicit_content_detected = False

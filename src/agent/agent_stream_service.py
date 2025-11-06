@@ -71,7 +71,9 @@ def stream_agent_chat(request: AgentChatRequest, dbc: db.Client, storage_client:
     pydantic_agent = Agent(
         model=pydantic_model,
         toolsets=agent.toolsets,
-        model_settings=pydantic_settings_map(opts=mapped_request.opts, model_config=model, extra_body=agent),
+        model_settings=pydantic_settings_map(
+            opts=mapped_request.opts, model_config=model, extra_body=agent.extra_inference_opts
+        ),
     )
 
     stream_adapter = PlaygroundUIAdapter()

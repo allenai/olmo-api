@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 from pydantic_ai.toolsets import AbstractToolset
 
@@ -18,3 +19,4 @@ class Agent:
     stop: list[str]
     n: int
     toolsets: list[AbstractToolset] | None = None
+    extra_inference_opts: dict[str, Any] | None = None

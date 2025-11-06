@@ -5,7 +5,6 @@ from pydantic import BaseModel
 
 from pydantic_ai import Tool, ToolReturn
 from src.custom_agents.dr_tulu.dr_tulu_mcp_server import get_dr_tulu_mcp_server
-from src.custom_agents.dr_tulu.format_tool_call_output import format_tool_call_output
 from src.custom_agents.dr_tulu.search.document import Document
 
 
@@ -101,10 +100,8 @@ def browse_website(
         webpage_title=webpage_title, use_localized_snippets=True, context_chars=2000, fallback_message=fallback_message
     )
 
-    formatted_output = format_tool_call_output(output)
-
     return ToolReturn(
-        return_value=formatted_output,
+        return_value=output,
         metadata={"should_truncate": True, "raw_result": parsed_result},
     )
 

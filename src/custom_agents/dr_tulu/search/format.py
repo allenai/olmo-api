@@ -1,6 +1,5 @@
 from pydantic_ai.mcp import ToolResult
 from src import obj
-from src.custom_agents.dr_tulu.format_tool_call_output import format_tool_call_output
 from src.custom_agents.dr_tulu.search.document import Document
 
 create_search_snippet_id = obj.new_id_generator("snippet")
@@ -47,4 +46,4 @@ def format_search_output(output: ToolResult):
         )
     combined_texts = "\n".join(combined_snippet_text)
 
-    return format_tool_call_output(combined_texts)
+    return combined_texts

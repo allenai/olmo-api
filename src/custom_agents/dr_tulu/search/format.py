@@ -1,13 +1,12 @@
 from pydantic_ai.mcp import ToolResult
-from src import obj
 from src.custom_agents.dr_tulu.search.document import Document
-
-create_search_snippet_id = obj.new_id_generator("snippet")
+from src.custom_agents.dr_tulu.util import create_call_id
 
 
 def format_snippet_search_output(output: ToolResult):
     data = output.get("data", [])  # type: ignore
     documents = []
+    call_id = create_call_id()
 
     for item in data:
         if isinstance(item, dict):
@@ -41,9 +40,7 @@ def format_snippet_search_output(output: ToolResult):
 
     combined_snippet_text = []
     for index, doc in enumerate(documents):
-        combined_snippet_text.append(
-            f"<snippet id={create_search_snippet_id()}-{index}>\n{doc.stringify()}\n</snippet>"
-        )
+        combined_snippet_text.append(f"<snippet id={call_id}-{index}>\n{doc.stringify()}\n</snippet>")
     combined_texts = "\n".join(combined_snippet_text)
 
     return combined_texts
@@ -67,9 +64,7 @@ def format_google_search_output(output: ToolResult):
 
     combined_snippet_text = []
     for index, doc in enumerate(documents):
-        combined_snippet_text.append(
-            f"<snippet id={create_search_snippet_id()}-{index}>\n{doc.stringify()}\n</snippet>"
-        )
+        combined_snippet_text.append(f"<snippet id={create_call_id()}-{index}>\n{doc.stringify()}\n</snippet>")
     combined_texts = "\n".join(combined_snippet_text)
 
     return combined_texts

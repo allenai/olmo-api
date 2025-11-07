@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from pydantic_ai import Tool, ToolReturn
 from src.custom_agents.dr_tulu.dr_tulu_mcp_server import get_dr_tulu_mcp_server
 from src.custom_agents.dr_tulu.search.document import Document
+from src.custom_agents.dr_tulu.util import create_call_id
 
 
 class Crawl4aiApiResult(BaseModel):
@@ -56,14 +57,7 @@ def _extract_metadata_from_document(raw_output: Crawl4aiApiResult) -> tuple[str 
 
 
 def browse_webpage(
-    url: str,
-    base_url: str | None = None,
-    bypass_cache: bool = True,
-    ignore_links: bool = True,
-    use_pruning: bool = False,
-    bm25_query: str | None = None,
-    timeout_ms: int = 80000,
-    include_html: bool = False,
+    query: str,
 ) -> ToolReturn:
     mcp_server = get_dr_tulu_mcp_server()
 
@@ -71,14 +65,7 @@ def browse_webpage(
         mcp_server.direct_call_tool(
             "google_search",
             args={
-                "url": url,
-                "base_url": base_url,
-                "bypass_cache": bypass_cache,
-                "ignore_links": ignore_links,
-                "use_pruning": use_pruning,
-                "bm25_query": bm25_query,
-                "timeout_ms": timeout_ms,
-                "include_html": include_html,
+                "url": query,
             },
         )
     )
@@ -90,7 +77,7 @@ def browse_webpage(
     document = Document(
         title="",
         snippet="",
-        url=url,
+        url=query,
         score=None,
         text=_extract_raw_content_from_response(parsed_result),
         error=parsed_result.error,
@@ -100,8 +87,10 @@ def browse_webpage(
         webpage_title=webpage_title, use_localized_snippets=True, context_chars=2000, fallback_message=fallback_message
     )
 
+    call_id = create_call_id()
+
     return ToolReturn(
-        return_value=output,
+        return_value=f"<webpage id={call_id}-0>\n{output}</webpage>",
         metadata={"should_truncate": True, "raw_result": parsed_result},
     )
 

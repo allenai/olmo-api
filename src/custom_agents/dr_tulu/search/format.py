@@ -40,7 +40,7 @@ def format_snippet_search_output(output: ToolResult):
 
     combined_snippet_text = []
     for index, doc in enumerate(documents):
-        combined_snippet_text.append(f"<snippet id={call_id}-{index}>\n{doc.stringify()}\n</snippet>")
+        combined_snippet_text.append(f'<snippet id="{call_id}-{index}">\n{doc.stringify()}\n</snippet>')
     combined_texts = "\n".join(combined_snippet_text)
 
     return combined_texts
@@ -64,7 +64,7 @@ def format_google_search_output(output: ToolResult):
 
     combined_snippet_text = []
     for index, doc in enumerate(documents):
-        combined_snippet_text.append(f"<snippet id={create_call_id()}-{index}>\n{doc.stringify()}\n</snippet>")
+        combined_snippet_text.append(f'<snippet id="{create_call_id()}-{index}">\n{doc.stringify()}\n</snippet>')
     combined_texts = "\n".join(combined_snippet_text)
 
     return combined_texts

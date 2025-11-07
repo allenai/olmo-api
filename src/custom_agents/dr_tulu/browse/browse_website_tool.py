@@ -90,7 +90,7 @@ def browse_webpage(
     call_id = create_call_id()
 
     return ToolReturn(
-        return_value=f"<webpage id={call_id}-0>\n{output}</webpage>",
+        return_value=f'<webpage id="{call_id}-0">\n{output}</webpage>',
         metadata={"should_truncate": True, "raw_result": parsed_result},
     )
 

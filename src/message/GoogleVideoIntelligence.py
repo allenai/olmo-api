@@ -14,14 +14,14 @@ from src.message.SafetyChecker import (
 )
 
 tracer = get_default_tracer()
-bucket_name = get_config().google_cloud_services.safety_storage_bucket
-client = Client()
 
 video_client = videointelligence.VideoIntelligenceServiceClient()
 features = [videointelligence.Feature.EXPLICIT_CONTENT_DETECTION]
 
 
 def get_safety_bucket():
+    bucket_name = get_config().google_cloud_services.safety_storage_bucket
+    client = Client()
     return client.bucket(bucket_name)
 
 
@@ -63,7 +63,7 @@ class GoogleVideoIntelligenceResponse(SafetyCheckResponse):
 
         if len(self.response.annotation_results) != 1:
             msg = "Unexpected mulitiple video response"
-            raise Exception(msg)
+            raise TypeError(msg)
 
         # Retrieve first result because a single video was processed
         for frame in self.response.annotation_results[0].explicit_annotation.frames:
@@ -82,6 +82,7 @@ class GoogleVideoIntelligenceResponse(SafetyCheckResponse):
 class GoogleVideoIntelligence(SafetyChecker):
     def check_request(self, req: SafetyCheckRequest):
         with tracer.start_as_current_span("video annotate"):
+            bucket_name = get_config().google_cloud_services.safety_storage_bucket
             operation = video_client.annotate_video(
                 request={
                     "features": features,
@@ -94,4 +95,5 @@ class GoogleVideoIntelligence(SafetyChecker):
             if isinstance(result, videointelligence.AnnotateVideoResponse):
                 return GoogleVideoIntelligenceResponse(result)
 
-            raise Exception("failed")
+            msg = "Unexpected result from google video checker"
+            raise TypeError(msg)

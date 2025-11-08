@@ -1,4 +1,5 @@
 import uuid
+from functools import cache
 from pathlib import Path
 
 from google.cloud import videointelligence
@@ -15,14 +16,19 @@ from src.message.SafetyChecker import (
 
 tracer = get_default_tracer()
 
-video_client = videointelligence.VideoIntelligenceServiceClient()
 features = [videointelligence.Feature.EXPLICIT_CONTENT_DETECTION]
 
 
+@cache
 def get_safety_bucket():
     bucket_name = get_config().google_cloud_services.safety_storage_bucket
     client = Client()
     return client.bucket(bucket_name)
+
+
+@cache
+def get_video_client():
+    return videointelligence.VideoIntelligenceServiceClient()
 
 
 def generate_random_filename(original_filename: str) -> str:
@@ -83,6 +89,8 @@ class GoogleVideoIntelligence(SafetyChecker):
     def check_request(self, req: SafetyCheckRequest):
         with tracer.start_as_current_span("video annotate"):
             bucket_name = get_config().google_cloud_services.safety_storage_bucket
+            video_client = get_video_client()
+
             operation = video_client.annotate_video(
                 request={
                     "features": features,

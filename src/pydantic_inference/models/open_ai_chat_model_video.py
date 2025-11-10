@@ -59,7 +59,7 @@ class OpenAIChatModelVideo(OpenAIChatModel):
                         content.append(ChatCompletionContentPartImageParam(image_url=image_url, type="image_url"))
                     elif item.is_audio:
                         assert item.format in ("wav", "mp3")
-                        audio = InputAudio(data=base64.b64encode(item.data).decode("utf-8"), format=item.format)
+                        audio = InputAudio(data=base64.b64encode(item.data).decode("utf-8"), format=item.format)  # type:ignore
                         content.append(ChatCompletionContentPartInputAudioParam(input_audio=audio, type="input_audio"))
                     elif item.is_document:
                         content.append(
@@ -72,6 +72,7 @@ class OpenAIChatModelVideo(OpenAIChatModel):
                             )
                         )
                     elif item.is_video:
+                        # Updated by Ai2 to handle VideoUrl
                         video_url = VideoURL(url=item.data_uri)
                         content.append(ChatCompletionContentPartVideoParam(video_url=video_url, type="video_url"))  # type:ignore
                     else:  # pragma: no cover
@@ -82,7 +83,7 @@ class OpenAIChatModelVideo(OpenAIChatModel):
                         "wav",
                         "mp3",
                     ), f"Unsupported audio format: {downloaded_item['data_type']}"
-                    audio = InputAudio(data=downloaded_item["data"], format=downloaded_item["data_type"])
+                    audio = InputAudio(data=downloaded_item["data"], format=downloaded_item["data_type"])  # type:ignore
                     content.append(ChatCompletionContentPartInputAudioParam(input_audio=audio, type="input_audio"))
                 elif isinstance(item, DocumentUrl):
                     if self._is_text_like_media_type(item.media_type):
@@ -105,7 +106,8 @@ class OpenAIChatModelVideo(OpenAIChatModel):
                                 type="file",
                             )
                         )
-                elif isinstance(item, VideoUrl):  # Updated to handle VideoUrl
+                elif isinstance(item, VideoUrl):
+                    # Updated by Ai2 to handle VideoUrl
                     video_url = VideoURL(url=item.url)
                     content.append(ChatCompletionContentPartVideoParam(video_url=video_url, type="video_url"))  # type:ignore
                 else:

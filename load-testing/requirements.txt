@@ -1,0 +1,2 @@
+locust==2.42.2
+python-dotenv==1.2.1

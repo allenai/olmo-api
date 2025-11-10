@@ -26,7 +26,7 @@ from typing_extensions import TypedDict
 
 class OpenAIChatModelVideo(OpenAIChatModel):
     async def _map_user_prompt(self, part: UserPromptPart) -> chat.ChatCompletionUserMessageParam:
-        content: str | list[ChatCompletionContentPartParam]
+        content: str | list[ChatCompletionContentPartParam | ChatCompletionContentPartVideoParam]
         if isinstance(part.content, str):
             content = part.content
         else:
@@ -74,7 +74,7 @@ class OpenAIChatModelVideo(OpenAIChatModel):
                     elif item.is_video:
                         # Updated by Ai2 to handle VideoUrl
                         video_url = VideoURL(url=item.data_uri)
-                        content.append(ChatCompletionContentPartVideoParam(video_url=video_url, type="video_url"))  # type:ignore
+                        content.append(ChatCompletionContentPartVideoParam(video_url=video_url, type="video_url"))
                     else:  # pragma: no cover
                         raise RuntimeError(f"Unsupported binary content type: {item.media_type}")
                 elif isinstance(item, AudioUrl):
@@ -109,10 +109,10 @@ class OpenAIChatModelVideo(OpenAIChatModel):
                 elif isinstance(item, VideoUrl):
                     # Updated by Ai2 to handle VideoUrl
                     video_url = VideoURL(url=item.url)
-                    content.append(ChatCompletionContentPartVideoParam(video_url=video_url, type="video_url"))  # type:ignore
+                    content.append(ChatCompletionContentPartVideoParam(video_url=video_url, type="video_url"))
                 else:
                     assert_never(item)
-        return chat.ChatCompletionUserMessageParam(role="user", content=content)
+        return chat.ChatCompletionUserMessageParam(role="user", content=content)  # type:ignore
 
 
 class VideoURL(TypedDict, total=False):

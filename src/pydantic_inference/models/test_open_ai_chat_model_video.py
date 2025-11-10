@@ -1,5 +1,5 @@
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+import base64
+from unittest.mock import MagicMock
 
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
@@ -17,7 +17,7 @@ from src.pydantic_inference.models.open_ai_chat_model_video import OpenAIChatMod
 VLLM_MODEL_NAME = "llm"
 
 
-def create_mock_async_openai_client(mocker: MockerFixture):
+def create_mock_async_openai_client(mocker: MockerFixture) -> tuple[MagicMock, MagicMock]:
     """Create a mock AsyncOpenAI client for testing."""
     mock_client = mocker.MagicMock(spec=AsyncOpenAI)
 
@@ -74,30 +74,49 @@ def test_video_input(mocker: MockerFixture):
         provider=provider,
     )
 
-    test_image_path = Path(__file__).parent.joinpath("../../../e2e/tree.mov")
+    base64_string = "SGVsbG8gV29ybGQh"
+    byte_data = base64.b64decode(base64_string)
+    messages = [
+        ModelRequest(
+            parts=[
+                UserPromptPart(
+                    content=[
+                        "Tell me a joke.",
+                        BinaryContent(data=byte_data, media_type="video/quicktime"),
+                        VideoUrl("www.google.com", media_type="video/quicktime"),
+                    ],
+                ),
+            ]
+        ),
+    ]
 
-    with test_image_path.open("rb") as file:
-        messages = [
-            ModelRequest(
-                parts=[
-                    UserPromptPart(
-                        content=[
-                            "Tell me a joke.",
-                            BinaryContent(data=file.read(), media_type="video/quicktime"),
-                            VideoUrl("www.google.com", media_type="video/quicktime"),
-                        ],
-                    ),
-                ]
-            ),
-        ]
+    result = model_request_sync(
+        model=client,
+        messages=messages,
+    )
 
-        result = model_request_sync(
-            model=client,
-            messages=messages,
-        )
+    # Assert the mock was called
+    completion_mock.completions.create.assert_called_once()
 
-        # Assert the mock was called
-        completion_mock.completions.create.assert_called_once()
+    assert completion_mock.completions.create.call_args[1]["model"] == "llm"
 
-        # Verify the result
-        assert result is not None
+    expected_call_messages = [
+        {
+            "content": [
+                {"text": "Tell me a joke.", "type": "text"},
+                {
+                    "type": "video_url",
+                    "video_url": {
+                        "url": "data:video/quicktime;base64,SGVsbG8gV29ybGQh",
+                    },
+                },
+                {"type": "video_url", "video_url": {"url": "www.google.com"}},
+            ],
+            "role": "user",
+        }
+    ]
+    assert completion_mock.completions.create.call_args[1]["messages"] == expected_call_messages
+
+    assert result.kind == "response"
+    assert result.parts[0].part_kind == "text"
+    assert result.parts[0].content == "Test response"

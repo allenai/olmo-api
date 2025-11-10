@@ -75,6 +75,9 @@ def test_video_input(mocker: MockerFixture):
     )
 
     base64_string = "SGVsbG8gV29ybGQh"
+    media_type = "video/quicktime"
+    url = "www.google.com"
+
     byte_data = base64.b64decode(base64_string)
     messages = [
         ModelRequest(
@@ -82,8 +85,8 @@ def test_video_input(mocker: MockerFixture):
                 UserPromptPart(
                     content=[
                         "Tell me a joke.",
-                        BinaryContent(data=byte_data, media_type="video/quicktime"),
-                        VideoUrl("www.google.com", media_type="video/quicktime"),
+                        BinaryContent(data=byte_data, media_type=media_type),
+                        VideoUrl(url, media_type=media_type),
                     ],
                 ),
             ]
@@ -107,10 +110,10 @@ def test_video_input(mocker: MockerFixture):
                 {
                     "type": "video_url",
                     "video_url": {
-                        "url": "data:video/quicktime;base64,SGVsbG8gV29ybGQh",
+                        "url": f"data:{media_type};base64,{base64_string}",
                     },
                 },
-                {"type": "video_url", "video_url": {"url": "www.google.com"}},
+                {"type": "video_url", "video_url": {"url": url}},
             ],
             "role": "user",
         }

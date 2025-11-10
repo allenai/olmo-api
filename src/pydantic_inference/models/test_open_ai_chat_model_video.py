@@ -7,7 +7,7 @@ from openai.types.chat.chat_completion import Choice
 from openai.types.completion_usage import CompletionUsage
 from pydantic_ai import ModelRequest, UserPromptPart
 from pydantic_ai.direct import model_request_sync
-from pydantic_ai.messages import BinaryContent
+from pydantic_ai.messages import BinaryContent, VideoUrl
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from src.pydantic_inference.models.open_ai_chat_model_video import OpenAIChatModelVideo
@@ -80,7 +80,11 @@ def test_video_input():
             ModelRequest(
                 parts=[
                     UserPromptPart(
-                        content=["Tell me a joke.", BinaryContent(data=file.read(), media_type="video/quicktime")],
+                        content=[
+                            "Tell me a joke.",
+                            BinaryContent(data=file.read(), media_type="video/quicktime"),
+                            VideoUrl("www.google.com", media_type="video/quicktime"),
+                        ],
                     ),
                 ]
             ),

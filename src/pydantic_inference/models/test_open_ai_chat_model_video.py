@@ -1,10 +1,13 @@
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
 from openai.types.completion_usage import CompletionUsage
+from pydantic_ai import ModelRequest, UserPromptPart
 from pydantic_ai.direct import model_request_sync
+from pydantic_ai.messages import BinaryContent
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from src.pydantic_inference.models.open_ai_chat_model_video import OpenAIChatModelVideo
@@ -55,6 +58,12 @@ def create_mock_async_openai_client():
 
 
 def test_video_input():
+    """
+    This test ensure that our modified openai client continues to work with video.
+    We overrode an internal method in pydatnic openai called _map_user_prompt.
+    This test might break when we upgrade pydantic ai because this method could change.
+    """
+
     mock_client, completion_mock = create_mock_async_openai_client()
 
     provider = OpenAIProvider(openai_client=mock_client)
@@ -64,13 +73,26 @@ def test_video_input():
         provider=provider,
     )
 
-    result = model_request_sync(
-        model=client,
-        messages=[],
-    )
+    test_image_path = Path(__file__).parent.joinpath("../../../e2e/tree.mov")
 
-    # Assert the mock was called
-    completion_mock.completions.create.assert_called_once()
+    with test_image_path.open("rb") as file:
+        messages = [
+            ModelRequest(
+                parts=[
+                    UserPromptPart(
+                        content=["Tell me a joke.", BinaryContent(data=file.read(), media_type="video/quicktime")],
+                    ),
+                ]
+            ),
+        ]
 
-    # Verify the result
-    assert result is not None
+        result = model_request_sync(
+            model=client,
+            messages=messages,
+        )
+
+        # Assert the mock was called
+        completion_mock.completions.create.assert_called_once()
+
+        # Verify the result
+        assert result is not None

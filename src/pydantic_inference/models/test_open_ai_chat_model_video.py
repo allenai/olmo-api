@@ -9,6 +9,7 @@ from pydantic_ai import ModelRequest, UserPromptPart
 from pydantic_ai.direct import model_request_sync
 from pydantic_ai.messages import BinaryContent, VideoUrl
 from pydantic_ai.providers.openai import OpenAIProvider
+from pytest_mock import MockerFixture
 
 from src.pydantic_inference.models.open_ai_chat_model_video import OpenAIChatModelVideo
 
@@ -16,16 +17,16 @@ from src.pydantic_inference.models.open_ai_chat_model_video import OpenAIChatMod
 VLLM_MODEL_NAME = "llm"
 
 
-def create_mock_async_openai_client():
+def create_mock_async_openai_client(mocker: MockerFixture):
     """Create a mock AsyncOpenAI client for testing."""
-    mock_client = MagicMock(spec=AsyncOpenAI)
+    mock_client = mocker.MagicMock(spec=AsyncOpenAI)
 
     # Mock the chat property
-    mock_chat = MagicMock()
+    mock_chat = mocker.MagicMock()
     mock_client.chat = mock_chat
 
     # Mock the completions property
-    mock_completions = MagicMock()
+    mock_completions = mocker.MagicMock()
 
     # Create a mock ChatCompletion response
     mock_response = ChatCompletion(
@@ -51,20 +52,20 @@ def create_mock_async_openai_client():
     )
 
     # Mock the create method as an async method that returns the mock response
-    mock_completions.create = AsyncMock(return_value=mock_response)
+    mock_completions.create = mocker.AsyncMock(return_value=mock_response)
 
     mock_chat.completions = mock_completions
     return mock_client, mock_chat
 
 
-def test_video_input():
+def test_video_input(mocker: MockerFixture):
     """
     This test ensure that our modified openai client continues to work with video.
     We overrode an internal method in pydatnic openai called _map_user_prompt.
     This test might break when we upgrade pydantic ai because this method could change.
     """
 
-    mock_client, completion_mock = create_mock_async_openai_client()
+    mock_client, completion_mock = create_mock_async_openai_client(mocker)
 
     provider = OpenAIProvider(openai_client=mock_client)
 

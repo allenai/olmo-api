@@ -29,6 +29,10 @@ ignore_missing_imports = true
 module = ["src.attribution.infini_gram_api_client.*"]
 ignore_errors = true
 
+[[tool.mypy.overrides]]
+module = ["load-testing.*"]
+ignore_errors = true
+
 # taken from https://github.com/pypa/hatch/blob/master/ruff_defaults.toml
 [tool.ruff]
 line-length = 120

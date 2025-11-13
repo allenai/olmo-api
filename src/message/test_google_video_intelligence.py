@@ -4,7 +4,6 @@ from google.cloud import videointelligence
 from .GoogleVideoIntelligence import GoogleVideoIntelligenceResponse
 
 
-@pytest.mark.integration
 def test_result_is_false_if_frame_is_tagged():
     response = videointelligence.AnnotateVideoResponse()
 
@@ -32,7 +31,6 @@ def test_result_is_false_if_frame_is_tagged():
     assert result.is_safe() is False
 
 
-@pytest.mark.integration
 def test_result_is_true_():
     response = videointelligence.AnnotateVideoResponse()
 

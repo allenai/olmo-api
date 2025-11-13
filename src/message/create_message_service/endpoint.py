@@ -155,7 +155,7 @@ def stream_message_from_model(
 
     start_time_ns = time_ns()
 
-    safety_check_elapsed_time, is_message_harmful = validate_message_security_and_safety(
+    validate_message_security_and_safety(
         request=mapped_request,
         client_auth=client_auth,
         checker_type=checker_type,
@@ -169,8 +169,6 @@ def stream_message_from_model(
         model=model,
         storage_client=storage_client,
         checker_type=checker_type,
-        safety_check_elapsed_time=safety_check_elapsed_time,
-        is_message_harmful=is_message_harmful,
         start_time_ns=start_time_ns,
         client_auth=client_auth,
         message_repository=message_repository,

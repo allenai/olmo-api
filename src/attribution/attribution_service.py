@@ -215,7 +215,7 @@ def get_attribution(request: GetAttributionRequest, infini_gram_client: Client, 
 
         if attribution_response.type_ == "server-overloaded":
             raise exceptions.ServiceUnavailable(
-                description="OLMoTrace is currently overloaded. Please try again later."
+                description="OlmoTrace is currently overloaded. Please try again later."
             )
 
         raise exceptions.InternalServerError(

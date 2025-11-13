@@ -62,32 +62,27 @@ class GoogleVideoIntelligenceResponse(SafetyCheckResponse):
         self.response = response
 
     def is_safe(self) -> bool:
-        return not self.has_viloation()
+        return not self.has_violation()
 
-    def has_viloation(self) -> bool:
-        explicit_content_detected = False
-
+    def has_violation(self) -> bool:
         if len(self.response.annotation_results) != 1:
             msg = "Unexpected mulitiple video response"
             raise TypeError(msg)
 
-        # Retrieve first result because a single video was processed
-        for frame in self.response.annotation_results[0].explicit_annotation.frames:
-            likelihood = videointelligence.Likelihood(frame.pornography_likelihood)
-
-            if likelihood in {
+        return any(
+            videointelligence.Likelihood(frame.pornography_likelihood)
+            in {
                 videointelligence.Likelihood.POSSIBLE,
                 videointelligence.Likelihood.VERY_LIKELY,
                 videointelligence.Likelihood.LIKELY,
-            }:
-                explicit_content_detected = True
-
-        return explicit_content_detected
+            }
+            for frame in self.response.annotation_results[0].explicit_annotation.frames
+        )
 
 
 class GoogleVideoIntelligence(SafetyChecker):
     def check_request(self, req: SafetyCheckRequest):
-        with tracer.start_as_current_span("video annotate"):
+        with tracer.start_as_current_span("Google Video Safety Check"):
             bucket_name = get_config().google_cloud_services.safety_storage_bucket
             video_client = get_video_client()
 

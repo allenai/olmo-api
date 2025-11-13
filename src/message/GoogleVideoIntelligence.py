@@ -81,22 +81,22 @@ class GoogleVideoIntelligenceResponse(SafetyCheckResponse):
 
 
 class GoogleVideoIntelligence(SafetyChecker):
+    @tracer.start_as_current_span("GoogleVideoIntelligence.check_request")
     def check_request(self, req: SafetyCheckRequest):
-        with tracer.start_as_current_span("Google Video Safety Check"):
-            bucket_name = get_config().google_cloud_services.safety_storage_bucket
-            video_client = get_video_client()
+        bucket_name = get_config().google_cloud_services.safety_storage_bucket
+        video_client = get_video_client()
 
-            operation = video_client.annotate_video(
-                request={
-                    "features": features,
-                    "input_uri": f"gs://{bucket_name}/{req.content}",
-                }
-            )
+        operation = video_client.annotate_video(
+            request={
+                "features": features,
+                "input_uri": f"gs://{bucket_name}/{req.content}",
+            }
+        )
 
-            result = operation.result(timeout=180)
+        result = operation.result(timeout=180)
 
-            if isinstance(result, videointelligence.AnnotateVideoResponse):
-                return GoogleVideoIntelligenceResponse(result)
+        if isinstance(result, videointelligence.AnnotateVideoResponse):
+            return GoogleVideoIntelligenceResponse(result)
 
-            msg = "Unexpected result from google video checker"
-            raise TypeError(msg)
+        msg = "Unexpected result from google video checker"
+        raise TypeError(msg)

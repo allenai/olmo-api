@@ -2,12 +2,15 @@ import requests
 from flask import current_app
 from google.cloud.vision import Likelihood, SafeSearchAnnotation
 
+from otel.default_tracer import get_default_tracer
 from src.config import get_config
 from src.message.SafetyChecker import (
     SafetyChecker,
     SafetyCheckRequest,
     SafetyCheckResponse,
 )
+
+tracer = get_default_tracer()
 
 
 class GoogleVisionSafeSearchResponse(SafetyCheckResponse):
@@ -38,6 +41,7 @@ class GoogleVisionSafeSearchResponse(SafetyCheckResponse):
 
 
 class GoogleVisionSafeSearch(SafetyChecker):
+    @tracer.start_as_current_span("GoogleVisionSafeSearch.check_request")
     def check_request(self, req: SafetyCheckRequest):
         headers = {
             "Content-Type": "application/json",

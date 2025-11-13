@@ -2,10 +2,10 @@
 # Testing
 
 
-## Setup 
+## Setup
 Two ways of runnnings tests...
 ### e2e
-Requires a fully working app and has real world side effects. 
+Requires a fully working app and has real world side effects.
 
 ```
 docker compose exec api pytest -m "not integration"
@@ -20,13 +20,13 @@ This setup extends unit tests to also have access to the database. To run them y
 brew install postgresql
 ```
 
-In the python .venv you can simply run these tests by writing 
+In the python .venv you can simply run these tests by writing
 
 ```sh
 export FLASK_CONFIG_PATH="test.config.json" && pytest --ignore e2e --ignore src/attribution
 ```
 
-Integration Tests can be placed anywhere in the app. 
+Integration Tests can be placed anywhere in the app.
 
 
 ## Fixtures
@@ -38,7 +38,7 @@ To use the database simple add the following fixtures to your tests.
 
 ```python
 class TestDatabase:
-    def test_thread_setup(self, sql_alchemy: Session): # <-- This line 
+    def test_thread_setup(self, sql_alchemy: Session): # <-- This line
         message_repo = MessageRepository(sql_alchemy)
 ```
 
@@ -65,10 +65,28 @@ Fixtures can be also be used to mock other services within the app.
 
 ## VScode Debugging pytests
 
-There is now a script in vscode to run debug on a given test file, simply set breakpoints anywhere then return to the test file. 
+There is now a script in vscode to run debug on a given test file, simply set breakpoints anywhere then return to the test file.
 
 ## VScode Test runner
 With the microsoft python package
 https://marketplace.visualstudio.com/items?itemName=ms-python.python
 
 You can also use the test runner, which appears as a beaker on the left side bar in vscode. Should work out of the box.
+
+## e2e cicd secret updating
+If you need to update the cicd e2e config file follow these steps.
+
+The steps are
+
+Convert your local config.json to a base64 string and copy to clipboard using this command
+
+```bash
+base64 -i config.json | pbcopy
+```
+
+Open up the secrets in github and find the one called `CONFIG_JSON` and paste this in.
+
+Finally copy something else so you don't accidently leak the secrets somewhere
+
+You can also reference this guide https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets#storing-base64-binary-blobs-as-secrets
+

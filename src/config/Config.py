@@ -99,6 +99,7 @@ class GoogleCloudServices:
 @dataclass
 class FeatureFlags:
     allow_files_only_model_in_thread: bool
+    show_internal_tools: bool = False
 
 
 @dataclass
@@ -250,6 +251,7 @@ class Config:
                     allow_files_only_model_in_thread=data.get("feature_flags", {}).get(
                         "allow_files_only_model_in_thread", False
                     ),
+                    show_internal_tools=data.get("feature_flags", {}).get("show_internal_tools", False),
                 ),
                 beaker=Beaker(
                     address=data.get("beaker", {}).get("address"),

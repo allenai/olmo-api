@@ -25,7 +25,7 @@ class Label(Base):
     )
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
-    message: Mapped[str] = mapped_column(Text)
+    message: Mapped[str] = mapped_column(Text, index=True)
     rating: Mapped[int] = mapped_column(Integer)
     creator: Mapped[str] = mapped_column(Text)
     created: Mapped[datetime.datetime] = mapped_column(DateTime(True), server_default=text("now()"))

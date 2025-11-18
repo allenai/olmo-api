@@ -1039,5 +1039,11 @@ ALTER TABLE message ADD COLUMN agent_id VARCHAR;
 
 UPDATE alembic_version SET version_num='2d0eb25156b5' WHERE alembic_version.version_num = '440e4ee34a13';
 
+-- Running upgrade 2d0eb25156b5 -> a88c3e9a09b0
+
+CREATE INDEX label_message_ix ON label (message);
+
+UPDATE alembic_version SET version_num='a88c3e9a09b0' WHERE alembic_version.version_num = '2d0eb25156b5';
+
 COMMIT;
 

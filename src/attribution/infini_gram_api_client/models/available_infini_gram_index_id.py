@@ -6,6 +6,7 @@ class AvailableInfiniGramIndexId(str, Enum):
     OLMO_2_0325_32B = "olmo-2-0325-32b"
     OLMO_2_1124_13B = "olmo-2-1124-13b"
     OLMO_3_0625_32B_THINK = "olmo-3-0625-32b-think"
+    OLMO_3_0625_32B_INSTRUCT = "olmo-3-0625-32b-instruct"
     OLMO_3_0625_7B_INSTRUCT = "olmo-3-0625-7b-instruct"
     OLMO_3_0625_7B_THINK = "olmo-3-0625-7b-think"
     PILEVAL_LLAMA = "pileval-llama"

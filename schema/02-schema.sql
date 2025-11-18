@@ -1045,5 +1045,53 @@ CREATE INDEX label_message_ix ON label (message);
 
 UPDATE alembic_version SET version_num='a88c3e9a09b0' WHERE alembic_version.version_num = '2d0eb25156b5';
 
+-- Running upgrade a88c3e9a09b0 -> e62f9bd0f24b
+
+ALTER TYPE "public"."availableinfinigramindexid" RENAME TO availableinfinigramindexid_old;
+
+CREATE TYPE "public"."availableinfinigramindexid" AS ENUM('OLMOE_0125_1B_7B', 'OLMO_2_0325_32B', 'OLMO_2_1124_13B', 'OLMO_3_0625_32B_THINK', 'OLMO_3_0625_32B_INSTRUCT', 'OLMO_3_0625_7B_INSTRUCT', 'OLMO_3_0625_7B_THINK', 'PILEVAL_LLAMA', 'TULU_3_405B', 'TULU_3_70B', 'TULU_3_8B');
+
+CREATE FUNCTION new_old_not_equals(
+                new_enum_val "public"."availableinfinigramindexid", old_enum_val "public"."availableinfinigramindexid_old"
+            )
+            RETURNS boolean AS $$
+                SELECT new_enum_val::text != old_enum_val::text;
+            $$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OPERATOR != (
+            leftarg = "public"."availableinfinigramindexid",
+            rightarg = "public"."availableinfinigramindexid_old",
+            procedure = new_old_not_equals
+        );
+
+CREATE FUNCTION new_old_equals(
+                new_enum_val "public"."availableinfinigramindexid", old_enum_val "public"."availableinfinigramindexid_old"
+            )
+            RETURNS boolean AS $$
+                SELECT new_enum_val::text = old_enum_val::text;
+            $$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OPERATOR = (
+            leftarg = "public"."availableinfinigramindexid",
+            rightarg = "public"."availableinfinigramindexid_old",
+            procedure = new_old_equals
+        );
+
+ALTER TABLE "public"."model_config" 
+                ALTER COLUMN "infini_gram_index" TYPE "public"."availableinfinigramindexid" 
+                USING "infini_gram_index"::text::"public"."availableinfinigramindexid";
+
+DROP FUNCTION new_old_not_equals(
+            new_enum_val "public"."availableinfinigramindexid", old_enum_val "public"."availableinfinigramindexid_old"
+        ) CASCADE;
+
+DROP FUNCTION new_old_equals(
+            new_enum_val "public"."availableinfinigramindexid", old_enum_val "public"."availableinfinigramindexid_old"
+        ) CASCADE;
+
+DROP TYPE "public"."availableinfinigramindexid_old";
+
+UPDATE alembic_version SET version_num='e62f9bd0f24b' WHERE alembic_version.version_num = 'a88c3e9a09b0';
+
 COMMIT;
 

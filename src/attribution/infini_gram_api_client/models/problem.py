@@ -1,4 +1,4 @@
-from typing import Any, TypeVar, Union, cast
+from typing import Any, Self, TypeVar, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -22,7 +22,7 @@ class Problem:
     title: str
     type_: str
     status: int
-    detail: Union[None, str]
+    detail: None | str
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -32,7 +32,7 @@ class Problem:
 
         status = self.status
 
-        detail: Union[None, str]
+        detail: None | str
         detail = self.detail
 
         field_dict: dict[str, Any] = {}
@@ -47,7 +47,7 @@ class Problem:
         return field_dict
 
     @classmethod
-    def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
+    def from_dict(cls, src_dict: dict[str, Any]) -> Self:
         d = src_dict.copy()
         title = d.pop("title")
 
@@ -55,10 +55,10 @@ class Problem:
 
         status = d.pop("status")
 
-        def _parse_detail(data: object) -> Union[None, str]:
+        def _parse_detail(data: object) -> None | str:
             if data is None:
                 return data
-            return cast(Union[None, str], data)
+            return cast(None | str, data)
 
         detail = _parse_detail(d.pop("detail"))
 

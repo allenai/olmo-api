@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Self, TypeVar, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -45,7 +45,7 @@ class AttributionDocument:
     display_offset_snippet: int
     needle_offset_snippet: int
     text_snippet: str
-    blocked: Union[Unset, bool] = False
+    blocked: Unset | bool = False
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -100,7 +100,7 @@ class AttributionDocument:
         return field_dict
 
     @classmethod
-    def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
+    def from_dict(cls, src_dict: dict[str, Any]) -> Self:
         from ..models.attribution_document_metadata import AttributionDocumentMetadata
 
         d = src_dict.copy()

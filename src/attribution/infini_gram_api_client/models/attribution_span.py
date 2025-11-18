@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Self, TypeVar, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -70,7 +70,7 @@ class AttributionSpan:
         return field_dict
 
     @classmethod
-    def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
+    def from_dict(cls, src_dict: dict[str, Any]) -> Self:
         from ..models.attribution_document import AttributionDocument
 
         d = src_dict.copy()

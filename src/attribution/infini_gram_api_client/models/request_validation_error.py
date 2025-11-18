@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Self, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -40,17 +40,19 @@ class RequestValidationError:
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
-        field_dict.update({
-            "title": title,
-            "type": type_,
-            "status": status,
-            "errors": errors,
-        })
+        field_dict.update(
+            {
+                "title": title,
+                "type": type_,
+                "status": status,
+                "errors": errors,
+            }
+        )
 
         return field_dict
 
     @classmethod
-    def from_dict(cls, src_dict: dict[str, Any]) -> Self:
+    def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
         from ..models.validation_error import ValidationError
 
         d = src_dict.copy()

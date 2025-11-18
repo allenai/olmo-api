@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Self, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -56,21 +56,23 @@ class AttributionSpan:
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
-        field_dict.update({
-            "left": left,
-            "right": right,
-            "length": length,
-            "count": count,
-            "unigramLogprobSum": unigram_logprob_sum,
-            "text": text,
-            "tokenIds": token_ids,
-            "documents": documents,
-        })
+        field_dict.update(
+            {
+                "left": left,
+                "right": right,
+                "length": length,
+                "count": count,
+                "unigramLogprobSum": unigram_logprob_sum,
+                "text": text,
+                "tokenIds": token_ids,
+                "documents": documents,
+            }
+        )
 
         return field_dict
 
     @classmethod
-    def from_dict(cls, src_dict: dict[str, Any]) -> Self:
+    def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
         from ..models.attribution_document import AttributionDocument
 
         d = src_dict.copy()

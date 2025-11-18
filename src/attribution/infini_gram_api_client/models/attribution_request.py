@@ -1,4 +1,4 @@
-from typing import Any, Self, TypeVar, cast
+from typing import Any, TypeVar, Union, cast
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -35,22 +35,22 @@ class AttributionRequest:
     """
 
     response: str
-    delimiters: Unset | list[str] = UNSET
-    allow_spans_with_partial_words: Unset | bool = False
-    minimum_span_length: Unset | int = 1
-    maximum_frequency: Unset | int = 10
-    maximum_span_density: Unset | float = 0.05
-    span_ranking_method: Unset | Any = "length"
-    maximum_documents_per_span: Unset | int = 10
-    maximum_context_length: Unset | int = 250
-    maximum_context_length_long: Unset | int = 100
-    maximum_context_length_snippet: Unset | int = 40
+    delimiters: Union[Unset, list[str]] = UNSET
+    allow_spans_with_partial_words: Union[Unset, bool] = False
+    minimum_span_length: Union[Unset, int] = 1
+    maximum_frequency: Union[Unset, int] = 10
+    maximum_span_density: Union[Unset, float] = 0.05
+    span_ranking_method: Union[Unset, Any] = "length"
+    maximum_documents_per_span: Union[Unset, int] = 10
+    maximum_context_length: Union[Unset, int] = 250
+    maximum_context_length_long: Union[Unset, int] = 100
+    maximum_context_length_snippet: Union[Unset, int] = 40
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         response = self.response
 
-        delimiters: Unset | list[str] = UNSET
+        delimiters: Union[Unset, list[str]] = UNSET
         if not isinstance(self.delimiters, Unset):
             delimiters = self.delimiters
 
@@ -74,9 +74,11 @@ class AttributionRequest:
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
-        field_dict.update({
-            "response": response,
-        })
+        field_dict.update(
+            {
+                "response": response,
+            }
+        )
         if delimiters is not UNSET:
             field_dict["delimiters"] = delimiters
         if allow_spans_with_partial_words is not UNSET:
@@ -101,7 +103,7 @@ class AttributionRequest:
         return field_dict
 
     @classmethod
-    def from_dict(cls, src_dict: dict[str, Any]) -> Self:
+    def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
         d = src_dict.copy()
         response = d.pop("response")
 

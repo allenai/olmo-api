@@ -72,6 +72,7 @@ class ModelBase(BaseModel):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def is_deprecated(self) -> bool:
+        return False
         now = datetime.now().astimezone(UTC)
 
         model_is_not_available_yet = False if self.available_time is None else now < self.available_time
@@ -82,6 +83,7 @@ class ModelBase(BaseModel):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def is_visible(self) -> bool:
+        return True
         now = datetime.now().astimezone(UTC)
 
         model_is_available = True if self.available_time is None else now >= self.available_time

@@ -468,6 +468,8 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         )
         assert update_model_response2.status_code == 400
 
+    # def test_prerelease_model(self) -> None:
+
 
 class TestV4ModelEndpointsAnonymous(BaseTestV4ModelEndpoints):
     def setUp(self):

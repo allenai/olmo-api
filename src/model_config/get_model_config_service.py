@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from typing import Annotated
 
 from pydantic import Field, RootModel, TypeAdapter
@@ -24,10 +25,15 @@ def get_model_configs(session_maker: sessionmaker[Session], *, include_internal_
             ModelConfig, [ModelConfig, MultiModalModelConfig, FilesOnlyModelConfig]
         )
 
-        stmt = select(ModelConfig).options(polymorphic_loader_opt).order_by(ModelConfig.order.asc())
+        stmt = (
+            select(ModelConfig)
+            .options(polymorphic_loader_opt)
+            .order_by(ModelConfig.order.asc())
+            .where(datetime.now(UTC) < ModelConfig.deprecation_time)
+        )
 
         if not include_internal_models:
-            stmt = stmt.filter_by(internal=False)
+            stmt = stmt.filter_by(internal=False).where(ModelConfig.available_time < datetime.now(tz=UTC))
 
         results = session.scalars(stmt).all()
 

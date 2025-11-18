@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 from pydantic_ai.messages import ToolReturnPart
 from pydantic_ai.tools import ToolDefinition
-
+from src.config.get_config import get_config
 from src.dao.engine_models.message import Message
 from src.dao.engine_models.tool_call import ToolCall
 from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefinition
@@ -41,7 +41,8 @@ def get_available_tools(model: "ModelConfig | ModelBase") -> list[Ai2ToolDefinit
     if model.can_call_tools is False:
         return []
 
-    internal_tools = get_internal_tools()
+    # HACK: We'll want to replace this with a way to determine what tools are available on models
+    internal_tools = get_internal_tools() if get_config().feature_flags.show_internal_tools else []
     mcp_tools = get_general_mcp_tools()
 
     return internal_tools + mcp_tools

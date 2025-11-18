@@ -1,6 +1,6 @@
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
-from pydantic import AwareDatetime, ByteSize, Field, HttpUrl, model_validator
+from pydantic import AfterValidator, AwareDatetime, ByteSize, Field, HttpUrl, model_validator
 
 from src.api_interface import APIInterface
 from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
@@ -14,6 +14,16 @@ from src.dao.engine_models.model_config import (
 from src.dao.message.inference_opts_model import InferenceOpts
 
 
+def empty_string_to_none(value: str | None) -> str | None:
+    if value is None:
+        return value
+
+    if value.strip() == "":
+        return None
+
+    return value
+
+
 class BaseModelConfigRequest(APIInterface):
     name: str = Field(min_length=1)
     host: ModelHost
@@ -22,7 +32,7 @@ class BaseModelConfigRequest(APIInterface):
     model_type: ModelType
     model_id_on_host: str = Field(min_length=1)
     internal: bool = Field(default=True)
-    default_system_prompt: str | None = Field(default=None)
+    default_system_prompt: Annotated[str | None, AfterValidator(empty_string_to_none)] = Field(default=None)
     family_id: str | None = Field(default=None)
     family_name: str | None = Field(default=None)
     available_time: AwareDatetime | None = Field(default=None)

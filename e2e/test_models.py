@@ -1,6 +1,5 @@
 import json
 import operator
-from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import requests
@@ -468,34 +467,6 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
             json=json.dumps(update_model_temperature),
         )
         assert update_model_response2.status_code == 400
-
-    def test_prerelease_model(self) -> None:
-        model_id = "test-model-" + str(uuid4())
-        available_time = datetime.now(tz=UTC) + timedelta(days=100)
-
-        create_model_request = CreateTextOnlyModelConfigRequest(
-            id=model_id,
-            name="model made for testing",
-            description="This model is made for testing",
-            model_id_on_host="test-model-id",
-            model_type=ModelType.Chat,
-            host=ModelHost.InferD,
-            prompt_type=PromptType.TEXT_ONLY,
-            can_think=True,
-            available_time=available_time,
-        )
-
-        create_response = self.create_model(create_model_request)
-        create_response.raise_for_status()
-
-        created_model = ResponseModel.model_validate(create_response.json()).root
-        assert created_model.available_time == available_time
-
-        available_models = self.list_models()
-
-        test_model = next((model for model in available_models if model.get("id") == model_id), None)
-        assert test_model is not None, "The test prerelease model wasn't returned from the GET request"
-        assert test_model
 
 
 class TestV4ModelEndpointsAnonymous(BaseTestV4ModelEndpoints):

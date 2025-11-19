@@ -3,8 +3,7 @@ from dataclasses import field
 from typing import Annotated, Self, cast
 
 from flask import current_app
-from groq import BaseModel
-from pydantic import AfterValidator, Field
+from pydantic import AfterValidator, BaseModel, Field
 from rank_bm25 import BM25Okapi  # type: ignore
 from werkzeug import exceptions
 

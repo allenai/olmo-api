@@ -90,19 +90,6 @@ class ModelBase(BaseModel):
 
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def is_deprecated(self) -> bool:
-        now = datetime.now().astimezone(UTC)
-
-        model_is_not_available_yet = False if self.available_time is None else now < self.available_time
-        model_is_after_deprecation_time = False if self.deprecation_time is None else now > self.deprecation_time
-
-        if self.should_show_internal_models and not model_is_after_deprecation_time:
-            return False
-
-        return model_is_not_available_yet or model_is_after_deprecation_time
-
-    @computed_field  # type: ignore[prop-decorator]
-    @property
     def is_visible(self) -> bool:
         now = datetime.now().astimezone(UTC)
 
@@ -113,6 +100,11 @@ class ModelBase(BaseModel):
             return True
 
         return model_is_available and model_is_before_deprecation_time
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def is_deprecated(self) -> bool:
+        return not self.is_visible
 
 
 class Model(ModelBase):

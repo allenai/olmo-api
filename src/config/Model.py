@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Literal, TypedDict
 
 from pydantic import (
     AfterValidator,
@@ -15,6 +15,10 @@ from pydantic import (
 from src.api_interface import APIInterface
 from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
 from src.dao.engine_models.model_config import FileRequiredToPromptOption, ModelHost, ModelType, PromptType
+
+
+class ModelValidationContext(TypedDict):
+    should_show_internal_models: bool | None
 
 
 class AvailableTool(APIInterface):

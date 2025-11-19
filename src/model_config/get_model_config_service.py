@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 from typing import Annotated
 
 from pydantic import Field, RootModel, TypeAdapter
@@ -25,19 +24,16 @@ def get_model_configs(session_maker: sessionmaker[Session], *, include_internal_
             ModelConfig, [ModelConfig, MultiModalModelConfig, FilesOnlyModelConfig]
         )
 
-        stmt = (
-            select(ModelConfig)
-            .options(polymorphic_loader_opt)
-            .order_by(ModelConfig.order.asc())
-            .where(datetime.now(UTC) < ModelConfig.deprecation_time)
-        )
+        stmt = select(ModelConfig).options(polymorphic_loader_opt).order_by(ModelConfig.order.asc())
 
         if not include_internal_models:
-            stmt = stmt.filter_by(internal=False).where(ModelConfig.available_time < datetime.now(tz=UTC))
+            stmt = stmt.filter_by(internal=False)
 
         results = session.scalars(stmt).all()
 
-        mapped_models = ModelResponse.model_validate(results, from_attributes=True)
+        mapped_models = ModelResponse.model_validate(
+            results, from_attributes=True, context={"should_show_internal_models": include_internal_models}
+        )
 
         # Mutating the mapped models list here, would love to have a more elegant way of doing this
         available_tool_list_type_adapter = TypeAdapter(list[AvailableTool])

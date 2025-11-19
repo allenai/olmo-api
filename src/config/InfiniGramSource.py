@@ -1,4 +1,4 @@
-from typing import Self, Union
+from typing import Self
 
 from pydantic import BaseModel, ModelWrapValidatorHandler, model_validator
 
@@ -6,9 +6,9 @@ from pydantic import BaseModel, ModelWrapValidatorHandler, model_validator
 class InfiniGramSource(BaseModel):
     name: str
     usage: str
-    display_name: Union[str, None]
-    url: Union[str, None]
-    secondary_name: Union[str, None]
+    display_name: str | None
+    url: str | None
+    secondary_name: str | None
 
     @model_validator(mode="wrap")
     @classmethod

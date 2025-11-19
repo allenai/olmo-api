@@ -3,6 +3,6 @@
     "contact": "sams",
     "team": "oe-adoption",
     "replicas": {
-        "prod": 4
+        "prod": 10
     }
 }

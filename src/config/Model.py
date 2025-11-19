@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Literal, TypedDict
 
 from pydantic import (
     AfterValidator,
@@ -8,12 +8,17 @@ from pydantic import (
     BeforeValidator,
     ByteSize,
     Field,
+    ValidationInfo,
     computed_field,
 )
 
 from src.api_interface import APIInterface
 from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
 from src.dao.engine_models.model_config import FileRequiredToPromptOption, ModelHost, ModelType, PromptType
+
+
+class ModelValidationContext(TypedDict):
+    should_show_internal_models: bool | None
 
 
 class AvailableTool(APIInterface):
@@ -27,6 +32,17 @@ def map_datetime_to_utc(datetime: AwareDatetime | None) -> AwareDatetime | None:
         return datetime
 
     return datetime.astimezone(UTC)
+
+
+# Putting the setup in the validator allows us to use validation context for this
+def get_show_internal_models_from_context(value: bool, info: ValidationInfo) -> bool:  # noqa: FBT001
+    if value is True:
+        return value
+
+    if not isinstance(info.context, dict):
+        return False
+
+    return bool(info.context.get("should_show_internal_models", False))
 
 
 class ModelBase(BaseModel):
@@ -69,15 +85,12 @@ class ModelBase(BaseModel):
 
     stop_default: list[str] | None = None
 
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def is_deprecated(self) -> bool:
-        now = datetime.now().astimezone(UTC)
-
-        model_is_not_available_yet = False if self.available_time is None else now < self.available_time
-        model_is_after_deprecation_time = False if self.deprecation_time is None else now > self.deprecation_time
-
-        return model_is_not_available_yet or model_is_after_deprecation_time
+    should_show_internal_models: Annotated[bool, AfterValidator(get_show_internal_models_from_context)] = Field(
+        default=False,
+        exclude=True,
+        # validate_default needs to be set so this always gets the value from context
+        validate_default=True,
+    )
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -87,7 +100,15 @@ class ModelBase(BaseModel):
         model_is_available = True if self.available_time is None else now >= self.available_time
         model_is_before_deprecation_time = True if self.deprecation_time is None else now < self.deprecation_time
 
+        if self.should_show_internal_models and model_is_before_deprecation_time:
+            return True
+
         return model_is_available and model_is_before_deprecation_time
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def is_deprecated(self) -> bool:
+        return not self.is_visible
 
 
 class Model(ModelBase):

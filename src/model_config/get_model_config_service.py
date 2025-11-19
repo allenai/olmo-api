@@ -4,7 +4,7 @@ from pydantic import Field, RootModel, TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectin_polymorphic, sessionmaker
 
-from src.config.Model import AvailableTool, Model, MultiModalModel
+from src.config.Model import AvailableTool, Model, ModelValidationContext, MultiModalModel
 from src.dao.engine_models.model_config import (
     FilesOnlyModelConfig,
     ModelConfig,
@@ -31,7 +31,9 @@ def get_model_configs(session_maker: sessionmaker[Session], *, include_internal_
 
         results = session.scalars(stmt).all()
 
-        mapped_models = ModelResponse.model_validate(results, from_attributes=True)
+        model_validation_context = ModelValidationContext(should_show_internal_models=include_internal_models)
+
+        mapped_models = ModelResponse.model_validate(results, from_attributes=True, context=model_validation_context)
 
         # Mutating the mapped models list here, would love to have a more elegant way of doing this
         available_tool_list_type_adapter = TypeAdapter(list[AvailableTool])

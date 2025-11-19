@@ -28,7 +28,6 @@ from src.attribution.infini_gram_api_client.models.available_infini_gram_index_i
 from src.attribution.infini_gram_api_client.models.problem import Problem
 from src.attribution.infini_gram_api_client.models.request_validation_error import RequestValidationError
 from src.config.get_config import cfg
-from src.config.InfiniGramSource import InfiniGramSource
 from src.dao.engine_models.model_config import ModelConfig
 from src.util.pii_regex import does_contain_pii
 
@@ -83,9 +82,7 @@ class ResponseAttributionDocument(BaseModel):
         }:
             source = metadata.get("source", None)
 
-        source_detail = cfg.infini_gram.source_map.get(
-            source, InfiniGramSource(name=None, usage=None, display_name=None, url=None, secondary_name=None)
-        )
+        source_detail = cfg.infini_gram.source_map.get(source, None)
 
         return cls(
             text_long=document.text_long,
@@ -99,13 +96,13 @@ class ResponseAttributionDocument(BaseModel):
             corresponding_span_texts=[document.span_text],
             index=str(document.document_index),
             source=source,
-            usage=source_detail.usage,
-            display_name=source_detail.display_name or None,
-            source_url=source_detail.url or None,
+            usage=source_detail.usage if source_detail is not None else None,
+            display_name=source_detail.display_name if source_detail is not None else None,
+            source_url=source_detail.url if source_detail is not None else None,
             relevance_score=document.relevance_score,
             title=document.metadata.additional_properties.get("metadata", {}).get("metadata", {}).get("title", None),
             url=url,
-            secondary_name=source_detail.secondary_name,
+            secondary_name=source_detail.secondary_name if source_detail is not None else None,
         )
 
 

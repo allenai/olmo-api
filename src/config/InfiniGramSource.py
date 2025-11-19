@@ -4,8 +4,8 @@ from pydantic import BaseModel, ModelWrapValidatorHandler, model_validator
 
 
 class InfiniGramSource(BaseModel):
-    name: str | None
-    usage: str | None
+    name: str
+    usage: str
     display_name: str | None
     url: str | None
     secondary_name: str | None

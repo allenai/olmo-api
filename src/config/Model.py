@@ -30,6 +30,7 @@ def map_datetime_to_utc(datetime: AwareDatetime | None) -> AwareDatetime | None:
     return datetime.astimezone(UTC)
 
 
+# Putting the setup in the validator allows us to use validation context for this
 def get_show_internal_models_from_context(value: bool, info: ValidationInfo) -> bool:  # noqa: FBT001
     if value is True:
         return value
@@ -81,7 +82,10 @@ class ModelBase(BaseModel):
     stop_default: list[str] | None = None
 
     should_show_internal_models: Annotated[bool, AfterValidator(get_show_internal_models_from_context)] = Field(
-        default=False, exclude=True, validate_default=True
+        default=False,
+        exclude=True,
+        # validate_default needs to be set so this always gets the value from context
+        validate_default=True,
     )
 
     @computed_field  # type: ignore[prop-decorator]

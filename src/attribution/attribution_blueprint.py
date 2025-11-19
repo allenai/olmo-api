@@ -1,7 +1,7 @@
-from flask import Blueprint, Response, jsonify
+from flask import Blueprint
 from werkzeug import exceptions
 
-from src.attribution.attribution_service import GetAttributionRequest, get_attribution
+from src.attribution.attribution_service import AttributionResponse, GetAttributionRequest, get_attribution
 from src.config.get_config import cfg
 from src.dao.flask_sqlalchemy_session import current_session
 from src.flask_pydantic_api.api_wrapper import pydantic_api
@@ -16,7 +16,7 @@ attribution_blueprint = Blueprint(name="attribution", import_name=__name__)
 @pydantic_api(name="Get CorpusLink spans and documents from a prompt", tags=["CorpusLink"])
 def get_attribution_for_model_response(
     corpuslink_request: GetAttributionRequest,
-) -> Response:
+) -> AttributionResponse:
     config = get_single_model_config_admin(current_session, corpuslink_request.model_id)
     if config is None:
         raise exceptions.NotFound
@@ -31,4 +31,4 @@ def get_attribution_for_model_response(
         request=corpuslink_request, infini_gram_client=infini_gram_client, model_config=config
     )
 
-    return jsonify(attribution_response)
+    return attribution_response

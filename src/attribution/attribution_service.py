@@ -1,8 +1,9 @@
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import field
 from typing import Annotated, Self, cast
 
 from flask import current_app
+from groq import BaseModel
 from pydantic import AfterValidator, Field
 from rank_bm25 import BM25Okapi  # type: ignore
 from werkzeug import exceptions
@@ -27,6 +28,7 @@ from src.attribution.infini_gram_api_client.models.available_infini_gram_index_i
 from src.attribution.infini_gram_api_client.models.problem import Problem
 from src.attribution.infini_gram_api_client.models.request_validation_error import RequestValidationError
 from src.config.get_config import cfg
+from src.config.InfiniGramSource import InfiniGramSource
 from src.dao.engine_models.model_config import ModelConfig
 from src.util.pii_regex import does_contain_pii
 
@@ -39,23 +41,21 @@ from .flatten_spans import (
 from .infini_gram_api_client import Client
 
 
-@dataclass
-class AttributionDocumentSnippet:
+class AttributionDocumentSnippet(BaseModel):
     text: str
     corresponding_span_text: str
 
 
-@dataclass
-class ResponseAttributionDocument:
+class ResponseAttributionDocument(BaseModel):
     text_long: str
     snippets: list[AttributionDocumentSnippet]
     corresponding_spans: list[int]
     corresponding_span_texts: list[str]
     index: str
-    source: str
-    usage: str
-    display_name: str
-    source_url: str
+    source: str | None
+    usage: str | None
+    display_name: str | None
+    source_url: str | None
     relevance_score: float
     title: str | None = None
     url: str | None = None
@@ -83,7 +83,9 @@ class ResponseAttributionDocument:
         }:
             source = metadata.get("source", None)
 
-        source_detail = cfg.infini_gram.source_map[source]
+        source_detail = cfg.infini_gram.source_map.get(
+            source, InfiniGramSource(name=None, usage=None, display_name=None, url=None, secondary_name=None)
+        )
 
         return cls(
             text_long=document.text_long,
@@ -98,8 +100,8 @@ class ResponseAttributionDocument:
             index=str(document.document_index),
             source=source,
             usage=source_detail.usage,
-            display_name=source_detail.display_name or "",
-            source_url=source_detail.url or "",
+            display_name=source_detail.display_name or None,
+            source_url=source_detail.url or None,
             relevance_score=document.relevance_score,
             title=document.metadata.additional_properties.get("metadata", {}).get("metadata", {}).get("title", None),
             url=url,
@@ -122,20 +124,18 @@ class GetAttributionRequest(APIInterface):
     max_display_context_length: int = Field(default=250)
 
 
-@dataclass
-class ResponseAttributionSpan:
+class ResponseAttributionSpan(BaseModel):
     text: str
     start_index: int
     documents: list[int] = field(default_factory=list)
 
 
-@dataclass
 class TopLevelAttributionSpan(ResponseAttributionSpan):
     nested_spans: list[ResponseAttributionSpan] = field(default_factory=list)
 
-    @classmethod
-    def from_flattened_span(cls, span: FlattenedSpan) -> Self:
-        return cls(
+    @staticmethod
+    def from_flattened_span(span: FlattenedSpan) -> "TopLevelAttributionSpan":
+        return TopLevelAttributionSpan(
             text=span.text,
             nested_spans=[
                 ResponseAttributionSpan(
@@ -168,6 +168,12 @@ def update_mapped_document(
                 corresponding_span_text=new_document.span_text,
             )
         )
+
+
+class AttributionResponse(BaseModel):
+    index: str
+    documents: list[ResponseAttributionDocument]
+    spans: list[TopLevelAttributionSpan]
 
 
 def get_attribution(request: GetAttributionRequest, infini_gram_client: Client, model_config: ModelConfig):
@@ -242,7 +248,7 @@ def get_attribution(request: GetAttributionRequest, infini_gram_client: Client, 
         for span_to_rank in filtered_spans:
             for j in range(len(span_to_rank.documents)):
                 doc = span_to_rank.documents[j]
-                span_to_rank.documents[j] = IntermediateAttributionDocument(
+                span_to_rank.documents[j] = IntermediateAttributionDocument(  # pyright: ignore[reportCallIssue, reportArgumentType]
                     document_index=doc.document_index,
                     document_length=doc.document_length,
                     display_length=doc.display_length,
@@ -266,7 +272,7 @@ def get_attribution(request: GetAttributionRequest, infini_gram_client: Client, 
     )
 
     mapped_documents: dict[int, ResponseAttributionDocument] = {}
-    mapped_spans: dict[int, ResponseAttributionSpan] = {}
+    mapped_spans: dict[int, TopLevelAttributionSpan] = {}
 
     for span_index, span in enumerate(flattened_spans):
         if span_index not in mapped_spans:
@@ -292,17 +298,15 @@ def get_attribution(request: GetAttributionRequest, infini_gram_client: Client, 
                     span_index=span_index,
                 )
 
-    return {
-        "index": index,
-        # The UI uses this sort order to show the documents in desc relevance
-        "documents": sorted(
+    return AttributionResponse(
+        index=index,
+        documents=sorted(
             mapped_documents.values(),
             key=lambda document: document.relevance_score,
             reverse=True,
         ),
-        # The UI uses this sort order to highlight spans in order
-        "spans": sorted(mapped_spans.values(), key=lambda span: span.start_index),
-    }
+        spans=sorted(mapped_spans.values(), key=lambda span: span.start_index),
+    )
 
 
 def filter_document(document: AttributionDocument):

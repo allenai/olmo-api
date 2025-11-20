@@ -178,8 +178,8 @@ class OpenAIStreamedResponse(StreamedResponse):
             for dtc in choice.delta.tool_calls or []:
                 maybe_event = self._parts_manager.handle_tool_call_delta(
                     vendor_part_id=dtc.index,
-                    tool_name=dtc.function and dtc.function.name,
-                    args=dtc.function and dtc.function.arguments,
+                    tool_name=dtc.function and dtc.function.name,  # type:ignore # idk what's going on here i copied this from p-ai
+                    args=dtc.function and dtc.function.arguments,  # type:ignore # idk what's going on here i copied this from p-ai
                     tool_call_id=dtc.id,
                 )
                 if maybe_event is not None:

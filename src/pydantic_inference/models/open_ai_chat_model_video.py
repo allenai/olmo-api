@@ -27,7 +27,6 @@ from pydantic_ai.messages import (
     FinishReason,
     ImageUrl,
     ModelMessage,
-    ModelResponse,
     ModelResponseStreamEvent,
     PartStartEvent,
     ThinkingPart,
@@ -298,8 +297,8 @@ class OpenAIChatModelVideo(OpenAIChatModel):
         peekable_response = _utils.PeekableAsyncStream(response)
         first_chunk = await peekable_response.peek()
         if isinstance(first_chunk, _utils.Unset):
-            raise UnexpectedModelBehavior(  # pragma: no cover
-                "Streamed response ended without content or tool calls"
+            raise UnexpectedModelBehavior(  # pragma: no cover  # noqa: TRY003
+                "Streamed response ended without content or tool calls"  # noqa: EM101
             )
 
         # When using Azure OpenAI and a content filter is enabled, the first chunk will contain a `''` model name,
@@ -333,18 +332,6 @@ class OpenAIChatModelVideo(OpenAIChatModel):
         )
         async with response:
             yield await self._process_streamed_response(response, model_request_parameters)
-
-    def _process_response(self, response: chat.ChatCompletion | str) -> ModelResponse:
-        if not isinstance(response, chat.ChatCompletion):
-            invalid_response_msg = "Invalid response from OpenAI chat completions endpoint, expected JSON data"
-            raise UnexpectedModelBehavior(invalid_response_msg)
-
-        if response.choices:
-            choice = response.choices[0]
-            if getattr(choice.message, "reasoning_content", None) and getattr(choice.message, "reasoning", None):
-                setattr(choice.message, "reasoning_content", None)  # noqa: B010
-
-        return super()._process_response(response)
 
 
 class VideoURL(TypedDict, total=False):

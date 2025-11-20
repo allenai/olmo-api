@@ -3,6 +3,7 @@ from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
+
 from pydantic_ai.messages import (
     BinaryContent,
     FinalResultEvent,
@@ -25,7 +26,6 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 from pydantic_ai.models.openai import OpenAIModelSettings
-
 from src.dao.engine_models.message import Message
 from src.dao.engine_models.model_config import ModelConfig
 from src.dao.engine_models.tool_call import ToolCall

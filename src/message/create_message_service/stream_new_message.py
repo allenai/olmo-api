@@ -9,12 +9,12 @@ from flask import current_app
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
 from pydantic import BaseModel
+
 from pydantic_ai.agent import InstrumentationSettings
 from pydantic_ai.direct import model_request_stream_sync
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models import ModelRequestParameters
-
 from src import db, parse
 from src.auth.token import Token
 from src.dao.completion import CompletionOutput
@@ -38,11 +38,11 @@ from src.message.SafetyChecker import (
     SafetyCheckerType,
 )
 from src.message.stream_message import StreamMetrics
+from src.pydantic_inference.mapping.input.map_input import pydantic_map_messages
+from src.pydantic_inference.mapping.output.map_output import pydantic_map_chunk
 from src.pydantic_inference.pydantic_ai_helpers import (
     find_tool_def_by_name,
     map_pydantic_tool_to_db_tool,
-    pydantic_map_chunk,
-    pydantic_map_messages,
     pydantic_settings_map,
 )
 from src.pydantic_inference.pydantic_model_service import get_pydantic_model

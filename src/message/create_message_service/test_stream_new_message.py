@@ -1,8 +1,8 @@
 import pytest
-from pydantic_ai.messages import ModelResponse, TextPart, ThinkingPart, ToolCallPart, ToolCallPartDelta
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
+from pydantic_ai.messages import ModelResponse, TextPart, ThinkingPart, ToolCallPart, ToolCallPartDelta
 from src import db
 from src.auth.token import Token
 from src.dao.engine_models.message import Message
@@ -14,7 +14,7 @@ from src.dao.message.message_repository import MessageRepository
 from src.message.create_message_request import CreateMessageRequestWithFullMessages
 from src.message.create_message_service.stream_new_message import map_response_to_final_output, stream_new_message
 from src.message.message_chunk import ChunkType, ErrorChunk, ErrorCode, ErrorSeverity, StreamEndChunk, StreamStartChunk
-from src.pydantic_inference.pydantic_ai_helpers import pydantic_map_delta, pydantic_map_part
+from src.pydantic_inference.mapping.output.map_output import _pydantic_map_delta, _pydantic_map_part
 from src.thread.thread_models import Thread
 
 
@@ -134,7 +134,7 @@ def test_pydantic_map_part_should_return_error_chunk_when_tool_not_found():
         ],
     )
 
-    chunk = pydantic_map_part(tool_call_part, reply)
+    chunk = _pydantic_map_part(tool_call_part, reply)
 
     assert isinstance(chunk, ErrorChunk)
     assert chunk.error_code == ErrorCode.TOOL_CALL_ERROR
@@ -180,7 +180,7 @@ def test_pydantic_map_delta_should_return_error_chunk_when_tool_not_found():
         ],
     )
 
-    chunk = pydantic_map_delta(tool_call_delta, reply)
+    chunk = _pydantic_map_delta(tool_call_delta, reply)
 
     assert isinstance(chunk, ErrorChunk)
     assert chunk.error_code == ErrorCode.TOOL_CALL_ERROR

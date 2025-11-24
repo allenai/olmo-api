@@ -34,10 +34,10 @@ def _map_db_tool_to_pydantic_tool(tool: ToolCall):
     return ToolCallPart(tool_name=tool.tool_name, tool_call_id=tool.tool_call_id, args=tool.args)
 
 
-VIDEO_FILE_EXTENSIONS = typing.get_args(VideoFormat)
-DOCUMENT_FILE_EXTENSIONS = typing.get_args(DocumentFormat)
-IMAGE_FILE_EXTENSIONS = typing.get_args(ImageFormat)
-AUDIO_FILE_EXTENSIONS = typing.get_args(AudioFormat)
+VIDEO_FILE_EXTENSIONS = tuple(extension.casefold() for extension in typing.get_args(VideoFormat))
+DOCUMENT_FILE_EXTENSIONS = tuple(extension.casefold() for extension in typing.get_args(DocumentFormat))
+IMAGE_FILE_EXTENSIONS = tuple(extension.casefold() for extension in typing.get_args(ImageFormat))
+AUDIO_FILE_EXTENSIONS = tuple(extension.casefold() for extension in typing.get_args(AudioFormat))
 
 
 class UnsupportedMediaTypeError(Exception):

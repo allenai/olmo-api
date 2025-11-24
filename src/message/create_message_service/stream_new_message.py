@@ -40,10 +40,10 @@ from src.message.SafetyChecker import (
 from src.message.stream_message import StreamMetrics
 from src.pydantic_inference.mapping.input.map_input import pydantic_map_messages
 from src.pydantic_inference.mapping.output.map_output import pydantic_map_chunk
+from src.pydantic_inference.mapping.settings.map_settings import pydantic_settings_map
 from src.pydantic_inference.pydantic_ai_helpers import (
     find_tool_def_by_name,
     map_pydantic_tool_to_db_tool,
-    pydantic_settings_map,
 )
 from src.pydantic_inference.pydantic_model_service import get_pydantic_model
 from src.tools.tools_service import call_tool, get_pydantic_tool_defs

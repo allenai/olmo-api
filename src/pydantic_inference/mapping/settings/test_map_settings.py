@@ -1,6 +1,6 @@
 from src.dao.engine_models.model_config import ModelConfig, ModelHost, ModelType, PromptType
 from src.dao.message.message_models import InferenceOpts
-from src.pydantic_inference.pydantic_ai_helpers import pydantic_settings_map
+from src.pydantic_inference.mapping.settings.map_settings import pydantic_settings_map
 
 default_inference_constraints = {
     "max_tokens_default": 2048,

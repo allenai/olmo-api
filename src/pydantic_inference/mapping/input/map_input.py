@@ -51,7 +51,7 @@ def _map_part_from_file_url(file_url: str, blob_map: dict[str, FileUploadResult]
             media_type=blob_map[file_url].file_storage.content_type or "image/png",
         )
 
-    file_suffix = Path(file_url).suffix
+    file_suffix = Path(file_url).suffix.casefold()
 
     if file_suffix.endswith(VIDEO_FILE_EXTENSIONS):
         return VideoUrl(url=file_url)

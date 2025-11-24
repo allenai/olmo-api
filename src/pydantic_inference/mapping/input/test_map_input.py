@@ -5,7 +5,7 @@ from src.dao.message.message_models import Role
 from src.pydantic_inference.mapping.input.map_input import pydantic_map_messages
 
 TEST_VIDEO_URL = "http://localhost:8080/video.mp4"
-TEST_IMAGE_URL = "http://localhost:8080/image.jpeg"
+TEST_IMAGE_URL = "http://localhost:8080/image.JPEG"
 TEST_DOCUMENT_URL = "http://localhost:8080/document.html"
 TEST_AUDIO_URL = "http://localhost:8080/audio.mp3"
 

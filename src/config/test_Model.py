@@ -7,7 +7,7 @@ from src.config.Model import Model, ModelValidationContext
 from src.dao.engine_models.model_config import ModelHost, ModelType, PromptType
 
 
-@time_machine.travel(datetime(2025, 1, 1, tzinfo=UTC))
+@time_machine.travel(destination=datetime(2025, 1, 1, tzinfo=UTC))
 def test_is_not_visible_when_not_available_yet() -> None:
     model = Model.model_validate({
         "id": "foo",

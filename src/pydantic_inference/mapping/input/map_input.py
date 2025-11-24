@@ -65,7 +65,7 @@ def _map_part_from_file_url(file_url: str, blob_map: dict[str, FileUploadResult]
     if file_suffix.endswith(AUDIO_FILE_EXTENSIONS):
         return AudioUrl(url=file_url)
 
-    unsupported_media_type_msg = "URL %s has unsupported media type %s"
+    unsupported_media_type_msg = "File URL %s has unsupported media type %s"
     raise UnsupportedMediaTypeError(unsupported_media_type_msg, file_url, file_suffix)
 
 

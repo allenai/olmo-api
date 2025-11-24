@@ -1,0 +1,14 @@
+[
+    {
+        "origin": [
+            "https://playground.allenai.org",
+            "https://https://dev.olmo-ui.allen.ai/",
+            "http://localhost:8080",
+            "http://localhost:3000"
+        ],
+        "method": [
+            "GET",
+            "OPTIONS"
+        ]
+    }
+]

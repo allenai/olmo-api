@@ -1,0 +1,1 @@
+gcloud storage buckets update gs://ai2-playground-molmo --cors-file=bucket-cors-config.json

@@ -61,7 +61,7 @@ InputPart: TypeAlias = Molmo2PointPart
 class CreateMessageRequest(APIInterface):
     parent: str | None = Field(default=None)
     content: str = Field(min_length=1)
-    input_parts: list[InputPart] = Field(default_factory=list)
+    input_parts: list[Json[InputPart]] = Field(default_factory=list)
     role: Role | None = Field(default=Role.User)
     original: str | None = Field(default=None)
     private: bool = Field(default=False)

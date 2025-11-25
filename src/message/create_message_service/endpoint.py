@@ -21,6 +21,7 @@ from src.flask_pydantic_api.utils import UploadedFile
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
     CreateToolDefinition,
+    InputPart,
 )
 from src.message.create_message_service.merge_inference_options import merge_inference_options
 from src.message.create_message_service.safety import validate_message_security_and_safety
@@ -48,6 +49,7 @@ class MessageType(StrEnum):
 class ModelMessageStreamInput:
     parent: str | None = None
     content: str
+    input_parts: list[InputPart] = field(default_factory=list)
     role: message.Role | None = message.Role.User
     original: str | None = None
     private: bool = False
@@ -104,6 +106,10 @@ def stream_message_from_model(
         top_p=request.top_p,
         stop=request.stop,
     )
+
+    if request.input_parts:
+        point_parts = (part for part in request.input_parts if part.type == "input_point")
+        point_strings = (f'<points coords="{part.time} 1 {part.x} {part.y}">object</points>' for part in point_parts)
 
     mapped_request = CreateMessageRequestWithFullMessages(
         parent_id=request.parent,

@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Annotated, Any, Self
+from typing import Annotated, Any, Literal, Self, TypeAlias
 
 from pydantic import AfterValidator, BaseModel, Field, Json, field_validator, model_validator
 from werkzeug import exceptions
@@ -41,10 +41,20 @@ class CreateToolDefinition(APIInterface):
     parameters: ParameterDef
 
 
+class PointPart(APIInterface):
+    type: Literal["input_point"]
+    x: int
+    y: int
+    time: int
+
+
+InputPart: TypeAlias = PointPart
+
+
 class CreateMessageRequest(APIInterface):
-    # TODO: Validate that the parent role is different from this role and that it exists
     parent: str | None = Field(default=None)
     content: str = Field(min_length=1)
+    input_parts: list[InputPart] = Field(default_factory=list)
     role: Role | None = Field(default=Role.User)
     original: str | None = Field(default=None)
     private: bool = Field(default=False)

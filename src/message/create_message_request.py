@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from enum import StrEnum
 from typing import Annotated, Any, Literal, Self, TypeAlias
 
 from pydantic import AfterValidator, BaseModel, Field, Json, field_validator, model_validator
@@ -41,13 +42,19 @@ class CreateToolDefinition(APIInterface):
     parameters: ParameterDef
 
 
+class PointPartType(StrEnum):
+    MOLMO_2_INPUT_POINT = "molmo_2_input_point"
+
+
 class PointPart(APIInterface):
-    type: Literal["input_point"]
+    type: Literal[PointPartType.MOLMO_2_INPUT_POINT]
     x: int
     y: int
-    time: int
+    time: float
+    label: str = Field(default="object")
 
 
+# Will be a union of different parts in the future
 InputPart: TypeAlias = PointPart
 
 
@@ -110,7 +117,7 @@ class CreateMessageRequest(APIInterface):
     @field_validator("input_parts", mode="after")
     @classmethod
     def only_one_molmo_2_input_part_allowed(cls, value: list[InputPart]) -> list[InputPart]:
-        molmo_2_point_parts = [part for part in value if part.type == "molmo_2_input_point"]
+        molmo_2_point_parts = [part for part in value if part.type == PointPartType.MOLMO_2_INPUT_POINT]
         if len(molmo_2_point_parts) > 1:
             msg = "Only one Molmo 2 input part allowed per request"
             raise ValueError(msg)

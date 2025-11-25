@@ -13,7 +13,8 @@
         "puremagic",
         "sessionmaker",
         "usefixtures",
-        "instrumentor"
+        "instrumentor",
+        "molmo"
     ],
     "ruff.configurationPreference": "filesystemFirst",
     "ruff.format.preview": true,

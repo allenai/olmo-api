@@ -46,8 +46,8 @@ class PointPartType(StrEnum):
     MOLMO_2_INPUT_POINT = "molmo_2_input_point"
 
 
-class PointPart(APIInterface):
-    type: Literal[PointPartType.MOLMO_2_INPUT_POINT]
+class Molmo2PointPart(APIInterface):
+    type: Literal[PointPartType.MOLMO_2_INPUT_POINT] = Field(default=PointPartType.MOLMO_2_INPUT_POINT, init=False)
     x: int
     y: int
     time: float
@@ -55,7 +55,7 @@ class PointPart(APIInterface):
 
 
 # Will be a union of different parts in the future
-InputPart: TypeAlias = PointPart
+InputPart: TypeAlias = Molmo2PointPart
 
 
 class CreateMessageRequest(APIInterface):

@@ -10,7 +10,7 @@ def _format_molmo_2_input_points(input_parts: Sequence[InputPart], content: str)
 
     if point_part:
         point_string = f'<points coords="{point_part.time} 1 {point_part.x} {point_part.y}">{point_part.label}</points>'
-        return f'Object {point_string} formatted as <points coords="t id x y">label</points>, {MOLMO_2_TRACKING_FRAME_RATE} FPS rate. {content}'
+        return f'Object tracking: {point_string} formatted as <points coords="t id x y">label</points>, {MOLMO_2_TRACKING_FRAME_RATE} FPS rate. {content}'
 
     return content
 

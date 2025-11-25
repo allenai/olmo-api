@@ -107,6 +107,16 @@ class CreateMessageRequest(APIInterface):
     def standardize_newlines(cls, value: str) -> str:
         return value.replace("\r\n", "\n")
 
+    @field_validator("input_parts", mode="after")
+    @classmethod
+    def only_one_molmo_2_input_part_allowed(cls, value: list[InputPart]) -> list[InputPart]:
+        molmo_2_point_parts = [part for part in value if part.type == "molmo_2_input_point"]
+        if len(molmo_2_point_parts) > 1:
+            msg = "Only one Molmo 2 input part allowed per request"
+            raise ValueError(msg)
+
+        return value
+
 
 class CreateMessageRequestWithFullMessages(BaseModel):
     parent_id: str | None = Field(default=None)

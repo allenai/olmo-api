@@ -36,7 +36,7 @@ def _map_db_tool_to_pydantic_tool(tool: ToolCall):
 
 VIDEO_FILE_EXTENSIONS = tuple(extension.casefold() for extension in typing.get_args(VideoFormat))
 DOCUMENT_FILE_EXTENSIONS = tuple(extension.casefold() for extension in typing.get_args(DocumentFormat))
-IMAGE_FILE_EXTENSIONS = tuple(extension.casefold() for extension in typing.get_args(ImageFormat))
+IMAGE_FILE_EXTENSIONS = (*tuple(extension.casefold() for extension in typing.get_args(ImageFormat)), "jpg")
 AUDIO_FILE_EXTENSIONS = tuple(extension.casefold() for extension in typing.get_args(AudioFormat))
 
 

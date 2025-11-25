@@ -34,7 +34,8 @@ class PydanticType(TypeDecorator[BaseModel]):
     # Otherwise, you should implement the `load_dialect_impl`
     # method to handle different dialects. In this case, the
     # impl variable can reference TypeEngine as a placeholder.
-    impl = JSON
+    impl = JSONB
+    cache_ok = True
 
     def __init__(self, pydantic_type: type[BaseModel]) -> None:
         super().__init__()

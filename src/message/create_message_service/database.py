@@ -149,6 +149,7 @@ def create_user_message(
     message = Message(
         id=msg_id,
         content=request.content,
+        input_parts=[part.model_dump() for part in request.input_parts] if request.input_parts else None,
         creator=creator_token.client,
         role=Role.User,
         opts=request.opts.model_dump(),

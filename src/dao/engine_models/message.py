@@ -44,6 +44,9 @@ class Message(Base, kw_only=True):
 
     id: Mapped[str] = mapped_column(Text, primary_key=True, default_factory=obj.new_id_generator("msg"))
     content: Mapped[str] = mapped_column(Text, nullable=False)
+
+    input_parts: Mapped[list[dict[str, Any]] | None] = mapped_column(ARRAY(JSONB()), nullable=True, default=None)
+
     creator: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(Text, nullable=False)
     opts: Mapped[dict] = mapped_column(JSONB, nullable=False)

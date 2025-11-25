@@ -1,12 +1,12 @@
 from collections.abc import Sequence
-from enum import StrEnum
-from typing import Annotated, Any, Literal, Self, TypeAlias
+from typing import Annotated, Any, Self
 
 from pydantic import AfterValidator, BaseModel, Field, Json, field_validator, model_validator
 from werkzeug import exceptions
 
 from src.api_interface import APIInterface
 from src.config.get_config import get_config
+from src.dao.engine_models.input_parts import InputPart, PointPartType
 from src.dao.engine_models.message import Message
 
 # We import PromptTemplate and ToolDefinition so Pydantic knows how to resolve them, preventing some model definition errors
@@ -42,26 +42,10 @@ class CreateToolDefinition(APIInterface):
     parameters: ParameterDef
 
 
-class PointPartType(StrEnum):
-    MOLMO_2_INPUT_POINT = "molmo_2_input_point"
-
-
-class Molmo2PointPart(APIInterface):
-    type: Literal[PointPartType.MOLMO_2_INPUT_POINT] = Field(default=PointPartType.MOLMO_2_INPUT_POINT, init=False)
-    x: int
-    y: int
-    time: float
-    label: str = Field(default="object")
-
-
-# Will be a union of different parts in the future
-InputPart: TypeAlias = Molmo2PointPart
-
-
 class CreateMessageRequest(APIInterface):
     parent: str | None = Field(default=None)
     content: str = Field(min_length=1)
-    input_parts: list[Json[InputPart]] = Field(default_factory=list)
+    input_parts: list[Json[InputPart]] | None = Field(default=None)
     role: Role | None = Field(default=Role.User)
     original: str | None = Field(default=None)
     private: bool = Field(default=False)
@@ -133,6 +117,8 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     extra_parameters: dict[str, Any] | None = Field(default=None)
 
     content: str = Field(min_length=1)
+    input_parts: list[InputPart] | None = Field(default=None)
+
     role: Role
     original: str | None = Field(default=None)
     private: bool = Field(default=False)

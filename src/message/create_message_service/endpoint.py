@@ -23,7 +23,6 @@ from src.message.create_message_request import (
     CreateToolDefinition,
     InputPart,
 )
-from src.message.create_message_service.input_parts import map_input_parts
 from src.message.create_message_service.merge_inference_options import merge_inference_options
 from src.message.create_message_service.safety import validate_message_security_and_safety
 from src.message.create_message_service.stream_new_message import create_new_message
@@ -108,14 +107,13 @@ def stream_message_from_model(
         stop=request.stop,
     )
 
-    content = map_input_parts(request.input_parts, request.content)
-
     mapped_request = CreateMessageRequestWithFullMessages(
         parent_id=request.parent,
         parent=parent_message,
         opts=inference_options,
         extra_parameters=request.extra_parameters,
-        content=content,
+        content=request.content,
+        input_parts=request.input_parts,
         role=cast(message.Role, request.role),
         original=request.original,
         private=private,

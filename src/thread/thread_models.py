@@ -5,6 +5,7 @@ from typing import Any, cast
 from pydantic import AwareDatetime, Field, computed_field, field_serializer, field_validator
 
 from src.api_interface import APIInterface
+from src.dao.engine_models.input_parts import InputPart
 from src.dao.engine_models.message import Message as SQLAMessage
 from src.dao.engine_models.model_config import ModelType
 from src.dao.engine_models.tool_definitions import ToolSource
@@ -55,6 +56,7 @@ CONTENT_TRUNCATION_LIMIT = 150
 class FlatMessage(APIInterface):
     id: str
     content: str
+    input_parts: list[InputPart] | None = Field(default=None)
     creator: str
     role: Role
     opts: InferenceOptionsResponse

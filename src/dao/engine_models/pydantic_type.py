@@ -1,17 +1,17 @@
-from typing import Any, TypeVar, override
+from typing import Any, final
 
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel
 from sqlalchemy import JSON, Dialect, TypeDecorator
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.types import TypeEngine
+from typing_extensions import override
 
-TModel = TypeVar("TModel", bound=BaseModel)
 
-
-# Taken from https://gist.github.com/a1d4r/100b06239925a414446305c81433cc88
-class PydanticType(TypeDecorator[TModel]):
+# Taken from https://gist.github.com/pdmtt/a6dc62f051c5597a8cdeeb8271c1e079?permalink_comment_id=5761533#gistcomment-5761533
+@final
+class PydanticType(TypeDecorator[BaseModel]):
     """Pydantic type.
-    Inspired by: https://gist.github.com/imankulov/4051b7805ad737ace7d8de3d3f934d6b
+
     SAVING:
     - Uses SQLAlchemy JSON type under the hood.
     - Acceps the pydantic model and converts it to a dict on save.
@@ -22,31 +22,50 @@ class PydanticType(TypeDecorator[TModel]):
     - Uses the dict to create a pydantic model.
     """
 
-    cache_ok = True
-    impl = JSONB
+    # If you intend to use this class with one dialect only,
+    # you could pick a type from the specific dialect for
+    # simplicity sake.
+    #
+    # E.g., if you work with PostgreSQL, you can consider using
+    # sqlalchemy.dialects.postgresql.JSONB instead of a
+    # generic JSON
+    # Ref: https://www.postgresql.org/docs/13/datatype-json.html
+    #
+    # Otherwise, you should implement the `load_dialect_impl`
+    # method to handle different dialects. In this case, the
+    # impl variable can reference TypeEngine as a placeholder.
+    impl = JSON
 
-    def __init__(self, pydantic_type: type[TModel]) -> None:
+    def __init__(self, pydantic_type: type[BaseModel]) -> None:
         super().__init__()
         self.pydantic_type = pydantic_type
-        self.adapter = TypeAdapter(pydantic_type)
 
     @override
-    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
+    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[JSONB | JSON]:
+        # You should implement this method to handle different dialects
+        # if you intend to use this class with more than one.
+        # E.g., use JSONB for PostgreSQL and the generic JSON type for
+        # other databases.
         if dialect.name == "postgresql":
             return dialect.type_descriptor(JSONB())
         return dialect.type_descriptor(JSON())
 
     @override
-    def process_bind_param(self, value: TModel | None, dialect: Dialect) -> Any:
+    def process_bind_param(
+        self,
+        value: BaseModel | None,
+        dialect: Dialect,
+    ) -> dict[str, Any] | None:
         if value is None:
             return None
-        return value.model_dump()
 
-    @override
-    def process_result_value(self, value: Any, dialect: Dialect) -> TModel | None:
-        if value is None:
-            return None
-        return self.adapter.validate_python(value)
+        if not isinstance(value, BaseModel):  # dynamic typing.
+            msg = f'The value "{value!r}" is not a pydantic model'
+            raise TypeError(msg)
+
+        # Setting mode to "json" entails that you won't need to define a custom json
+        # serializer ahead.
+        return value.model_dump(mode="json")
 
     def __repr__(self) -> str:
         # Used by alembic

@@ -17,8 +17,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src import obj
 from src.dao.engine_models.completion import Completion
+from src.dao.engine_models.input_parts import InputPart
 from src.dao.engine_models.label import Label
 from src.dao.engine_models.prompt_template import PromptTemplate
+from src.dao.engine_models.pydantic_type import PydanticType
 from src.dao.engine_models.tool_call import ToolCall
 from src.dao.engine_models.tool_definitions import ToolDefinition
 
@@ -45,7 +47,9 @@ class Message(Base, kw_only=True):
     id: Mapped[str] = mapped_column(Text, primary_key=True, default_factory=obj.new_id_generator("msg"))
     content: Mapped[str] = mapped_column(Text, nullable=False)
 
-    input_parts: Mapped[list[dict[str, Any]] | None] = mapped_column(ARRAY(JSONB()), nullable=True, default=None)
+    input_parts: Mapped[list[InputPart] | None] = mapped_column(
+        ARRAY(PydanticType(InputPart)), nullable=True, default=None
+    )
 
     creator: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(Text, nullable=False)

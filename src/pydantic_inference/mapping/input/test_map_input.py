@@ -6,6 +6,7 @@ from src.pydantic_inference.mapping.input.map_input import pydantic_map_messages
 
 TEST_VIDEO_URL = "http://localhost:8080/video.mp4"
 TEST_IMAGE_URL = "http://localhost:8080/image.JPEG"
+TEST_JPG_URL = "http://localhost:8080/image.jpg"
 TEST_DOCUMENT_URL = "http://localhost:8080/document.html"
 TEST_AUDIO_URL = "http://localhost:8080/audio.mp3"
 
@@ -27,12 +28,7 @@ def test_map_message_with_multimedia_urls() -> None:
             parent=None,
             model_type="chat",
             expiration_time=None,
-            file_urls=[
-                TEST_VIDEO_URL,
-                TEST_IMAGE_URL,
-                TEST_DOCUMENT_URL,
-                TEST_AUDIO_URL,
-            ],
+            file_urls=[TEST_VIDEO_URL, TEST_IMAGE_URL, TEST_DOCUMENT_URL, TEST_AUDIO_URL, TEST_JPG_URL],
         )
     ]
 
@@ -47,4 +43,5 @@ def test_map_message_with_multimedia_urls() -> None:
         ImageUrl(TEST_IMAGE_URL),
         DocumentUrl(TEST_DOCUMENT_URL),
         AudioUrl(TEST_AUDIO_URL),
+        ImageUrl(TEST_JPG_URL),
     ]

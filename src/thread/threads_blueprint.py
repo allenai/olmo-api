@@ -52,6 +52,8 @@ def create_threads_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage)
             request_type=MessageType.MODEL,
         )
 
+        model_message_stream_input.input_parts = create_message_request.input_parts
+
         try:
             stream_response = stream_message_from_model(
                 model_message_stream_input,

@@ -1,5 +1,6 @@
 from collections.abc import Sequence
-from typing import Annotated, Any, Self
+from enum import StrEnum
+from typing import Annotated, Any, Literal, Self, TypeAlias
 
 from pydantic import AfterValidator, BaseModel, Field, Json, field_validator, model_validator
 from werkzeug import exceptions
@@ -41,10 +42,26 @@ class CreateToolDefinition(APIInterface):
     parameters: ParameterDef
 
 
+class PointPartType(StrEnum):
+    MOLMO_2_INPUT_POINT = "molmo_2_input_point"
+
+
+class Molmo2PointPart(APIInterface):
+    type: Literal[PointPartType.MOLMO_2_INPUT_POINT] = Field(default=PointPartType.MOLMO_2_INPUT_POINT, init=False)
+    x: int
+    y: int
+    time: float
+    label: str = Field(default="object")
+
+
+# Will be a union of different parts in the future
+InputPart: TypeAlias = Molmo2PointPart
+
+
 class CreateMessageRequest(APIInterface):
-    # TODO: Validate that the parent role is different from this role and that it exists
     parent: str | None = Field(default=None)
     content: str = Field(min_length=1)
+    input_parts: list[Json[InputPart]] = Field(default_factory=list)
     role: Role | None = Field(default=Role.User)
     original: str | None = Field(default=None)
     private: bool = Field(default=False)
@@ -96,6 +113,16 @@ class CreateMessageRequest(APIInterface):
     @classmethod
     def standardize_newlines(cls, value: str) -> str:
         return value.replace("\r\n", "\n")
+
+    @field_validator("input_parts", mode="after")
+    @classmethod
+    def only_one_molmo_2_input_part_allowed(cls, value: list[InputPart]) -> list[InputPart]:
+        molmo_2_point_parts = [part for part in value if part.type == PointPartType.MOLMO_2_INPUT_POINT]
+        if len(molmo_2_point_parts) > 1:
+            msg = "Only one Molmo 2 input part allowed per request"
+            raise ValueError(msg)
+
+        return value
 
 
 class CreateMessageRequestWithFullMessages(BaseModel):

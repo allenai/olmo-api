@@ -1,14 +1,10 @@
-import typing
-from pathlib import Path
+from mimetypes import guess_type
 
 from pydantic_ai import VideoUrl
 from pydantic_ai.messages import (
-    AudioFormat,
     AudioUrl,
     BinaryContent,
-    DocumentFormat,
     DocumentUrl,
-    ImageFormat,
     ImageUrl,
     ModelMessage,
     ModelRequest,
@@ -22,7 +18,6 @@ from pydantic_ai.messages import (
     ToolReturnPart,
     UserContent,
     UserPromptPart,
-    VideoFormat,
 )
 from src.dao.engine_models.message import Message
 from src.dao.engine_models.tool_call import ToolCall
@@ -32,12 +27,6 @@ from src.message.create_message_service.files import FileUploadResult
 
 def _map_db_tool_to_pydantic_tool(tool: ToolCall):
     return ToolCallPart(tool_name=tool.tool_name, tool_call_id=tool.tool_call_id, args=tool.args)
-
-
-VIDEO_FILE_EXTENSIONS = tuple(extension.casefold() for extension in typing.get_args(VideoFormat))
-DOCUMENT_FILE_EXTENSIONS = tuple(extension.casefold() for extension in typing.get_args(DocumentFormat))
-IMAGE_FILE_EXTENSIONS = (*tuple(extension.casefold() for extension in typing.get_args(ImageFormat)), "jpg")
-AUDIO_FILE_EXTENSIONS = tuple(extension.casefold() for extension in typing.get_args(AudioFormat))
 
 
 class UnsupportedMediaTypeError(Exception):
@@ -51,22 +40,28 @@ def _map_part_from_file_url(file_url: str, blob_map: dict[str, FileUploadResult]
             media_type=blob_map[file_url].file_storage.content_type or "image/png",
         )
 
-    file_suffix = Path(file_url).suffix.casefold()
+    (mimetype, _encoding) = guess_type(file_url)
 
-    if file_suffix.endswith(VIDEO_FILE_EXTENSIONS):
-        return VideoUrl(url=file_url)
+    match mimetype:
+        case None:
+            # Defaulting to Image for now since most of our uploads are images
+            # We can error if we enforce file extensions on upload
+            return ImageUrl(file_url)
 
-    if file_suffix.endswith(IMAGE_FILE_EXTENSIONS):
-        return ImageUrl(url=file_url)
+        case mimetype if mimetype.startswith("video"):
+            return VideoUrl(file_url)
 
-    if file_suffix.endswith(DOCUMENT_FILE_EXTENSIONS):
-        return DocumentUrl(url=file_url)
+        case mimetype if mimetype.startswith("image"):
+            return ImageUrl(file_url)
 
-    if file_suffix.endswith(AUDIO_FILE_EXTENSIONS):
-        return AudioUrl(url=file_url)
+        case mimetype if mimetype.startswith(("text", "application")):
+            return DocumentUrl(file_url)
 
-    unsupported_media_type_msg = "File URL %s has unsupported media type %s"
-    raise UnsupportedMediaTypeError(unsupported_media_type_msg, file_url, file_suffix)
+        case mimetype if mimetype.startswith("audio"):
+            return AudioUrl(file_url)
+
+    unsupported_media_type_msg = "File URL %s has unsupported MIME type %s"
+    raise UnsupportedMediaTypeError(unsupported_media_type_msg, file_url, mimetype)
 
 
 def pydantic_map_messages(messages: list[Message], blob_map: dict[str, FileUploadResult] | None) -> list[ModelMessage]:

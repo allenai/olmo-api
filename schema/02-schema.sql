@@ -1093,5 +1093,11 @@ DROP TYPE "public"."availableinfinigramindexid_old";
 
 UPDATE alembic_version SET version_num='e62f9bd0f24b' WHERE alembic_version.version_num = 'a88c3e9a09b0';
 
+-- Running upgrade e62f9bd0f24b -> edaadce92f0a
+
+ALTER TABLE message ADD COLUMN input_parts JSONB[];
+
+UPDATE alembic_version SET version_num='edaadce92f0a' WHERE alembic_version.version_num = 'e62f9bd0f24b';
+
 COMMIT;
 

@@ -96,10 +96,10 @@ class GoogleCloudServices:
     safety_storage_bucket: str
 
 
-@dataclass
-class FeatureFlags:
-    allow_files_only_model_in_thread: bool
+class FeatureFlags(BaseModel):
+    allow_files_only_model_in_thread: bool = False
     show_internal_tools: bool = False
+    enable_blocking_video_safety_check: bool = False
 
 
 @dataclass
@@ -247,12 +247,7 @@ class Config:
                     require_recaptcha=data["google_cloud_services"].get("require_recaptcha", True),
                     safety_storage_bucket=data["google_cloud_services"].get("safety_storage_bucket", ""),
                 ),
-                feature_flags=FeatureFlags(
-                    allow_files_only_model_in_thread=data.get("feature_flags", {}).get(
-                        "allow_files_only_model_in_thread", False
-                    ),
-                    show_internal_tools=data.get("feature_flags", {}).get("show_internal_tools", False),
-                ),
+                feature_flags=FeatureFlags.model_validate(data.get("feature_flags", {})),
                 beaker=Beaker(
                     address=data.get("beaker", {}).get("address"),
                     user_token=data.get("beaker", {}).get("user_token"),

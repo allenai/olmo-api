@@ -253,7 +253,7 @@ VALUES (
         NULL,
         NULL,
         'TestBackend',
-        'TEXT_ONLY',
+        'MULTI_MODAL',
         true,
         true
     ) ON CONFLICT DO NOTHING;
@@ -263,12 +263,14 @@ INSERT INTO multi_modal_model_config(
         accepted_file_types,
         max_files_per_message,
         require_file_to_prompt,
-        allow_files_in_followups
+        allow_files_in_followups,
+        max_total_file_size
     )
 VALUES (
         'test-mm-model',
-        '{ "image/*" }',
-        1,
+        '{ "image/*", "video/*" }',
+        6,
         'FirstMessage',
-        'false'
+        'false',
+        52428800
     ) ON CONFLICT DO NOTHING;

@@ -1,5 +1,5 @@
 from src.constants import MOLMO_2_TRACKING_FRAME_RATE
-from src.message.create_message_request import Molmo2PointPart
+from src.dao.engine_models.input_parts import Molmo2PointPart
 from src.message.create_message_service.input_parts import map_input_parts
 
 

@@ -13,7 +13,6 @@ from src.error import handle_validation_error
 from src.flask_pydantic_api.api_wrapper import pydantic_api
 from src.message.create_message_request import CreateMessageRequest
 from src.message.create_message_service.endpoint import (
-    MessageType,
     ModelMessageStreamInput,
     stream_message_from_model,
 )
@@ -47,12 +46,9 @@ def create_threads_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage)
     def create_message(
         create_message_request: CreateMessageRequest,
     ) -> ResponseReturnValue:
-        model_message_stream_input = ModelMessageStreamInput(
-            **create_message_request.model_dump(exclude={"host", "n", "logprobs"}, by_alias=False),
-            request_type=MessageType.MODEL,
-        )
+        model_message_stream_input = ModelMessageStreamInput.from_model_create_message_request(create_message_request)
 
-        model_message_stream_input.input_parts = create_message_request.input_parts
+        model_message_stream_input.input_parts = create_message_request.input_parts or []
 
         try:
             stream_response = stream_message_from_model(

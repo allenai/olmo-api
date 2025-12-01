@@ -19,6 +19,7 @@ from src.dao.message.inference_opts_model import InferenceOpts
 from src.dao.message.message_repository import BaseMessageRepository
 from src.flask_pydantic_api.utils import UploadedFile
 from src.message.create_message_request import (
+    CreateMessageRequest,
     CreateMessageRequestWithFullMessages,
     CreateToolDefinition,
     InputPart,
@@ -49,7 +50,7 @@ class MessageType(StrEnum):
 class ModelMessageStreamInput:
     parent: str | None = None
     content: str
-    input_parts: list[InputPart] = field(default_factory=list)
+    input_parts: list[InputPart] | None = field(default=None)
     role: message.Role | None = message.Role.User
     original: str | None = None
     private: bool = False
@@ -80,6 +81,14 @@ class ModelMessageStreamInput:
     files: list[UploadedFile] | None = None
 
     request_type: MessageType
+
+    @staticmethod
+    def from_model_create_message_request(create_message_request: CreateMessageRequest):
+        return ModelMessageStreamInput(
+            **create_message_request.model_dump(exclude={"host", "n", "logprobs", "input_parts"}, by_alias=False),
+            request_type=MessageType.MODEL,
+            input_parts=create_message_request.input_parts,
+        )
 
 
 @tracer.start_as_current_span("stream_message_from_model")

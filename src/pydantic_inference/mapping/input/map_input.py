@@ -23,6 +23,7 @@ from src.dao.engine_models.message import Message
 from src.dao.engine_models.tool_call import ToolCall
 from src.dao.message.message_models import Role
 from src.message.create_message_service.files import FileUploadResult
+from src.message.create_message_service.input_parts import map_input_parts
 
 
 def _map_db_tool_to_pydantic_tool(tool: ToolCall):
@@ -69,8 +70,9 @@ def pydantic_map_messages(messages: list[Message], blob_map: dict[str, FileUploa
     for message in messages:
         if message.role == Role.User:
             file_user_content = [_map_part_from_file_url(file_url, blob_map) for file_url in message.file_urls or []]
+            text_content = map_input_parts(message.input_parts, message.content)
 
-            user_content: list[UserContent] = [message.content, *file_user_content]
+            user_content: list[UserContent] = [text_content, *file_user_content]
             user_prompt_part = UserPromptPart(user_content)
 
             model_messages.append(ModelRequest([user_prompt_part]))

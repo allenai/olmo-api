@@ -14,7 +14,8 @@
         "sessionmaker",
         "usefixtures",
         "instrumentor",
-        "molmo"
+        "molmo",
+        "videointelligence"
     ],
     "ruff.configurationPreference": "filesystemFirst",
     "ruff.format.preview": true,

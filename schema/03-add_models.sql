@@ -255,7 +255,7 @@ VALUES (
         'TestBackend',
         'MULTI_MODAL',
         true,
-        true
+        false
     ) ON CONFLICT DO NOTHING;
 
 INSERT INTO multi_modal_model_config(

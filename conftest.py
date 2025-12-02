@@ -55,7 +55,7 @@ def dbc(cfg: Config, postgresql: Connection):
 
 @pytest.fixture(params=[pytest.param("", marks=pytest.mark.integration)])
 def sql_alchemy(dbc: Client, cfg: Config):
-    db_engine = make_db_engine(cfg.db, pool=dbc.pool, sql_alchemy=cfg.sql_alchemy)
+    db_engine = make_db_engine(cfg.db, pool=dbc.pool)
     session_maker = sessionmaker(db_engine, expire_on_commit=False, autoflush=True)
 
     with session_maker() as session:

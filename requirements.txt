@@ -26,7 +26,7 @@ types-beautifulsoup4==4.12.0.20250204
 mypy==1.15.0
 ruff==0.11.7
 puremagic==1.28.0
-sqlalchemy==2.0.40
+sqlalchemy==2.0.44
 alembic==1.15.2
 alembic-postgresql-enum==1.7.0
 pydub==0.25.1

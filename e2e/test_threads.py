@@ -211,6 +211,46 @@ class TestAnonymousThreadEndpoints(BaseTestThreadEndpoints):
         assert user_message.file_urls is not None
         assert len(user_message.file_urls) == 1
 
+    def test_points_to_a_video_in_a_response(self):
+        anonymous_user = self.user(anonymous=True)
+
+        user_content = "How many boats are in this image?"
+
+        test_image_path = Path(__file__).parent.joinpath("tree.mov")
+        with test_image_path.open("rb") as file:
+            create_message_request = requests.post(
+                f"{self.origin}/v4/threads/",
+                headers=self.auth(anonymous_user),
+                files={
+                    "content": (None, user_content),
+                    "files": ("tree.mov", file, "video/quicktime"),
+                    "host": (None, "test_backend"),
+                    "model": (None, "test-mm-model"),
+                    "inputParts": (None, '{"x":650,"y":789,"time":0,"type":"molmo_2_input_point"}'),
+                },
+            )
+        create_message_request.raise_for_status()
+
+        response_thread = Thread.model_validate_json(util.second_to_last_response_line(create_message_request))
+        self.add_messages_in_thread(response_thread, anonymous_user)
+
+        user_message = next(message for message in response_thread.messages if message.role == Role.User)
+        assert user_message.input_parts is not None
+        assert len(user_message.input_parts) == 1
+
+        follow_up_message_request = requests.post(
+            f"{self.origin}/v4/threads/",
+            headers=self.auth(anonymous_user),
+            files={
+                "parent": (None, response_thread.messages[-1].id),
+                "content": (None, user_content),
+                "host": (None, "test_backend"),
+                "model": (None, "test-mm-model"),
+                "inputParts": (None, '{"x":650,"y":789,"time":0,"type":"molmo_2_input_point"}'),
+            },
+        )
+        follow_up_message_request.raise_for_status()
+
     def tearDown(self):
         # Since the delete operation cascades, we have to find all child messages
         # and remove them from self.messages. Otherwise, we'll run into 404 errors

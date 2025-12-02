@@ -68,6 +68,18 @@ class PydanticType(TypeDecorator[BaseModel]):
         # serializer ahead.
         return value.model_dump(mode="json")
 
+    @override
+    def process_result_value(
+        self,
+        value: dict[str, Any] | None,
+        dialect: Dialect,
+    ) -> BaseModel | None:
+        # We're assuming that the value will be a dictionary here.
+        validate_on_load = True
+        if validate_on_load:
+            return self.pydantic_type.model_validate(value) if value else None
+        return self.pydantic_type.model_construct(**value) if value else None
+
     def __repr__(self) -> str:
         # Used by alembic
         return f"PydanticType({self.pydantic_type.__name__})"

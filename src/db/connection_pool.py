@@ -20,4 +20,5 @@ def create_connection_pool(conninfo: str, min_size: int, max_size: int) -> Conne
         max_size=max_size,
         check=ConnectionPool.check_connection,
         kwargs={"application_name": f"olmo-api:{os.getenv('SHA') or ''}"},
+        close_returns=True,
     )

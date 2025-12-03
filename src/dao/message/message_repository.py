@@ -2,7 +2,7 @@ import abc
 from collections.abc import Sequence
 from typing import cast
 
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import CursorResult, func, or_, select, update
 from sqlalchemy.orm import Session, joinedload
 
 from src import obj
@@ -179,11 +179,13 @@ class MessageRepository(BaseMessageRepository):
 
     def migrate_messages_to_new_user(self, previous_user_id: str, new_user_id: str):
         self.session.execute(update(Label).where(Label.creator == previous_user_id).values(creator=new_user_id))
-        count = self.session.execute(
+        result = self.session.execute(
             update(Message)
             .where(Message.creator == previous_user_id)
             .values(creator=new_user_id, expiration_time=None, private=False)
-        ).rowcount
+        )
+        # cast is recommended by SQLAlchemy for this: https://github.com/sqlalchemy/sqlalchemy/issues/12913
+        count = cast(CursorResult, result).rowcount
         self.session.flush()
         self.session.commit()
 

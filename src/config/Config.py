@@ -16,12 +16,6 @@ class Database:
 
 
 @dataclass
-class SQLAlchemyConfig:
-    pool_size: int
-    max_overflow: int
-
-
-@dataclass
 class BaseInferenceEngineConfig:
     token: str
 
@@ -159,7 +153,6 @@ DEFAULT_CONFIG_PATH = "/secret/cfg/config.json"
 @dataclass
 class Config:
     db: Database
-    sql_alchemy: SQLAlchemyConfig
     inferd: InferD
     server: Server
     modal: Modal
@@ -184,7 +177,6 @@ class Config:
 
             return cls(
                 db=Database(**data["db"]),
-                sql_alchemy=SQLAlchemyConfig(**data["sql_alchemy"]),
                 inferd=InferD(
                     address=data["inferd"]["address"],
                     token=data["inferd"]["token"],

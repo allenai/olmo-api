@@ -123,7 +123,7 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
     local defaultIngressAnno = {
         'nginx.ingress.kubernetes.io/ssl-redirect': 'true',
         'nginx.ingress.kubernetes.io/proxy-read-timeout': '120',
-        'nginx.ingress.kubernetes.io/proxy-body-size': '50M'
+        'nginx.ingress.kubernetes.io/proxy-body-size': '100M'
     };
 
     local corsIngressAnno = {

@@ -88,6 +88,8 @@ class GoogleVideoIntelligence(SafetyChecker):
             }
         )
 
+        fetched_operation = video_client.transport.operations_client.get_operation(operation.operation.name)
+
         result = operation.result(timeout=180)
 
         if isinstance(result, videointelligence.AnnotateVideoResponse):

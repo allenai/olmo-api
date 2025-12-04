@@ -8,11 +8,13 @@ from werkzeug.datastructures import FileStorage
 
 from otel.default_tracer import get_default_tracer
 from src.config.get_config import get_config
+from src.message.google_video_intelligence.get_video_client import get_video_intelligence_client
 from src.message.SafetyChecker import (
     SafetyChecker,
     SafetyCheckRequest,
     SafetyCheckResponse,
 )
+from src.safety_queue.safety_queue_app import video_safety_check_result_handling
 
 tracer = get_default_tracer()
 
@@ -24,11 +26,6 @@ def get_safety_bucket():
     bucket_name = get_config().google_cloud_services.safety_storage_bucket
     client = Client()
     return client.bucket(bucket_name)
-
-
-@cache
-def get_video_client():
-    return videointelligence.VideoIntelligenceServiceClient()
 
 
 def generate_random_filename(original_filename: str) -> str:
@@ -79,7 +76,7 @@ class GoogleVideoIntelligence(SafetyChecker):
     @tracer.start_as_current_span("GoogleVideoIntelligence.check_request")
     def check_request(self, req: SafetyCheckRequest):
         bucket_name = get_config().google_cloud_services.safety_storage_bucket
-        video_client = get_video_client()
+        video_client = get_video_intelligence_client()
 
         operation = video_client.annotate_video(
             request={
@@ -88,9 +85,9 @@ class GoogleVideoIntelligence(SafetyChecker):
             }
         )
 
-        fetched_operation = video_client.transport.operations_client.get_operation(operation.operation.name)
-
         result = operation.result(timeout=180)
+
+        video_safety_check_result_handling(operation.operation.name)
 
         if isinstance(result, videointelligence.AnnotateVideoResponse):
             return GoogleVideoIntelligenceResponse(result)

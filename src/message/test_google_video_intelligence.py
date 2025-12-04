@@ -1,7 +1,6 @@
-import pytest
 from google.cloud import videointelligence
 
-from .GoogleVideoIntelligence import GoogleVideoIntelligenceResponse
+from .google_video_intelligence.GoogleVideoIntelligence import GoogleVideoIntelligenceResponse
 
 
 def test_result_is_false_if_frame_is_tagged():

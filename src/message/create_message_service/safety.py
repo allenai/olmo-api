@@ -14,12 +14,12 @@ from src.config.get_config import cfg, get_config
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
-from src.message.GoogleModerateText import GoogleModerateText
-from src.message.GoogleVideoIntelligence import (
+from src.message.google_video_intelligence.GoogleVideoIntelligence import (
     GoogleVideoIntelligence,
     delete_from_safety_bucket,
     upload_to_safety_bucket,
 )
+from src.message.GoogleModerateText import GoogleModerateText
 from src.message.GoogleVisionSafeSearch import GoogleVisionSafeSearch
 from src.message.SafetyChecker import (
     SafetyChecker,

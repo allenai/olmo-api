@@ -94,6 +94,7 @@ class FeatureFlags(BaseModel):
     allow_files_only_model_in_thread: bool = False
     show_internal_tools: bool = False
     enable_blocking_video_safety_check: bool = False
+    enable_queued_video_safety_check: bool = False
 
 
 @dataclass

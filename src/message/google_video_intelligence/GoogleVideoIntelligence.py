@@ -1,15 +1,20 @@
 import uuid
 from functools import cache
+from logging import getLogger
 from pathlib import Path
 
 from google.cloud import videointelligence
 from google.cloud.storage import Client
+from typing_extensions import override
 from werkzeug.datastructures import FileStorage
 
 from otel.default_tracer import get_default_tracer
 from src.config.get_config import get_config
 from src.message.google_video_intelligence.get_video_client import get_video_intelligence_client
-from src.message.google_video_intelligence.video_intelligence_models import GoogleVideoIntelligenceResponse
+from src.message.google_video_intelligence.video_intelligence_models import (
+    GoogleVideoIntelligenceResponse,
+    SkippedSafetyCheckResponse,
+)
 from src.message.SafetyChecker import (
     SafetyChecker,
     SafetyCheckRequest,
@@ -53,23 +58,37 @@ def delete_from_safety_bucket(path: str):
 
 
 class GoogleVideoIntelligence(SafetyChecker):
+    @override
     @tracer.start_as_current_span("GoogleVideoIntelligence.check_request")
     def check_request(self, req: SafetyCheckRequest):
-        bucket_name = get_config().google_cloud_services.safety_storage_bucket
-        video_client = get_video_intelligence_client()
+        config = get_config()
 
-        operation = video_client.annotate_video(
-            request={
-                "features": features,
-                "input_uri": f"gs://{bucket_name}/{req.content}",
-            }
-        )
+        if (
+            config.feature_flags.enable_blocking_video_safety_check
+            or config.feature_flags.enable_queued_video_safety_check
+        ):
+            bucket_name = get_config().google_cloud_services.safety_storage_bucket
+            video_client = get_video_intelligence_client()
 
-        handle_video_safety_check.send(operation.operation.name)
-        result = operation.result(timeout=180)
+            operation = video_client.annotate_video(
+                request={
+                    "features": features,
+                    "input_uri": f"gs://{bucket_name}/{req.content}",
+                }
+            )
 
-        if isinstance(result, videointelligence.AnnotateVideoResponse):
-            return GoogleVideoIntelligenceResponse(result)
+            if config.feature_flags.enable_blocking_video_safety_check:
+                result = operation.result(timeout=180)
 
-        msg = "Unexpected result from google video checker"
-        raise TypeError(msg)
+                if isinstance(result, videointelligence.AnnotateVideoResponse):
+                    return GoogleVideoIntelligenceResponse(result)
+
+                msg = "Unexpected result from google video checker"
+                raise TypeError(msg)
+
+            if config.feature_flags.enable_queued_video_safety_check:
+                getLogger().info("Queuing video safety check for operation %s", operation.operation.name)
+                handle_video_safety_check.send(operation.operation.name)
+                return SkippedSafetyCheckResponse()
+
+        return SkippedSafetyCheckResponse()

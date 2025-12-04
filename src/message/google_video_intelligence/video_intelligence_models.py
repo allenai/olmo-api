@@ -1,8 +1,15 @@
 from google.cloud import videointelligence
+from typing_extensions import override
 
 from src.message.SafetyChecker import (
     SafetyCheckResponse,
 )
+
+
+class SkippedSafetyCheckResponse(SafetyCheckResponse):
+    @override
+    def is_safe(self) -> bool:
+        return True
 
 
 class GoogleVideoIntelligenceResponse(SafetyCheckResponse):

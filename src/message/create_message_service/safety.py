@@ -10,7 +10,7 @@ from otel.default_tracer import get_default_tracer
 from src.auth.auth_utils import Permissions, user_has_permission
 from src.auth.token import Token
 from src.bot_detection.create_assessment import create_assessment
-from src.config.get_config import cfg, get_config
+from src.config.get_config import cfg
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
@@ -199,12 +199,7 @@ def validate_message_security_and_safety(
         msg = "Unsupported file types in input"
         raise exceptions.BadRequest(msg)
 
-    config = get_config()
-
-    if config.feature_flags.enable_blocking_video_safety_check:
-        is_video_safe: bool = check_video_safety(files=video_files)
-    else:
-        is_video_safe = True
+    is_video_safe: bool = check_video_safety(files=video_files)
 
     is_image_safe = check_image_safety(files=image_files)
 

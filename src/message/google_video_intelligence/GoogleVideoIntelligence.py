@@ -14,7 +14,7 @@ from src.message.SafetyChecker import (
     SafetyChecker,
     SafetyCheckRequest,
 )
-from src.safety_queue.safety_queue_app import video_safety_check_result_handling
+from src.safety_queue.video_safety_handler import handle_video_safety_check
 
 tracer = get_default_tracer()
 
@@ -65,7 +65,7 @@ class GoogleVideoIntelligence(SafetyChecker):
             }
         )
 
-        video_safety_check_result_handling.send(operation.operation.name)
+        handle_video_safety_check.send(operation.operation.name)
         result = operation.result(timeout=180)
 
         if isinstance(result, videointelligence.AnnotateVideoResponse):

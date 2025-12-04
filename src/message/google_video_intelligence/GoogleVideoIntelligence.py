@@ -9,10 +9,10 @@ from werkzeug.datastructures import FileStorage
 from otel.default_tracer import get_default_tracer
 from src.config.get_config import get_config
 from src.message.google_video_intelligence.get_video_client import get_video_intelligence_client
+from src.message.google_video_intelligence.video_intelligence_models import GoogleVideoIntelligenceResponse
 from src.message.SafetyChecker import (
     SafetyChecker,
     SafetyCheckRequest,
-    SafetyCheckResponse,
 )
 from src.safety_queue.safety_queue_app import video_safety_check_result_handling
 
@@ -52,26 +52,6 @@ def delete_from_safety_bucket(path: str):
     blob.delete()
 
 
-class GoogleVideoIntelligenceResponse(SafetyCheckResponse):
-    response: videointelligence.AnnotateVideoResponse
-
-    def __init__(self, response: videointelligence.AnnotateVideoResponse):
-        self.response = response
-
-    def is_safe(self) -> bool:
-        return not self.has_violation()
-
-    def has_violation(self) -> bool:
-        if len(self.response.annotation_results) != 1:
-            msg = "Unexpected mulitiple video response"
-            raise TypeError(msg)
-
-        return any(
-            videointelligence.Likelihood(frame.pornography_likelihood) == videointelligence.Likelihood.VERY_LIKELY
-            for frame in self.response.annotation_results[0].explicit_annotation.frames
-        )
-
-
 class GoogleVideoIntelligence(SafetyChecker):
     @tracer.start_as_current_span("GoogleVideoIntelligence.check_request")
     def check_request(self, req: SafetyCheckRequest):
@@ -85,9 +65,8 @@ class GoogleVideoIntelligence(SafetyChecker):
             }
         )
 
+        video_safety_check_result_handling.send(operation.operation.name)
         result = operation.result(timeout=180)
-
-        video_safety_check_result_handling(operation.operation.name)
 
         if isinstance(result, videointelligence.AnnotateVideoResponse):
             return GoogleVideoIntelligenceResponse(result)

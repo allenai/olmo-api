@@ -5,7 +5,7 @@ from google.cloud.videointelligence_v1 import AnnotateVideoResponse
 
 from src.config.get_config import get_config
 from src.message.google_video_intelligence.get_video_client import get_video_intelligence_client
-from src.message.google_video_intelligence.GoogleVideoIntelligence import GoogleVideoIntelligenceResponse
+from src.message.google_video_intelligence.video_intelligence_models import GoogleVideoIntelligenceResponse
 
 
 def set_up_safety_queue_app() -> None:

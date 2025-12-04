@@ -43,6 +43,12 @@ services:
     volumes:
       - ./config.json:/secret/cfg/config.json
 
+  redis:
+    image: redis:7
+    ports:
+      - 6379:6379
+    command: --loglevel debug
+
   jaeger:
     image: cr.jaegertracing.io/jaegertracing/jaeger:2.10.0
     ports:

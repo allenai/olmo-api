@@ -19,6 +19,7 @@ from src.message.google_video_intelligence.GoogleVideoIntelligence import (
     delete_from_safety_bucket,
     upload_to_safety_bucket,
 )
+from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.GoogleModerateText import GoogleModerateText
 from src.message.GoogleVisionSafeSearch import GoogleVisionSafeSearch
 from src.message.SafetyChecker import (
@@ -82,13 +83,13 @@ def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
 
 
 @tracer.start_as_current_span("check_video_safety")
-def check_video_safety(files: Sequence[FileStorage]) -> bool:
+def check_video_safety(files: Sequence[FileStorage], storage_client: GoogleCloudStorage) -> bool:
     checker = GoogleVideoIntelligence()
 
     file_path = ""
     for file in files:
         try:
-            file_path = upload_to_safety_bucket(file)
+            file_path = upload_to_safety_bucket(file, client=storage_client)
 
             request = SafetyCheckRequest(file_path, file.filename)
             result = checker.check_request(request)
@@ -154,6 +155,7 @@ FORRBIDDEN_SETTING = "User is not allowed to change this setting"
 def validate_message_security_and_safety(
     request: CreateMessageRequestWithFullMessages,
     client_auth: Token,
+    storage_client: GoogleCloudStorage,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     user_ip_address: str | None = None,
     user_agent: str | None = None,
@@ -199,7 +201,7 @@ def validate_message_security_and_safety(
         msg = "Unsupported file types in input"
         raise exceptions.BadRequest(msg)
 
-    is_video_safe = check_video_safety(files=video_files)
+    is_video_safe = check_video_safety(files=video_files, storage_client=storage_client)
 
     is_image_safe = check_image_safety(files=image_files)
 

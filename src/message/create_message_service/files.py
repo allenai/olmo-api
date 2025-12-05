@@ -19,7 +19,6 @@ def upload_request_files(
     message_id: str,
     storage_client: GoogleCloudStorage,
     root_message_id: str,
-    is_anonymous: bool = False,
 ) -> list[FileUploadResult]:
     if files is None or len(files) == 0:
         return []
@@ -34,21 +33,12 @@ def upload_request_files(
 
         cfg = get_config()
 
-        if file.content_type is None:
-            file_url = storage_client.upload_content(
-                filename=filename,
-                content=file.stream.read(),
-                is_anonymous=is_anonymous,
-                bucket_name=cfg.google_cloud_services.storage_bucket,
-            )
-        else:
-            file_url = storage_client.upload_content(
-                filename=filename,
-                content=file.stream.read(),
-                content_type=file.content_type,
-                is_anonymous=is_anonymous,
-                bucket_name=cfg.google_cloud_services.storage_bucket,
-            )
+        file_url = storage_client.upload_content(
+            filename=filename,
+            content=file,
+            bucket_name=cfg.google_cloud_services.storage_bucket,
+            make_file_public=True,
+        )
 
         # since we read from the file we need to rewind it so the next consumer can read it
         file.stream.seek(0)

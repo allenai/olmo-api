@@ -177,6 +177,7 @@ def stream_message_from_model(
         checker_type=checker_type,
         user_ip_address=user_ip_address,
         user_agent=user_agent,
+        storage_client=storage_client,
     )
 
     return create_new_message(

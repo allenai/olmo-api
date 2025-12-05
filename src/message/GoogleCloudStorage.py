@@ -5,6 +5,7 @@ from time import time_ns
 
 from flask import current_app
 from google.cloud.storage import Client
+from werkzeug.datastructures import FileStorage
 
 # GOOGLE CLOUD STORAGE doesn't accept extreme datetime values like 3000 AD as custom time
 # For whoever sees this code in 2100 AD, please update the value!!!
@@ -28,24 +29,19 @@ class GoogleCloudStorage:
     def upload_content(
         self,
         filename: str,
-        content: bytes | str,
+        content: FileStorage,
         *,
         bucket_name: str,
-        content_type: str = "text/plain",
-        is_anonymous: bool = False,
+        make_file_public: bool = False,
     ):
         start_ns = time_ns()
 
         bucket = self._get_bucket(bucket_name)
 
         blob = bucket.blob(filename)
-        blob.upload_from_string(data=content, content_type=content_type)
-        blob.make_public()
-
-        # We're using the file's custom time to have GCS automatically delete files associated with anonymous msgs
-        if is_anonymous:
-            blob.custom_time = datetime.now(UTC)
-            blob.patch()
+        blob.upload_from_file(file_obj=content.stream, content_type=content.content_type, rewind=True)
+        if make_file_public:
+            blob.make_public()
 
         end_ns = time_ns()
 

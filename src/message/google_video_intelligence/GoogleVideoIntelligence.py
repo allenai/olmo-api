@@ -15,6 +15,7 @@ from src.message.google_video_intelligence.video_intelligence_models import (
     GoogleVideoIntelligenceResponse,
     SkippedSafetyCheckResponse,
 )
+from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.SafetyChecker import (
     SafetyChecker,
     SafetyCheckRequest,
@@ -39,15 +40,14 @@ def generate_random_filename(original_filename: str) -> str:
     return random_name
 
 
-def upload_to_safety_bucket(file: FileStorage):
-    name = generate_random_filename(file.filename or ".unkown")
-    safe_bucket = get_safety_bucket()
-    blob = safe_bucket.blob(name)
-    file.seek(0)
-    blob.upload_from_file(file.stream, content_type=file.content_type)
-    file.seek(0)
+def upload_to_safety_bucket(file: FileStorage, client: GoogleCloudStorage):
+    name = generate_random_filename(file.filename or ".unknown")
 
-    return name
+    path = client.upload_content(
+        filename=name, content=file, bucket_name=get_config().google_cloud_services.safety_storage_bucket
+    )
+
+    return path
 
 
 def delete_from_safety_bucket(path: str):

@@ -123,7 +123,6 @@ def create_new_message(
             message_id=user_message.id,
             storage_client=storage_client,
             root_message_id=message_chain[0].id,
-            is_anonymous=client_auth.is_anonymous_user,
         )
         file_urls = [file.file_url for file in file_uploads or []]
         user_message.file_urls = file_urls

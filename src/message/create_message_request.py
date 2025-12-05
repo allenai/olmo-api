@@ -44,7 +44,7 @@ class CreateToolDefinition(APIInterface):
 
 class CreateMessageRequest(APIInterface):
     parent: str | None = Field(default=None)
-    content: str = Field(min_length=1)
+    content: str | None = Field(min_length=1, default=None, validate_default=False)
     input_parts: list[Json[InputPart]] | None = Field(default=None)
     role: Role | None = Field(default=Role.User)
     original: str | None = Field(default=None)
@@ -116,7 +116,7 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     max_steps: int | None = Field(default=None)
     extra_parameters: dict[str, Any] | None = Field(default=None)
 
-    content: str = Field(min_length=1)
+    content: str
     input_parts: list[InputPart] | None = Field(default=None)
 
     role: Role

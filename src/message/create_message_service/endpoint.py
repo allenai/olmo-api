@@ -49,7 +49,7 @@ class MessageType(StrEnum):
 @dataclass(kw_only=True)
 class ModelMessageStreamInput:
     parent: str | None = None
-    content: str
+    content: str | None
     input_parts: list[InputPart] | None = field(default=None)
     role: message.Role | None = message.Role.User
     original: str | None = None
@@ -121,7 +121,8 @@ def stream_message_from_model(
         parent=parent_message,
         opts=inference_options,
         extra_parameters=request.extra_parameters,
-        content=request.content,
+        # HACK: This lets us send an empty content without having to dive too deep into the code. We should figure out how to make this nullable in the future.
+        content=request.content or "",
         input_parts=request.input_parts,
         role=cast(message.Role, request.role),
         original=request.original,

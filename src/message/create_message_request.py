@@ -44,7 +44,7 @@ class CreateToolDefinition(APIInterface):
 
 class CreateMessageRequest(APIInterface):
     parent: str | None = Field(default=None)
-    content: str | None = Field(min_length=1, default=None, validate_default=False)
+    content: str | None = Field(min_length=1, default=None)
     input_parts: list[Json[InputPart]] | None = Field(default=None)
     role: Role | None = Field(default=Role.User)
     original: str | None = Field(default=None)
@@ -107,6 +107,14 @@ class CreateMessageRequest(APIInterface):
             raise ValueError(msg)
 
         return value
+
+    @model_validator(mode="after")
+    def one_of_input_parts_or_content_is_present(self) -> Self:
+        if not self.content and not self.input_parts:
+            msg = "One of content or inputParts is required"
+            raise ValueError(msg)
+
+        return self
 
 
 class CreateMessageRequestWithFullMessages(BaseModel):

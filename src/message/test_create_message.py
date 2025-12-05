@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from src.dao.engine_models.input_parts import Molmo2PointPart
 from src.dao.message.message_models import Role
@@ -24,10 +25,24 @@ def test_message_newline_process():
         pytest.param("content message", [Molmo2PointPart(x=0, y=0, time=0.0).model_dump_json()]),
     ],
 )
-def test_content_and_input_parts_validation(content: str | None, input_parts: str | None):
+def test_content_and_input_parts_validation_passes(content: str | None, input_parts: str | None):
     CreateMessageRequest.model_validate({
         "content": content,
         "input_parts": input_parts,
         "model": "test",
         "host": "test",
     })
+
+
+@pytest.mark.parametrize(
+    ("content", "input_parts"),
+    [pytest.param(None, []), pytest.param("", []), pytest.param("", None), pytest.param(None, None)],
+)
+def test_content_and_input_parts_validation_fails(content: str | None, input_parts: str | None):
+    with pytest.raises(ValidationError):
+        CreateMessageRequest.model_validate({
+            "content": content,
+            "input_parts": input_parts,
+            "model": "test",
+            "host": "test",
+        })

@@ -54,17 +54,19 @@ class GoogleCloudStorage:
 
         return blob.public_url
 
-    def delete_file(self, filename: str, bucket_name: str):
+    def delete_file(self, filename: str, bucket_name: str, *, raise_exception_on_failure=False):
         start_ns = time_ns()
         bucket = self._get_bucket(bucket_name)
 
         try:
             bucket.delete_blob(blob_name=filename)
-        except Exception as e:
+        except Exception:
             current_app.logger.exception(
-                f"Failed to delete {filename} from the bucket:{bucket.name} on GoogleCloudStorage",
-                repr(e),
+                "Failed to delete %s from the bucket:%s on GoogleCloudStorage", filename, bucket.name
             )
+
+            if raise_exception_on_failure:
+                raise
 
         end_ns = time_ns()
 

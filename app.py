@@ -19,7 +19,6 @@ from src.dao.flask_sqlalchemy_session import flask_scoped_session
 from src.db.init_sqlalchemy import make_db_engine
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.openapi import openapi_blueprint
-from src.safety_queue.set_up_safety_queue import set_up_safety_queue
 from src.v4 import create_v4_blueprint
 
 
@@ -39,7 +38,6 @@ def create_app():
     PsycopgInstrumentor().instrument(enable_commenter=True)
     DramatiqInstrumentor().instrument()
 
-    set_up_safety_queue()
     dbc = db.Client.from_config(cfg.db)
     db_engine = make_db_engine(cfg.db, pool=dbc.pool)
     SQLAlchemyInstrumentor().instrument(engine=db_engine, enable_commenter=True)

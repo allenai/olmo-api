@@ -71,7 +71,8 @@ class GoogleVideoIntelligence(SafetyChecker):
             operation = video_client.annotate_video(
                 request={
                     "features": features,
-                    "input_uri": f"gs://{bucket_name}/{req.content}",
+                    # TODO: Figure out if this is a gs:// url or html://
+                    "input_uri": req.content,
                 }
             )
 

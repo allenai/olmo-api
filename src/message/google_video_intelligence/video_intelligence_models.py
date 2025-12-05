@@ -27,11 +27,6 @@ class GoogleVideoIntelligenceResponse(SafetyCheckResponse):
             raise TypeError(msg)
 
         return any(
-            videointelligence.Likelihood(frame.pornography_likelihood)
-            in {
-                videointelligence.Likelihood.POSSIBLE,
-                videointelligence.Likelihood.VERY_LIKELY,
-                videointelligence.Likelihood.LIKELY,
-            }
+            videointelligence.Likelihood(frame.pornography_likelihood) == videointelligence.Likelihood.VERY_LIKELY
             for frame in self.response.annotation_results[0].explicit_annotation.frames
         )

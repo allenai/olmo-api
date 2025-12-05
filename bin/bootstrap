@@ -35,7 +35,8 @@ local=$(cat <<EOF
   },
   "mcp": {
     "servers": []
-  }
+  },
+  "queue_url": "redis://redis:6379"
  }
 EOF
 )

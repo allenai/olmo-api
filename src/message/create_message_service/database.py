@@ -23,29 +23,33 @@ def get_expiration_time(client_auth: Token):
     return datetime.now(UTC) + timedelta(days=1) if client_auth.is_anonymous_user else None
 
 
+def create_message_id():
+    return obj.NewID("msg")
+
+
 def setup_msg_thread(
     message_repository: BaseMessageRepository,
     model: ModelConfig,
     request: CreateMessageRequestWithFullMessages,
     client_auth: Token,
     agent_id: str | None,
+    new_message_id: obj.ID,
 ) -> list[Message]:
     system_msg = None
     message_chain: list[Message] = []
 
-    msg_id = obj.NewID("msg")
     message_expiration_time = get_expiration_time(client_auth)
 
     if request.parent is None and model.default_system_prompt is not None:
         system_msg = Message(
-            id=msg_id,
+            id=new_message_id,
             content=model.default_system_prompt,
             creator=client_auth.client,
             role=Role.System,
             opts=request.opts.model_dump(),
             model_id=model.id,
             model_host=model.host,
-            root=msg_id,
+            root=new_message_id,
             parent=None,
             template=request.template,
             final=False,

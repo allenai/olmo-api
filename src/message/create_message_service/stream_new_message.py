@@ -15,7 +15,7 @@ from pydantic_ai.direct import model_request_stream_sync
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models import ModelRequestParameters
-from src import db, parse
+from src import db, obj, parse
 from src.auth.token import Token
 from src.dao.completion import CompletionOutput
 from src.dao.engine_models.message import Message
@@ -76,6 +76,7 @@ def create_new_message(
     start_time_ns: int,
     client_auth: Token,
     message_repository: BaseMessageRepository,
+    new_message_id: obj.ID,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
 ) -> Message | Generator[Message | MessageChunk | MessageStreamError | Chunk]:
     message_chain = setup_msg_thread(
@@ -84,6 +85,7 @@ def create_new_message(
         request=request,
         client_auth=client_auth,
         agent_id=request.agent,
+        new_message_id=new_message_id,
     )
 
     if request.role == Role.Assistant:

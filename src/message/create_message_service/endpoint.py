@@ -24,6 +24,7 @@ from src.message.create_message_request import (
     CreateToolDefinition,
     InputPart,
 )
+from src.message.create_message_service.database import create_message_id
 from src.message.create_message_service.merge_inference_options import merge_inference_options
 from src.message.create_message_service.safety import validate_message_security_and_safety
 from src.message.create_message_service.stream_new_message import create_new_message
@@ -168,6 +169,8 @@ def stream_message_from_model(
 
     start_time_ns = time_ns()
 
+    new_message_id = create_message_id()
+
     validate_message_security_and_safety(
         request=mapped_request,
         client_auth=client_auth,
@@ -185,6 +188,7 @@ def stream_message_from_model(
         start_time_ns=start_time_ns,
         client_auth=client_auth,
         message_repository=message_repository,
+        new_message_id=new_message_id,
     )
 
 

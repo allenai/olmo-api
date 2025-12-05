@@ -199,7 +199,7 @@ def validate_message_security_and_safety(
         msg = "Unsupported file types in input"
         raise exceptions.BadRequest(msg)
 
-    is_video_safe: bool = check_video_safety(files=video_files)
+    is_video_safe = check_video_safety(files=video_files)
 
     is_image_safe = check_image_safety(files=image_files)
 

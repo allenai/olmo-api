@@ -54,7 +54,7 @@ def create_app():
     def health():
         return "", 204
 
-    storage_client = GoogleCloudStorage(bucket_name=cfg.google_cloud_services.storage_bucket)
+    storage_client = GoogleCloudStorage()
 
     app.register_blueprint(v3.Server(dbc, storage_client), url_prefix="/v3", name="v3")
     app.register_blueprint(

@@ -44,7 +44,7 @@ class CreateToolDefinition(APIInterface):
 
 class CreateMessageRequest(APIInterface):
     parent: str | None = Field(default=None)
-    content: str | None = Field(min_length=1, default=None)
+    content: str | None = Field(default=None)
     input_parts: list[Json[InputPart]] | None = Field(default=None)
     role: Role | None = Field(default=Role.User)
     original: str | None = Field(default=None)

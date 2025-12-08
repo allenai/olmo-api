@@ -95,14 +95,14 @@ def check_video_safety(files: Sequence[FileStorage], storage_client: GoogleCloud
             result = checker.check_request(request)
 
             if not result.is_safe():
-                delete_from_safety_bucket(file_path)
+                delete_from_safety_bucket(file_path, client=storage_client)
                 return False
 
         except Exception:
             current_app.logger.exception("Video safety error")
 
             if file_path:
-                delete_from_safety_bucket(file_path)
+                delete_from_safety_bucket(file_path, client=storage_client)
 
             return False  # QUESTION: Shouldn't we be failing if the check errors?
 

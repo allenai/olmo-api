@@ -37,6 +37,29 @@ services:
     ports:
       - 8000:8000
 
+  
+  safety-worker:
+    build: .
+    entrypoint: [ "/api/start-safety-worker.sh" ]
+    volumes:
+      - ./:/api
+      - ./config.json:/secret/cfg/config.json
+      - ./service_account.json:/secret/cfg/service_account.json
+      - ./.modal.toml:/secret/.modal.toml
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=DEBUG
+      - E2E_AUTH0_CLIENT_SECRET
+      - GOOGLE_APPLICATION_CREDENTIALS=service_account.json
+      - SHA=DEV
+      - MODAL_CONFIG_PATH=/secret/.modal.toml
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+      - OTEL_SERVICE_NAME=olmo-api
+
+    ports:
+      # We use the Prometheus middleware to check if a worker is healthy
+      - 9191:9191
+
   message-deletion-job:
     build: ./message_deletion_job
     profiles: [ "scheduled-job" ]

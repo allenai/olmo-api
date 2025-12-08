@@ -33,7 +33,7 @@ def upload_request_files(
 
         cfg = get_config()
 
-        file_url = storage_client.upload_content(
+        upload_response = storage_client.upload_content(
             filename=filename,
             content=file,
             bucket_name=cfg.google_cloud_services.storage_bucket,
@@ -43,6 +43,6 @@ def upload_request_files(
         # since we read from the file we need to rewind it so the next consumer can read it
         file.stream.seek(0)
 
-        file_results.append(FileUploadResult(file_url=file_url, file_storage=file))
+        file_results.append(FileUploadResult(file_url=upload_response.public_url, file_storage=file))
 
     return file_results

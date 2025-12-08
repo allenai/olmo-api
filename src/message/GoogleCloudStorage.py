@@ -1,4 +1,5 @@
 import re
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
 from time import time_ns
@@ -17,6 +18,12 @@ def get_gcs_client():
     return Client()
 
 
+@dataclass
+class UploadResponse:
+    public_url: str
+    storage_path: str
+
+
 class GoogleCloudStorage:
     client: Client
 
@@ -33,7 +40,7 @@ class GoogleCloudStorage:
         *,
         bucket_name: str,
         make_file_public: bool = False,
-    ):
+    ) -> UploadResponse:
         start_ns = time_ns()
 
         bucket = self._get_bucket(bucket_name)
@@ -52,7 +59,8 @@ class GoogleCloudStorage:
             "duration_ms": (end_ns - start_ns) / 1_000_000,
         })
 
-        return blob.public_url
+        storage_path = "gs://" + blob.id[: -(len(str(blob.generation)) + 1)]  # type:ignore [reportOptionalSubscript]
+        return UploadResponse(public_url=blob.public_url, storage_path=storage_path)
 
     def delete_file(self, filename: str, bucket_name: str, *, raise_exception_on_failure=False):
         start_ns = time_ns()

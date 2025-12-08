@@ -43,11 +43,11 @@ def generate_random_filename(original_filename: str) -> str:
 def upload_to_safety_bucket(file: FileStorage, client: GoogleCloudStorage):
     name = generate_random_filename(file.filename or ".unknown")
 
-    path = client.upload_content(
+    upload_response = client.upload_content(
         filename=name, content=file, bucket_name=get_config().google_cloud_services.safety_storage_bucket
     )
 
-    return path
+    return upload_response.storage_path
 
 
 def delete_from_safety_bucket(path: str, client: GoogleCloudStorage):
@@ -71,7 +71,6 @@ class GoogleVideoIntelligence(SafetyChecker):
             operation = video_client.annotate_video(
                 request={
                     "features": features,
-                    # TODO: Figure out if this is a gs:// url or html://
                     "input_uri": req.content,
                 }
             )

@@ -1,6 +1,7 @@
 import dramatiq
 from dramatiq.brokers.redis import RedisBroker
 from dramatiq.middleware.prometheus import Prometheus
+from opentelemetry_instrumentor_dramatiq import DramatiqInstrumentor  # type:ignore [import-untyped]
 
 from src.config.get_config import get_config
 
@@ -19,3 +20,5 @@ def set_up_safety_queue() -> None:
     redis_broker.add_middleware(Prometheus())
 
     dramatiq.set_broker(redis_broker)
+
+    DramatiqInstrumentor().instrument()

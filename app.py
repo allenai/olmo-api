@@ -8,7 +8,6 @@ from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-from opentelemetry_instrumentor_dramatiq import DramatiqInstrumentor  # type:ignore [import-untyped]
 from sqlalchemy.orm import sessionmaker
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -37,7 +36,6 @@ def create_app():
     HTTPXClientInstrumentor().instrument()
     RequestsInstrumentor().instrument()
     PsycopgInstrumentor().instrument(enable_commenter=True)
-    DramatiqInstrumentor().instrument()
 
     set_up_safety_queue()
 

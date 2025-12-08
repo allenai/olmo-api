@@ -94,6 +94,7 @@ class FeatureFlags(BaseModel):
     allow_files_only_model_in_thread: bool = False
     show_internal_tools: bool = False
     enable_blocking_video_safety_check: bool = False
+    enable_queued_video_safety_check: bool = False
 
 
 @dataclass
@@ -169,6 +170,7 @@ class Config:
     mcp: Mcp
     google_moderate_text: GoogleModerateText
     otel: Otel
+    queue_url: str
 
     @classmethod
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> Self:
@@ -261,4 +263,5 @@ class Config:
                     ]
                 ),
                 google_moderate_text=GoogleModerateText.model_validate(data.get("google_safety_check", {})),
+                queue_url=data.get("queue_url"),
             )

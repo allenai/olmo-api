@@ -28,14 +28,15 @@ local=$(cat <<EOF
     "require_recaptcha": false
   },
   "feature_flags": {
-    "enable_dynamic_model_config": true
+    "enable_queued_video_safety_check": false
   },
   "infini_gram": {
     "api_url": "https://infinigram-api.allen.ai"
   },
   "mcp": {
     "servers": []
-  }
+  },
+  "queue_url": "redis://redis:6379"
  }
 EOF
 )

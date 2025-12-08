@@ -15,7 +15,8 @@
         "usefixtures",
         "instrumentor",
         "molmo",
-        "videointelligence"
+        "videointelligence",
+        "dramatiq"
     ],
     "ruff.configurationPreference": "filesystemFirst",
     "ruff.format.preview": true,

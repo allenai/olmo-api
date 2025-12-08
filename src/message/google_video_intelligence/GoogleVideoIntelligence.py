@@ -5,7 +5,6 @@ from pathlib import Path
 
 from google.cloud import videointelligence
 from google.cloud.storage import Client
-from typing_extensions import override
 from werkzeug.datastructures import FileStorage
 
 from otel.default_tracer import get_default_tracer
@@ -17,7 +16,6 @@ from src.message.google_video_intelligence.video_intelligence_models import (
 )
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.SafetyChecker import (
-    SafetyChecker,
     SafetyCheckRequest,
 )
 from src.safety_queue.video_safety_handler import handle_video_safety_check
@@ -55,17 +53,15 @@ def delete_from_safety_bucket(path: str, client: GoogleCloudStorage):
     client.delete_file(path, bucket_name=get_config().google_cloud_services.safety_storage_bucket)
 
 
-class GoogleVideoIntelligence(SafetyChecker):
-    @override
+class GoogleVideoIntelligence:
     @tracer.start_as_current_span("GoogleVideoIntelligence.check_request")
-    def check_request(self, req: SafetyCheckRequest):
+    def check_request(self, req: SafetyCheckRequest, message_id: str):
         config = get_config()
 
         if (
             config.feature_flags.enable_blocking_video_safety_check
             or config.feature_flags.enable_queued_video_safety_check
         ):
-            bucket_name = get_config().google_cloud_services.safety_storage_bucket
             video_client = get_video_intelligence_client()
 
             operation = video_client.annotate_video(
@@ -86,7 +82,10 @@ class GoogleVideoIntelligence(SafetyChecker):
 
             if config.feature_flags.enable_queued_video_safety_check:
                 getLogger().info("Queuing video safety check for operation %s", operation.operation.name)
-                handle_video_safety_check.send(operation.operation.name)
+                handle_video_safety_check.send(
+                    operation.operation.name,
+                    message_id=message_id,
+                )
                 return SkippedSafetyCheckResponse()
 
         return SkippedSafetyCheckResponse()

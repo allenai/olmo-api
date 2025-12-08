@@ -178,6 +178,7 @@ def stream_message_from_model(
         user_ip_address=user_ip_address,
         user_agent=user_agent,
         storage_client=storage_client,
+        message_id=new_message_id,
     )
 
     return create_new_message(

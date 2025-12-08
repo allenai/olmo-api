@@ -44,7 +44,7 @@ class CreateToolDefinition(APIInterface):
 
 class CreateMessageRequest(APIInterface):
     parent: str | None = Field(default=None)
-    content: str = Field(min_length=1)
+    content: str | None = Field(default=None)
     input_parts: list[Json[InputPart]] | None = Field(default=None)
     role: Role | None = Field(default=Role.User)
     original: str | None = Field(default=None)
@@ -95,18 +95,32 @@ class CreateMessageRequest(APIInterface):
 
     @field_validator("content", mode="after")
     @classmethod
-    def standardize_newlines(cls, value: str) -> str:
+    def standardize_newlines(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+
         return value.replace("\r\n", "\n")
 
     @field_validator("input_parts", mode="after")
     @classmethod
-    def only_one_molmo_2_input_part_allowed(cls, value: list[InputPart]) -> list[InputPart]:
+    def only_one_molmo_2_input_part_allowed(cls, value: list[InputPart] | None) -> list[InputPart] | None:
+        if value is None:
+            return value
+
         molmo_2_point_parts = [part for part in value if part.type == PointPartType.MOLMO_2_INPUT_POINT]
         if len(molmo_2_point_parts) > 1:
             msg = "Only one Molmo 2 input part allowed per request"
             raise ValueError(msg)
 
         return value
+
+    @model_validator(mode="after")
+    def one_of_input_parts_or_content_is_present(self) -> Self:
+        if not self.content and not self.input_parts:
+            msg = "One of content or inputParts is required"
+            raise ValueError(msg)
+
+        return self
 
 
 class CreateMessageRequestWithFullMessages(BaseModel):
@@ -116,7 +130,7 @@ class CreateMessageRequestWithFullMessages(BaseModel):
     max_steps: int | None = Field(default=None)
     extra_parameters: dict[str, Any] | None = Field(default=None)
 
-    content: str = Field(min_length=1)
+    content: str
     input_parts: list[InputPart] | None = Field(default=None)
 
     role: Role

@@ -8,6 +8,4 @@ RUN --mount=type=cache,target=/root/.cache pip install -r requirements.txt
 
 COPY . .
 
-RUN apt-get update -qq && apt-get install ffmpeg -y
-
 ENTRYPOINT [ "/api/start-safety-worker.sh" ]

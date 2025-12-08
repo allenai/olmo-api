@@ -39,7 +39,9 @@ services:
 
   
   safety-worker:
-    build: .
+    build:
+      dockerfile: safety-worker.Dockerfile
+      context: .
     entrypoint: [ "/api/start-safety-worker.sh" ]
     volumes:
       - ./:/api

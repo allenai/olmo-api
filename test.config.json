@@ -78,6 +78,7 @@
   },
   "feature_flags": {
     "enable_dynamic_model_config": true,
-    "show_internal_tools": true
+    "show_internal_tools": true,
+    "enable_queued_video_safety_check": false
   }
 }

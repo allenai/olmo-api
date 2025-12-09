@@ -19,8 +19,7 @@ class GoogleVideoIntelligenceResponse(SafetyCheckResponse):
         self.response = response
 
     def is_safe(self) -> bool:
-        return False
-        # return not self.has_violation()
+        return not self.has_violation()
 
     def has_violation(self) -> bool:
         if len(self.response.annotation_results) != 1:

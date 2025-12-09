@@ -85,7 +85,6 @@ def create_new_message(
         request=request,
         client_auth=client_auth,
         agent_id=request.agent,
-        new_message_id=new_message_id,
     )
 
     if request.role == Role.Assistant:
@@ -115,6 +114,7 @@ def create_new_message(
             model=model,
             agent_id=request.agent,
             include_mcp_servers=request.mcp_server_ids,
+            msg_id=new_message_id,
         )
         message_chain.append(user_message)
 

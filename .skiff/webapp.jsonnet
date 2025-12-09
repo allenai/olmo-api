@@ -565,6 +565,7 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='', safet
         namespace,
         allenAIIngress,
         deployment,
+        safetyWorkerDeployment,
         service,
         pdb,
     ]

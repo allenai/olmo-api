@@ -71,7 +71,7 @@ def handle_video_safety_check(operation_name: str, message_id: str, safety_file_
         if not operation.done():
             span.add_event(
                 "video-safety-operation-not-finished",
-                {"operationName": operation_name, "messageId": message_id, "safetyFileUrl": safety_file_name},
+                {"operationName": operation_name, "messageId": message_id, "safetyFileUrl": safety_file_url},
             )
             raise VideoIntelligenceOperationNotFinishedError
 

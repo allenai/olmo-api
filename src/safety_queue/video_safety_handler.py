@@ -58,14 +58,20 @@ def handle_video_safety_check(operation_name: str, message_id: str, safety_file_
         # Hacky but I couldn't find a better way to get an ops client https://stackoverflow.com/questions/71860530/how-do-i-poll-google-long-running-operations-using-python-library
         raw_operation = video_client.transport.operations_client.get_operation(operation_name)
         if raw_operation is None:
-            span.set_status(trace.StatusCode.ERROR, f"Operation {operation_name} not found")
+            span.set_status(
+                trace.StatusCode.ERROR,
+                f"Operation {operation_name} not found. The Operation endpoint may not have the operation yet.",
+            )
             raise VideoIntelligenceOperationNotAvailableError
 
             # Using this so we can have their result parsing without having to copy it ourselves
         try:
             operation = Operation(raw_operation, refresh=noop, cancel=noop, result_type=AnnotateVideoResponse)
         except AttributeError as e:
-            span.set_status(trace.StatusCode.ERROR, f"Operation {operation_name} not found or not done")
+            span.set_status(
+                trace.StatusCode.ERROR,
+                f"Operation {operation_name} not found or not done. The Operation endpoint may not have the operation yet.",
+            )
             raise VideoIntelligenceOperationMessageNotFoundError from e
 
         if not operation.done():

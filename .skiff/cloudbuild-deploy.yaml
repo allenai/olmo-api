@@ -56,6 +56,7 @@ steps:
     '--tla-str', 'branch=$BRANCH_NAME',
     '--tla-str', 'repo=$REPO_NAME',
     '--tla-str', 'buildId=$BUILD_ID',
+    '--tla-str', 'safetyWorkerImage=gcr.io/$PROJECT_ID/$REPO_NAME-safety-worker:$COMMIT_SHA',
     './webapp.jsonnet'
   ]
   dir: '.skiff'

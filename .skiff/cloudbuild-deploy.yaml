@@ -21,6 +21,27 @@ steps:
   ]
   waitFor: [ 'api.build' ]
 
+- id: 'safety-worker.build'
+  name: 'gcr.io/cloud-builders/docker'
+  args: [
+    'build',
+    '-t', 'gcr.io/$PROJECT_ID/$REPO_NAME-safety-worker:latest',
+    '-t', 'gcr.io/$PROJECT_ID/$REPO_NAME-safety-worker:$COMMIT_SHA',
+    '--cache-from', 'gcr.io/$PROJECT_ID/$REPO_NAME-safety-worker:latest',
+    '--build-arg', 'BUILDKIT_INLINE_CACHE=1',
+    '-f', 'safety-worker.Dockerfile',
+    '.',
+  ]
+
+
+- id: 'safety-worker.push'
+  name: 'gcr.io/cloud-builders/docker'
+  args: [
+    'push',
+    'gcr.io/$PROJECT_ID/$REPO_NAME-safety-worker:$COMMIT_SHA',
+  ]
+  waitFor: [ 'safety-worker.build' ]
+
 # Generate our Kubernetes configuration
 - id: 'config'
   name: 'gcr.io/ai2-reviz/jsonnet'

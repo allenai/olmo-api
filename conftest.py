@@ -27,7 +27,7 @@ postgresql = factories.postgresql(
 
 
 @pytest.fixture
-def cfg(postgresql: Connection):
+def cfg(postgresql: Connection) -> Config:
     cfg = get_config.Config.load("./test.config.json")
 
     # dynamically set connection based on pytest_postgresql

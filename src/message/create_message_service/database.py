@@ -37,19 +37,19 @@ def setup_msg_thread(
     system_msg = None
     message_chain: list[Message] = []
 
+    msg_id = create_message_id()
     message_expiration_time = get_expiration_time(client_auth)
-    root_message_id = obj.ID("msg")
 
     if request.parent is None and model.default_system_prompt is not None:
         system_msg = Message(
-            id=root_message_id,
+            id=msg_id,
             content=model.default_system_prompt,
             creator=client_auth.client,
             role=Role.System,
             opts=request.opts.model_dump(),
             model_id=model.id,
             model_host=model.host,
-            root=root_message_id,
+            root=msg_id,
             parent=None,
             template=request.template,
             final=False,
@@ -151,7 +151,7 @@ def create_user_message(
     message_expiration_time = get_expiration_time(creator_token)
 
     if msg_id is None:
-        msg_id = obj.NewID("msg")
+        msg_id = create_message_id()
 
     message = Message(
         id=msg_id,

@@ -14,6 +14,9 @@ from src.message.google_video_intelligence.video_intelligence_models import Goog
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 
 
+class VideoIntelligenceOperationNotAvailableError(Exception): ...
+
+
 class VideoIntelligenceOperationNotFinishedError(Exception): ...
 
 
@@ -29,7 +32,8 @@ SAFETY_QUEUE_NAME = "safety"
 
 def _make_worker_db_engine() -> Engine:
     config = get_config()
-    url = make_psycopg3_url(config.db.conninfo)
+    # For some reason "autosave" works in the main application but not here
+    url = make_psycopg3_url(config.db.conninfo).difference_update_query(["autosave"])
     return create_engine(url, poolclass=NullPool)
 
 
@@ -37,7 +41,7 @@ logger = getLogger()
 
 
 @dramatiq.actor(queue_name=SAFETY_QUEUE_NAME)
-def handle_video_safety_check(operation_name: str, message_id: str):
+def handle_video_safety_check(operation_name: str, message_id: str, safety_file_url: str):
     logger.debug("Checking video safety check name %s", operation_name)
 
     with Session(_make_worker_db_engine()) as session:
@@ -45,6 +49,8 @@ def handle_video_safety_check(operation_name: str, message_id: str):
 
         # Hacky but I couldn't find a better way to get an ops client https://stackoverflow.com/questions/71860530/how-do-i-poll-google-long-running-operations-using-python-library
         raw_operation = video_client.transport.operations_client.get_operation(operation_name)
+        if raw_operation is None:
+            raise VideoIntelligenceOperationNotAvailableError
 
         # Using this so we can have their result parsing without having to copy it ourselves
         operation = Operation(raw_operation, refresh=noop, cancel=noop, result_type=AnnotateVideoResponse)
@@ -67,16 +73,20 @@ def handle_video_safety_check(operation_name: str, message_id: str):
             logger.error(not_found_message)
             raise VideoIntelligenceOperationMessageNotFoundError(not_found_message)
 
-        if mapped_response.is_safe():
-            if not message.harmful:
-                message.harmful = mapped_response.is_safe()
-                message_repository.update(message)
+        if not message.harmful:
+            message.harmful = not mapped_response.is_safe()
+            message_repository.update(message)
 
-        else:
+        if not mapped_response.is_safe():
             # delete message and files
             storage_client = GoogleCloudStorage()
+            config = get_config()
+
+            storage_client.delete_file(
+                filename=safety_file_url, bucket_name=config.google_cloud_services.safety_storage_bucket
+            )
+
             if message.file_urls:
-                config = get_config()
                 storage_client.delete_multiple_files_by_url(
                     message.file_urls, bucket_name=config.google_cloud_services.storage_bucket
                 )

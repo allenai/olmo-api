@@ -83,8 +83,7 @@ class GoogleVideoIntelligence:
             if config.feature_flags.enable_queued_video_safety_check:
                 getLogger().info("Queuing video safety check for operation %s", operation.operation.name)
                 handle_video_safety_check.send(
-                    operation.operation.name,
-                    message_id=message_id,
+                    operation_name=operation.operation.name, message_id=message_id, safety_file_url=req.content
                 )
                 return SkippedSafetyCheckResponse()
 

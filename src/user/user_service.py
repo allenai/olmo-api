@@ -16,6 +16,8 @@ class UpsertUserRequest(APIInterface):
     acceptance_revoked_date: datetime | None = None
     data_collection_accepted_date: datetime | None = None
     data_collection_acceptance_revoked_date: datetime | None = None
+    media_collection_accepted_date: datetime | None = None
+    media_collection_acceptance_revoked_date: datetime | None = None
 
 
 def upsert_user(dbc: db.Client, client: str, *, should_create_contact: bool) -> User | None:
@@ -31,6 +33,8 @@ def upsert_user(dbc: db.Client, client: str, *, should_create_contact: bool) -> 
             acceptance_revoked_date=request.acceptance_revoked_date,
             data_collection_accepted_date=request.data_collection_accepted_date,
             data_collection_acceptance_revoked_date=request.data_collection_acceptance_revoked_date,
+            media_collection_accepted_date=request.media_collection_accepted_date,
+            media_collection_acceptance_revoked_date=request.media_collection_acceptance_revoked_date,
         )
 
     new_user = dbc.user.create(
@@ -39,6 +43,8 @@ def upsert_user(dbc: db.Client, client: str, *, should_create_contact: bool) -> 
         acceptance_revoked_date=request.acceptance_revoked_date,
         data_collection_accepted_date=request.data_collection_accepted_date,
         data_collection_acceptance_revoked_date=request.data_collection_acceptance_revoked_date,
+        media_collection_accepted_date=request.media_collection_accepted_date,
+        media_collection_acceptance_revoked_date=request.media_collection_acceptance_revoked_date,
     )
 
     if should_create_contact and new_user:

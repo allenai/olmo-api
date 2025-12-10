@@ -37,6 +37,10 @@ def migrate_user_from_anonymous_user(
             ),
             default=None,
         )
+        most_recent_media_collection_accepted_date = max(
+            (d for d in [previous_user.media_collection_accepted_date, new_user.media_collection_accepted_date] if d is not None),
+            default=None,
+        )
 
         # TODO: carry over acceptance revoked date
 
@@ -44,6 +48,7 @@ def migrate_user_from_anonymous_user(
             client=new_user_id,
             terms_accepted_date=most_recent_terms_accepted_date,
             data_collection_accepted_date=most_recent_data_collection_accepted_date,
+            media_collection_accepted_date=most_recent_media_collection_accepted_date,
         )
 
     elif previous_user is not None and new_user is None:
@@ -53,6 +58,8 @@ def migrate_user_from_anonymous_user(
             acceptance_revoked_date=previous_user.acceptance_revoked_date,
             data_collection_accepted_date=previous_user.data_collection_accepted_date,
             data_collection_acceptance_revoked_date=previous_user.data_collection_acceptance_revoked_date,
+            media_collection_accepted_date=previous_user.media_collection_accepted_date,
+            media_collection_acceptance_revoked_date=previous_user.media_collection_acceptance_revoked_date,
         )
 
     elif previous_user is None and new_user is not None:

@@ -29,6 +29,7 @@ def upgrade() -> None:
         sa.Column("media_collection_acceptance_revoked_date", sa.TIMESTAMP(timezone=True), nullable=True),
     )
 
+
 def downgrade() -> None:
     """Downgrade schema."""
     op.drop_column("olmo_user", "media_collection_acceptance_revoked_date")

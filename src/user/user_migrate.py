@@ -38,7 +38,11 @@ def migrate_user_from_anonymous_user(
             default=None,
         )
         most_recent_media_collection_accepted_date = max(
-            (d for d in [previous_user.media_collection_accepted_date, new_user.media_collection_accepted_date] if d is not None),
+            (
+                d
+                for d in [previous_user.media_collection_accepted_date, new_user.media_collection_accepted_date]
+                if d is not None
+            ),
             default=None,
         )
 

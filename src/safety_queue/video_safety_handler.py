@@ -45,7 +45,7 @@ def _make_worker_db_engine() -> Engine:
 logger = getLogger()
 
 
-@dramatiq.actor(queue_name=SAFETY_QUEUE_NAME)
+@dramatiq.actor(queue_name=SAFETY_QUEUE_NAME, max_retries=5)
 @tracer.start_as_current_span("handle_video_safety_check")
 def handle_video_safety_check(operation_name: str, message_id: str, safety_file_url: str):
     span = trace.get_current_span()
@@ -98,7 +98,6 @@ def handle_video_safety_check(operation_name: str, message_id: str, safety_file_
 
         if not message.harmful:
             message.harmful = not mapped_response.is_safe()
-            message_repository.update(message)
 
         if not mapped_response.is_safe():
             logger.info("Message %s has an unsafe file, deleting", message_id)
@@ -115,5 +114,8 @@ def handle_video_safety_check(operation_name: str, message_id: str, safety_file_
                 storage_client.delete_multiple_files_by_url(
                     message.file_urls, bucket_name=config.google_cloud_services.storage_bucket
                 )
+                message.file_urls = None
+
+        message_repository.update(message)
 
         logger.info("Finished video safety check name %s, is safe: %s", operation_name, mapped_response.is_safe())

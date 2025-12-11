@@ -31,7 +31,7 @@
                 "GOOGLE_APPLICATION_CREDENTIALS": "service_account.json",
                 "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4318"
             },
-            "args": ["-p", "1", "-t", "1", "src.safety_queue.set_up_safety_queue:set_up_safety_queue", "src.safety_queue.video_safety_handler"],
+            "args": ["-p", "1", "-t", "1", "src.safety_queue.set_up_safety_queue:set_up_safety_queue", "src.safety_queue.video_safety_handler", "--watch", "src/safety_queue"],
             "jinja": true,
             "justMyCode": false
         },

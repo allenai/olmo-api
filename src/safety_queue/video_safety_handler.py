@@ -2,8 +2,8 @@ from logging import getLogger
 from pathlib import Path
 
 import dramatiq
-from google.api_core.operation import Operation
-from google.cloud.videointelligence_v1 import AnnotateVideoResponse
+from google.api_core import operation_async  # type: ignore
+from google.cloud.videointelligence_v1 import AnnotateVideoProgress, AnnotateVideoResponse
 from opentelemetry import trace
 from sqlalchemy import Engine, NullPool, create_engine
 from sqlalchemy.orm import Session
@@ -12,7 +12,9 @@ from otel.default_tracer import get_default_tracer
 from src.config.get_config import get_config
 from src.dao.message.message_repository import MessageRepository
 from src.db.init_sqlalchemy import make_psycopg3_url
-from src.message.google_video_intelligence.get_video_client import get_video_intelligence_client
+from src.message.google_video_intelligence.get_video_client import (
+    get_async_video_intelligence_client,
+)
 from src.message.google_video_intelligence.video_intelligence_models import GoogleVideoIntelligenceResponse
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 
@@ -47,16 +49,16 @@ logger = getLogger()
 
 @dramatiq.actor(queue_name=SAFETY_QUEUE_NAME, max_retries=5)
 @tracer.start_as_current_span("handle_video_safety_check")
-def handle_video_safety_check(operation_name: str, message_id: str, safety_file_url: str):
+async def handle_video_safety_check(operation_name: str, message_id: str, safety_file_url: str):
     span = trace.get_current_span()
     span.set_attributes({"operationName": operation_name, "messageId": message_id, "safetyFileUrl": safety_file_url})
     logger.info("Checking video safety check name %s", operation_name)
 
     with Session(_make_worker_db_engine()) as session:
-        video_client = get_video_intelligence_client()
+        video_client = get_async_video_intelligence_client()
 
         # Hacky but I couldn't find a better way to get an ops client https://stackoverflow.com/questions/71860530/how-do-i-poll-google-long-running-operations-using-python-library
-        raw_operation = video_client.transport.operations_client.get_operation(operation_name)
+        raw_operation = await video_client.transport.operations_client.get_operation(operation_name)
         if raw_operation is None:
             span.set_status(
                 trace.StatusCode.ERROR,
@@ -66,22 +68,21 @@ def handle_video_safety_check(operation_name: str, message_id: str, safety_file_
 
             # Using this so we can have their result parsing without having to copy it ourselves
         try:
-            operation = Operation(raw_operation, refresh=noop, cancel=noop, result_type=AnnotateVideoResponse)
+            operation = operation_async.from_gapic(
+                operation=raw_operation,
+                operations_client=video_client.transport.operations_client,
+                result_type=AnnotateVideoResponse,
+                metadata_type=AnnotateVideoProgress,
+            )
+            # operation = AsyncOperation(raw_operation, refresh=noop, cancel=noop, result_type=AnnotateVideoResponse)
         except AttributeError as e:
             span.set_status(
                 trace.StatusCode.ERROR,
                 f"Operation {operation_name} not found or not done. The Operation endpoint may not have the operation yet.",
             )
-            raise VideoIntelligenceOperationMessageNotFoundError from e
+            raise VideoIntelligenceOperationNotAvailableError from e
 
-        if not operation.done():
-            span.add_event(
-                "video-safety-operation-not-finished",
-                {"operationName": operation_name, "messageId": message_id, "safetyFileUrl": safety_file_url},
-            )
-            raise VideoIntelligenceOperationNotFinishedError
-
-        result = operation.result(0)
+        result = await operation.result()
 
         if not isinstance(result, AnnotateVideoResponse):
             msg = "Unexpected result from google video checker"

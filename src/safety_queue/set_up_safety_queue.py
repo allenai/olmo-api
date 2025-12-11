@@ -1,5 +1,6 @@
 import dramatiq
 from dramatiq.brokers.redis import RedisBroker
+from dramatiq.middleware.asyncio import AsyncIO
 from dramatiq.middleware.prometheus import Prometheus
 from opentelemetry_instrumentor_dramatiq import DramatiqInstrumentor  # type:ignore [import-untyped]
 
@@ -18,6 +19,7 @@ def set_up_safety_queue() -> None:
         redis_broker.declare_actor(actor)
 
     redis_broker.add_middleware(Prometheus())
+    redis_broker.add_middleware(AsyncIO())
 
     dramatiq.set_broker(redis_broker)
 

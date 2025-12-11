@@ -5,7 +5,7 @@ from psycopg_pool import ConnectionPool
 from src import obj
 from src.api_interface import APIInterface
 
-UserRow = tuple[str, str, datetime, datetime | None, datetime | None, datetime | None]
+UserRow = tuple[str, str, datetime, datetime | None, datetime | None, datetime | None, datetime | None, datetime | None]
 
 
 class User(APIInterface):
@@ -15,6 +15,8 @@ class User(APIInterface):
     acceptance_revoked_date: datetime | None
     data_collection_accepted_date: datetime | None
     data_collection_acceptance_revoked_date: datetime | None
+    media_collection_accepted_date: datetime | None = None
+    media_collection_acceptance_revoked_date: datetime | None = None
 
     @classmethod
     def from_row(cls, row: UserRow) -> "User":
@@ -25,6 +27,8 @@ class User(APIInterface):
             acceptance_revoked_date,
             data_collection_accepted_date,
             data_collection_acceptance_revoked_date,
+            media_collection_accepted_date,
+            media_collection_acceptance_revoked_date,
         ] = row
 
         return cls(
@@ -34,6 +38,8 @@ class User(APIInterface):
             acceptance_revoked_date=acceptance_revoked_date,
             data_collection_accepted_date=data_collection_accepted_date,
             data_collection_acceptance_revoked_date=data_collection_acceptance_revoked_date,
+            media_collection_accepted_date=media_collection_accepted_date,
+            media_collection_acceptance_revoked_date=media_collection_acceptance_revoked_date,
         )
 
 
@@ -51,7 +57,7 @@ class Store:
         with self.pool.connection() as conn, conn.cursor() as cur:
             q = """
                     SELECT
-                        id, client, terms_accepted_date, acceptance_revoked_date, data_collection_accepted_date, data_collection_acceptance_revoked_date
+                        id, client, terms_accepted_date, acceptance_revoked_date, data_collection_accepted_date, data_collection_acceptance_revoked_date, media_collection_accepted_date, media_collection_acceptance_revoked_date
                     FROM
                         olmo_user
                     WHERE
@@ -69,6 +75,8 @@ class Store:
         acceptance_revoked_date: datetime | None = None,
         data_collection_accepted_date: datetime | None = None,
         data_collection_acceptance_revoked_date: datetime | None = None,
+        media_collection_accepted_date: datetime | None = None,
+        media_collection_acceptance_revoked_date: datetime | None = None,
     ) -> User | None:
         with self.pool.connection() as conn, conn.cursor() as cur:
             q = """
@@ -79,10 +87,12 @@ class Store:
                         terms_accepted_date = COALESCE(%(terms_accepted_date)s, terms_accepted_date),
                         acceptance_revoked_date = COALESCE(%(acceptance_revoked_date)s, acceptance_revoked_date),
                         data_collection_accepted_date = COALESCE(%(data_collection_accepted_date)s, data_collection_accepted_date),
-                        data_collection_acceptance_revoked_date = COALESCE(%(data_collection_acceptance_revoked_date)s, data_collection_acceptance_revoked_date)
+                        data_collection_acceptance_revoked_date = COALESCE(%(data_collection_acceptance_revoked_date)s, data_collection_acceptance_revoked_date),
+                        media_collection_accepted_date = COALESCE(%(media_collection_accepted_date)s, media_collection_accepted_date),
+                        media_collection_acceptance_revoked_date = COALESCE(%(media_collection_acceptance_revoked_date)s, media_collection_acceptance_revoked_date)
                     WHERE id = %(id)s OR client = %(client)s
                     RETURNING
-                        id, client, terms_accepted_date, acceptance_revoked_date, data_collection_accepted_date, data_collection_acceptance_revoked_date
+                        id, client, terms_accepted_date, acceptance_revoked_date, data_collection_accepted_date, data_collection_acceptance_revoked_date, media_collection_accepted_date, media_collection_acceptance_revoked_date
                 """
 
             row = cur.execute(
@@ -94,6 +104,8 @@ class Store:
                     "acceptance_revoked_date": acceptance_revoked_date,
                     "data_collection_accepted_date": data_collection_accepted_date,
                     "data_collection_acceptance_revoked_date": data_collection_acceptance_revoked_date,
+                    "media_collection_accepted_date": media_collection_accepted_date,
+                    "media_collection_acceptance_revoked_date": media_collection_acceptance_revoked_date,
                 },
             ).fetchone()
 
@@ -106,15 +118,17 @@ class Store:
         acceptance_revoked_date: datetime | None = None,
         data_collection_accepted_date: datetime | None = None,
         data_collection_acceptance_revoked_date: datetime | None = None,
+        media_collection_accepted_date: datetime | None = None,
+        media_collection_acceptance_revoked_date: datetime | None = None,
     ) -> User:
         with self.pool.connection() as conn, conn.cursor() as cur:
             q = """
                     INSERT INTO
-                        olmo_user (id, client, terms_accepted_date, acceptance_revoked_date, data_collection_accepted_date, data_collection_acceptance_revoked_date)
+                        olmo_user (id, client, terms_accepted_date, acceptance_revoked_date, data_collection_accepted_date, data_collection_acceptance_revoked_date, media_collection_accepted_date, media_collection_acceptance_revoked_date)
                     VALUES
-                        (%(id)s, %(client)s, %(terms_accepted_date)s, %(acceptance_revoked_date)s, %(data_collection_accepted_date)s, %(data_collection_acceptance_revoked_date)s)
+                        (%(id)s, %(client)s, %(terms_accepted_date)s, %(acceptance_revoked_date)s, %(data_collection_accepted_date)s, %(data_collection_acceptance_revoked_date)s, %(media_collection_accepted_date)s, %(media_collection_acceptance_revoked_date)s)
                     RETURNING
-                        id, client, terms_accepted_date, acceptance_revoked_date, data_collection_accepted_date, data_collection_acceptance_revoked_date
+                        id, client, terms_accepted_date, acceptance_revoked_date, data_collection_accepted_date, data_collection_acceptance_revoked_date, media_collection_accepted_date, media_collection_acceptance_revoked_date
                 """
 
             new_id = obj.NewID("user")
@@ -127,6 +141,8 @@ class Store:
                     "acceptance_revoked_date": acceptance_revoked_date,
                     "data_collection_accepted_date": data_collection_accepted_date,
                     "data_collection_acceptance_revoked_date": data_collection_acceptance_revoked_date,
+                    "media_collection_accepted_date": media_collection_accepted_date,
+                    "media_collection_acceptance_revoked_date": media_collection_acceptance_revoked_date,
                 },
             ).fetchone()
 

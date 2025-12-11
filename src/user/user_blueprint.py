@@ -19,6 +19,11 @@ from src.user.user_service import (
     upsert_user,
 )
 
+# CONST for valid terms acceptance date
+# This should be updated whenever the terms and conditions are updated
+# so that we can check if the user has accepted the latest version
+LAST_TERMS_UPDATE_DATE = datetime(2025, 7, 11, tzinfo=UTC)
+
 
 class UserBlueprint(Blueprint):
     dbc: db.Client
@@ -44,19 +49,18 @@ class UserBlueprint(Blueprint):
             raise exceptions.Unauthorized
 
         user = self.dbc.user.get_by_client(agent.client)
-        last_terms_update_date = datetime(2025, 7, 11, tzinfo=UTC)
 
         # A user is considered to have accepted the latest terms if:
         # - they exist,
         # - their acceptance date is set,
         # - and they accepted on or after the latest terms update,
-        #   OR if they revoked before terms update.
+        #   OR if they revoked before terms update. (see const LAST_TERMS_UPDATE_DATE)
         has_accepted_terms_and_conditions = not (
             user is None
             or user.terms_accepted_date is None
             or (
-                user.terms_accepted_date < last_terms_update_date
-                and (user.acceptance_revoked_date is None or user.acceptance_revoked_date < last_terms_update_date)
+                user.terms_accepted_date < LAST_TERMS_UPDATE_DATE
+                and (user.acceptance_revoked_date is None or user.acceptance_revoked_date < LAST_TERMS_UPDATE_DATE)
             )
         )
 
@@ -69,11 +73,21 @@ class UserBlueprint(Blueprint):
             )
         )
 
+        has_accepted_media_collection = (
+            user is not None
+            and user.media_collection_accepted_date is not None
+            and (
+                user.media_collection_acceptance_revoked_date is None
+                or user.media_collection_acceptance_revoked_date < user.media_collection_accepted_date
+            )
+        )
+
         return AuthenticatedClient(
             id=user.id if user is not None else None,
             client=agent.client,
             has_accepted_terms_and_conditions=has_accepted_terms_and_conditions,
             has_accepted_data_collection=has_accepted_data_collection,
+            has_accepted_media_collection=has_accepted_media_collection,
             permissions=get_permissions(agent.token),
         )
 

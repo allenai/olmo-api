@@ -1099,5 +1099,13 @@ ALTER TABLE message ADD COLUMN input_parts JSONB[];
 
 UPDATE alembic_version SET version_num='edaadce92f0a' WHERE alembic_version.version_num = 'e62f9bd0f24b';
 
+-- Running upgrade edaadce92f0a -> 4c886e3dd93c
+
+ALTER TABLE olmo_user ADD COLUMN media_collection_accepted_date TIMESTAMP WITH TIME ZONE;
+
+ALTER TABLE olmo_user ADD COLUMN media_collection_acceptance_revoked_date TIMESTAMP WITH TIME ZONE;
+
+UPDATE alembic_version SET version_num='4c886e3dd93c' WHERE alembic_version.version_num = 'edaadce92f0a';
+
 COMMIT;
 

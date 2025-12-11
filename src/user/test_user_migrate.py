@@ -24,6 +24,7 @@ class TestMigrateUserFromAnonymousUser:
             client=anonymous_user_id,
             terms_accepted_date=datetime(2023, 1, 1, tzinfo=timezone.utc),
             data_collection_accepted_date=datetime(2023, 1, 15, tzinfo=timezone.utc),
+            media_collection_accepted_date=datetime(2023, 1, 16, tzinfo=timezone.utc),
         )
 
         # Create new user with different dates
@@ -31,6 +32,7 @@ class TestMigrateUserFromAnonymousUser:
             client=new_user_id,
             terms_accepted_date=datetime(2023, 2, 1, tzinfo=timezone.utc),
             data_collection_accepted_date=datetime(2023, 2, 15, tzinfo=timezone.utc),
+            media_collection_accepted_date=datetime(2023, 2, 16, tzinfo=timezone.utc),
         )
 
         # Create messages for anonymous user
@@ -89,6 +91,7 @@ class TestMigrateUserFromAnonymousUser:
         # Verify user data was merged (should use most recent dates)
         assert result.updated_user.terms_accepted_date == datetime(2023, 2, 1, tzinfo=timezone.utc)
         assert result.updated_user.data_collection_accepted_date == datetime(2023, 2, 15, tzinfo=timezone.utc)
+        assert result.updated_user.media_collection_accepted_date == datetime(2023, 2, 16, tzinfo=timezone.utc)
 
         # Verify messages were migrated
         migrated_messages = sql_alchemy.query(Message).filter(Message.creator == new_user_id).all()
@@ -113,6 +116,7 @@ class TestMigrateUserFromAnonymousUser:
             client=anonymous_user_id,
             terms_accepted_date=datetime(2023, 1, 1, tzinfo=timezone.utc),
             data_collection_accepted_date=datetime(2023, 1, 15, tzinfo=timezone.utc),
+            media_collection_accepted_date=datetime(2023, 1, 16, tzinfo=timezone.utc),
         )
 
         # Create messages for anonymous user
@@ -153,6 +157,7 @@ class TestMigrateUserFromAnonymousUser:
         # Verify user data was copied from anonymous user
         assert result.updated_user.terms_accepted_date == datetime(2023, 1, 1, tzinfo=timezone.utc)
         assert result.updated_user.data_collection_accepted_date == datetime(2023, 1, 15, tzinfo=timezone.utc)
+        assert result.updated_user.media_collection_accepted_date == datetime(2023, 1, 16, tzinfo=timezone.utc)
 
         # Verify messages were migrated
         migrated_messages = sql_alchemy.query(Message).filter(Message.creator == new_user_id).all()
@@ -170,6 +175,7 @@ class TestMigrateUserFromAnonymousUser:
             client=new_user_id,
             terms_accepted_date=datetime(2023, 3, 1, tzinfo=timezone.utc),
             data_collection_accepted_date=datetime(2023, 3, 15, tzinfo=timezone.utc),
+            media_collection_accepted_date=datetime(2023, 3, 16, tzinfo=timezone.utc),
         )
 
         # Mock GoogleCloudStorage
@@ -190,6 +196,7 @@ class TestMigrateUserFromAnonymousUser:
         # Verify user data remains unchanged
         assert result.updated_user.terms_accepted_date == datetime(2023, 3, 1, tzinfo=timezone.utc)
         assert result.updated_user.data_collection_accepted_date == datetime(2023, 3, 15, tzinfo=timezone.utc)
+        assert result.updated_user.media_collection_accepted_date == datetime(2023, 3, 16, tzinfo=timezone.utc)
 
         # Verify no storage migration was called
         mock_storage.migrate_anonymous_file.assert_not_called()

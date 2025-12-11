@@ -40,8 +40,8 @@ def set_up_safety_queue() -> None:
     # Prometheus is used to set up an endpoint we can health check
     redis_broker.add_middleware(Prometheus())
     redis_broker.add_middleware(AsyncIO())
-    # redis_broker.add_middleware(LogFormatterMiddleware())
-    # redis_broker.add_middleware(OtelMiddleware())
+    redis_broker.add_middleware(LogFormatterMiddleware())
+    redis_broker.add_middleware(OtelMiddleware())
 
     dramatiq.set_broker(redis_broker)
 

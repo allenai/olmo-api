@@ -30,10 +30,6 @@ class VideoIntelligenceOperationNotFinishedError(Exception): ...
 class VideoIntelligenceOperationMessageNotFoundError(Exception): ...
 
 
-def noop():
-    pass
-
-
 SAFETY_QUEUE_NAME = "safety"
 
 
@@ -44,7 +40,7 @@ def _make_worker_db_engine() -> Engine:
     return create_engine(url, poolclass=NullPool)
 
 
-logger = getLogger("dramatiq")
+logger = getLogger()
 
 
 @dramatiq.actor

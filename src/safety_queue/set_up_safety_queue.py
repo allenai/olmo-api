@@ -18,6 +18,7 @@ def set_up_safety_queue() -> None:
         actor.broker = redis_broker
         redis_broker.declare_actor(actor)
 
+    # Prometheus is used to set up an endpoint we can health check
     redis_broker.add_middleware(Prometheus())
     redis_broker.add_middleware(AsyncIO())
 

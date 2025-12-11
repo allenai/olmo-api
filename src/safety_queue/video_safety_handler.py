@@ -74,7 +74,6 @@ async def handle_video_safety_check(operation_name: str, message_id: str, safety
             )
             raise VideoIntelligenceOperationNotAvailableError
 
-            # Using this so we can have their result parsing without having to copy it ourselves
         try:
             operation = operation_async.from_gapic(
                 operation=raw_operation,
@@ -82,7 +81,6 @@ async def handle_video_safety_check(operation_name: str, message_id: str, safety
                 result_type=AnnotateVideoResponse,
                 metadata_type=AnnotateVideoProgress,
             )
-            # operation = AsyncOperation(raw_operation, refresh=noop, cancel=noop, result_type=AnnotateVideoResponse)
         except AttributeError as e:
             span.set_status(
                 trace.StatusCode.ERROR,
@@ -129,5 +127,5 @@ async def handle_video_safety_check(operation_name: str, message_id: str, safety
 
         logger.info(
             "Finished video safety check",
-            extra={"operation": operation_name, "is_safe": mapped_response.is_safe()},
+            extra={"operation": operation_name, "is_safe": mapped_response.is_safe(), "message_id": message_id},
         )

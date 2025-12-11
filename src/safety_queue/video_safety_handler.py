@@ -45,6 +45,9 @@ logger = getLogger()
 
 @dramatiq.actor
 def handle_retry_exhausted(*args, **kwargs) -> None:
+    """
+    Logs retry limits so we can alert of off them
+    """
     logger.error(
         "Job reached retry limits",
         extra={"event": "queue.retry-exhausted", "job_args": str(args), "job_kwargs": str(kwargs)},

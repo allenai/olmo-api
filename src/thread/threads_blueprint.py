@@ -18,6 +18,7 @@ from src.message.create_message_service.endpoint import (
 )
 from src.message.format_messages_output import format_messages
 from src.message.GoogleCloudStorage import GoogleCloudStorage
+from src.safety_queue.video_safety_handler import handle_video_safety_check
 from src.thread.get_thread_service import get_thread
 from src.thread.get_threads_service import GetThreadsRequest, GetThreadsResponse, get_threads
 from src.thread.thread_models import Thread
@@ -46,6 +47,7 @@ def create_threads_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage)
     def create_message(
         create_message_request: CreateMessageRequest,
     ) -> ResponseReturnValue:
+        handle_video_safety_check.send("foo", "bar", "foo")
         model_message_stream_input = ModelMessageStreamInput.from_model_create_message_request(create_message_request)
 
         try:

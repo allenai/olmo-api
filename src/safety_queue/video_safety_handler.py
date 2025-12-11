@@ -44,7 +44,7 @@ def _make_worker_db_engine() -> Engine:
     return create_engine(url, poolclass=NullPool)
 
 
-logger = getLogger()
+logger = getLogger("dramatiq")
 
 
 @dramatiq.actor

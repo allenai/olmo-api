@@ -369,7 +369,8 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='', safet
     };
 
     local safetyWorkerFQN = fullyQualifiedName + '-safety-worker';
-    
+    local safetyWorkerPodLabels = podLabels + { app: config.appName + '-safety-worker', onlyOneOfPerNode: config.appName + '-safety-worker' + env };
+
     local safetyWorkerDeployment = {
         apiVersion: 'apps/v1',
         kind: 'Deployment',
@@ -399,7 +400,7 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='', safet
                     name: safetyWorkerFQN,
                     namespace: namespaceName,
                     // It's OK if multiple workers get scheduled onto one node so we don't include anti-affinity labels here
-                    labels: labels,
+                    labels: safetyWorkerPodLabels,
                     annotations: annotations
                 },
                 spec: {

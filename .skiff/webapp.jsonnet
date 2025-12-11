@@ -363,6 +363,11 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='', safet
         scheme: 'HTTP'
     };
 
+    local safetyWorkerSelectorLabels = {
+        app: config.appName + '-safety-worker',
+        env: env
+    };
+
     local safetyWorkerDeployment = {
         apiVersion: 'apps/v1',
         kind: 'Deployment',
@@ -385,13 +390,14 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='', safet
             revisionHistoryLimit: 3,
             replicas: numReplicas,
             selector: {
-                matchLabels: selectorLabels
+                matchLabels: safetyWorkerSelectorLabels
             },
             template: {
                 metadata: {
                     name: fullyQualifiedName,
                     namespace: namespaceName,
-                    labels: podLabels,
+                    // It's OK if multiple workers get scheduled onto one node so we don't include anti-affinity labels here
+                    labels: labels,
                     annotations: annotations
                 },
                 spec: {
@@ -499,11 +505,11 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='', safet
                             resources: {
                                 requests: {
                                     cpu: 1,
-                                    memory: '256Mi'
+                                    memory: '4Gi'
                                 },
                                 limits: {
-                                    cpu: 10,
-                                    memory: '4Gi'
+                                    cpu: 4,
+                                    memory: '6Gi'
                                 } + gpuLimits # only the first container should have gpuLimits applied
                             },
                             volumeMounts: [

@@ -368,12 +368,14 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='', safet
         env: env
     };
 
+    local safetyWorkerFQN = fullyQualifiedName + '-safety-worker';
+    
     local safetyWorkerDeployment = {
         apiVersion: 'apps/v1',
         kind: 'Deployment',
         metadata: {
             labels: labels,
-            name: fullyQualifiedName + '-safety-worker',
+            name: safetyWorkerFQN,
             namespace: namespaceName,
             annotations: annotations + {
                 'kubernetes.io/change-cause': cause
@@ -394,35 +396,13 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='', safet
             },
             template: {
                 metadata: {
-                    name: fullyQualifiedName,
+                    name: safetyWorkerFQN,
                     namespace: namespaceName,
                     // It's OK if multiple workers get scheduled onto one node so we don't include anti-affinity labels here
                     labels: labels,
                     annotations: annotations
                 },
                 spec: {
-                    # This block tells the cluster that we'd like to make sure
-                    # each instance of your application is on a different node. This
-                    # way if a node goes down, your application doesn't:
-                    # See: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-isolation-restriction
-                    affinity: {
-                        podAntiAffinity: {
-                            requiredDuringSchedulingIgnoredDuringExecution: [
-                                {
-                                   labelSelector: {
-                                        matchExpressions: [
-                                            {
-                                                    key: labelName,
-                                                    operator: 'In',
-                                                    values: [ antiAffinityLabels[labelName], ],
-                                            } for labelName in std.objectFields(antiAffinityLabels)
-                                       ],
-                                    },
-                                    topologyKey: 'kubernetes.io/hostname'
-                                },
-                            ]
-                        },
-                    },
                     nodeSelector: nodeSelector,
                     volumes: [
                         {

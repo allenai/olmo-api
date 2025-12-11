@@ -94,7 +94,6 @@ class TestMigrateUserFromAnonymousUser:
         assert result.updated_user.data_collection_accepted_date == datetime(2023, 2, 15, tzinfo=UTC)
         assert result.updated_user.media_collection_accepted_date == datetime(2023, 2, 16, tzinfo=UTC)
 
-
         # Verify messages were migrated
         migrated_messages = sql_alchemy.query(Message).filter(Message.creator == new_user_id).all()
         assert len(migrated_messages) == 2
@@ -119,7 +118,6 @@ class TestMigrateUserFromAnonymousUser:
             terms_accepted_date=datetime(2023, 1, 1, tzinfo=UTC),
             data_collection_accepted_date=datetime(2023, 1, 15, tzinfo=UTC),
             media_collection_accepted_date=datetime(2023, 1, 16, tzinfo=UTC),
-
         )
 
         # Create messages for anonymous user
@@ -164,7 +162,6 @@ class TestMigrateUserFromAnonymousUser:
         assert result.updated_user.terms_accepted_date == datetime(2023, 1, 1, tzinfo=UTC)
         assert result.updated_user.data_collection_accepted_date == datetime(2023, 1, 15, tzinfo=UTC)
         assert result.updated_user.media_collection_accepted_date == datetime(2023, 1, 16, tzinfo=UTC)
-
 
         # Verify messages were migrated
         migrated_messages = sql_alchemy.query(Message).filter(Message.creator == new_user_id).all()

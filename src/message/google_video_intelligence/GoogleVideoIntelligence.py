@@ -81,9 +81,15 @@ class GoogleVideoIntelligence:
                 raise TypeError(msg)
 
             if config.feature_flags.enable_queued_video_safety_check:
-                getLogger().info("Queuing video safety check for operation %s", operation.operation.name)
+                getLogger().info(
+                    "Queuing video safety check",
+                    extra={"operation": operation.operation.name, "message_id": message_id, "file_uri": req.content},
+                )
+
                 handle_video_safety_check.send(
-                    operation_name=operation.operation.name, message_id=message_id, safety_file_url=req.content
+                    operation_name=operation.operation.name,
+                    message_id=message_id,
+                    safety_file_url=req.content,
                 )
                 return SkippedSafetyCheckResponse()
 

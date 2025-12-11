@@ -47,9 +47,17 @@ def _make_worker_db_engine() -> Engine:
 logger = getLogger()
 
 
-@dramatiq.actor(queue_name=SAFETY_QUEUE_NAME, max_retries=5)
+@dramatiq.actor
+def handle_retry_exhausted(*args, **kwargs) -> None:
+    logger.error(
+        "Job reached retry limits",
+        extra={"event": "queue.retry-exhausted", "job_args": str(args), "job_kwargs": str(kwargs)},
+    )
+
+
+@dramatiq.actor(queue_name=SAFETY_QUEUE_NAME, max_retries=5, on_retry_exhausted=handle_retry_exhausted.actor_name)
 @tracer.start_as_current_span("handle_video_safety_check")
-async def handle_video_safety_check(operation_name: str, message_id: str, safety_file_url: str):
+async def handle_video_safety_check(operation_name: str, message_id: str, safety_file_url: str) -> None:
     span = trace.get_current_span()
     span.set_attributes({"operationName": operation_name, "messageId": message_id, "safetyFileUrl": safety_file_url})
     logger.info("Checking video safety check name %s", operation_name)
@@ -94,14 +102,14 @@ async def handle_video_safety_check(operation_name: str, message_id: str, safety
 
         if message is None:
             not_found_message = f"Message {message_id} not found when evaluating a video safety check"
-            logger.error(not_found_message)
+            logger.error(not_found_message, extra={"operation": operation_name, "message_id": message_id})
             raise VideoIntelligenceOperationMessageNotFoundError(not_found_message)
 
         if not message.harmful:
             message.harmful = not mapped_response.is_safe()
 
         if not mapped_response.is_safe():
-            logger.info("Message %s has an unsafe file, deleting", message_id)
+            logger.info("Message has an unsafe file, deleting files", extra={"message_id": message_id})
             storage_client = GoogleCloudStorage()
             config = get_config()
 
@@ -119,4 +127,7 @@ async def handle_video_safety_check(operation_name: str, message_id: str, safety
 
         message_repository.update(message)
 
-        logger.info("Finished video safety check name %s, is safe: %s", operation_name, mapped_response.is_safe())
+        logger.info(
+            "Finished video safety check",
+            extra={"operation": operation_name, "is_safe": mapped_response.is_safe()},
+        )

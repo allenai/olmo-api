@@ -562,7 +562,7 @@ def pydnatic_ai_http_error_handling(e: ModelHTTPError, reply: Message, model: Mo
         error_message = e.body.get("message", None)
         error_detail = e.body.get("detail", None)
 
-        msg = error_message or error_detail or ""
+        msg = error_message or error_detail or e.message
 
         max_tokens_setting_error = "'max_tokens' or 'max_completion_tokens' is too large"
         if max_tokens_setting_error in msg:

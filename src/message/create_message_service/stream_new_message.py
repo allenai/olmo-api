@@ -559,7 +559,10 @@ def pydnatic_ai_http_error_handling(e: ModelHTTPError, reply: Message, model: Mo
     unified way of handling errors, so we are left with parsing the error messages to see what is going on.
     """
     if e.body is not None and isinstance(e.body, dict):
-        msg = e.body["message"]
+        error_message = e.body.get("message", None)
+        error_detail = e.body.get("detail", None)
+
+        msg = error_message or error_detail or e.message
 
         max_tokens_setting_error = "'max_tokens' or 'max_completion_tokens' is too large"
         if max_tokens_setting_error in msg:

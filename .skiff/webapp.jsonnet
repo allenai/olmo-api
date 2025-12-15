@@ -371,7 +371,7 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='', safet
     local safetyWorkerFQN = fullyQualifiedName + '-safety-worker';
     local safetyWorkerPodLabels = podLabels + { app: config.appName + '-safety-worker', onlyOneOfPerNode: config.appName + '-safety-worker' + env };
 
-    local numSafetyWorkerReplicas = if env == 'prod' then config.replicas.prod else 1;
+    local numSafetyWorkerReplicas = if env == 'prod' then config.workerReplicas.prod else 1;
 
     local safetyWorkerDeployment = {
         apiVersion: 'apps/v1',

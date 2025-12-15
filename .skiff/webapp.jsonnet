@@ -488,11 +488,11 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='', safet
                             resources: {
                                 requests: {
                                     cpu: 1,
-                                    memory: '4Gi'
+                                    memory: '1Gi'
                                 },
                                 limits: {
                                     cpu: 4,
-                                    memory: '6Gi'
+                                    memory: '2Gi'
                                 } + gpuLimits # only the first container should have gpuLimits applied
                             },
                             volumeMounts: [

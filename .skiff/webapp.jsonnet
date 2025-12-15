@@ -371,6 +371,8 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='', safet
     local safetyWorkerFQN = fullyQualifiedName + '-safety-worker';
     local safetyWorkerPodLabels = podLabels + { app: config.appName + '-safety-worker', onlyOneOfPerNode: config.appName + '-safety-worker' + env };
 
+    local numSafetyWorkerReplicas = if env == 'prod' then config.replicas.prod else 1;
+
     local safetyWorkerDeployment = {
         apiVersion: 'apps/v1',
         kind: 'Deployment',
@@ -387,11 +389,11 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='', safet
             strategy: {
                 type: 'RollingUpdate',
                 rollingUpdate: {
-                    maxSurge: numReplicas // This makes deployments faster.
+                    maxSurge: numSafetyWorkerReplicas // This makes deployments faster.
                 }
             },
             revisionHistoryLimit: 3,
-            replicas: numReplicas,
+            replicas: numSafetyWorkerReplicas,
             selector: {
                 matchLabels: safetyWorkerSelectorLabels
             },

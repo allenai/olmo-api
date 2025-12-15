@@ -210,6 +210,26 @@ INSERT INTO prompt_template (
     name,
     opts
 ) VALUES (
+    'Count the backflips in this clip',
+    'caleb',
+    NULL,
+    '{"https://storage.googleapis.com/ai2-playground-molmo/promptTemplates/girl_doing_backflip.mov"}',
+    'backflip_count',
+    'Chat',
+    'Count the backflips in a video clip',
+    '{"temperature":0}'
+) ON CONFLICT DO NOTHING;
+
+INSERT INTO prompt_template (
+    content,
+    creator,
+    extra_parameters,
+    file_urls,
+    id,
+    model_type,
+    name,
+    opts
+) VALUES (
     'Can you describe what is happening in detail?',
     'david',
     NULL,
@@ -417,6 +437,86 @@ INSERT INTO prompt_template (
     'video_tracking_5',
     'Chat',
     'Track the orange cat toy in a video',
+    '{"temperature":0}'
+) ON CONFLICT DO NOTHING;
+
+INSERT INTO prompt_template (
+    content,
+    creator,
+    extra_parameters,
+    file_urls,
+    id,
+    model_type,
+    name,
+    opts
+) VALUES (
+    'Track the car with the number 36',
+    'caleb',
+    NULL,
+    '{"https://storage.googleapis.com/ai2-playground-molmo/promptTemplates/stock_car_race.mov"}',
+    'video_tracking_6',
+    'Chat',
+    'Track the race cars in a video',
+    '{"temperature":0}'
+) ON CONFLICT DO NOTHING;
+
+INSERT INTO prompt_template (
+    content,
+    creator,
+    extra_parameters,
+    file_urls,
+    id,
+    model_type,
+    name,
+    opts
+) VALUES (
+    'Track the players',
+    'caleb',
+    NULL,
+    '{"https://storage.googleapis.com/ai2-playground-molmo/promptTemplates/pickup_basketball.mov"}',
+    'video_tracking_7',
+    'Chat',
+    'Track the players in a basketball game video',
+    '{"temperature":0}'
+) ON CONFLICT DO NOTHING;
+
+INSERT INTO prompt_template (
+    content,
+    creator,
+    extra_parameters,
+    file_urls,
+    id,
+    model_type,
+    name,
+    opts
+) VALUES (
+    'Track the dogs',
+    'caleb',
+    NULL,
+    '{"https://storage.googleapis.com/ai2-playground-molmo/promptTemplates/husky_dogs_playing.mov"}',
+    'video_tracking_8',
+    'Chat',
+    'Track the dogs in a video',
+    '{"temperature":0}'
+) ON CONFLICT DO NOTHING;
+
+INSERT INTO prompt_template (
+    content,
+    creator,
+    extra_parameters,
+    file_urls,
+    id,
+    model_type,
+    name,
+    opts
+) VALUES (
+    'Track the skier in this clip',
+    'caleb',
+    NULL,
+    '{"https://storage.googleapis.com/ai2-playground-molmo/promptTemplates/skiier-clip.mp4"}',
+    'skier_track',
+    'Chat',
+    'Follow the skier in a video clip',
     '{"temperature":0}'
 ) ON CONFLICT DO NOTHING;
 

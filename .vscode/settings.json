@@ -16,7 +16,8 @@
         "instrumentor",
         "molmo",
         "videointelligence",
-        "dramatiq"
+        "dramatiq",
+        "gapic"
     ],
     "ruff.configurationPreference": "filesystemFirst",
     "ruff.format.preview": true,

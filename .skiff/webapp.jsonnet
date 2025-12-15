@@ -11,7 +11,7 @@
 local config = import '../skiff.json';
 local util = import './util.libsonnet';
 
-function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
+function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='', safetyWorkerImage)
     // All Skiff applications get a *.allen.ai URL in addition to *.apps.allenai.org.
     // This domain is attached to a separate Ingress, as to support authentication
     // via either canonical domain.
@@ -358,6 +358,160 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
         }
     };
 
+    local safetyWorkerHealthCheck = {
+        port: 9191, // Prometheus endpoint
+        scheme: 'HTTP'
+    };
+
+    local safetyWorkerSelectorLabels = {
+        app: config.appName + '-safety-worker',
+        env: env
+    };
+
+    local safetyWorkerFQN = fullyQualifiedName + '-safety-worker';
+    local safetyWorkerPodLabels = podLabels + { app: config.appName + '-safety-worker', onlyOneOfPerNode: config.appName + '-safety-worker' + env };
+
+    local safetyWorkerDeployment = {
+        apiVersion: 'apps/v1',
+        kind: 'Deployment',
+        metadata: {
+            labels: labels,
+            name: safetyWorkerFQN,
+            namespace: namespaceName,
+            annotations: annotations + {
+                'kubernetes.io/change-cause': cause
+            }
+        },
+        spec: {
+            progressDeadlineSeconds: 3600, // 30 minutes, A100s are slow to scale up.
+            strategy: {
+                type: 'RollingUpdate',
+                rollingUpdate: {
+                    maxSurge: numReplicas // This makes deployments faster.
+                }
+            },
+            revisionHistoryLimit: 3,
+            replicas: numReplicas,
+            selector: {
+                matchLabels: safetyWorkerSelectorLabels
+            },
+            template: {
+                metadata: {
+                    name: safetyWorkerFQN,
+                    namespace: namespaceName,
+                    // It's OK if multiple workers get scheduled onto one node so we don't include anti-affinity labels here
+                    labels: safetyWorkerPodLabels,
+                    annotations: annotations
+                },
+                spec: {
+                    nodeSelector: nodeSelector,
+                    volumes: [
+                        {
+                            name: 'cfg',
+                            secret: {
+                                secretName: 'cfg'
+                            }
+                        },
+                        {
+                            name: 'modal',
+                            secret: {
+                                secretName: 'modal'
+                            }
+                        }
+                    ],
+                    containers: [
+                        {
+                            name: fullyQualifiedName + '-safety-worker',
+                            image: safetyWorkerImage,
+                            env: [
+                                {
+                                    name: 'SHA',
+                                    value: sha
+                                },
+                                {
+                                    name: 'GOOGLE_APPLICATION_CREDENTIALS',
+                                    value: '/secret/cfg/service_account.json'
+                                },
+                                {
+                                    name: 'MODAL_CONFIG_PATH',
+                                    value: '/secret/.modal.toml'
+                                }
+                            ],
+                            # The "probes" below allow Kubernetes to determine
+                            # if your application is working properly.
+                            #
+                            # The readinessProbe is used to determine if
+                            # an instance of your application can accept live
+                            # requests. The configuration below tells Kubernetes
+                            # to stop sending live requests to your application
+                            # if it returns 3 non 2XX responses over 30 seconds.
+                            # When this happens the application instance will
+                            # be taken out of rotation and given time to "catch-up".
+                            # Once it returns a single 2XX, Kubernetes will put
+                            # it back in rotation.
+                            #
+                            # Kubernetes also has a livenessProbe that can be used to restart
+                            # deadlocked processes. You can find out more about it here:
+                            # https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#define-a-liveness-command
+                            #
+                            # We don't use a livenessProbe as it's easy to cause unnecessary
+                            # restarts, which can be really disruptive to a site's availability.
+                            # If you think your application is likely to be unstable after running
+                            # for long periods send a note to reviz@allenai.org so we can work
+                            # with you to craft the right livenessProbe.
+                            readinessProbe: {
+                                httpGet: safetyWorkerHealthCheck,
+                                periodSeconds: 10,
+                                failureThreshold: 3
+                            },
+                            startupProbe: {
+                                httpGet: safetyWorkerHealthCheck,
+                                periodSeconds: 10,
+                                failureThreshold: 30,
+                            },
+                            # This tells Kubernetes what CPU and memory resources your API needs.
+                            # We set these values low by default, as most applications receive
+                            # bursts of activity and accordingly don't need dedicated resources
+                            # at all times.
+                            #
+                            # Your application will be allowed to use more resources than what's
+                            # specified below. But your application might be killed if it uses
+                            # more than what's requested. If you know you need more memory
+                            # or that your workload is CPU intensive, consider increasing the
+                            # values below.
+                            #
+                            # For more information about these values, and the current maximums
+                            # that your application can request, see:
+                            # https://skiff.allenai.org/resources.html
+                            resources: {
+                                requests: {
+                                    cpu: 1,
+                                    memory: '4Gi'
+                                },
+                                limits: {
+                                    cpu: 4,
+                                    memory: '6Gi'
+                                } + gpuLimits # only the first container should have gpuLimits applied
+                            },
+                            volumeMounts: [
+                                {
+                                    name: 'cfg',
+                                    mountPath: '/secret/cfg',
+                                    readOnly: true
+                                },
+                                {
+                                    name: 'modal',
+                                    mountPath: '/secret',
+                                    readOnly: true
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        }
+    };
+
     local service = {
         apiVersion: 'v1',
         kind: 'Service',
@@ -398,6 +552,7 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='')
         namespace,
         allenAIIngress,
         deployment,
+        safetyWorkerDeployment,
         service,
         pdb,
     ]

@@ -4,5 +4,8 @@
     "team": "oe-adoption",
     "replicas": {
         "prod": 10
+    },
+    "workerReplicas": {
+        "prod": 2
     }
 }

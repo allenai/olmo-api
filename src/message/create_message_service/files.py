@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from werkzeug.datastructures import FileStorage
 
+from src.config.get_config import get_config
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 
 
@@ -18,7 +19,6 @@ def upload_request_files(
     message_id: str,
     storage_client: GoogleCloudStorage,
     root_message_id: str,
-    is_anonymous: bool = False,
 ) -> list[FileUploadResult]:
     if files is None or len(files) == 0:
         return []
@@ -31,18 +31,18 @@ def upload_request_files(
         # We don't want to save filenames since we're not safety checking them for dangerous or personal info
         filename = f"{root_message_id}/{message_id}-{i}{file_extension}"
 
-        if file.content_type is None:
-            file_url = storage_client.upload_content(
-                filename=filename, content=file.stream.read(), is_anonymous=is_anonymous
-            )
-        else:
-            file_url = storage_client.upload_content(
-                filename=filename, content=file.stream.read(), content_type=file.content_type, is_anonymous=is_anonymous
-            )
+        cfg = get_config()
+
+        upload_response = storage_client.upload_content(
+            filename=filename,
+            content=file,
+            bucket_name=cfg.google_cloud_services.storage_bucket,
+            make_file_public=True,
+        )
 
         # since we read from the file we need to rewind it so the next consumer can read it
         file.stream.seek(0)
 
-        file_results.append(FileUploadResult(file_url=file_url, file_storage=file))
+        file_results.append(FileUploadResult(file_url=upload_response.public_url, file_storage=file))
 
     return file_results

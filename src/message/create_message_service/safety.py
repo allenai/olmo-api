@@ -19,6 +19,7 @@ from src.message.google_video_intelligence.GoogleVideoIntelligence import (
     delete_from_safety_bucket,
     upload_to_safety_bucket,
 )
+from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.GoogleModerateText import GoogleModerateText
 from src.message.GoogleVisionSafeSearch import GoogleVisionSafeSearch
 from src.message.SafetyChecker import (
@@ -82,28 +83,28 @@ def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
 
 
 @tracer.start_as_current_span("check_video_safety")
-def check_video_safety(files: Sequence[FileStorage]) -> bool:
+def check_video_safety(files: Sequence[FileStorage], storage_client: GoogleCloudStorage, message_id: str) -> bool:
     checker = GoogleVideoIntelligence()
 
     file_path = ""
     for file in files:
         try:
-            file_path = upload_to_safety_bucket(file)
+            file_path = upload_to_safety_bucket(file, client=storage_client)
 
             request = SafetyCheckRequest(file_path, file.filename)
-            result = checker.check_request(request)
+            result = checker.check_request(request, message_id)
 
             if not result.is_safe():
-                delete_from_safety_bucket(file_path)
+                delete_from_safety_bucket(file_path, client=storage_client)
                 return False
 
         except Exception:
             current_app.logger.exception("Video safety error")
 
             if file_path:
-                delete_from_safety_bucket(file_path)
+                delete_from_safety_bucket(file_path, client=storage_client)
 
-            return False  # QUESTION: Shouldn't we be failing if the check errors?
+            return False
 
     return True
 
@@ -147,13 +148,15 @@ def evaluate_prompt_submission_captcha(
 INAPPROPRIATE_TEXT_ERROR = "inappropriate_prompt_text"
 INAPPROPRIATE_FILE_ERROR = "inappropriate_prompt_file"
 
-FORRBIDDEN_SETTING = "User is not allowed to change this setting"
+FORBIDDEN_SETTING = "User is not allowed to change this setting"
 
 
 @tracer.start_as_current_span("validate_message_security_and_safety")
 def validate_message_security_and_safety(
     request: CreateMessageRequestWithFullMessages,
     client_auth: Token,
+    storage_client: GoogleCloudStorage,
+    message_id: str,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     user_ip_address: str | None = None,
     user_agent: str | None = None,
@@ -168,7 +171,7 @@ def validate_message_security_and_safety(
     can_bypass_safety_checks = user_has_permission(client_auth.token, Permissions.WRITE_BYPASS_SAFETY_CHECKS)
 
     if can_bypass_safety_checks is False and request.bypass_safety_check is True:
-        raise exceptions.Forbidden(FORRBIDDEN_SETTING)
+        raise exceptions.Forbidden(FORBIDDEN_SETTING)
 
     if can_bypass_safety_checks is True and request.bypass_safety_check is True:
         return 0, None
@@ -199,7 +202,7 @@ def validate_message_security_and_safety(
         msg = "Unsupported file types in input"
         raise exceptions.BadRequest(msg)
 
-    is_video_safe: bool = check_video_safety(files=video_files)
+    is_video_safe = check_video_safety(files=video_files, storage_client=storage_client, message_id=message_id)
 
     is_image_safe = check_image_safety(files=image_files)
 

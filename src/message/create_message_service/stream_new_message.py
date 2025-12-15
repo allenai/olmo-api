@@ -15,7 +15,7 @@ from pydantic_ai.direct import model_request_stream_sync
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models import ModelRequestParameters
-from src import db, parse
+from src import db, obj, parse
 from src.auth.token import Token
 from src.dao.completion import CompletionOutput
 from src.dao.engine_models.message import Message
@@ -76,6 +76,7 @@ def create_new_message(
     start_time_ns: int,
     client_auth: Token,
     message_repository: BaseMessageRepository,
+    new_message_id: obj.ID,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
 ) -> Message | Generator[Message | MessageChunk | MessageStreamError | Chunk]:
     message_chain = setup_msg_thread(
@@ -113,6 +114,7 @@ def create_new_message(
             model=model,
             agent_id=request.agent,
             include_mcp_servers=request.mcp_server_ids,
+            msg_id=new_message_id,
         )
         message_chain.append(user_message)
 
@@ -121,7 +123,6 @@ def create_new_message(
             message_id=user_message.id,
             storage_client=storage_client,
             root_message_id=message_chain[0].id,
-            is_anonymous=client_auth.is_anonymous_user,
         )
         file_urls = [file.file_url for file in file_uploads or []]
         user_message.file_urls = file_urls

@@ -23,6 +23,10 @@ def get_expiration_time(client_auth: Token):
     return datetime.now(UTC) + timedelta(days=1) if client_auth.is_anonymous_user else None
 
 
+def create_message_id():
+    return obj.NewID("msg")
+
+
 def setup_msg_thread(
     message_repository: BaseMessageRepository,
     model: ModelConfig,
@@ -33,7 +37,7 @@ def setup_msg_thread(
     system_msg = None
     message_chain: list[Message] = []
 
-    msg_id = obj.NewID("msg")
+    msg_id = create_message_id()
     message_expiration_time = get_expiration_time(client_auth)
 
     if request.parent is None and model.default_system_prompt is not None:
@@ -130,6 +134,7 @@ def create_user_message(
     model: ModelConfig,
     agent_id: str | None,
     *,
+    msg_id: obj.ID | None = None,
     is_msg_harmful: bool | None = None,
     include_mcp_servers: set[str] | None,
 ):
@@ -145,7 +150,9 @@ def create_user_message(
 
     message_expiration_time = get_expiration_time(creator_token)
 
-    msg_id = obj.NewID("msg")
+    if msg_id is None:
+        msg_id = create_message_id()
+
     message = Message(
         id=msg_id,
         content=request.content,

@@ -19,6 +19,23 @@
             "justMyCode": false
         },
         {
+            "name": "Python Debugger: Safety Worker",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "dramatiq",
+            "env": {
+                "FLASK_APP": "app.py",
+                "FLASK_DEBUG": "1",
+                "FLASK_CONFIG_PATH": "config.json",
+                "MODAL_CONFIG_PATH": ".modal.toml",
+                "GOOGLE_APPLICATION_CREDENTIALS": "service_account.json",
+                "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4318"
+            },
+            "args": ["-p", "1", "-t", "1", "src.safety_queue.set_up_safety_queue:set_up_safety_queue", "src.safety_queue.video_safety_handler", "--watch", "src/safety_queue"],
+            "jinja": true,
+            "justMyCode": false
+        },
+        {
             "name": "Alembic Auto-generate Debug Migration",
             "type": "debugpy",
             "request": "launch",

@@ -2,6 +2,7 @@ from pydantic import Field
 
 from src import db
 from src.api_interface import APIInterface
+from src.config.get_config import get_config
 from src.dao.flask_sqlalchemy_session import current_session
 from src.dao.message.message_repository import MessageRepository
 from src.dao.user import User
@@ -73,12 +74,14 @@ def migrate_user_from_anonymous_user(
 
     msgs_to_be_migrated = message_repository.get_by_creator(anonymous_user_id)
 
+    config = get_config()
+
     for index, msg in enumerate(msgs_to_be_migrated):
         # 1. migrate anonyous files on Google Cloud
         for url in msg.file_urls or []:
             filename = url.split("/")[-1]
             whole_name = f"{msg.root}/{filename}"
-            storage_client.migrate_anonymous_file(whole_name)
+            storage_client.migrate_anonymous_file(whole_name, bucket_name=config.google_cloud_services.storage_bucket)
 
     updated_messages_count = message_repository.migrate_messages_to_new_user(
         previous_user_id=anonymous_user_id, new_user_id=new_user_id

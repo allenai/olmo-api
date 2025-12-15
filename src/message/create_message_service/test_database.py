@@ -58,7 +58,11 @@ class TestDatabase:
         token = Token(client="1234", is_anonymous_user=False, token="hello")
 
         thread_setup = setup_msg_thread(
-            message_repository=message_repo, model=model, request=request, client_auth=token, agent_id=None
+            message_repository=message_repo,
+            model=model,
+            request=request,
+            client_auth=token,
+            agent_id=None,
         )
 
         assert len(thread_setup) == 1

@@ -35,6 +35,10 @@
   "modal_openai": {
     "api_key": ""
   },
+  "ai2_model_hub": {
+    "base_url": "",
+    "api_key": ""
+  },
   "server": {
     "num_proxies": 1,
     "admins": [

@@ -22,7 +22,7 @@ from src.user.user_service import (
 # CONST for valid terms acceptance date
 # This should be updated whenever the terms and conditions are updated
 # so that we can check if the user has accepted the latest version
-LAST_TERMS_UPDATE_DATE = datetime(2025, 7, 11, tzinfo=UTC)
+LAST_TERMS_UPDATE_DATE = datetime(2025, 12, 16, tzinfo=UTC)
 
 
 class UserBlueprint(Blueprint):

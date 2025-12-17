@@ -44,6 +44,12 @@ class Cirrascale:
 
 
 @dataclass
+class Ai2ModelHub:
+    base_url: str
+    api_key: SecretStr
+
+
+@dataclass
 class Server:
     num_proxies: int
     log_level: str
@@ -166,6 +172,7 @@ class Config:
     beaker: Beaker
     cirrascale_backend: CirrascaleBackend
     cirrascale: Cirrascale
+    ai2_model_hub: Ai2ModelHub
     modal_openai: ModalOpenAI
     mcp: Mcp
     google_moderate_text: GoogleModerateText
@@ -203,6 +210,10 @@ class Config:
                     api_key=data["cirrascale_backend"]["api_key"],
                 ),
                 modal_openai=ModalOpenAI(api_key=SecretStr(data["modal_openai"]["api_key"])),
+                ai2_model_hub=Ai2ModelHub(
+                    base_url=data["ai2_model_hub"]["base_url"],
+                    api_key=SecretStr(data["ai2_model_hub"]["api_key"]),
+                ),
                 auth=Auth(
                     domain=data["auth"].get("auth0_domain"),
                     audience=data["auth"].get("auth0_audience"),

@@ -1107,5 +1107,53 @@ ALTER TABLE olmo_user ADD COLUMN media_collection_acceptance_revoked_date TIMEST
 
 UPDATE alembic_version SET version_num='4c886e3dd93c' WHERE alembic_version.version_num = 'edaadce92f0a';
 
+-- Running upgrade 4c886e3dd93c -> 20c0085a0629
+
+ALTER TYPE "public"."modelhost" RENAME TO modelhost_old;
+
+CREATE TYPE "public"."modelhost" AS ENUM('InferD', 'Modal', 'BeakerQueues', 'CirrascaleBackend', 'Cirrascale', 'ModalOpenAI', 'TestBackend', 'Ai2ModelHub');
+
+CREATE FUNCTION new_old_not_equals(
+                new_enum_val "public"."modelhost", old_enum_val "public"."modelhost_old"
+            )
+            RETURNS boolean AS $$
+                SELECT new_enum_val::text != old_enum_val::text;
+            $$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OPERATOR != (
+            leftarg = "public"."modelhost",
+            rightarg = "public"."modelhost_old",
+            procedure = new_old_not_equals
+        );
+
+CREATE FUNCTION new_old_equals(
+                new_enum_val "public"."modelhost", old_enum_val "public"."modelhost_old"
+            )
+            RETURNS boolean AS $$
+                SELECT new_enum_val::text = old_enum_val::text;
+            $$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OPERATOR = (
+            leftarg = "public"."modelhost",
+            rightarg = "public"."modelhost_old",
+            procedure = new_old_equals
+        );
+
+ALTER TABLE "public"."model_config" 
+                ALTER COLUMN "host" TYPE "public"."modelhost" 
+                USING "host"::text::"public"."modelhost";
+
+DROP FUNCTION new_old_not_equals(
+            new_enum_val "public"."modelhost", old_enum_val "public"."modelhost_old"
+        ) CASCADE;
+
+DROP FUNCTION new_old_equals(
+            new_enum_val "public"."modelhost", old_enum_val "public"."modelhost_old"
+        ) CASCADE;
+
+DROP TYPE "public"."modelhost_old";
+
+UPDATE alembic_version SET version_num='20c0085a0629' WHERE alembic_version.version_num = '4c886e3dd93c';
+
 COMMIT;
 

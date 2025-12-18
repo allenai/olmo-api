@@ -1,3 +1,10 @@
+[project]
+name = "playground-api"
+version = "0.0.1"
+
+license = "MIT"
+license-files = ["LICENSE"]
+
 [tool.pytest.ini_options]
 markers = [
     "integration: mark a test as an integration test that can use the DB",

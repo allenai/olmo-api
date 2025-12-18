@@ -2,7 +2,7 @@
 name = "playground-api"
 version = "0.0.1"
 
-license = "MIT"
+license = "Apache-2.0"
 license-files = ["LICENSE"]
 
 [tool.pytest.ini_options]

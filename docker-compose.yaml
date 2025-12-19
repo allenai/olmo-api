@@ -18,13 +18,14 @@ services:
 
   api:
     build: .
-    entrypoint: [ "/api/dev.sh" ]
+    entrypoint: [ "./dev.sh" ]
     volumes:
-      - ./:/api
+      # - ./:/app
       - ./config.json:/secret/cfg/config.json
       - ./service_account.json:/secret/cfg/service_account.json
       - ./.modal.toml:/secret/.modal.toml
     environment:
+      - UV_NO_DEV=0
       - PYTHONUNBUFFERED=1
       - LOG_LEVEL=DEBUG
       - E2E_AUTH0_CLIENT_SECRET

@@ -27,7 +27,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 
 # Then, use a final image without uv
-FROM python:3.11-slim-bookworm
+FROM python:3.11-slim-bookworm AS runner
 # It is important to use the image that matches the builder, as the path to the
 # Python executable must be the same, e.g., using `python:3.11-slim-bookworm`
 # will fail.
@@ -36,16 +36,27 @@ FROM python:3.11-slim-bookworm
 RUN groupadd --system --gid 999 nonroot \
     && useradd --system --gid 999 --uid 999 --create-home nonroot
 
+RUN apt-get update -qq && apt-get install ffmpeg -y
+
 # Copy the application from the builder
 COPY --from=builder --chown=nonroot:nonroot /app /app
 
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
 
+FROM runner AS dev
+WORKDIR /app
+
 # Use the non-root user to run our application
 USER nonroot
 
+ENTRYPOINT ["./dev.sh"]
+
+FROM runner AS prod
 # Use `/app` as the working directory
 WORKDIR /app
+
+# Use the non-root user to run our application
+USER nonroot
 
 ENTRYPOINT ["./start.sh"]

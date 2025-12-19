@@ -17,11 +17,10 @@ services:
       - ./schema:/docker-entrypoint-initdb.d
 
   api:
-    build: .
-    entrypoint: [ "./dev.sh" ]
+    build: 
+      context: .
+      target: dev
     volumes:
-      # - ./:/app
-      - ./config.json:/secret/cfg/config.json
       - ./service_account.json:/secret/cfg/service_account.json
       - ./.modal.toml:/secret/.modal.toml
     environment:
@@ -34,6 +33,28 @@ services:
       - MODAL_CONFIG_PATH=/secret/.modal.toml
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
       - OTEL_SERVICE_NAME=olmo-api
+      - FLASK_CONFIG_PATH=./config.json
+
+    develop:
+      # Create a `watch` configuration to update the app
+      # https://docs.docker.com/compose/file-watch/#compose-watch-versus-bind-mounts
+      watch:
+        # Sync the working directory with the `/app` directory in the container
+        - action: sync
+          path: .
+          target: /app
+          # Exclude the project virtual environment — it could be for a
+          # different platform in the container
+          ignore:
+            - .venv/
+
+        # Rebuild the image if dependencies change by checking uv.lock
+        - action: rebuild
+          path: ./uv.lock
+
+        - action: restart
+          path: ./config.json
+          target: ./config.json
 
     ports:
       - 8000:8000

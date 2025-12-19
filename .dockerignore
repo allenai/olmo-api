@@ -11,5 +11,4 @@
 /config.json
 /schema
 /docker-compose.yaml
-/pyproject.toml
 /Dockerfile

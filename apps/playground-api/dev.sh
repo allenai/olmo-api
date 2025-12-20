@@ -1,4 +1,5 @@
 #!/bin/bash
+pwd
 exec \
     gunicorn \
     --workers 1 \

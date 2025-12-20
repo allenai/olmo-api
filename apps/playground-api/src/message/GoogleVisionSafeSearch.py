@@ -2,13 +2,13 @@ import requests
 from flask import current_app
 from google.cloud.vision import Likelihood, SafeSearchAnnotation
 
-from otel.default_tracer import get_default_tracer
 from src.config import get_config
 from src.message.SafetyChecker import (
     SafetyChecker,
     SafetyCheckRequest,
     SafetyCheckResponse,
 )
+from src.otel.default_tracer import get_default_tracer
 
 tracer = get_default_tracer()
 

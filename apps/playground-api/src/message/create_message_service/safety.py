@@ -6,7 +6,6 @@ from opentelemetry import trace
 from werkzeug import exceptions
 from werkzeug.datastructures import FileStorage
 
-from otel.default_tracer import get_default_tracer
 from src.auth.auth_utils import Permissions, user_has_permission
 from src.auth.token import Token
 from src.bot_detection.create_assessment import create_assessment
@@ -28,6 +27,7 @@ from src.message.SafetyChecker import (
     SafetyCheckRequest,
 )
 from src.message.WildGuard import WildGuard
+from src.otel.default_tracer import get_default_tracer
 
 tracer = get_default_tracer()
 
@@ -50,7 +50,9 @@ def check_message_safety(
         return result.is_safe()
 
     except Exception as e:
-        current_app.logger.exception("Skipped message safety check due to error: %s. ", repr(e))
+        current_app.logger.exception(
+            "Skipped message safety check due to error: %s. ", repr(e)
+        )
 
     return None
 
@@ -83,7 +85,9 @@ def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
 
 
 @tracer.start_as_current_span("check_video_safety")
-def check_video_safety(files: Sequence[FileStorage], storage_client: GoogleCloudStorage, message_id: str) -> bool:
+def check_video_safety(
+    files: Sequence[FileStorage], storage_client: GoogleCloudStorage, message_id: str
+) -> bool:
     checker = GoogleVideoIntelligence()
 
     file_path = ""
@@ -111,10 +115,17 @@ def check_video_safety(files: Sequence[FileStorage], storage_client: GoogleCloud
 
 @tracer.start_as_current_span("evaluate_prompt_submission_captcha")
 def evaluate_prompt_submission_captcha(
-    captcha_token: str | None, user_ip_address: str | None, user_agent: str | None, *, is_anonymous_user: bool
+    captcha_token: str | None,
+    user_ip_address: str | None,
+    user_agent: str | None,
+    *,
+    is_anonymous_user: bool,
 ):
     prompt_submission_action = "prompt_submission"
-    if cfg.google_cloud_services.recaptcha_key is not None and captcha_token is not None:
+    if (
+        cfg.google_cloud_services.recaptcha_key is not None
+        and captcha_token is not None
+    ):
         captcha_assessment = create_assessment(
             project_id="ai2-reviz",
             recaptcha_key=cfg.google_cloud_services.recaptcha_key,
@@ -130,7 +141,10 @@ def evaluate_prompt_submission_captcha(
         logger = current_app.logger
 
         if captcha_assessment is None or not captcha_assessment.token_properties.valid:
-            logger.info("rejecting message request due to invalid captcha", extra={"assessment": captcha_assessment})
+            logger.info(
+                "rejecting message request due to invalid captcha",
+                extra={"assessment": captcha_assessment},
+            )
             invalid_captcha_message = "invalid_captcha"
             raise exceptions.BadRequest(invalid_captcha_message)
 
@@ -139,7 +153,8 @@ def evaluate_prompt_submission_captcha(
             or captcha_assessment.token_properties.action != prompt_submission_action
         ):
             logger.info(
-                "rejecting message request due to failed captcha assessment", extra={"assessment": captcha_assessment}
+                "rejecting message request due to failed captcha assessment",
+                extra={"assessment": captcha_assessment},
             )
             failed_captcha_assessment_message = "failed_captcha_assessment"
             raise exceptions.BadRequest(failed_captcha_assessment_message)
@@ -168,7 +183,9 @@ def validate_message_security_and_safety(
         is_anonymous_user=client_auth.is_anonymous_user,
     )
 
-    can_bypass_safety_checks = user_has_permission(client_auth.token, Permissions.WRITE_BYPASS_SAFETY_CHECKS)
+    can_bypass_safety_checks = user_has_permission(
+        client_auth.token, Permissions.WRITE_BYPASS_SAFETY_CHECKS
+    )
 
     if can_bypass_safety_checks is False and request.bypass_safety_check is True:
         raise exceptions.Forbidden(FORBIDDEN_SETTING)
@@ -202,7 +219,9 @@ def validate_message_security_and_safety(
         msg = "Unsupported file types in input"
         raise exceptions.BadRequest(msg)
 
-    is_video_safe = check_video_safety(files=video_files, storage_client=storage_client, message_id=message_id)
+    is_video_safe = check_video_safety(
+        files=video_files, storage_client=storage_client, message_id=message_id
+    )
 
     is_image_safe = check_image_safety(files=image_files)
 

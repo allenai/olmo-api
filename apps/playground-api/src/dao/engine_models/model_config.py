@@ -1,10 +1,12 @@
 from datetime import datetime
 from enum import StrEnum
 
+from infini_gram_api_client.models.available_infini_gram_index_id import (
+    AvailableInfiniGramIndexId,
+)
 from sqlalchemy import ARRAY, ForeignKey, Integer, Sequence, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
 from src.dao.message.inference_opts_model import InferenceOpts
 
 from .base import Base
@@ -52,8 +54,12 @@ class ModelConfig(Base, kw_only=True):
     internal: Mapped[bool]
     prompt_type: Mapped[PromptType]
     # Alembic won't automatically handle changes to order_seq, be careful when changing it!
-    order_seq = Sequence("model_config_order_seq", metadata=Base.metadata, start=10, increment=10)
-    order: Mapped[int] = mapped_column(Integer, order_seq, init=False, server_default=order_seq.next_value())
+    order_seq = Sequence(
+        "model_config_order_seq", metadata=Base.metadata, start=10, increment=10
+    )
+    order: Mapped[int] = mapped_column(
+        Integer, order_seq, init=False, server_default=order_seq.next_value()
+    )
 
     default_system_prompt: Mapped[str | None] = mapped_column(default=None)
     family_id: Mapped[str | None] = mapped_column(default=None)
@@ -62,13 +68,19 @@ class ModelConfig(Base, kw_only=True):
     available_time: Mapped[datetime | None] = mapped_column(default=None)
     deprecation_time: Mapped[datetime | None] = mapped_column(default=None)
 
-    created_time: Mapped[datetime] = mapped_column(server_default=func.now(), init=False)
-    updated_time: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now(), init=False)
+    created_time: Mapped[datetime] = mapped_column(
+        server_default=func.now(), init=False
+    )
+    updated_time: Mapped[datetime] = mapped_column(
+        server_default=func.now(), onupdate=func.now(), init=False
+    )
 
     can_call_tools: Mapped[bool] = mapped_column(default=False)
     can_think: Mapped[bool] = mapped_column(default=False, server_default="false")
 
-    infini_gram_index: Mapped[AvailableInfiniGramIndexId | None] = mapped_column(default=None)
+    infini_gram_index: Mapped[AvailableInfiniGramIndexId | None] = mapped_column(
+        default=None
+    )
 
     temperature_default: Mapped[float] = mapped_column(server_default=text("0.7"))
     temperature_upper: Mapped[float] = mapped_column(server_default=text("1.0"))
@@ -107,7 +119,9 @@ class MultiModalModelConfig(ModelConfig, kw_only=True):
     id: Mapped[str] = mapped_column(ForeignKey("model_config.id"), primary_key=True)
     accepted_file_types: Mapped[list[str]] = mapped_column(ARRAY(String))
     max_files_per_message: Mapped[int | None] = mapped_column(default=None)
-    require_file_to_prompt: Mapped[FileRequiredToPromptOption | None] = mapped_column(default=None)
+    require_file_to_prompt: Mapped[FileRequiredToPromptOption | None] = mapped_column(
+        default=None
+    )
     max_total_file_size: Mapped[int | None] = mapped_column(default=None)
     allow_files_in_followups: Mapped[bool | None]
 

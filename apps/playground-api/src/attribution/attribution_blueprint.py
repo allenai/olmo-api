@@ -1,13 +1,16 @@
 from flask import Blueprint
+from infini_gram_api_client import Client
 from werkzeug import exceptions
 
-from src.attribution.attribution_service import AttributionResponse, GetAttributionRequest, get_attribution
+from src.attribution.attribution_service import (
+    AttributionResponse,
+    GetAttributionRequest,
+    get_attribution,
+)
 from src.config.get_config import cfg
 from src.dao.flask_sqlalchemy_session import current_session
 from src.flask_pydantic_api.api_wrapper import pydantic_api
 from src.model_config.get_model_config_service import get_single_model_config_admin
-
-from .infini_gram_api_client import Client
 
 attribution_blueprint = Blueprint(name="attribution", import_name=__name__)
 

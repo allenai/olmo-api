@@ -1,9 +1,10 @@
 from typing import cast
 
-from src.attribution.flatten_spans import flatten_spans
-from src.attribution.infini_gram_api_client.models.attribution_response import (
+from infini_gram_api_client.models.attribution_response import (
     AttributionResponse,
 )
+
+from src.attribution.flatten_spans import flatten_spans
 
 # There's two tests in here. I had trouble with the second (penguin) response not mapping correctly so I figured it'd be good to test that specific one too.
 # If we want, we can craft responses to test specific parts of the fn
@@ -32,7 +33,9 @@ def test_collapse_spans_collapses_spans():
         collapsed_spans[3].text
         == " Tipping isn't common in Italy, but round up the taxi fare or leave a small tip in the event of exceptional service"
     )
-    assert sum(len(span.documents) for span in collapsed_spans[3].nested_spans) == len(collapsed_spans[3].documents)
+    assert sum(len(span.documents) for span in collapsed_spans[3].nested_spans) == len(
+        collapsed_spans[3].documents
+    )
 
 
 def test_collapse_spans_collapses_penguin_spans():
@@ -48,7 +51,8 @@ def test_collapse_spans_collapses_penguin_spans():
     assert len(collapsed_spans[1].nested_spans) == 2
     # Make sure the second collapsed span has the documents from the first span and the other nested span
     assert len(collapsed_spans[1].documents) == (
-        len(parsed_response.spans[1].documents) + len(parsed_response.spans[2].documents)
+        len(parsed_response.spans[1].documents)
+        + len(parsed_response.spans[2].documents)
     )
 
 
@@ -75,8 +79,12 @@ example_response = {
                                 "cc_multi_bin__cc_multi_bin__hq": [[0, 2851, 0.20521]],
                                 "cc_multi_bin__cc_multi_bin__lq": [[0, 2851, 0.79481]],
                                 "dedupe_para_ngrams_13_1": [],
-                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc": [[0, 2851, 0]],
-                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc_count": [[0, 2851, 0]],
+                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc": [
+                                    [0, 2851, 0]
+                                ],
+                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc_count": [
+                                    [0, 2851, 0]
+                                ],
                             },
                             "created": "2019-04-22T01:15:24Z",
                             "id": "d625295ef3c3b0956eaefd87d702c4a8",
@@ -210,8 +218,12 @@ example_response = {
                                 "cc_multi_bin__cc_multi_bin__hq": [[0, 2851, 0.20521]],
                                 "cc_multi_bin__cc_multi_bin__lq": [[0, 2851, 0.79481]],
                                 "dedupe_para_ngrams_13_1": [],
-                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc": [[0, 2851, 0]],
-                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc_count": [[0, 2851, 0]],
+                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc": [
+                                    [0, 2851, 0]
+                                ],
+                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc_count": [
+                                    [0, 2851, 0]
+                                ],
                             },
                             "created": "2019-04-22T01:15:24Z",
                             "id": "d625295ef3c3b0956eaefd87d702c4a8",
@@ -9860,7 +9872,9 @@ example_response = {
                             "attributes": {
                                 "cc_multi_bin__cc_multi_bin__hq": [[0, 22184, 0.02871]],
                                 "cc_multi_bin__cc_multi_bin__lq": [[0, 22184, 0.97131]],
-                                "dedupe_para_ngrams_13_1": [[22184, 22439, 0.9487179517745972]],
+                                "dedupe_para_ngrams_13_1": [
+                                    [22184, 22439, 0.9487179517745972]
+                                ],
                                 "paloma_paragraphs_bff_duplicates": [],
                             },
                             "created": "2020-12-04T07:42:24Z",
@@ -10122,7 +10136,9 @@ example_response = {
                             "attributes": {
                                 "cc_multi_bin__cc_multi_bin__hq": [[0, 22184, 0.02871]],
                                 "cc_multi_bin__cc_multi_bin__lq": [[0, 22184, 0.97131]],
-                                "dedupe_para_ngrams_13_1": [[22184, 22439, 0.9487179517745972]],
+                                "dedupe_para_ngrams_13_1": [
+                                    [22184, 22439, 0.9487179517745972]
+                                ],
                                 "paloma_paragraphs_bff_duplicates": [],
                             },
                             "created": "2020-12-04T07:42:24Z",
@@ -13291,8 +13307,12 @@ example_penguin_response = {
                                     [11272, 11519, 1],
                                     [11663, 11951, 1],
                                 ],
-                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc": [[0, 12117, 0]],
-                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc_count": [[0, 12117, 0]],
+                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc": [
+                                    [0, 12117, 0]
+                                ],
+                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc_count": [
+                                    [0, 12117, 0]
+                                ],
                             },
                             "created": "2019-04-23T20:27:01Z",
                             "id": "af9b76193e36938d3f5aba48c68d4d67",
@@ -13440,8 +13460,12 @@ example_penguin_response = {
                                     [11272, 11519, 1],
                                     [11663, 11951, 1],
                                 ],
-                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc": [[0, 12117, 0]],
-                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc_count": [[0, 12117, 0]],
+                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc": [
+                                    [0, 12117, 0]
+                                ],
+                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc_count": [
+                                    [0, 12117, 0]
+                                ],
                             },
                             "created": "2019-04-23T20:27:01Z",
                             "id": "af9b76193e36938d3f5aba48c68d4d67",
@@ -13589,8 +13613,12 @@ example_penguin_response = {
                                     [11272, 11519, 1],
                                     [11663, 11951, 1],
                                 ],
-                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc": [[0, 12117, 0]],
-                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc_count": [[0, 12117, 0]],
+                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc": [
+                                    [0, 12117, 0]
+                                ],
+                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc_count": [
+                                    [0, 12117, 0]
+                                ],
                             },
                             "created": "2019-04-23T20:27:01Z",
                             "id": "af9b76193e36938d3f5aba48c68d4d67",
@@ -13738,8 +13766,12 @@ example_penguin_response = {
                                     [11272, 11519, 1],
                                     [11663, 11951, 1],
                                 ],
-                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc": [[0, 12117, 0]],
-                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc_count": [[0, 12117, 0]],
+                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc": [
+                                    [0, 12117, 0]
+                                ],
+                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc_count": [
+                                    [0, 12117, 0]
+                                ],
                             },
                             "created": "2019-04-23T20:27:01Z",
                             "id": "af9b76193e36938d3f5aba48c68d4d67",
@@ -13887,8 +13919,12 @@ example_penguin_response = {
                                     [11272, 11519, 1],
                                     [11663, 11951, 1],
                                 ],
-                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc": [[0, 12117, 0]],
-                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc_count": [[0, 12117, 0]],
+                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc": [
+                                    [0, 12117, 0]
+                                ],
+                                "pii_regex_with_counts_v2__pii_regex_with_counts_v2__doc_count": [
+                                    [0, 12117, 0]
+                                ],
                             },
                             "created": "2019-04-23T20:27:01Z",
                             "id": "af9b76193e36938d3f5aba48c68d4d67",

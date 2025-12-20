@@ -8,7 +8,6 @@ from flask import request as flask_request
 from werkzeug import exceptions
 
 import src.dao.message.message_models as message
-from otel.default_tracer import get_default_tracer
 from src import db
 from src.auth.auth_service import authn
 from src.config.get_config import cfg
@@ -25,8 +24,12 @@ from src.message.create_message_request import (
     InputPart,
 )
 from src.message.create_message_service.database import create_message_id
-from src.message.create_message_service.merge_inference_options import merge_inference_options
-from src.message.create_message_service.safety import validate_message_security_and_safety
+from src.message.create_message_service.merge_inference_options import (
+    merge_inference_options,
+)
+from src.message.create_message_service.safety import (
+    validate_message_security_and_safety,
+)
 from src.message.create_message_service.stream_new_message import create_new_message
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.SafetyChecker import (
@@ -38,6 +41,7 @@ from src.message.validate_message_files_from_config import (
 from src.model_config.base_model_config import (
     validate_inference_parameters_against_model_constraints,
 )
+from src.otel.default_tracer import get_default_tracer
 
 tracer = get_default_tracer()
 
@@ -86,7 +90,9 @@ class ModelMessageStreamInput:
     @staticmethod
     def from_model_create_message_request(create_message_request: CreateMessageRequest):
         return ModelMessageStreamInput(
-            **create_message_request.model_dump(exclude={"host", "n", "logprobs", "input_parts"}, by_alias=False),
+            **create_message_request.model_dump(
+                exclude={"host", "n", "logprobs", "input_parts"}, by_alias=False
+            ),
             request_type=MessageType.MODEL,
             input_parts=create_message_request.input_parts,
         )
@@ -105,7 +111,10 @@ def stream_message_from_model(
     client_auth = authn()
     model = get_model_by_id(request.model)
     parent_message, root_message, private = get_parent_and_root_messages_and_private(
-        request.parent, message_repository, request.private, is_anonymous_user=client_auth.is_anonymous_user
+        request.parent,
+        message_repository,
+        request.private,
+        is_anonymous_user=client_auth.is_anonymous_user,
     )
 
     inference_options = merge_inference_options(
@@ -144,14 +153,21 @@ def stream_message_from_model(
         max_steps=request.max_steps,
     )
 
-    if model.prompt_type == PromptType.FILES_ONLY and not cfg.feature_flags.allow_files_only_model_in_thread:
-        current_app.logger.error("Tried to use a files only model in a normal thread stream %s/%s", id, model)
+    if (
+        model.prompt_type == PromptType.FILES_ONLY
+        and not cfg.feature_flags.allow_files_only_model_in_thread
+    ):
+        current_app.logger.error(
+            "Tried to use a files only model in a normal thread stream %s/%s", id, model
+        )
 
         # HACK: I want OLMoASR to be set up like a normal model but don't want people to stream to it yet
         model_not_available_message = "This model isn't available yet"
         raise exceptions.BadRequest(model_not_available_message)
 
-    validate_message_files_from_config(request.files, config=model, has_parent=mapped_request.parent is not None)
+    validate_message_files_from_config(
+        request.files, config=model, has_parent=mapped_request.parent is not None
+    )
     validate_inference_parameters_against_model_constraints(
         model,
         InferenceOpts(
@@ -200,8 +216,16 @@ def get_parent_and_root_messages_and_private(
     request_private: bool | None,
     is_anonymous_user: bool,
 ) -> tuple[Message | None, Message | None, bool]:
-    parent_message = message_repository.get_message_by_id(parent_message_id) if parent_message_id is not None else None
-    root_message = message_repository.get_message_by_id(parent_message.root) if parent_message is not None else None
+    parent_message = (
+        message_repository.get_message_by_id(parent_message_id)
+        if parent_message_id is not None
+        else None
+    )
+    root_message = (
+        message_repository.get_message_by_id(parent_message.root)
+        if parent_message is not None
+        else None
+    )
 
     private = (
         # Anonymous users aren't allowed to share messages

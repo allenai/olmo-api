@@ -2,11 +2,18 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Annotated, Literal
 
+from infini_gram_api_client.models.available_infini_gram_index_id import (
+    AvailableInfiniGramIndexId,
+)
 from pydantic import AwareDatetime, ByteSize, Field, RootModel, computed_field
 
 from src.api_interface import APIInterface
-from src.attribution.infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
-from src.dao.engine_models.model_config import FileRequiredToPromptOption, ModelHost, ModelType, PromptType
+from src.dao.engine_models.model_config import (
+    FileRequiredToPromptOption,
+    ModelHost,
+    ModelType,
+    PromptType,
+)
 
 
 class ModelAvailability(StrEnum):
@@ -54,7 +61,9 @@ class BaseResponseModel(APIInterface):
         if self.internal:
             return ModelAvailability.INTERNAL
 
-        if self.available_time is not None and self.available_time > datetime.now(tz=UTC):
+        if self.available_time is not None and self.available_time > datetime.now(
+            tz=UTC
+        ):
             return ModelAvailability.PRERELEASE
 
         return ModelAvailability.PUBLIC

@@ -765,3 +765,8 @@ docstring-code-line-length = 80
 
 [tool.uv.sources]
 inferd = { path = "vendor/inferd-0.5.9-0_v0.5.9-py3-none-any.whl" }
+
+[tool.uv.workspace]
+members = [
+    "apps/playground-api",
+]

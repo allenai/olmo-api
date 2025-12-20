@@ -103,12 +103,6 @@ services:
       # We use the Prometheus middleware to check if a worker is healthy
       - 9191:9191
 
-  message-deletion-job:
-    build: ./message_deletion_job
-    profiles: [ "scheduled-job" ]
-    volumes:
-      - ./config.json:/secret/cfg/config.json
-
   redis:
     image: redis:7
     ports:

@@ -11,13 +11,13 @@ from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from sqlalchemy.orm import sessionmaker
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from otel.otel_setup import setup_otel
 from src import db, error, util, v3
 from src.config import get_config
 from src.dao.flask_sqlalchemy_session import flask_scoped_session
 from src.db.init_sqlalchemy import make_db_engine
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.openapi import openapi_blueprint
+from src.otel.otel_setup import setup_otel
 from src.safety_queue.set_up_safety_queue import set_up_safety_queue
 from src.v4 import create_v4_blueprint
 
@@ -28,7 +28,9 @@ def create_app():
     # Use ISO formatted datetimes
     app.json = util.CustomJSONProvider(app)
 
-    cfg = get_config.Config.load(os.environ.get("FLASK_CONFIG_PATH", get_config.DEFAULT_CONFIG_PATH))
+    cfg = get_config.Config.load(
+        os.environ.get("FLASK_CONFIG_PATH", get_config.DEFAULT_CONFIG_PATH)
+    )
 
     setup_otel()
 
@@ -56,7 +58,9 @@ def create_app():
 
     app.register_blueprint(v3.Server(dbc, storage_client), url_prefix="/v3", name="v3")
     app.register_blueprint(
-        create_v4_blueprint(dbc=dbc, storage_client=storage_client, session_maker=session_maker),
+        create_v4_blueprint(
+            dbc=dbc, storage_client=storage_client, session_maker=session_maker
+        ),
         url_prefix="/v4",
         name="v4",
     )

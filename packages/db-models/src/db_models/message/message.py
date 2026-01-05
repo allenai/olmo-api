@@ -16,14 +16,14 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .base import Base
-from .completion import Completion
-from .input_parts import InputPart
-from .label import Label
-from .prompt_template import PromptTemplate
-from .pydantic_type import PydanticType
-from .tool_call import ToolCall
-from .tool_definitions import ToolDefinition
+from db_models.base import Base
+from db_models.completion import Completion
+from db_models.input_parts import InputPart
+from db_models.label import Label
+from db_models.prompt_template import PromptTemplate
+from db_models.pydantic_type import PydanticType
+from db_models.tool_call import ToolCall
+from db_models.tool_definitions import ToolDefinition
 
 
 # Generated using sqlacodegen

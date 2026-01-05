@@ -9,9 +9,11 @@ resolution-markers = [
 
 [manifest]
 members = [
+    "db-models",
     "infini-gram-api-client",
     "playground",
     "playground-api",
+    "playground-core",
 ]
 
 [[package]]
@@ -594,6 +596,17 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/ba/af/72cd6ef29f9c5f731251acadaeb821559fe25f10852f44a63374c9ca08c1/cryptography-46.0.3-pp311-pypy311_pp73-manylinux_2_34_x86_64.whl", hash = "sha256:94cd0549accc38d1494e1f8de71eca837d0509d0d44bf11d158524b0e12cebf9", size = 4409447, upload-time = "2025-10-15T23:18:24.209Z" },
     { url = "https://files.pythonhosted.org/packages/0d/c3/e90f4a4feae6410f914f8ebac129b9ae7a8c92eb60a638012dde42030a9d/cryptography-46.0.3-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:6b5063083824e5509fdba180721d55909ffacccc8adbec85268b48439423d78c", size = 3438528, upload-time = "2025-10-15T23:18:26.227Z" },
 ]
+
+[[package]]
+name = "db-models"
+version = "0.1.0"
+source = { editable = "packages/db-models" }
+dependencies = [
+    { name = "playground-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "playground-core", editable = "packages/playground-core" }]
 
 [[package]]
 name = "distro"
@@ -2685,6 +2698,11 @@ dev = [
     { name = "types-protobuf", specifier = "==5.29.1.20250208" },
     { name = "types-requests", specifier = "==2.32.0.20240914" },
 ]
+
+[[package]]
+name = "playground-core"
+version = "0.1.0"
+source = { editable = "packages/playground-core" }
 
 [[package]]
 name = "pluggy"

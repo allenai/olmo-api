@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, cast
 
+from db_models.model_config import ModelConfig
 from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
@@ -32,4 +33,18 @@ class InferenceOpts(BaseModel):
             stop=message.opts.get("stop", None),
             n=cast(int | None, message.opts.get("n", None)),  # type: ignore [arg-type]
             logprobs=message.opts.get("logprobs", None),
+        )
+
+    @staticmethod
+    def from_model_config_defaults(
+        model_config: ModelConfig | None,
+    ) -> "InferenceOpts | None":
+        if model_config is None:
+            return None
+
+        return InferenceOpts.model_construct(
+            max_tokens=model_config.max_tokens_default,
+            temperature=model_config.temperature_default,
+            top_p=model_config.top_p_default,
+            stop=model_config.stop_default,
         )

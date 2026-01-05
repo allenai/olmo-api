@@ -56,10 +56,7 @@ def get_general_mcp_tools() -> list[Ai2ToolDefinition]:
 
 def get_tools_from_mcp_servers(mcp_server_ids: set[str]) -> list[Ai2ToolDefinition]:
     mcp_tools = [
-        tool
-        for server in cfg.mcp.servers
-        if server.id in mcp_server_ids
-        for tool in list_mcp_server_tools(server)
+        tool for server in cfg.mcp.servers if server.id in mcp_server_ids for tool in list_mcp_server_tools(server)
     ]
 
     return mcp_tools
@@ -88,15 +85,7 @@ def call_mcp_tool(tool_call: ToolCall, tool_definition: Ai2ToolDefinition):
             url=mcp_config.url,
             headers=mcp_config.headers,
         )
-        return str(
-            asyncio.run(
-                server.direct_call_tool(
-                    name=tool_call.tool_name, args=tool_call.args or {}
-                )
-            )
-        )
+        return str(asyncio.run(server.direct_call_tool(name=tool_call.tool_name, args=tool_call.args or {})))
     except Exception as _e:
-        getLogger().exception(
-            "Failed to call mcp tool.", extra={"tool_name": tool_call.tool_name}
-        )
+        getLogger().exception("Failed to call mcp tool.", extra={"tool_name": tool_call.tool_name})
         return f"Failed to call remote tool {tool_call.tool_name}"

@@ -43,17 +43,13 @@ def get_available_tools(model: "ModelConfig | ModelBase") -> list[Ai2ToolDefinit
         return []
 
     # HACK: We'll want to replace this with a way to determine what tools are available on models
-    internal_tools = (
-        get_internal_tools() if get_config().feature_flags.show_internal_tools else []
-    )
+    internal_tools = get_internal_tools() if get_config().feature_flags.show_internal_tools else []
     mcp_tools = get_general_mcp_tools()
 
     return internal_tools + mcp_tools
 
 
-def call_tool(
-    tool_call: ToolCall, tool_definition: Ai2ToolDefinition
-) -> ToolReturnPart:
+def call_tool(tool_call: ToolCall, tool_definition: Ai2ToolDefinition) -> ToolReturnPart:
     tool_response: str
     match tool_call.tool_source:
         case ToolSource.INTERNAL:

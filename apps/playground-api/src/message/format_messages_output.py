@@ -18,9 +18,7 @@ def format_message(obj) -> str:
 
 
 def format_messages(
-    stream_generator: Generator[
-        Message | message.MessageChunk | message.MessageStreamError | Chunk
-    ],
+    stream_generator: Generator[Message | message.MessageChunk | message.MessageStreamError | Chunk],
 ) -> Generator[str, Any, None]:
     try:
         for stream_message in stream_generator:

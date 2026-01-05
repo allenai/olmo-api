@@ -27,15 +27,11 @@ class Completion(Base):
     opts: Mapped[dict] = mapped_column(JSONB)
     model: Mapped[str] = mapped_column(Text)
     sha: Mapped[str] = mapped_column(Text)
-    created: Mapped[datetime.datetime] = mapped_column(
-        DateTime(True), server_default=text("now()")
-    )
+    created: Mapped[datetime.datetime] = mapped_column(DateTime(True), server_default=text("now()"))
     tokenize_ms: Mapped[int] = mapped_column(Integer)
     generation_ms: Mapped[int] = mapped_column(Integer)
     queue_ms: Mapped[int] = mapped_column(Integer)
     input_tokens: Mapped[int] = mapped_column(Integer)
     output_tokens: Mapped[int] = mapped_column(Integer)
 
-    message: Mapped[list["Message"]] = relationship(
-        "Message", back_populates="completion_"
-    )
+    message: Mapped[list["Message"]] = relationship("Message", back_populates="completion_")

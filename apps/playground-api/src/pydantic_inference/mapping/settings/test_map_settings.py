@@ -102,8 +102,6 @@ class TestPydanticSettingsMap:
         )
         extra_body = {"foo": "bar", "number": 42}
 
-        result = pydantic_settings_map(
-            opts=opts, model_config=model_config, extra_body=extra_body
-        )
+        result = pydantic_settings_map(opts=opts, model_config=model_config, extra_body=extra_body)
 
         assert result.get("extra_body") == extra_body

@@ -90,27 +90,21 @@ def create_uploaded_files(count: int) -> Sequence[UploadedFile]:
             id="no follow-up files allowed",
         ),
         pytest.param(
-            create_model_config({
-                "require_file_to_prompt": FileRequiredToPromptOption.FirstMessage
-            }),
+            create_model_config({"require_file_to_prompt": FileRequiredToPromptOption.FirstMessage}),
             False,
             "This model requires a file to be sent with the first message",
             0,
             id="file required with first message",
         ),
         pytest.param(
-            create_model_config({
-                "require_file_to_prompt": FileRequiredToPromptOption.AllMessages
-            }),
+            create_model_config({"require_file_to_prompt": FileRequiredToPromptOption.AllMessages}),
             False,
             "This model requires a file to be sent with all messages",
             0,
             id="file required with first message when required in all messages",
         ),
         pytest.param(
-            create_model_config({
-                "require_file_to_prompt": FileRequiredToPromptOption.AllMessages
-            }),
+            create_model_config({"require_file_to_prompt": FileRequiredToPromptOption.AllMessages}),
             True,
             "This model requires a file to be sent with all messages",
             0,
@@ -132,15 +126,11 @@ def create_uploaded_files(count: int) -> Sequence[UploadedFile]:
         ),
     ],
 )
-def test_file_validation_errors(
-    model_config, has_parent: bool, error_message: str, uploaded_file_count: int
-):  # noqa: FBT001
+def test_file_validation_errors(model_config, has_parent: bool, error_message: str, uploaded_file_count: int):  # noqa: FBT001
     uploaded_files = create_uploaded_files(uploaded_file_count)
 
     with pytest.raises(ValidationError, match=error_message):
-        validate_message_files_from_config(
-            uploaded_files, model_config, has_parent=has_parent
-        )
+        validate_message_files_from_config(uploaded_files, model_config, has_parent=has_parent)
 
 
 @pytest.mark.parametrize(
@@ -155,17 +145,13 @@ def test_file_validation_errors(
             id="not sending a follow-up file when not allowed",
         ),
         pytest.param(
-            create_model_config({
-                "require_file_to_prompt": FileRequiredToPromptOption.FirstMessage
-            }),
+            create_model_config({"require_file_to_prompt": FileRequiredToPromptOption.FirstMessage}),
             False,
             1,
             id="send a file with the first message when required",
         ),
         pytest.param(
-            create_model_config({
-                "require_file_to_prompt": FileRequiredToPromptOption.AllMessages
-            }),
+            create_model_config({"require_file_to_prompt": FileRequiredToPromptOption.AllMessages}),
             False,
             1,
             id="send a file when required on all messages",
@@ -192,23 +178,17 @@ def test_file_validation_errors(
             id="send below the max amount of files",
         ),
         pytest.param(
-            create_model_config({
-                "require_file_to_prompt": FileRequiredToPromptOption.NoRequirement
-            }),
+            create_model_config({"require_file_to_prompt": FileRequiredToPromptOption.NoRequirement}),
             False,
             0,
             id="send no files when not required",
         ),
     ],
 )
-def test_file_validation_passes(
-    model_config: MultiModalModelConfig, has_parent: bool, uploaded_file_count: int
-):  # noqa: FBT001
+def test_file_validation_passes(model_config: MultiModalModelConfig, has_parent: bool, uploaded_file_count: int):  # noqa: FBT001
     uploaded_files = create_uploaded_files(uploaded_file_count)
 
-    validate_message_files_from_config(
-        uploaded_files, config=model_config, has_parent=has_parent
-    )
+    validate_message_files_from_config(uploaded_files, config=model_config, has_parent=has_parent)
 
 
 def test_file_validation_fails_if_a_file_is_sent_to_a_non_multi_modal_model() -> None:
@@ -238,19 +218,13 @@ def test_file_validation_fails_if_a_file_is_sent_to_a_non_multi_modal_model() ->
     )
 
     with pytest.raises(ValidationError, match=""):
-        validate_message_files_from_config(
-            request_files=uploaded_files, config=model_config, has_parent=False
-        )
+        validate_message_files_from_config(request_files=uploaded_files, config=model_config, has_parent=False)
 
 
 def test_file_validation_fails_if_a_file_type_is_not_allowed() -> None:
-    model_config = create_model_config({
-        "accepted_file_types": ["application/pdf", "image/jpg"]
-    })
+    model_config = create_model_config({"accepted_file_types": ["application/pdf", "image/jpg"]})
     with open(
-        os.path.join(
-            os.path.dirname(__file__), "file_validation", "test-small-png.png"
-        ),
+        os.path.join(os.path.dirname(__file__), "file_validation", "test-small-png.png"),
         "rb",
     ) as f:
         uploaded_file = UploadedFile(stream=f)
@@ -259,23 +233,15 @@ def test_file_validation_fails_if_a_file_type_is_not_allowed() -> None:
             ValidationError,
             match=r"This model only accepts files of types \['application/pdf', 'image/jpg'\]",
         ):
-            validate_message_files_from_config(
-                request_files=[uploaded_file], config=model_config, has_parent=False
-            )
+            validate_message_files_from_config(request_files=[uploaded_file], config=model_config, has_parent=False)
 
 
 def test_file_validation_passes_if_a_file_type_is_allowed() -> None:
-    model_config = create_model_config({
-        "accepted_file_types": ["application/pdf", "image/png"]
-    })
+    model_config = create_model_config({"accepted_file_types": ["application/pdf", "image/png"]})
     with open(
-        os.path.join(
-            os.path.dirname(__file__), "file_validation", "test-small-png.png"
-        ),
+        os.path.join(os.path.dirname(__file__), "file_validation", "test-small-png.png"),
         "rb",
     ) as f:
         uploaded_file = UploadedFile(stream=f)
 
-        validate_message_files_from_config(
-            request_files=[uploaded_file], config=model_config, has_parent=False
-        )
+        validate_message_files_from_config(request_files=[uploaded_file], config=model_config, has_parent=False)

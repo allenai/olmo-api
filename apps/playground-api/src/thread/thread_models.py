@@ -138,8 +138,7 @@ class FlatMessage(APIInterface):
     @field_serializer("content")
     def truncate_legally_required_tool_responses(self, v: str) -> str:
         if self.role == Role.ToolResponse and any(
-            tool_call.tool_name in TOOL_NAMES_TO_TRUNCATE
-            for tool_call in self.tool_calls or []
+            tool_call.tool_name in TOOL_NAMES_TO_TRUNCATE for tool_call in self.tool_calls or []
         ):
             words = v.split(" ")
             truncated_text = " ".join(words[: CONTENT_TRUNCATION_LIMIT - 1])
@@ -159,11 +158,7 @@ def _map_messages(message: Message | SQLAMessage) -> list[FlatMessage]:
     if message.children is None or len(message.children) == 0:
         return messages
 
-    mapped_messages = [
-        child_child
-        for child in message.children
-        for child_child in _map_messages(child)
-    ]
+    mapped_messages = [child_child for child in message.children for child_child in _map_messages(child)]
     return [*messages, *mapped_messages]
 
 

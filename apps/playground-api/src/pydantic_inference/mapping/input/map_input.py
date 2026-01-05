@@ -28,18 +28,14 @@ from src.message.create_message_service.input_parts import map_input_parts
 
 
 def _map_db_tool_to_pydantic_tool(tool: ToolCall):
-    return ToolCallPart(
-        tool_name=tool.tool_name, tool_call_id=tool.tool_call_id, args=tool.args
-    )
+    return ToolCallPart(tool_name=tool.tool_name, tool_call_id=tool.tool_call_id, args=tool.args)
 
 
 class UnsupportedMediaTypeError(Exception):
     pass
 
 
-def _map_part_from_file_url(
-    file_url: str, blob_map: dict[str, FileUploadResult] | None
-) -> MultiModalContent:
+def _map_part_from_file_url(file_url: str, blob_map: dict[str, FileUploadResult] | None) -> MultiModalContent:
     if blob_map is not None and file_url in blob_map:
         return BinaryContent(
             data=blob_map[file_url].file_storage.stream.read(),
@@ -70,16 +66,11 @@ def _map_part_from_file_url(
     raise UnsupportedMediaTypeError(unsupported_media_type_msg, file_url, mimetype)
 
 
-def pydantic_map_messages(
-    messages: list[Message], blob_map: dict[str, FileUploadResult] | None
-) -> list[ModelMessage]:
+def pydantic_map_messages(messages: list[Message], blob_map: dict[str, FileUploadResult] | None) -> list[ModelMessage]:
     model_messages: list[ModelMessage] = []
     for message in messages:
         if message.role == Role.User:
-            file_user_content = [
-                _map_part_from_file_url(file_url, blob_map)
-                for file_url in message.file_urls or []
-            ]
+            file_user_content = [_map_part_from_file_url(file_url, blob_map) for file_url in message.file_urls or []]
             text_content = map_input_parts(message.input_parts, message.content)
 
             user_content: list[UserContent] = [text_content, *file_user_content]
@@ -95,9 +86,7 @@ def pydantic_map_messages(
             assistant_message_parts.append(TextPart(content=message.content))
 
             if message.tool_calls:
-                assistant_message_parts.extend([
-                    _map_db_tool_to_pydantic_tool(tool) for tool in message.tool_calls
-                ])
+                assistant_message_parts.extend([_map_db_tool_to_pydantic_tool(tool) for tool in message.tool_calls])
 
             model_messages.append(
                 ModelResponse(

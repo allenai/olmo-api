@@ -109,11 +109,4 @@ class StreamEndChunk(BaseChunk):
         return ChunkType.END
 
 
-Chunk = (
-    ModelResponseChunk
-    | ToolCallChunk
-    | ErrorChunk
-    | ThinkingChunk
-    | StreamStartChunk
-    | StreamEndChunk
-)
+Chunk = ModelResponseChunk | ToolCallChunk | ErrorChunk | ThinkingChunk | StreamStartChunk | StreamEndChunk

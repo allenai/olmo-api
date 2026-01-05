@@ -12,9 +12,7 @@ def test_message_newline_process():
 
     msg_expected = "hello \n hello \n hi \n hello"
 
-    request = CreateMessageRequest(
-        parent=None, content=msg, role=Role.User, model="test", host="test"
-    )
+    request = CreateMessageRequest(parent=None, content=msg, role=Role.User, model="test", host="test")
 
     assert request.content == msg_expected
 
@@ -24,14 +22,10 @@ def test_message_newline_process():
     [
         pytest.param(None, [Molmo2PointPart(x=0, y=0, time=0.0).model_dump_json()]),
         pytest.param("content message", None),
-        pytest.param(
-            "content message", [Molmo2PointPart(x=0, y=0, time=0.0).model_dump_json()]
-        ),
+        pytest.param("content message", [Molmo2PointPart(x=0, y=0, time=0.0).model_dump_json()]),
     ],
 )
-def test_content_and_input_parts_validation_passes(
-    content: str | None, input_parts: str | None
-):
+def test_content_and_input_parts_validation_passes(content: str | None, input_parts: str | None):
     CreateMessageRequest.model_validate({
         "content": content,
         "input_parts": input_parts,
@@ -49,9 +43,7 @@ def test_content_and_input_parts_validation_passes(
         pytest.param(None, None),
     ],
 )
-def test_content_and_input_parts_validation_fails(
-    content: str | None, input_parts: str | None
-):
+def test_content_and_input_parts_validation_fails(content: str | None, input_parts: str | None):
     with pytest.raises(ValidationError):
         CreateMessageRequest.model_validate({
             "content": content,

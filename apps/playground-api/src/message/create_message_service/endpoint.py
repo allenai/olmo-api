@@ -90,9 +90,7 @@ class ModelMessageStreamInput:
     @staticmethod
     def from_model_create_message_request(create_message_request: CreateMessageRequest):
         return ModelMessageStreamInput(
-            **create_message_request.model_dump(
-                exclude={"host", "n", "logprobs", "input_parts"}, by_alias=False
-            ),
+            **create_message_request.model_dump(exclude={"host", "n", "logprobs", "input_parts"}, by_alias=False),
             request_type=MessageType.MODEL,
             input_parts=create_message_request.input_parts,
         )
@@ -153,21 +151,14 @@ def stream_message_from_model(
         max_steps=request.max_steps,
     )
 
-    if (
-        model.prompt_type == PromptType.FILES_ONLY
-        and not cfg.feature_flags.allow_files_only_model_in_thread
-    ):
-        current_app.logger.error(
-            "Tried to use a files only model in a normal thread stream %s/%s", id, model
-        )
+    if model.prompt_type == PromptType.FILES_ONLY and not cfg.feature_flags.allow_files_only_model_in_thread:
+        current_app.logger.error("Tried to use a files only model in a normal thread stream %s/%s", id, model)
 
         # HACK: I want OLMoASR to be set up like a normal model but don't want people to stream to it yet
         model_not_available_message = "This model isn't available yet"
         raise exceptions.BadRequest(model_not_available_message)
 
-    validate_message_files_from_config(
-        request.files, config=model, has_parent=mapped_request.parent is not None
-    )
+    validate_message_files_from_config(request.files, config=model, has_parent=mapped_request.parent is not None)
     validate_inference_parameters_against_model_constraints(
         model,
         InferenceOpts(
@@ -216,16 +207,8 @@ def get_parent_and_root_messages_and_private(
     request_private: bool | None,
     is_anonymous_user: bool,
 ) -> tuple[Message | None, Message | None, bool]:
-    parent_message = (
-        message_repository.get_message_by_id(parent_message_id)
-        if parent_message_id is not None
-        else None
-    )
-    root_message = (
-        message_repository.get_message_by_id(parent_message.root)
-        if parent_message is not None
-        else None
-    )
+    parent_message = message_repository.get_message_by_id(parent_message_id) if parent_message_id is not None else None
+    root_message = message_repository.get_message_by_id(parent_message.root) if parent_message is not None else None
 
     private = (
         # Anonymous users aren't allowed to share messages

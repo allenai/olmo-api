@@ -57,15 +57,11 @@ class BeakerQueuesModel(Model):
     _model_name: str = field(init=False)
     _system: str = field(default="ai2", init=False)
 
-    def __init__(
-        self, model_config: ModelConfig, beaker_config: BeakerConfig | None = None
-    ) -> None:
+    def __init__(self, model_config: ModelConfig, beaker_config: BeakerConfig | None = None) -> None:
         """Initialize the model with a beaker client."""
         if not beaker_config:
             cfg = get_config()
-            beaker_config = BeakerConfig(
-                rpc_address=cfg.beaker.address, user_token=cfg.beaker.user_token
-            )
+            beaker_config = BeakerConfig(rpc_address=cfg.beaker.address, user_token=cfg.beaker.user_token)
 
         self._model_name = model_config.model_id_on_host
         self._model_profile = ModelProfile(supports_tools=model_config.can_call_tools)
@@ -135,9 +131,7 @@ class BeakerQueuesModel(Model):
             **model_settings,
         }
 
-        entry = self.beaker_client.queue.create_entry(
-            q, input=queue_input, expires_in_sec=EXPIRES_IN
-        )
+        entry = self.beaker_client.queue.create_entry(q, input=queue_input, expires_in_sec=EXPIRES_IN)
 
         for resp in entry:
             if resp.HasField("pending_entry"):
@@ -267,9 +261,7 @@ class BeakerQueuesModel(Model):
                         file_urls.append(item.url)
                     case BinaryContent():
                         # Is this correct?
-                        file_urls.append(
-                            f"data:{item.media_type};base64,{base64.b64encode(item.data).decode('utf-8')}"
-                        )
+                        file_urls.append(f"data:{item.media_type};base64,{base64.b64encode(item.data).decode('utf-8')}")
                     case _:
                         assert_never(item)  # type: ignore
             if file_urls:
@@ -282,18 +274,10 @@ class BeakerQueuesModel(Model):
 
     # Unused, but maybe need in future
 
-    def _get_tools(
-        self, model_request_parameters: ModelRequestParameters
-    ) -> list[dict[str, Any]]:
-        tools = [
-            self._map_tool_definition(r)
-            for r in model_request_parameters.function_tools
-        ]
+    def _get_tools(self, model_request_parameters: ModelRequestParameters) -> list[dict[str, Any]]:
+        tools = [self._map_tool_definition(r) for r in model_request_parameters.function_tools]
         if model_request_parameters.output_tools:
-            tools += [
-                self._map_tool_definition(r)
-                for r in model_request_parameters.output_tools
-            ]
+            tools += [self._map_tool_definition(r) for r in model_request_parameters.output_tools]
         return tools
 
     @staticmethod

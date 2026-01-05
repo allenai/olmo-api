@@ -30,7 +30,9 @@ def cfg(postgresql: Connection) -> Config:
     cfg = Config.load("./test.config.json")
 
     # dynamically set connection based on pytest_postgresql
-    cfg.db.conninfo = f"postgresql://{postgresql.info.user}:@{postgresql.info.host}:{postgresql.info.port}/{postgresql.info.dbname}"
+    cfg.db.conninfo = (
+        f"postgresql://{postgresql.info.user}:@{postgresql.info.host}:{postgresql.info.port}/{postgresql.info.dbname}"
+    )
     return cfg
 
 

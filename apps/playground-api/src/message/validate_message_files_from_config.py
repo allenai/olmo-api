@@ -62,16 +62,10 @@ class CreateMessageRequestFilesValidator(BaseModel):
         require_file_to_prompt = self.our_model_config.require_file_to_prompt
         are_files_present = self.files is not None and len(self.files) > 0
 
-        if (
-            require_file_to_prompt is FileRequiredToPromptOption.NoRequirement
-            or are_files_present
-        ):
+        if require_file_to_prompt is FileRequiredToPromptOption.NoRequirement or are_files_present:
             return self
 
-        if (
-            require_file_to_prompt is FileRequiredToPromptOption.AllMessages
-            and not are_files_present
-        ):
+        if require_file_to_prompt is FileRequiredToPromptOption.AllMessages and not are_files_present:
             error_message = "This model requires a file to be sent with all messages"
             raise ValueError(error_message)
 
@@ -80,9 +74,7 @@ class CreateMessageRequestFilesValidator(BaseModel):
             and not are_files_present
             and not self.has_parent
         ):
-            error_message = (
-                "This model requires a file to be sent with the first message"
-            )
+            error_message = "This model requires a file to be sent with the first message"
             raise ValueError(error_message)
 
         return self
@@ -94,14 +86,8 @@ class CreateMessageRequestFilesValidator(BaseModel):
 
         are_files_present = self.files is not None and len(self.files) > 0
 
-        if (
-            not self.our_model_config.allow_files_in_followups
-            and self.has_parent
-            and are_files_present
-        ):
-            error_message = (
-                "This model doesn't allow files to be sent in follow-up messages"
-            )
+        if not self.our_model_config.allow_files_in_followups and self.has_parent and are_files_present:
+            error_message = "This model doesn't allow files to be sent in follow-up messages"
             raise ValueError(error_message)
 
         return self
@@ -112,13 +98,8 @@ class CreateMessageRequestFilesValidator(BaseModel):
             return self
 
         max_files_per_message = self.our_model_config.max_files_per_message
-        if (
-            max_files_per_message is not None
-            and len(self.files or []) > max_files_per_message
-        ):
-            error_message = (
-                f"This model only allows {max_files_per_message} files per message"
-            )
+        if max_files_per_message is not None and len(self.files or []) > max_files_per_message:
+            error_message = f"This model only allows {max_files_per_message} files per message"
             raise ValueError(error_message)
 
         return self
@@ -135,7 +116,9 @@ class CreateMessageRequestFilesValidator(BaseModel):
             total_file_size = sum(file_sizes)
 
             if total_file_size > max_total_file_size:
-                error_message = f"This model has a max total file size of {max_total_file_size.human_readable(decimal=True)}"
+                error_message = (
+                    f"This model has a max total file size of {max_total_file_size.human_readable(decimal=True)}"
+                )
                 raise ValueError(error_message)
 
         return self
@@ -149,9 +132,7 @@ class CreateMessageRequestFilesValidator(BaseModel):
             return self
 
         do_files_match_allowed_file_types = all(
-            check_is_file_in_allowed_file_types(
-                file.stream, self.our_model_config.accepted_file_types
-            )
+            check_is_file_in_allowed_file_types(file.stream, self.our_model_config.accepted_file_types)
             for file in self.files
         )
 

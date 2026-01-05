@@ -26,9 +26,7 @@ def get_internal_tools():
 
 
 def call_internal_tool(tool_call: ToolCall) -> str:
-    found_tool = next(
-        (tool for tool in TOOL_REGISTRY if tool_call.tool_name == tool.name), None
-    )
+    found_tool = next((tool for tool in TOOL_REGISTRY if tool_call.tool_name == tool.name), None)
 
     if found_tool is None:
         return "Could not find tool"

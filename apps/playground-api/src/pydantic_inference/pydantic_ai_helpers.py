@@ -10,11 +10,7 @@ from db.models.tool_call import ToolCall
 
 def find_tool_def_by_name(message: Message, tool_name: str):
     tool_def = next(
-        (
-            tool_def
-            for tool_def in message.tool_definitions or []
-            if tool_def.name == tool_name
-        ),
+        (tool_def for tool_def in message.tool_definitions or [] if tool_def.name == tool_name),
         None,
     )
 
@@ -26,11 +22,7 @@ def find_tool_def_by_name(message: Message, tool_name: str):
 
 
 def map_pydantic_tool_to_db_tool(message: Message, tool_part: ToolCallPart):
-    args = (
-        try_parse_to_json(tool_part.args)
-        if isinstance(tool_part.args, str)
-        else tool_part.args
-    )
+    args = try_parse_to_json(tool_part.args) if isinstance(tool_part.args, str) else tool_part.args
     if isinstance(args, str):
         msg = "String args not supported currently"
         raise NotImplementedError(msg)
@@ -47,9 +39,7 @@ def map_pydantic_tool_to_db_tool(message: Message, tool_part: ToolCallPart):
 
 
 def map_db_tool_to_pydantic_tool(tool: ToolCall):
-    return ToolCallPart(
-        tool_name=tool.tool_name, tool_call_id=tool.tool_call_id, args=tool.args
-    )
+    return ToolCallPart(tool_name=tool.tool_name, tool_call_id=tool.tool_call_id, args=tool.args)
 
 
 def try_parse_to_json(data: str) -> dict | str:

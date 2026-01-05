@@ -1,7 +1,7 @@
 import datetime
 from typing import TYPE_CHECKING, Any
 
-from playground_core.object_id import new_id_generator
+from core.object_id import new_id_generator
 from sqlalchemy import (
     ARRAY,
     DateTime,

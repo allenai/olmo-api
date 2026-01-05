@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Literal, TypeAlias
 
-from playground_core.api_interface import APIInterface
+from core.api_interface import APIInterface
 from pydantic import Field
 
 

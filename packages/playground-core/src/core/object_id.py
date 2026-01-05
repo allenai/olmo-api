@@ -5,7 +5,7 @@ import string
 ID = str
 
 
-def NewID(prefix: str) -> ID:
+def NewID(prefix: str) -> ID:  # noqa: N802
     """
     Returns a unique ID that's easy to copy and paste because it's short and
     avoids producing embarrassing words from random runs of letters.

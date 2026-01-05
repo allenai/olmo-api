@@ -2,7 +2,7 @@ import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
-from playground_core.object_id import new_id_generator
+from core.object_id import new_id_generator
 from sqlalchemy import DateTime, Enum, ForeignKey, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship

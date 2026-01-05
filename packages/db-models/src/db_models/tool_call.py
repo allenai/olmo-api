@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any
 
-from playground_core import new_id_generator
+from core import new_id_generator
 from sqlalchemy import Enum, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship

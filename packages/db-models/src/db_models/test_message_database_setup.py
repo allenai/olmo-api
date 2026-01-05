@@ -1,4 +1,4 @@
-from playground_core.object_id import NewID
+from core.object_id import NewID
 from sqlalchemy.orm import Session
 
 from src.dao.message.message_models import Role

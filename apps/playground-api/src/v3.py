@@ -52,8 +52,12 @@ class Server(Blueprint):
             blueprint=create_v3_message_blueprint(dbc, storage_client=storage_client),
             url_prefix="/message",
         )
-        self.register_blueprint(blueprint=UserBlueprint(dbc=dbc, storage_client=storage_client))
-        self.register_blueprint(blueprint=attribution_blueprint, url_prefix="/attribution")
+        self.register_blueprint(
+            blueprint=UserBlueprint(dbc=dbc, storage_client=storage_client)
+        )
+        self.register_blueprint(
+            blueprint=attribution_blueprint, url_prefix="/attribution"
+        )
 
     def prompts(self):
         return jsonify(self.dbc.template.prompts(deleted="deleted" in request.args))
@@ -100,7 +104,9 @@ class Server(Blueprint):
             msg = "missing JSON body"
             raise exceptions.BadRequest(msg)
 
-        prompt = self.dbc.template.create_prompt(request.json.get("name"), request.json.get("content"), agent.client)
+        prompt = self.dbc.template.create_prompt(
+            request.json.get("name"), request.json.get("content"), agent.client
+        )
         return jsonify(prompt)
 
     def create_label(self):
@@ -128,7 +134,9 @@ class Server(Blueprint):
         if existing.meta.total != 0:
             msg = f"message {mid} already has label {existing.labels[0].id}"
             raise exceptions.UnprocessableEntity(msg)
-        lbl = self.dbc.label.create(msg.id, rating, agent.client, request.json.get("comment"))
+        lbl = self.dbc.label.create(
+            msg.id, rating, agent.client, request.json.get("comment")
+        )
         return jsonify(lbl)
 
     def label(self, id: str):
@@ -155,7 +163,9 @@ class Server(Blueprint):
         if "export" not in request.args:
             return jsonify(ll)
 
-        labels = "\n".join([json.dumps(l, cls=util.CustomEncoder) for l in ll.labels])
+        labels = "\n".join([
+            json.dumps(label, cls=util.CustomEncoder) for label in ll.labels
+        ])
         filename = f"labels-{int(datetime.now(UTC).timestamp())}.jsonl"
         body = io.BytesIO(labels.encode("utf-8"))
 

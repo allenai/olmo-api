@@ -18,7 +18,7 @@ class TestMigrateUserFromAnonymousUser:
         new_user_id = "new_user_456"
 
         # Create anonymous user
-        anonymous_user = dbc.user.create(
+        dbc.user.create(
             client=anonymous_user_id,
             terms_accepted_date=datetime(2023, 1, 1, tzinfo=UTC),
             data_collection_accepted_date=datetime(2023, 1, 15, tzinfo=UTC),
@@ -26,7 +26,7 @@ class TestMigrateUserFromAnonymousUser:
         )
 
         # Create new user with different dates
-        new_user = dbc.user.create(
+        dbc.user.create(
             client=new_user_id,
             terms_accepted_date=datetime(2023, 2, 1, tzinfo=UTC),
             data_collection_accepted_date=datetime(2023, 2, 15, tzinfo=UTC),
@@ -93,20 +93,34 @@ class TestMigrateUserFromAnonymousUser:
         assert result.messages_updated_count == 2
 
         # Verify user data was merged (should use most recent dates)
-        assert result.updated_user.terms_accepted_date == datetime(2023, 2, 1, tzinfo=UTC)
-        assert result.updated_user.data_collection_accepted_date == datetime(2023, 2, 15, tzinfo=UTC)
-        assert result.updated_user.media_collection_accepted_date == datetime(2023, 2, 16, tzinfo=UTC)
+        assert result.updated_user.terms_accepted_date == datetime(
+            2023, 2, 1, tzinfo=UTC
+        )
+        assert result.updated_user.data_collection_accepted_date == datetime(
+            2023, 2, 15, tzinfo=UTC
+        )
+        assert result.updated_user.media_collection_accepted_date == datetime(
+            2023, 2, 16, tzinfo=UTC
+        )
 
         # Verify messages were migrated
-        migrated_messages = sql_alchemy.query(Message).filter(Message.creator == new_user_id).all()
+        migrated_messages = (
+            sql_alchemy.query(Message).filter(Message.creator == new_user_id).all()
+        )
         assert len(migrated_messages) == 2
 
         # Verify storage migration was called for files
         assert mock_storage.migrate_anonymous_file.call_count == 1
-        mock_storage.migrate_anonymous_file.assert_called_with(f"{message1_id}/file1.txt", bucket_name="")
+        mock_storage.migrate_anonymous_file.assert_called_with(
+            f"{message1_id}/file1.txt", bucket_name=""
+        )
 
         # Verify anonymous user messages no longer exist
-        anonymous_messages = sql_alchemy.query(Message).filter(Message.creator == anonymous_user_id).all()
+        anonymous_messages = (
+            sql_alchemy.query(Message)
+            .filter(Message.creator == anonymous_user_id)
+            .all()
+        )
         assert len(anonymous_messages) == 0
 
     def test_migrate_when_only_anonymous_user_exists(self, dbc, sql_alchemy, cfg):
@@ -116,7 +130,7 @@ class TestMigrateUserFromAnonymousUser:
         new_user_id = "new_user_101"
 
         # Create only anonymous user
-        anonymous_user = dbc.user.create(
+        dbc.user.create(
             client=anonymous_user_id,
             terms_accepted_date=datetime(2023, 1, 1, tzinfo=UTC),
             data_collection_accepted_date=datetime(2023, 1, 15, tzinfo=UTC),
@@ -165,12 +179,20 @@ class TestMigrateUserFromAnonymousUser:
         assert result.messages_updated_count == 1
 
         # Verify user data was copied from anonymous user
-        assert result.updated_user.terms_accepted_date == datetime(2023, 1, 1, tzinfo=UTC)
-        assert result.updated_user.data_collection_accepted_date == datetime(2023, 1, 15, tzinfo=UTC)
-        assert result.updated_user.media_collection_accepted_date == datetime(2023, 1, 16, tzinfo=UTC)
+        assert result.updated_user.terms_accepted_date == datetime(
+            2023, 1, 1, tzinfo=UTC
+        )
+        assert result.updated_user.data_collection_accepted_date == datetime(
+            2023, 1, 15, tzinfo=UTC
+        )
+        assert result.updated_user.media_collection_accepted_date == datetime(
+            2023, 1, 16, tzinfo=UTC
+        )
 
         # Verify messages were migrated
-        migrated_messages = sql_alchemy.query(Message).filter(Message.creator == new_user_id).all()
+        migrated_messages = (
+            sql_alchemy.query(Message).filter(Message.creator == new_user_id).all()
+        )
         assert len(migrated_messages) == 1
         assert migrated_messages[0].content == "Test message for anonymous user"
 
@@ -181,7 +203,7 @@ class TestMigrateUserFromAnonymousUser:
         new_user_id = "new_user_202"
 
         # Create only new user
-        new_user = dbc.user.create(
+        dbc.user.create(
             client=new_user_id,
             terms_accepted_date=datetime(2023, 3, 1, tzinfo=UTC),
             data_collection_accepted_date=datetime(2023, 3, 15, tzinfo=UTC),
@@ -210,9 +232,15 @@ class TestMigrateUserFromAnonymousUser:
         assert result.messages_updated_count == 0  # No messages to migrate
 
         # Verify user data remains unchanged
-        assert result.updated_user.terms_accepted_date == datetime(2023, 3, 1, tzinfo=UTC)
-        assert result.updated_user.data_collection_accepted_date == datetime(2023, 3, 15, tzinfo=UTC)
-        assert result.updated_user.media_collection_accepted_date == datetime(2023, 3, 16, tzinfo=UTC)
+        assert result.updated_user.terms_accepted_date == datetime(
+            2023, 3, 1, tzinfo=UTC
+        )
+        assert result.updated_user.data_collection_accepted_date == datetime(
+            2023, 3, 15, tzinfo=UTC
+        )
+        assert result.updated_user.media_collection_accepted_date == datetime(
+            2023, 3, 16, tzinfo=UTC
+        )
 
         # Verify no storage migration was called
         mock_storage.migrate_anonymous_file.assert_not_called()
@@ -253,12 +281,12 @@ class TestMigrateUserFromAnonymousUser:
         new_user_id = "new_user_multi"
 
         # Create users
-        anonymous_user = dbc.user.create(
+        dbc.user.create(
             client=anonymous_user_id,
             terms_accepted_date=datetime(2023, 1, 1, tzinfo=UTC),
         )
 
-        new_user = dbc.user.create(
+        dbc.user.create(
             client=new_user_id,
             terms_accepted_date=datetime(2023, 2, 1, tzinfo=UTC),
         )
@@ -280,7 +308,11 @@ class TestMigrateUserFromAnonymousUser:
                 model_host=ModelHost.TestBackend.value,
                 parent=None,
                 expiration_time=None,
-                file_urls=[f"https://storage.googleapis.com/bucket/anonymous/file{i + 1}.txt"] if i < 2 else None,
+                file_urls=[
+                    f"https://storage.googleapis.com/bucket/anonymous/file{i + 1}.txt"
+                ]
+                if i < 2
+                else None,
             )
             messages.append(message)
             sql_alchemy.add(message)
@@ -308,14 +340,20 @@ class TestMigrateUserFromAnonymousUser:
         assert result.messages_updated_count == 3
 
         # Verify all messages were migrated
-        migrated_messages = sql_alchemy.query(Message).filter(Message.creator == new_user_id).all()
+        migrated_messages = (
+            sql_alchemy.query(Message).filter(Message.creator == new_user_id).all()
+        )
         assert len(migrated_messages) == 3
 
         # Verify storage migration was called for each file
-        assert mock_storage.migrate_anonymous_file.call_count == 2  # Only 2 messages have files
+        assert (
+            mock_storage.migrate_anonymous_file.call_count == 2
+        )  # Only 2 messages have files
         expected_calls = [
             (f"{messages[0].id}/file1.txt",),
             (f"{messages[1].id}/file2.txt",),
         ]
-        actual_calls = [call[0] for call in mock_storage.migrate_anonymous_file.call_args_list]
+        actual_calls = [
+            call[0] for call in mock_storage.migrate_anonymous_file.call_args_list
+        ]
         assert actual_calls == expected_calls

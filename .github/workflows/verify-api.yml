@@ -19,7 +19,7 @@ jobs:
           uses: ./.github/actions/set-up-uv
 
         - name: Test with pytest
-          run: uv run pytest --ignore ./apps/playground-api/e2e --ignore src/attribution
+          run: uv run pytest --ignore ./apps/playground-api/e2e
 
     type-check:
       runs-on: ubuntu-latest

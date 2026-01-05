@@ -2,10 +2,9 @@ from typing import TYPE_CHECKING, cast
 
 from pydantic import BaseModel, Field
 
-from db.models.model_config import ModelConfig
-
 if TYPE_CHECKING:
     from db.models.message import Message
+    from db.models.model_config import ModelConfig
 
 
 class InferenceOpts(BaseModel):
@@ -38,11 +37,8 @@ class InferenceOpts(BaseModel):
 
     @staticmethod
     def from_model_config_defaults(
-        model_config: ModelConfig | None,
-    ) -> "InferenceOpts | None":
-        if model_config is None:
-            return None
-
+        model_config: "ModelConfig",
+    ) -> "InferenceOpts":
         return InferenceOpts.model_construct(
             max_tokens=model_config.max_tokens_default,
             temperature=model_config.temperature_default,

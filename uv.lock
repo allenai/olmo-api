@@ -615,7 +615,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "core", editable = "packages/core" },
-    { name = "sqlalchemy", specifier = ">=2.0.44" },
+    { name = "sqlalchemy", specifier = "==2.0.44" },
 ]
 
 [[package]]

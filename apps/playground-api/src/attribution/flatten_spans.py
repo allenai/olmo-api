@@ -71,18 +71,13 @@ def flatten_spans(
         next_index = i + 1
         for j, span_to_check in enumerate(
             # check for nested spans that come after this one in the list
-            iterable=islice(
-                spans_sorted_by_left_position_then_length, next_index, None
-            ),
+            iterable=islice(spans_sorted_by_left_position_then_length, next_index, None),
             start=next_index,
         ):
             if j in spans_already_nested:
                 continue
 
-            if (
-                left <= span_to_check.left < right
-                or left <= span_to_check.right < right
-            ):
+            if left <= span_to_check.left < right or left <= span_to_check.right < right:
                 spans_already_nested.append(j)
                 nested_spans.append(span_to_check)
 
@@ -110,9 +105,7 @@ def flatten_spans(
                 span_text=overlapping_span.text,
             )
             for overlapping_span in nested_spans
-            for document in cast(
-                list[IntermediateAttributionDocument], overlapping_span.documents
-            )
+            for document in cast(list[IntermediateAttributionDocument], overlapping_span.documents)
         ]
 
         text = "".join(islice(input_tokens, left, right))

@@ -61,9 +61,7 @@ class BaseResponseModel(APIInterface):
         if self.internal:
             return ModelAvailability.INTERNAL
 
-        if self.available_time is not None and self.available_time > datetime.now(
-            tz=UTC
-        ):
+        if self.available_time is not None and self.available_time > datetime.now(tz=UTC):
             return ModelAvailability.PRERELEASE
 
         return ModelAvailability.PUBLIC

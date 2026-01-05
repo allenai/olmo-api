@@ -46,6 +46,7 @@ ignore_missing_imports = true
 [tool.ruff]
 line-length = 120
 target-version = "py311"
+exclude = ["packages/infini-gram-api-client"]
 
 [tool.ruff.lint]
 preview = true

@@ -54,9 +54,7 @@ def upload_to_safety_bucket(file: FileStorage, client: GoogleCloudStorage):
 
 def delete_from_safety_bucket(path: str, client: GoogleCloudStorage):
     """This function removes videos from the safety bucket after they are checked. Files delete after 1-day in the buckets as a fall back"""
-    client.delete_file(
-        path, bucket_name=get_config().google_cloud_services.safety_storage_bucket
-    )
+    client.delete_file(path, bucket_name=get_config().google_cloud_services.safety_storage_bucket)
 
 
 class GoogleVideoIntelligence:

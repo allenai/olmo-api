@@ -54,9 +54,7 @@ class BaseTestV4ModelEndpoints(base.IntegrationTest):
     def setUp(self):
         self.created_model_ids = []
 
-    def create_model(
-        self, request: BaseCreateModelConfigRequest, *, skip_cleanup=False
-    ):
+    def create_model(self, request: BaseCreateModelConfigRequest, *, skip_cleanup=False):
         response = requests.post(
             self.model_config_endpoint,
             json=request.model_dump(by_alias=True),
@@ -152,31 +150,15 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert created_model.get("createdTime") is not None
         assert created_model.get("modelType") == "chat"
         assert created_model.get("canThink") is True
-        assert (
-            created_model.get("temperatureDefault")
-            == default_inference_constraints["temperature_default"]
-        )
-        assert (
-            created_model.get("topPDefault")
-            == default_inference_constraints["top_p_default"]
-        )
-        assert (
-            created_model.get("maxTokensDefault")
-            == default_inference_constraints["max_tokens_default"]
-        )
-        assert (
-            created_model.get("stopDefault")
-            == default_inference_constraints["stop_default"]
-        )
+        assert created_model.get("temperatureDefault") == default_inference_constraints["temperature_default"]
+        assert created_model.get("topPDefault") == default_inference_constraints["top_p_default"]
+        assert created_model.get("maxTokensDefault") == default_inference_constraints["max_tokens_default"]
+        assert created_model.get("stopDefault") == default_inference_constraints["stop_default"]
 
         available_models = self.list_admin_models()
 
-        test_model = next(
-            (model for model in available_models if model.get("id") == model_id), None
-        )
-        assert test_model is not None, (
-            "The test model wasn't returned from the GET request"
-        )
+        test_model = next((model for model in available_models if model.get("id") == model_id), None)
+        assert test_model is not None, "The test model wasn't returned from the GET request"
 
     def test_should_create_a_multi_modal_model(self):
         model_id = "test-mm-model-" + str(uuid4())
@@ -201,13 +183,9 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         assert created_model.get("modelType") == "chat"
 
         available_models = self.list_models()
-        test_model = next(
-            (model for model in available_models if model.get("id") == model_id), None
-        )
+        test_model = next((model for model in available_models if model.get("id") == model_id), None)
 
-        assert test_model is not None, (
-            "The test model wasn't returned from the GET request"
-        )
+        assert test_model is not None, "The test model wasn't returned from the GET request"
         assert "image/*" in test_model.get("accepted_file_types")
         assert test_model.get("accepts_files") is True
 
@@ -238,23 +216,15 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
             (model for model in available_models.root if model.root.id == model_id),
             None,
         )
-        assert test_admin_model is not None, (
-            "The test model wasn't returned from the GET request"
-        )
+        assert test_admin_model is not None, "The test model wasn't returned from the GET request"
         assert test_admin_model.root.can_call_tools is True
 
         # Make sure tool call mapping worked. This may be able to be combined with the admin tool once we set up the available tool config on admin models
         models = ModelResponse.model_validate(self.list_models())
-        test_model = next(
-            (model for model in models.root if model.id == model_id), None
-        )
-        assert test_model is not None, (
-            "The test model wasn't returned from the GET request"
-        )
+        test_model = next((model for model in models.root if model.id == model_id), None)
+        assert test_model is not None, "The test model wasn't returned from the GET request"
         assert test_model.can_call_tools is True
-        assert test_model.available_tools is not None, (
-            "Available tools weren't set on a tool-calling model"
-        )
+        assert test_model.available_tools is not None, "Available tools weren't set on a tool-calling model"
         assert len(test_model.available_tools) > 0
 
     def test_should_create_a_model_with_an_infini_gram_index(self):
@@ -276,10 +246,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         created_model = ResponseModel.model_validate(create_response.json()).root
         assert created_model.created_time is not None
         assert created_model.model_type == "chat"
-        assert (
-            created_model.infini_gram_index
-            == AvailableInfiniGramIndexId.OLMO_2_0325_32B
-        )
+        assert created_model.infini_gram_index == AvailableInfiniGramIndexId.OLMO_2_0325_32B
 
         available_models = self.list_admin_models()
 
@@ -289,13 +256,8 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
                 None,
             )
         ).root
-        assert test_model is not None, (
-            "The test model wasn't returned from the GET request"
-        )
-        assert (
-            created_model.infini_gram_index
-            == AvailableInfiniGramIndexId.OLMO_2_0325_32B
-        )
+        assert test_model is not None, "The test model wasn't returned from the GET request"
+        assert created_model.infini_gram_index == AvailableInfiniGramIndexId.OLMO_2_0325_32B
 
     def test_should_delete_a_model(self):
         model_id = "test-model-" + str(uuid4())
@@ -322,9 +284,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
 
         available_models = self.list_admin_models()
 
-        assert all(model["id"] != model_id for model in available_models), (
-            "Model wasn't deleted"
-        )
+        assert all(model["id"] != model_id for model in available_models), "Model wasn't deleted"
 
     def test_should_reorder_models(self):
         model_ids = ["model-a", "model-b", "model-c"]
@@ -364,9 +324,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
 
         expected_order = ["model-c", "model-b", "model-a"]
         actual_order = [m["id"] for m in test_models]
-        assert actual_order == expected_order, (
-            f"Expected order {expected_order}, got {actual_order}"
-        )
+        assert actual_order == expected_order, f"Expected order {expected_order}, got {actual_order}"
 
     def test_should_update_a_text_only_model(self):
         model_id = "test-model-" + str(uuid4())
@@ -413,23 +371,14 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
 
         available_models = self.list_admin_models()
 
-        updated_model = ResponseModel(
-            next(filter(lambda model: model.get("id") == model_id, available_models))
-        ).root
-        assert updated_model is not None, (
-            "Updated model not returned from models endpoint"
-        )
+        updated_model = ResponseModel(next(filter(lambda model: model.get("id") == model_id, available_models))).root
+        assert updated_model is not None, "Updated model not returned from models endpoint"
         assert updated_model.name == "updated model made for testing"
         assert updated_model.model_type == "base"
         assert updated_model.can_call_tools is True
         assert updated_model.can_think is True
-        assert (
-            updated_model.infini_gram_index
-            == AvailableInfiniGramIndexId.OLMO_2_0325_32B
-        )
-        assert (
-            updated_model.temperature_default == new_constraints["temperature_default"]
-        )
+        assert updated_model.infini_gram_index == AvailableInfiniGramIndexId.OLMO_2_0325_32B
+        assert updated_model.temperature_default == new_constraints["temperature_default"]
         assert updated_model.top_p_default == new_constraints["top_p_default"]
         assert updated_model.max_tokens_default == new_constraints["max_tokens_default"]
         assert updated_model.stop_default == new_constraints["stop_default"]
@@ -475,12 +424,8 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
 
         available_models = self.list_admin_models()
 
-        updated_model = next(
-            filter(lambda model: model.get("id") == model_id, available_models)
-        )
-        assert updated_model is not None, (
-            "Updated model not returned from models endpoint"
-        )
+        updated_model = next(filter(lambda model: model.get("id") == model_id, available_models))
+        assert updated_model is not None, "Updated model not returned from models endpoint"
 
         parsed_updated_model = ResponseModel.model_validate(updated_model)
         assert isinstance(parsed_updated_model.root, MultiModalResponseModel)
@@ -511,26 +456,12 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         create_response.raise_for_status()
 
         created_model = create_response.json()
-        assert (
-            created_model.get("temperatureDefault")
-            == default_inference_constraints["temperature_default"]
-        )
-        assert (
-            created_model.get("topPDefault")
-            == default_inference_constraints["top_p_default"]
-        )
-        assert (
-            created_model.get("maxTokensDefault")
-            == default_inference_constraints["max_tokens_default"]
-        )
-        assert (
-            created_model.get("stopDefault")
-            == default_inference_constraints["stop_default"]
-        )
+        assert created_model.get("temperatureDefault") == default_inference_constraints["temperature_default"]
+        assert created_model.get("topPDefault") == default_inference_constraints["top_p_default"]
+        assert created_model.get("maxTokensDefault") == default_inference_constraints["max_tokens_default"]
+        assert created_model.get("stopDefault") == default_inference_constraints["stop_default"]
 
-        max_tokens_override = {
-            "max_tokens_default": default_inference_constraints["max_tokens_upper"] + 10
-        }
+        max_tokens_override = {"max_tokens_default": default_inference_constraints["max_tokens_upper"] + 10}
         update_model_max_tokens = {**model_config_defaults, **max_tokens_override}
         update_model_response1 = requests.put(
             self.model_config_endpoint + "/" + model_id,
@@ -539,10 +470,7 @@ class TestV4ModelEndpoints(BaseTestV4ModelEndpoints):
         )
         assert update_model_response1.status_code == 400
 
-        temperature_override = {
-            "temperature_default": default_inference_constraints["temperature_lower"]
-            - 10
-        }
+        temperature_override = {"temperature_default": default_inference_constraints["temperature_lower"] - 10}
         update_model_temperature = {**model_config_defaults, **temperature_override}
         update_model_response2 = requests.put(
             self.model_config_endpoint + "/" + model_id,
@@ -567,9 +495,7 @@ class TestV4ModelEndpointsAnonymous(BaseTestV4ModelEndpoints):
 
         # should have at least one model entity
         self.assertGreater(len(response), 0)
-        self.assertEqual(
-            len([model for model in response if model.get("internal") is True]), 0
-        )
+        self.assertEqual(len([model for model in response if model.get("internal") is True]), 0)
 
     def test_get_admin_models_should_be_forbidden(self):
         r = requests.get(

@@ -67,9 +67,7 @@ def handle_retry_exhausted(*args, **kwargs) -> None:
     on_retry_exhausted=handle_retry_exhausted.actor_name,
 )
 @tracer.start_as_current_span("handle_video_safety_check")
-async def handle_video_safety_check(
-    operation_name: str, message_id: str, safety_file_url: str
-) -> None:
+async def handle_video_safety_check(operation_name: str, message_id: str, safety_file_url: str) -> None:
     span = trace.get_current_span()
     span.set_attributes({
         "operationName": operation_name,
@@ -82,9 +80,7 @@ async def handle_video_safety_check(
         video_client = get_async_video_intelligence_client()
 
         # Hacky but I couldn't find a better way to get an ops client https://stackoverflow.com/questions/71860530/how-do-i-poll-google-long-running-operations-using-python-library
-        raw_operation = await video_client.transport.operations_client.get_operation(
-            operation_name
-        )
+        raw_operation = await video_client.transport.operations_client.get_operation(operation_name)
         if raw_operation is None:
             span.set_status(
                 trace.StatusCode.ERROR,
@@ -117,9 +113,7 @@ async def handle_video_safety_check(
         message = message_repository.get_message_by_id(message_id)
 
         if message is None:
-            not_found_message = (
-                f"Message {message_id} not found when evaluating a video safety check"
-            )
+            not_found_message = f"Message {message_id} not found when evaluating a video safety check"
             logger.error(
                 not_found_message,
                 extra={"operation": operation_name, "message_id": message_id},

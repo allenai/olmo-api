@@ -50,9 +50,7 @@ def check_message_safety(
         return result.is_safe()
 
     except Exception as e:
-        current_app.logger.exception(
-            "Skipped message safety check due to error: %s. ", repr(e)
-        )
+        current_app.logger.exception("Skipped message safety check due to error: %s. ", repr(e))
 
     return None
 
@@ -85,9 +83,7 @@ def check_image_safety(files: Sequence[FileStorage]) -> bool | None:
 
 
 @tracer.start_as_current_span("check_video_safety")
-def check_video_safety(
-    files: Sequence[FileStorage], storage_client: GoogleCloudStorage, message_id: str
-) -> bool:
+def check_video_safety(files: Sequence[FileStorage], storage_client: GoogleCloudStorage, message_id: str) -> bool:
     checker = GoogleVideoIntelligence()
 
     file_path = ""
@@ -122,10 +118,7 @@ def evaluate_prompt_submission_captcha(
     is_anonymous_user: bool,
 ):
     prompt_submission_action = "prompt_submission"
-    if (
-        cfg.google_cloud_services.recaptcha_key is not None
-        and captcha_token is not None
-    ):
+    if cfg.google_cloud_services.recaptcha_key is not None and captcha_token is not None:
         captcha_assessment = create_assessment(
             project_id="ai2-reviz",
             recaptcha_key=cfg.google_cloud_services.recaptcha_key,
@@ -183,9 +176,7 @@ def validate_message_security_and_safety(
         is_anonymous_user=client_auth.is_anonymous_user,
     )
 
-    can_bypass_safety_checks = user_has_permission(
-        client_auth.token, Permissions.WRITE_BYPASS_SAFETY_CHECKS
-    )
+    can_bypass_safety_checks = user_has_permission(client_auth.token, Permissions.WRITE_BYPASS_SAFETY_CHECKS)
 
     if can_bypass_safety_checks is False and request.bypass_safety_check is True:
         raise exceptions.Forbidden(FORBIDDEN_SETTING)
@@ -219,9 +210,7 @@ def validate_message_security_and_safety(
         msg = "Unsupported file types in input"
         raise exceptions.BadRequest(msg)
 
-    is_video_safe = check_video_safety(
-        files=video_files, storage_client=storage_client, message_id=message_id
-    )
+    is_video_safe = check_video_safety(files=video_files, storage_client=storage_client, message_id=message_id)
 
     is_image_safe = check_image_safety(files=image_files)
 

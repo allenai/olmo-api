@@ -62,6 +62,8 @@ dev = [
     "types-requests==2.32.0.20240914",
 ]
 
+[tool.ruff]
+extend = "../../pyproject.toml"
 
 [tool.ruff.lint.extend-per-file-ignores]
 "test_*.py" = ["PLC1901", "PLR2004", "PLR6301", "S", "TID252"]

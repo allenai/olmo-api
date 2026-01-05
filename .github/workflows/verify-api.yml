@@ -31,15 +31,15 @@ jobs:
 
         - run: uv run mypy . --config ./pyproject.toml
 
-    # lint:
-    #   runs-on: ubuntu-latest  
-    #   steps:
-    #   - uses: actions/checkout@v6
+    lint:
+      runs-on: ubuntu-latest  
+      steps:
+      - uses: actions/checkout@v6
   
-    # - name: Set up uv
-    #   uses: ./.github/actions/set-up-uv
+      - name: Set up uv
+        uses: ./.github/actions/set-up-uv
 
-    #   - run: uv run ruff check --config ./pyproject.toml --output-format=github
+      - run: uv run ruff check --config ./pyproject.toml --exclude ./apps/playground-api --output-format=github
       
     format:
       runs-on: ubuntu-latest 

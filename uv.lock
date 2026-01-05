@@ -13,7 +13,7 @@ members = [
     "infini-gram-api-client",
     "playground",
     "playground-api",
-    "playground-core",
+    "core",
 ]
 
 [[package]]
@@ -602,11 +602,11 @@ name = "db-models"
 version = "0.1.0"
 source = { editable = "packages/db-models" }
 dependencies = [
-    { name = "playground-core" },
+    { name = "core" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "playground-core", editable = "packages/playground-core" }]
+requires-dist = [{ name = "core", editable = "packages/core" }]
 
 [[package]]
 name = "distro"
@@ -2700,9 +2700,9 @@ dev = [
 ]
 
 [[package]]
-name = "playground-core"
+name = "core"
 version = "0.1.0"
-source = { editable = "packages/playground-core" }
+source = { editable = "packages/core" }
 
 [[package]]
 name = "pluggy"

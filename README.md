@@ -52,7 +52,7 @@ mypy . --config ./pyproject.toml
 
 ## Running the API outside of Docker:
 
-On OSX, ensure you have `homebrew` installed then run `brew install ffmpeg`
+On macOS, ensure you have `homebrew` installed then run `brew install ffmpeg`
 
 Change `db.conninfo` in `config.json` to "postgres://app:llmz@127.0.0.1:5555/llmx?sslmode=disable"
 

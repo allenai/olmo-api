@@ -8,9 +8,8 @@ from psycopg_pool import ConnectionPool
 from pytest_postgresql import factories
 from sqlalchemy.orm import sessionmaker
 
-from src.config import get_config
 from src.config.Config import Config
-from src.db import Client
+from src.db.init_psycopg import Client
 from src.db.init_sqlalchemy import make_db_engine
 
 postgresql_proc = factories.postgresql_proc(
@@ -28,12 +27,10 @@ postgresql = factories.postgresql(
 
 @pytest.fixture
 def cfg(postgresql: Connection) -> Config:
-    cfg = get_config.Config.load("./test.config.json")
+    cfg = Config.load("./test.config.json")
 
     # dynamically set connection based on pytest_postgresql
-    cfg.db.conninfo = (
-        f"postgresql://{postgresql.info.user}:@{postgresql.info.host}:{postgresql.info.port}/{postgresql.info.dbname}"
-    )
+    cfg.db.conninfo = f"postgresql://{postgresql.info.user}:@{postgresql.info.host}:{postgresql.info.port}/{postgresql.info.dbname}"
     return cfg
 
 

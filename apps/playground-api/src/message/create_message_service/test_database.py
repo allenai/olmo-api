@@ -1,14 +1,17 @@
 from sqlalchemy.orm import Session
 
+from db.models.message import Message
+from db.models.model_config import ModelConfig, ModelHost, ModelType, PromptType
 from src.auth.token import Token
-from src.dao.engine_models.message import Message
-from src.dao.engine_models.model_config import ModelConfig, ModelHost, ModelType, PromptType
 from src.dao.message.message_models import InferenceOpts, Role
 from src.dao.message.message_repository import MessageRepository
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
-from src.message.create_message_service.database import create_user_message, setup_msg_thread
+from src.message.create_message_service.database import (
+    create_user_message,
+    setup_msg_thread,
+)
 
 
 class TestDatabase:

@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from src.dao.engine_models.tool_definitions import ToolSource
+from db.models.tool_definitions import ToolSource
 from src.dao.message.message_models import Role
 from src.thread.thread_models import FlatMessage, InferenceOptionsResponse, ToolCall
 
@@ -81,7 +81,12 @@ def test_keeps_content_if_tool_call_name_does_not_match():
         model_host="test_backend",
         creator="test-user",
         tool_calls=[
-            ToolCall(tool_name="good_tool_call", args={}, tool_call_id="tool_call_1", tool_source=ToolSource.MCP)
+            ToolCall(
+                tool_name="good_tool_call",
+                args={},
+                tool_call_id="tool_call_1",
+                tool_source=ToolSource.MCP,
+            )
         ],
     )
 

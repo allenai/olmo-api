@@ -12,7 +12,7 @@ dependencies = [
     "beaker-py==2.5.0",
     "beautifulsoup4==4.12.2",
     "core",
-    "db-models",
+    "db",
     "dramatiq[redis,watch]==2.0.0",
     "flask==2.3.3",
     "flask-pydantic-api==1.7.0",
@@ -70,4 +70,4 @@ dev = [
 
 [tool.uv.sources]
 core = { workspace = true }
-db-models = { workspace = true }
+db = { workspace = true }

@@ -3,8 +3,8 @@ from typing import Any
 
 from pydantic import Field, RootModel
 
+from db.models.model_config import ModelType
 from src.api_interface import APIInterface
-from src.dao.engine_models.model_config import ModelType
 from src.thread.thread_models import InferenceOptionsResponse, ToolDefinition
 
 

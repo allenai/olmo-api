@@ -1,25 +1,48 @@
 import pytest
+from pydantic_ai.messages import (
+    ModelResponse,
+    TextPart,
+    ThinkingPart,
+    ToolCallPart,
+    ToolCallPartDelta,
+)
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
-from pydantic_ai.messages import ModelResponse, TextPart, ThinkingPart, ToolCallPart, ToolCallPartDelta
+from db.models.message import Message
+from db.models.model_config import ModelConfig, ModelHost, ModelType, PromptType
+from db.models.tool_call import ToolCall
+from db.models.tool_definitions import ToolDefinition, ToolSource
 from src import db
 from src.auth.token import Token
-from src.dao.engine_models.message import Message
-from src.dao.engine_models.model_config import ModelConfig, ModelHost, ModelType, PromptType
-from src.dao.engine_models.tool_call import ToolCall
-from src.dao.engine_models.tool_definitions import ToolDefinition, ToolSource
 from src.dao.message.message_models import MessageStreamError, Role
 from src.dao.message.message_repository import MessageRepository
 from src.message.create_message_request import CreateMessageRequestWithFullMessages
-from src.message.create_message_service.stream_new_message import map_response_to_final_output, stream_new_message
-from src.message.message_chunk import ChunkType, ErrorChunk, ErrorCode, ErrorSeverity, StreamEndChunk, StreamStartChunk
-from src.pydantic_inference.mapping.output.map_output import _pydantic_map_delta, _pydantic_map_part
+from src.message.create_message_service.stream_new_message import (
+    map_response_to_final_output,
+    stream_new_message,
+)
+from src.message.message_chunk import (
+    ChunkType,
+    ErrorChunk,
+    ErrorCode,
+    ErrorSeverity,
+    StreamEndChunk,
+    StreamStartChunk,
+)
+from src.pydantic_inference.mapping.output.map_output import (
+    _pydantic_map_delta,
+    _pydantic_map_part,
+)
 from src.thread.thread_models import Thread
 
 
 def test_map_final_output_should_map_when_there_is_an_empty_text_part_at_start():
-    response = ModelResponse([TextPart("foo"), ThinkingPart("thinking"), TextPart("bar")])
+    response = ModelResponse([
+        TextPart("foo"),
+        ThinkingPart("thinking"),
+        TextPart("bar"),
+    ])
     reply = Message(
         id="fake_message",
         content="content",
@@ -99,7 +122,9 @@ def test_map_final_output_should_map_tool_parts():
 
 def test_pydantic_map_part_should_return_error_chunk_when_tool_not_found():
     """Test that ErrorChunk is created when a tool is not found in message tool_definitions."""
-    tool_call_part = ToolCallPart(tool_name="unknown_tool", tool_call_id="test_call_id", args={"param": "value"})
+    tool_call_part = ToolCallPart(
+        tool_name="unknown_tool", tool_call_id="test_call_id", args={"param": "value"}
+    )
 
     reply = Message(
         id="fake_message",
@@ -138,14 +163,19 @@ def test_pydantic_map_part_should_return_error_chunk_when_tool_not_found():
 
     assert isinstance(chunk, ErrorChunk)
     assert chunk.error_code == ErrorCode.TOOL_CALL_ERROR
-    assert "unknown_tool" in chunk.error_description or "Could not find tool" in chunk.error_description
+    assert (
+        "unknown_tool" in chunk.error_description
+        or "Could not find tool" in chunk.error_description
+    )
     assert chunk.error_severity == ErrorSeverity.ERROR
     assert chunk.message == "fake_message"
 
 
 def test_pydantic_map_delta_should_return_error_chunk_when_tool_not_found():
     """Test that ErrorChunk is created from delta when tool is not found."""
-    tool_call_delta = ToolCallPartDelta(tool_name_delta="unknown_tool", tool_call_id="test_call_id", args_delta=None)
+    tool_call_delta = ToolCallPartDelta(
+        tool_name_delta="unknown_tool", tool_call_id="test_call_id", args_delta=None
+    )
 
     reply = Message(
         id="fake_message",
@@ -189,7 +219,9 @@ def test_pydantic_map_delta_should_return_error_chunk_when_tool_not_found():
 
 
 @pytest.mark.usefixtures("flask_request_context")
-def test_yields_error_when_exceeded_max_steps(sql_alchemy: Session, dbc: db.Client, mocker: MockerFixture):
+def test_yields_error_when_exceeded_max_steps(
+    sql_alchemy: Session, dbc: db.Client, mocker: MockerFixture
+):
     mocker.patch("src.tools.tools_service.call_internal_tool", return_value="return")
 
     request = CreateMessageRequestWithFullMessages(
@@ -295,7 +327,9 @@ def test_yields_error_when_exceeded_max_steps(sql_alchemy: Session, dbc: db.Clie
         dbc=dbc,
         model=model,
         start_time_ns=0,
-        client_token=Token(client="test-client", is_anonymous_user=False, token="token"),
+        client_token=Token(
+            client="test-client", is_anonymous_user=False, token="token"
+        ),
         message_repository=MessageRepository(sql_alchemy),
         message_chain=message_chain,
         created_message=user_message,
@@ -317,7 +351,9 @@ def test_yields_error_when_exceeded_max_steps(sql_alchemy: Session, dbc: db.Clie
 
 
 @pytest.mark.usefixtures("flask_request_context")
-def test_stream_finishes_if_max_steps_not_exceeded(sql_alchemy: Session, dbc: db.Client, mocker: MockerFixture):
+def test_stream_finishes_if_max_steps_not_exceeded(
+    sql_alchemy: Session, dbc: db.Client, mocker: MockerFixture
+):
     mocker.patch("src.tools.tools_service.call_internal_tool", return_value="return")
 
     request = CreateMessageRequestWithFullMessages(
@@ -423,7 +459,9 @@ def test_stream_finishes_if_max_steps_not_exceeded(sql_alchemy: Session, dbc: db
         dbc=dbc,
         model=model,
         start_time_ns=0,
-        client_token=Token(client="test-client", is_anonymous_user=False, token="token"),
+        client_token=Token(
+            client="test-client", is_anonymous_user=False, token="token"
+        ),
         message_repository=MessageRepository(sql_alchemy),
         message_chain=message_chain,
         created_message=user_message,
@@ -436,7 +474,14 @@ def test_stream_finishes_if_max_steps_not_exceeded(sql_alchemy: Session, dbc: db
 
     assert isinstance(results[-2], Message)
     flat_final_message = Thread.from_message(results[-2])
-    assert len([message for message in flat_final_message.messages if message.role is Role.ToolResponse]) == 2
+    assert (
+        len([
+            message
+            for message in flat_final_message.messages
+            if message.role is Role.ToolResponse
+        ])
+        == 2
+    )
 
     assert isinstance(results[-1], StreamEndChunk)
     assert results[-1].type == ChunkType.END

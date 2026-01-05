@@ -9,8 +9,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src import obj
 
 if TYPE_CHECKING:
-    from src.dao.engine_models.message import Message
-    from src.dao.engine_models.prompt_template import PromptTemplate
+    from db.models.message import Message
+    from db.models.prompt_template import PromptTemplate
 
 from .base import Base
 
@@ -26,7 +26,9 @@ class ToolSource(StrEnum):
 class MessageToolDefinition(Base, kw_only=True):
     __tablename__ = "message_tool_definition_association"
 
-    message_id: Mapped[str] = mapped_column(Text, ForeignKey("message.id", ondelete="CASCADE"), primary_key=True)
+    message_id: Mapped[str] = mapped_column(
+        Text, ForeignKey("message.id", ondelete="CASCADE"), primary_key=True
+    )
     tool_definition_id: Mapped[str] = mapped_column(
         Text, ForeignKey("tool_definition.id", ondelete="CASCADE"), primary_key=True
     )
@@ -40,7 +42,9 @@ class PromptTemplateToolDefinition(Base, kw_only=True):
     __tablename__ = "prompt_template_tool_definition_association"
 
     prompt_template_id: Mapped[str] = mapped_column(
-        Text, ForeignKey(column="prompt_template.id", ondelete="CASCADE"), primary_key=True
+        Text,
+        ForeignKey(column="prompt_template.id", ondelete="CASCADE"),
+        primary_key=True,
     )
 
     tool_definition_id: Mapped[str] = mapped_column(
@@ -55,7 +59,9 @@ class PromptTemplateToolDefinition(Base, kw_only=True):
 class ToolDefinition(Base, kw_only=True):
     __tablename__ = "tool_definition"
 
-    id: Mapped[str] = mapped_column(Text, primary_key=True, default_factory=obj.new_id_generator("td"))
+    id: Mapped[str] = mapped_column(
+        Text, primary_key=True, default_factory=obj.new_id_generator("td")
+    )
 
     name: Mapped[str]
     description: Mapped[str]

@@ -9,20 +9,25 @@ from flask import current_app
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
 from pydantic import BaseModel
-
 from pydantic_ai.agent import InstrumentationSettings
 from pydantic_ai.direct import model_request_stream_sync
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models import ModelRequestParameters
+
+from db.models.message import Message
+from db.models.model_config import ModelConfig
+from db.models.tool_call import ToolCall
+from db.models.tool_definitions import ToolSource
 from src import db, obj, parse
 from src.auth.token import Token
 from src.dao.completion import CompletionOutput
-from src.dao.engine_models.message import Message
-from src.dao.engine_models.model_config import ModelConfig
-from src.dao.engine_models.tool_call import ToolCall
-from src.dao.engine_models.tool_definitions import ToolSource
-from src.dao.message.message_models import MessageChunk, MessageStreamError, Role, TokenLogProbs
+from src.dao.message.message_models import (
+    MessageChunk,
+    MessageStreamError,
+    Role,
+    TokenLogProbs,
+)
 from src.dao.message.message_repository import BaseMessageRepository
 from src.inference.InferenceEngine import (
     FinishReason,
@@ -30,10 +35,18 @@ from src.inference.InferenceEngine import (
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
-from src.message.create_message_service.files import FileUploadResult, upload_request_files
+from src.message.create_message_service.files import (
+    FileUploadResult,
+    upload_request_files,
+)
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.inference_logging import log_inference_timing
-from src.message.message_chunk import Chunk, ErrorChunk, StreamEndChunk, StreamStartChunk
+from src.message.message_chunk import (
+    Chunk,
+    ErrorChunk,
+    StreamEndChunk,
+    StreamStartChunk,
+)
 from src.message.SafetyChecker import (
     SafetyCheckerType,
 )
@@ -58,7 +71,10 @@ from .database import (
 DEFAULT_MAX_STEPS = 10
 
 instrumentation_settings = InstrumentationSettings(
-    version=3, include_content=False, include_binary_content=False, tracer_provider=trace.get_tracer_provider()
+    version=3,
+    include_content=False,
+    include_binary_content=False,
+    tracer_provider=trace.get_tracer_provider(),
 )
 
 
@@ -146,10 +162,14 @@ def create_new_message(
         )
 
     if request.role == Role.ToolResponse:
-        last_assistant_message = find_last_matching(message_chain, lambda m: m.role == Role.Assistant)
+        last_assistant_message = find_last_matching(
+            message_chain, lambda m: m.role == Role.Assistant
+        )
 
         if last_assistant_message is None:
-            msg = f"Can not create a tool response. Parent {request.parent_id} not found"
+            msg = (
+                f"Can not create a tool response. Parent {request.parent_id} not found"
+            )
             raise RuntimeError(msg)
 
         if last_assistant_message.tool_calls is None:
@@ -157,7 +177,12 @@ def create_new_message(
             raise RuntimeError(msg)
 
         tool_call_from_assistant = next(
-            (tool for tool in last_assistant_message.tool_calls if tool.tool_call_id == request.tool_call_id), None
+            (
+                tool
+                for tool in last_assistant_message.tool_calls
+                if tool.tool_call_id == request.tool_call_id
+            ),
+            None,
         )
 
         if tool_call_from_assistant is None:
@@ -225,7 +250,10 @@ def stream_new_message(
     step_count = 0
     while step_count < actual_max_steps:
         stream_metrics = StreamMetrics(
-            first_chunk_ns=None, input_token_count=None, output_token_count=None, total_generation_ns=None
+            first_chunk_ns=None,
+            input_token_count=None,
+            output_token_count=None,
+            total_generation_ns=None,
         )
         parent = message_chain[-1]
         reply = create_assistant_message(
@@ -293,7 +321,9 @@ def stream_new_message(
         if (
             reply.tool_calls is None
             or len(reply.tool_calls) == 0
-            or any(tool.tool_source == ToolSource.USER_DEFINED for tool in reply.tool_calls)
+            or any(
+                tool.tool_source == ToolSource.USER_DEFINED for tool in reply.tool_calls
+            )
         ):
             break
 
@@ -301,7 +331,9 @@ def stream_new_message(
 
     if step_count == actual_max_steps:
         msg = f"Call exceeded the max tool call limit of {actual_max_steps}."
-        yield MessageStreamError(message=message_chain[0].id, error=msg, reason=FinishReason.ToolError)
+        yield MessageStreamError(
+            message=message_chain[0].id, error=msg, reason=FinishReason.ToolError
+        )
 
     yield StreamEndChunk(message=message_chain[0].id)
 
@@ -321,7 +353,10 @@ def log_create_message_stats(
             event_type="create_message",
             ttft_ns=(stream_metrics.first_chunk_ns or 0 - start_message_generation_ns),
             total_ns=(end_all - start_time_ns),
-            ttft_ms_including_checks=(stream_metrics.first_chunk_ns or 0 - start_time_ns) // 1e6,
+            ttft_ms_including_checks=(
+                stream_metrics.first_chunk_ns or 0 - start_time_ns
+            )
+            // 1e6,
             input_token_count=-1,
             output_token_count=-1,
             model=model.id,
@@ -331,14 +366,20 @@ def log_create_message_stats(
         )
 
 
-def finalize_messages(message_repository: BaseMessageRepository, message_chain: list[Message], user_message: Message):
+def finalize_messages(
+    message_repository: BaseMessageRepository,
+    message_chain: list[Message],
+    user_message: Message,
+):
     if message_chain[0].final is False and message_chain[0].role == Role.System:
         system_msg = message_chain[0]
         system_msg.final = True
         final_system_message = message_repository.update(system_msg)
 
         if final_system_message is None:
-            final_system_message_error = RuntimeError(f"failed to finalize message {system_msg.id}")
+            final_system_message_error = RuntimeError(
+                f"failed to finalize message {system_msg.id}"
+            )
             yield MessageStreamError(
                 message=system_msg.id,
                 error=str(final_system_message_error),
@@ -350,9 +391,13 @@ def finalize_messages(message_repository: BaseMessageRepository, message_chain: 
         user_message.final = True
         final_message = message_repository.update(user_message)
         if final_message is None:
-            final_message_error = RuntimeError(f"failed to finalize message {user_message.id}")
+            final_message_error = RuntimeError(
+                f"failed to finalize message {user_message.id}"
+            )
             yield MessageStreamError(
-                message=user_message.id, error=str(final_message_error), reason="finalization failure"
+                message=user_message.id,
+                error=str(final_message_error),
+                reason="finalization failure",
             )
             raise final_message_error
 
@@ -363,9 +408,13 @@ class FinalStreamOutput(BaseModel):
     thinking: str | None
 
 
-def map_response_to_final_output(response: ModelResponse, reply: Message) -> FinalStreamOutput:
+def map_response_to_final_output(
+    response: ModelResponse, reply: Message
+) -> FinalStreamOutput:
     tool_parts = [
-        map_pydantic_tool_to_db_tool(reply, part) for part in response.parts if isinstance(part, ToolCallPart)
+        map_pydantic_tool_to_db_tool(reply, part)
+        for part in response.parts
+        if isinstance(part, ToolCallPart)
     ]
 
     text = response.text if response.text is not None else ""
@@ -413,15 +462,21 @@ def stream_assistant_response(
         with model_request_stream_sync(
             model=pydantic_inference_engine,
             messages=pydantic_messages,
-            model_settings=pydantic_settings_map(request.opts, model, extra_body=request.extra_parameters),
-            model_request_parameters=ModelRequestParameters(function_tools=tools, allow_text_output=True),
+            model_settings=pydantic_settings_map(
+                request.opts, model, extra_body=request.extra_parameters
+            ),
+            model_request_parameters=ModelRequestParameters(
+                function_tools=tools, allow_text_output=True
+            ),
             instrument=instrumentation_settings,
         ) as stream:
             for generator_chunk_pydantic in stream:
                 if first_chunk_ns is None:
                     first_chunk_ns = time_ns()
 
-                pydantic_chunk = pydantic_map_chunk(generator_chunk_pydantic, message=reply)
+                pydantic_chunk = pydantic_map_chunk(
+                    generator_chunk_pydantic, message=reply
+                )
                 if pydantic_chunk is not None:
                     if isinstance(pydantic_chunk, ErrorChunk):
                         # Store error details for later inclusion in combined message
@@ -497,7 +552,11 @@ def stream_assistant_response(
 
     if final_reply is None:
         final_reply_error = RuntimeError(f"failed to finalize message {reply.id}")
-        yield MessageStreamError(message=reply.id, error=str(final_reply_error), reason="finalization failure")
+        yield MessageStreamError(
+            message=reply.id,
+            error=str(final_reply_error),
+            reason="finalization failure",
+        )
         raise final_reply_error
 
     # # Return None if no error occurred
@@ -506,7 +565,10 @@ def stream_assistant_response(
 
 def prepare_yield_message_chain(message_chain: list[Message], user_message: Message):
     repair_children(message_chain)
-    user_message_index = next((i for i, message in enumerate(message_chain) if message.id == user_message.id), -1)
+    user_message_index = next(
+        (i for i, message in enumerate(message_chain) if message.id == user_message.id),
+        -1,
+    )
 
     if user_message_index == -1:
         error_msg = "failed to find user message in chain"
@@ -534,16 +596,22 @@ def has_pending_tool_calls(chain: list[Message]) -> bool:
     # find the last assistant message in the list...
     # find the current tool responses...
     # if we haven't answered them all return true
-    last_assistant_message = find_last_matching(chain, lambda m: m.role == Role.Assistant)
+    last_assistant_message = find_last_matching(
+        chain, lambda m: m.role == Role.Assistant
+    )
 
     if last_assistant_message is None:
         return False
 
     tool_responses = list(filter(lambda msg: msg.role == Role.ToolResponse, chain))
-    tool_responses_ids = [tool.tool_calls[0].tool_call_id if tool.tool_calls else None for tool in tool_responses]
+    tool_responses_ids = [
+        tool.tool_calls[0].tool_call_id if tool.tool_calls else None
+        for tool in tool_responses
+    ]
 
     return any(
-        tool_call.tool_call_id not in tool_responses_ids for tool_call in last_assistant_message.tool_calls or []
+        tool_call.tool_call_id not in tool_responses_ids
+        for tool_call in last_assistant_message.tool_calls or []
     )
 
 
@@ -554,7 +622,9 @@ def find_last_matching(arr: list[Message], condition: Callable[[Message], bool])
     return None  # or raise an exception if not found
 
 
-def pydnatic_ai_http_error_handling(e: ModelHTTPError, reply: Message, model: ModelConfig):
+def pydnatic_ai_http_error_handling(
+    e: ModelHTTPError, reply: Message, model: ModelConfig
+):
     """
     Handles errors from http errors and yields appropriate MessageStreamError instances. Currently there is not a
     unified way of handling errors, so we are left with parsing the error messages to see what is going on.
@@ -565,14 +635,20 @@ def pydnatic_ai_http_error_handling(e: ModelHTTPError, reply: Message, model: Mo
 
         msg = error_message or error_detail or e.message
 
-        max_tokens_setting_error = "'max_tokens' or 'max_completion_tokens' is too large"
+        max_tokens_setting_error = (
+            "'max_tokens' or 'max_completion_tokens' is too large"
+        )
         if max_tokens_setting_error in msg:
-            yield MessageStreamError(message=reply.id, error=msg, reason=FinishReason.ValueError)
+            yield MessageStreamError(
+                message=reply.id, error=msg, reason=FinishReason.ValueError
+            )
             return
 
         max_content_snippet = "This model's maximum context length is"
         if max_content_snippet in msg:
-            yield MessageStreamError(message=reply.id, error=msg, reason=FinishReason.Length)
+            yield MessageStreamError(
+                message=reply.id, error=msg, reason=FinishReason.Length
+            )
             return
 
     current_app.logger.exception(

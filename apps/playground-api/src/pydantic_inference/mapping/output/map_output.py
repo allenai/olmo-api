@@ -1,6 +1,5 @@
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
-
 from pydantic_ai.messages import (
     FinalResultEvent,
     ModelResponsePart,
@@ -13,7 +12,8 @@ from pydantic_ai.messages import (
     ToolCallPart,
     ToolCallPartDelta,
 )
-from src.dao.engine_models.message import Message
+
+from db.models.message import Message
 from src.message.message_chunk import (
     Chunk,
     ErrorChunk,
@@ -26,7 +26,9 @@ from src.message.message_chunk import (
 from src.pydantic_inference.pydantic_ai_helpers import find_tool_def_by_name
 
 
-def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent | FinalResultEvent, message: Message) -> Chunk | None:
+def pydantic_map_chunk(
+    chunk: PartStartEvent | PartDeltaEvent | FinalResultEvent, message: Message
+) -> Chunk | None:
     match chunk:
         case PartStartEvent():
             return _pydantic_map_part(chunk.part, message)
@@ -74,15 +76,23 @@ def _pydantic_map_part(part: ModelResponsePart, message: Message) -> Chunk:
             raise NotImplementedError(msg)
 
 
-def _pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDelta, message: Message) -> Chunk:
+def _pydantic_map_delta(
+    part: TextPartDelta | ToolCallPartDelta | ThinkingPartDelta, message: Message
+) -> Chunk:
     match part:
         case TextPartDelta():
-            return ModelResponseChunk(message=message.id, content=part.content_delta or "")
+            return ModelResponseChunk(
+                message=message.id, content=part.content_delta or ""
+            )
         case ThinkingPartDelta():
             return ThinkingChunk(message=message.id, content=part.content_delta or "")
         case ToolCallPartDelta():
             try:
-                tool_def = find_tool_def_by_name(message, part.tool_name_delta) if part.tool_name_delta else None
+                tool_def = (
+                    find_tool_def_by_name(message, part.tool_name_delta)
+                    if part.tool_name_delta
+                    else None
+                )
             except RuntimeError as e:
                 current_span = trace.get_current_span()
                 current_span.set_status(Status(StatusCode.ERROR))

@@ -1,10 +1,11 @@
 from typing import TYPE_CHECKING, cast
 
-from db_models.model_config import ModelConfig
 from pydantic import BaseModel, Field
 
+from db.models.model_config import ModelConfig
+
 if TYPE_CHECKING:
-    from src.dao.engine_models.message import Message
+    from db.models.message import Message
 
 
 class InferenceOpts(BaseModel):

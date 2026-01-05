@@ -1,8 +1,8 @@
 from pydantic_ai.models import Model
 from pydantic_ai.providers.openai import OpenAIProvider
 
+from db.models.model_config import ModelConfig
 from src.config.get_config import get_config
-from src.dao.engine_models.model_config import ModelConfig
 from src.pydantic_inference.models.open_ai_chat_model_video import OpenAIChatModelVideo
 
 

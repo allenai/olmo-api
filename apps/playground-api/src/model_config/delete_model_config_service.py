@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session, sessionmaker
 
-from src.dao.engine_models.model_config import ModelConfig
+from db.models.model_config import ModelConfig
 
 
 def delete_model_config(model_id: str, session_maker: sessionmaker[Session]):

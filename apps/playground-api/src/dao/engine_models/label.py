@@ -12,7 +12,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
-    from src.dao.engine_models.message import Message
+    from db.models.message import Message
 
 from .base import Base
 
@@ -20,7 +20,9 @@ from .base import Base
 class Label(Base):
     __tablename__ = "label"
     __table_args__ = (
-        ForeignKeyConstraint(["message"], ["message.id"], ondelete="CASCADE", name="label_message_fkey"),
+        ForeignKeyConstraint(
+            ["message"], ["message.id"], ondelete="CASCADE", name="label_message_fkey"
+        ),
         PrimaryKeyConstraint("id", name="label_pkey"),
     )
 
@@ -28,7 +30,9 @@ class Label(Base):
     message: Mapped[str] = mapped_column(Text, index=True)
     rating: Mapped[int] = mapped_column(Integer)
     creator: Mapped[str] = mapped_column(Text)
-    created: Mapped[datetime.datetime] = mapped_column(DateTime(True), server_default=text("now()"))
+    created: Mapped[datetime.datetime] = mapped_column(
+        DateTime(True), server_default=text("now()")
+    )
     comment: Mapped[Optional[str]] = mapped_column(Text)
     deleted: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
 

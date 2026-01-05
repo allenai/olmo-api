@@ -1,8 +1,10 @@
-from src.dao.engine_models.message import Message
-from src.dao.engine_models.model_config import ModelConfig, ModelHost, ModelType, PromptType
+from db.models.message import Message
+from db.models.model_config import ModelConfig, ModelHost, ModelType, PromptType
 from src.dao.message.inference_opts_model import InferenceOpts
 from src.dao.message.message_models import Role
-from src.message.create_message_service.merge_inference_options import merge_inference_options
+from src.message.create_message_service.merge_inference_options import (
+    merge_inference_options,
+)
 
 test_model = ModelConfig(
     id="test-model",
@@ -32,7 +34,12 @@ def test_get_inference_options_uses_default():
     parent_message = None
 
     inference_options = merge_inference_options(
-        model=test_model, parent_message=parent_message, max_tokens=None, temperature=None, top_p=None, stop=None
+        model=test_model,
+        parent_message=parent_message,
+        max_tokens=None,
+        temperature=None,
+        top_p=None,
+        stop=None,
     )
 
     expected_inference_options = InferenceOpts(
@@ -64,7 +71,12 @@ def test_get_inference_options_uses_options_from_parent():
     )
 
     inference_options = merge_inference_options(
-        model=test_model, parent_message=parent_message, max_tokens=None, temperature=None, top_p=None, stop=None
+        model=test_model,
+        parent_message=parent_message,
+        max_tokens=None,
+        temperature=None,
+        top_p=None,
+        stop=None,
     )
 
     assert inference_options == parent_inference_options

@@ -2,13 +2,19 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, cast
 
-from pydantic import AwareDatetime, Field, computed_field, field_serializer, field_validator
+from pydantic import (
+    AwareDatetime,
+    Field,
+    computed_field,
+    field_serializer,
+    field_validator,
+)
 
+from db.models.input_parts import InputPart
+from db.models.message import Message as SQLAMessage
+from db.models.model_config import ModelType
+from db.models.tool_definitions import ToolSource
 from src.api_interface import APIInterface
-from src.dao.engine_models.input_parts import InputPart
-from src.dao.engine_models.message import Message as SQLAMessage
-from src.dao.engine_models.model_config import ModelType
-from src.dao.engine_models.tool_definitions import ToolSource
 from src.dao.label import Rating
 from src.dao.message.message_models import InferenceOpts, Message, Role
 from src.inference.InferenceEngine import FinishReason
@@ -49,7 +55,10 @@ class ToolDefinition(APIInterface):
     tool_source: ToolSource
 
 
-TOOL_NAMES_TO_TRUNCATE = {"tulu-deep-research_serper_google_webpage_search", "serper_google_webpage_search"}
+TOOL_NAMES_TO_TRUNCATE = {
+    "tulu-deep-research_serper_google_webpage_search",
+    "serper_google_webpage_search",
+}
 CONTENT_TRUNCATION_LIMIT = 150
 
 
@@ -121,13 +130,16 @@ class FlatMessage(APIInterface):
         return FlatMessage.model_validate(message)
 
     @staticmethod
-    def from_message_with_children(message: Message | SQLAMessage) -> list["FlatMessage"]:
+    def from_message_with_children(
+        message: Message | SQLAMessage,
+    ) -> list["FlatMessage"]:
         return _map_messages(message)
 
     @field_serializer("content")
     def truncate_legally_required_tool_responses(self, v: str) -> str:
         if self.role == Role.ToolResponse and any(
-            tool_call.tool_name in TOOL_NAMES_TO_TRUNCATE for tool_call in self.tool_calls or []
+            tool_call.tool_name in TOOL_NAMES_TO_TRUNCATE
+            for tool_call in self.tool_calls or []
         ):
             words = v.split(" ")
             truncated_text = " ".join(words[: CONTENT_TRUNCATION_LIMIT - 1])
@@ -147,7 +159,11 @@ def _map_messages(message: Message | SQLAMessage) -> list[FlatMessage]:
     if message.children is None or len(message.children) == 0:
         return messages
 
-    mapped_messages = [child_child for child in message.children for child_child in _map_messages(child)]
+    mapped_messages = [
+        child_child
+        for child in message.children
+        for child_child in _map_messages(child)
+    ]
     return [*messages, *mapped_messages]
 
 

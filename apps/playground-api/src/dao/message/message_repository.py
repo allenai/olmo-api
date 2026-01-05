@@ -5,12 +5,12 @@ from typing import cast
 from sqlalchemy import CursorResult, func, or_, select, update
 from sqlalchemy.orm import Session, joinedload
 
+from db.models.label import Label
+from db.models.message import Message
+from db.models.model_config import ModelType
 from src import obj
 from src.dao import label as old_label
 from src.dao import paged
-from src.dao.engine_models.label import Label
-from src.dao.engine_models.message import Message
-from src.dao.engine_models.model_config import ModelType
 from src.dao.message.inference_opts_model import InferenceOpts
 from src.dao.message.message_models import Message as OldMessage
 from src.dao.message.message_models import Role, ThreadList
@@ -24,7 +24,9 @@ class BaseMessageRepository(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_messages_by_root(self, message_id: obj.ID, user_id: str) -> Sequence[Message] | None:
+    def get_messages_by_root(
+        self, message_id: obj.ID, user_id: str
+    ) -> Sequence[Message] | None:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -32,7 +34,9 @@ class BaseMessageRepository(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_message_with_children(self, message_id: obj.ID, user_id: str) -> Sequence[Message] | None:
+    def get_message_with_children(
+        self, message_id: obj.ID, user_id: str
+    ) -> Sequence[Message] | None:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -59,7 +63,9 @@ class BaseMessageRepository(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def migrate_messages_to_new_user(self, previous_user_id: str, new_user_id: str) -> int:
+    def migrate_messages_to_new_user(
+        self, previous_user_id: str, new_user_id: str
+    ) -> int:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -80,12 +86,23 @@ class MessageRepository(BaseMessageRepository):
 
         return self.session.get_one(Message, message.id)
 
-    def get_messages_by_root(self, message_id: obj.ID, user_id: str) -> Sequence[Message] | None:
+    def get_messages_by_root(
+        self, message_id: obj.ID, user_id: str
+    ) -> Sequence[Message] | None:
         query = (
             select(Message)
             .where(Message.root == message_id)
-            .where(or_(Message.expiration_time == None, Message.expiration_time > func.now()))  # noqa: E711
-            .options(joinedload(Message.labels.and_(Label.deleted == None, Label.creator == user_id)))  # noqa: E711
+            .where(
+                or_(
+                    Message.expiration_time == None,
+                    Message.expiration_time > func.now(),
+                )
+            )  # noqa: E711
+            .options(
+                joinedload(
+                    Message.labels.and_(Label.deleted == None, Label.creator == user_id)
+                )
+            )  # noqa: E711
             .order_by(Message.created.asc())
         )
 
@@ -96,12 +113,23 @@ class MessageRepository(BaseMessageRepository):
 
         return self.session.scalars(query).unique().all()
 
-    def get_message_with_children(self, message_id: obj.ID, user_id: str) -> Sequence[Message] | None:
+    def get_message_with_children(
+        self, message_id: obj.ID, user_id: str
+    ) -> Sequence[Message] | None:
         query = (
             select(Message)
             .where(Message.id == message_id)
-            .where(or_(Message.expiration_time == None, Message.expiration_time > func.now()))  # noqa: E711
-            .options(joinedload(Message.labels.and_(Label.deleted == None, Label.creator == user_id)))  # noqa: E711
+            .where(
+                or_(
+                    Message.expiration_time == None,
+                    Message.expiration_time > func.now(),
+                )
+            )  # noqa: E711
+            .options(
+                joinedload(
+                    Message.labels.and_(Label.deleted == None, Label.creator == user_id)
+                )
+            )  # noqa: E711
             .order_by(Message.created.asc())
         )
 
@@ -121,7 +149,12 @@ class MessageRepository(BaseMessageRepository):
         query = (
             select(Message)
             .where(Message.id == message_id)
-            .where(or_(Message.expiration_time == None, Message.expiration_time > func.now()))  # noqa: E711
+            .where(
+                or_(
+                    Message.expiration_time == None,
+                    Message.expiration_time > func.now(),
+                )
+            )  # noqa: E711
         )
 
         results = self.session.scalars(query).unique().all()
@@ -141,7 +174,10 @@ class MessageRepository(BaseMessageRepository):
 
     def soft_delete(self, message_id: obj.ID) -> None | Message:
         msg = self.session.execute(
-            update(Message).where(Message.id == message_id).values(deleted=func.now()).returning(Message)
+            update(Message)
+            .where(Message.id == message_id)
+            .values(deleted=func.now())
+            .returning(Message)
         ).scalar()
         self.session.commit()
         return msg
@@ -163,7 +199,9 @@ class MessageRepository(BaseMessageRepository):
 
         total = self.session.query(Message.id).where(*thread_conditions).count()
 
-        select_messages = select(Message).where(*thread_conditions).order_by(Message.created.desc())
+        select_messages = (
+            select(Message).where(*thread_conditions).order_by(Message.created.desc())
+        )
 
         if sort_opts.limit is not None:
             select_messages = select_messages.limit(sort_opts.limit)
@@ -174,11 +212,18 @@ class MessageRepository(BaseMessageRepository):
         threads = self.session.scalars(select_messages).unique().all()
 
         return ThreadList(
-            threads=threads, meta=paged.ListMeta(total=total, offset=sort_opts.offset, limit=sort_opts.limit)
+            threads=threads,
+            meta=paged.ListMeta(
+                total=total, offset=sort_opts.offset, limit=sort_opts.limit
+            ),
         )
 
     def migrate_messages_to_new_user(self, previous_user_id: str, new_user_id: str):
-        self.session.execute(update(Label).where(Label.creator == previous_user_id).values(creator=new_user_id))
+        self.session.execute(
+            update(Label)
+            .where(Label.creator == previous_user_id)
+            .values(creator=new_user_id)
+        )
         result = self.session.execute(
             update(Message)
             .where(Message.creator == previous_user_id)
@@ -205,7 +250,9 @@ def map_sqla_to_old(message: Message) -> OldMessage:
 
     # Map model_type to old enum when possible
     try:
-        mapped_model_type = ModelType(message.model_type) if message.model_type is not None else None
+        mapped_model_type = (
+            ModelType(message.model_type) if message.model_type is not None else None
+        )
     except Exception:
         mapped_model_type = None
 
@@ -234,7 +281,9 @@ def map_sqla_to_old(message: Message) -> OldMessage:
     # Map children recursively if present
     mapped_children: list[OldMessage] | None = None
     if getattr(message, "children", None):
-        mapped_children = [map_sqla_to_old(child) for child in cast(list[Message], message.children)]
+        mapped_children = [
+            map_sqla_to_old(child) for child in cast(list[Message], message.children)
+        ]
 
     return OldMessage(
         id=message.id,

@@ -4,9 +4,9 @@ from typing import Any
 
 from pydantic_ai import Tool
 
-from src.dao.engine_models.tool_call import ToolCall
-from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefinition
-from src.dao.engine_models.tool_definitions import ToolSource
+from db.models.tool_call import ToolCall
+from db.models.tool_definitions import ToolDefinition as Ai2ToolDefinition
+from db.models.tool_definitions import ToolSource
 
 from .internal_tools import CreateRandomNumber
 
@@ -26,7 +26,9 @@ def get_internal_tools():
 
 
 def call_internal_tool(tool_call: ToolCall) -> str:
-    found_tool = next((tool for tool in TOOL_REGISTRY if tool_call.tool_name == tool.name), None)
+    found_tool = next(
+        (tool for tool in TOOL_REGISTRY if tool_call.tool_name == tool.name), None
+    )
 
     if found_tool is None:
         return "Could not find tool"

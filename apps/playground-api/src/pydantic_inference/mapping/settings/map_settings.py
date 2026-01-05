@@ -1,12 +1,15 @@
 from typing import Any
 
 from pydantic_ai.models.openai import OpenAIChatModelSettings
-from src.dao.engine_models.model_config import ModelConfig
+
+from db.models.model_config import ModelConfig
 from src.dao.message.message_models import InferenceOpts
 
 
 def pydantic_settings_map(
-    opts: InferenceOpts, model_config: ModelConfig, extra_body: dict[str, Any] | None = None
+    opts: InferenceOpts,
+    model_config: ModelConfig,
+    extra_body: dict[str, Any] | None = None,
 ) -> OpenAIChatModelSettings:
     # Not mapping "N" from InferenceOpts
 

@@ -6,7 +6,7 @@ from alembic import context
 from dotenv import find_dotenv, load_dotenv
 from sqlalchemy import engine_from_config, pool
 
-from src.dao.engine_models import Base
+from db.models.base import Base
 from src.db.init_sqlalchemy import make_psycopg3_url
 
 # this is the Alembic Config object, which provides

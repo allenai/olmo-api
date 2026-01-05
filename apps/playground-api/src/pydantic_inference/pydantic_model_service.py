@@ -1,6 +1,6 @@
 from pydantic_ai.models import Model
 
-from src.dao.engine_models.model_config import ModelConfig, ModelHost
+from db.models.model_config import ModelConfig, ModelHost
 
 from .backends.ai2_model_hub import get_ai2_model_hub_model
 from .backends.beaker_queues import get_beaker_queues_model

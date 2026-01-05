@@ -12,14 +12,14 @@ from pydantic import (
     model_validator,
 )
 
-from src.api_interface import APIInterface
-from src.dao.engine_models.model_config import (
+from db.models.model_config import (
     FileRequiredToPromptOption,
     ModelConfig,
     ModelHost,
     ModelType,
     PromptType,
 )
+from src.api_interface import APIInterface
 from src.dao.message.inference_opts_model import InferenceOpts
 
 
@@ -41,7 +41,9 @@ class BaseModelConfigRequest(APIInterface):
     model_type: ModelType
     model_id_on_host: str = Field(min_length=1)
     internal: bool = Field(default=True)
-    default_system_prompt: Annotated[str | None, AfterValidator(empty_string_to_none)] = Field(default=None)
+    default_system_prompt: Annotated[
+        str | None, AfterValidator(empty_string_to_none)
+    ] = Field(default=None)
     family_id: str | None = Field(default=None)
     family_name: str | None = Field(default=None)
     available_time: AwareDatetime | None = Field(default=None)
@@ -97,27 +99,43 @@ def validate_inference_parameters_against_model_constraints(
     model_config: ModelConfig | BaseModelConfigRequest, values: InferenceOpts
 ) -> None:
     if values.max_tokens is not None:
-        if model_config.max_tokens_lower is not None and values.max_tokens < model_config.max_tokens_lower:
+        if (
+            model_config.max_tokens_lower is not None
+            and values.max_tokens < model_config.max_tokens_lower
+        ):
             msg = f"Default max tokens must be greater than or equal to the configured lower limit of {model_config.max_tokens_lower}"
             raise ValueError(msg)
-        if model_config.max_tokens_upper is not None and values.max_tokens > model_config.max_tokens_upper:
+        if (
+            model_config.max_tokens_upper is not None
+            and values.max_tokens > model_config.max_tokens_upper
+        ):
             msg = f"Default max tokens must be less than or equal to the configured upper limit of {model_config.max_tokens_upper}"
             raise ValueError(msg)
 
     if values.temperature is not None:
-        if model_config.temperature_lower is not None and values.temperature < model_config.temperature_lower:
+        if (
+            model_config.temperature_lower is not None
+            and values.temperature < model_config.temperature_lower
+        ):
             msg = f"Default temperature must be greater than or equal to the configured lower limit of {model_config.temperature_lower}"
             raise ValueError(msg)
-        if model_config.temperature_upper is not None and values.temperature > model_config.temperature_upper:
+        if (
+            model_config.temperature_upper is not None
+            and values.temperature > model_config.temperature_upper
+        ):
             msg = f"Default temperature must be less than or equal to the configured upper limit of {model_config.temperature_upper}"
             raise ValueError(msg)
 
     if values.top_p is not None:
-        if model_config.top_p_lower is not None and values.top_p < model_config.top_p_lower:
+        if (
+            model_config.top_p_lower is not None
+            and values.top_p < model_config.top_p_lower
+        ):
             msg = f"Default top_p must be greater than or equal to the configured lower limit of {model_config.top_p_lower}"
             raise ValueError(msg)
-        if model_config.top_p_upper is not None and values.top_p > model_config.top_p_upper:
-            msg = (
-                f"Default top_p must be less than or equal to the configured upper limit of {model_config.top_p_upper}"
-            )
+        if (
+            model_config.top_p_upper is not None
+            and values.top_p > model_config.top_p_upper
+        ):
+            msg = f"Default top_p must be less than or equal to the configured upper limit of {model_config.top_p_upper}"
             raise ValueError(msg)

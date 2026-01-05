@@ -1,6 +1,7 @@
 from pydantic_ai import AudioUrl, DocumentUrl, ImageUrl, VideoUrl
 from pydantic_ai.messages import ModelRequest
-from src.dao.engine_models.message import Message
+
+from db.models.message import Message
 from src.dao.message.message_models import Role
 from src.pydantic_inference.mapping.input.map_input import pydantic_map_messages
 

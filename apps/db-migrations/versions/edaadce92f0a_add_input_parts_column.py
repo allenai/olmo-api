@@ -11,8 +11,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-from src.dao.engine_models.input_parts import InputPart
-from src.dao.engine_models.pydantic_type import PydanticType
+from db.models.input_parts import InputPart
+from db.models.pydantic_type import PydanticType
 
 # revision identifiers, used by Alembic.
 revision: str = "edaadce92f0a"

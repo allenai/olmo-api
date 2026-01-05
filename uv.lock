@@ -10,7 +10,8 @@ resolution-markers = [
 [manifest]
 members = [
     "core",
-    "db-models",
+    "db",
+    "db-migrations",
     "infini-gram-api-client",
     "playground",
     "playground-api",
@@ -603,15 +604,34 @@ wheels = [
 ]
 
 [[package]]
-name = "db-models"
+name = "db"
 version = "0.1.0"
-source = { editable = "packages/db-models" }
+source = { editable = "packages/db" }
 dependencies = [
     { name = "core" },
+    { name = "sqlalchemy" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "core", editable = "packages/core" }]
+requires-dist = [
+    { name = "core", editable = "packages/core" },
+    { name = "sqlalchemy", specifier = ">=2.0.44" },
+]
+
+[[package]]
+name = "db-migrations"
+version = "0.1.0"
+source = { virtual = "apps/db-migrations" }
+dependencies = [
+    { name = "core" },
+    { name = "db" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "core", editable = "packages/core" },
+    { name = "db", editable = "packages/db" },
+]
 
 [[package]]
 name = "distro"
@@ -2600,7 +2620,7 @@ dependencies = [
     { name = "beaker-py" },
     { name = "beautifulsoup4" },
     { name = "core" },
-    { name = "db-models" },
+    { name = "db" },
     { name = "dramatiq", extra = ["redis", "watch"] },
     { name = "flask" },
     { name = "flask-pydantic-api" },
@@ -2658,7 +2678,7 @@ requires-dist = [
     { name = "beaker-py", specifier = "==2.5.0" },
     { name = "beautifulsoup4", specifier = "==4.12.2" },
     { name = "core", editable = "packages/core" },
-    { name = "db-models", editable = "packages/db-models" },
+    { name = "db", editable = "packages/db" },
     { name = "dramatiq", extras = ["redis", "watch"], specifier = "==2.0.0" },
     { name = "flask", specifier = "==2.3.3" },
     { name = "flask-pydantic-api", specifier = "==1.7.0" },

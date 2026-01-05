@@ -1,17 +1,24 @@
 from collections.abc import Sequence
 from typing import Annotated, Any, Self
 
-from pydantic import AfterValidator, BaseModel, Field, Json, field_validator, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    Field,
+    Json,
+    field_validator,
+    model_validator,
+)
 from werkzeug import exceptions
 
-from src.api_interface import APIInterface
-from src.config.get_config import get_config
-from src.dao.engine_models.input_parts import InputPart, PointPartType
-from src.dao.engine_models.message import Message
+from db.models.input_parts import InputPart, PointPartType
+from db.models.message import Message
 
 # We import PromptTemplate and ToolDefinition so Pydantic knows how to resolve them, preventing some model definition errors
-from src.dao.engine_models.prompt_template import PromptTemplate  # noqa: F401
-from src.dao.engine_models.tool_definitions import ToolDefinition  # noqa: F401
+from db.models.prompt_template import PromptTemplate  # noqa: F401
+from db.models.tool_definitions import ToolDefinition  # noqa: F401
+from src.api_interface import APIInterface
+from src.config.get_config import get_config
 from src.dao.message.inference_opts_model import (
     InferenceOpts,
 )
@@ -59,9 +66,9 @@ class CreateMessageRequest(APIInterface):
 
     bypass_safety_check: bool = Field(default=False)
 
-    captcha_token: Annotated[str | None, AfterValidator(captcha_token_required_if_captcha_enabled)] = Field(
-        default=None
-    )
+    captcha_token: Annotated[
+        str | None, AfterValidator(captcha_token_required_if_captcha_enabled)
+    ] = Field(default=None)
 
     max_tokens: int | None = Field(default=None)
     temperature: float | None = Field(default=None)
@@ -103,11 +110,15 @@ class CreateMessageRequest(APIInterface):
 
     @field_validator("input_parts", mode="after")
     @classmethod
-    def only_one_molmo_2_input_part_allowed(cls, value: list[InputPart] | None) -> list[InputPart] | None:
+    def only_one_molmo_2_input_part_allowed(
+        cls, value: list[InputPart] | None
+    ) -> list[InputPart] | None:
         if value is None:
             return value
 
-        molmo_2_point_parts = [part for part in value if part.type == PointPartType.MOLMO_2_INPUT_POINT]
+        molmo_2_point_parts = [
+            part for part in value if part.type == PointPartType.MOLMO_2_INPUT_POINT
+        ]
         if len(molmo_2_point_parts) > 1:
             msg = "Only one Molmo 2 input part allowed per request"
             raise ValueError(msg)
@@ -179,7 +190,11 @@ class CreateMessageRequestWithFullMessages(BaseModel):
 
     @model_validator(mode="after")
     def original_message_and_parent_are_different(self) -> Self:
-        if self.original is not None and self.parent_id is not None and self.original == self.parent_id:
+        if (
+            self.original is not None
+            and self.parent_id is not None
+            and self.original == self.parent_id
+        ):
             msg = "Original and parent messages must be different"
             raise ValueError(msg)
 
@@ -219,7 +234,11 @@ class CreateMessageRequestWithFullMessages(BaseModel):
 
     @model_validator(mode="after")
     def parent_and_child_have_different_roles(self) -> Self:
-        if self.parent is not None and self.parent.role != Role.ToolResponse and self.parent.role == self.role:
+        if (
+            self.parent is not None
+            and self.parent.role != Role.ToolResponse
+            and self.parent.role == self.role
+        ):
             msg = "Parent and child must have different roles"
             raise ValueError(msg)
 

@@ -1,6 +1,6 @@
 from typing import Any
 
-from src.dao.engine_models.model_config import (
+from db.models.model_config import (
     FilesOnlyModelConfig,
     ModelConfig,
     MultiModalModelConfig,

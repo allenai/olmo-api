@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
 
-from src.dao.engine_models.message import Message
-from src.dao.engine_models.model_config import ModelHost
-from src.dao.engine_models.tool_definitions import ToolDefinition, ToolSource
+from db.models.message import Message
+from db.models.model_config import ModelHost
+from db.models.tool_definitions import ToolDefinition, ToolSource
 from src.dao.message.message_models import Role
 from src.obj import NewID
 
@@ -27,7 +27,10 @@ def test_tool_def_does_not_delete_when_related_message_does(sql_alchemy: Session
     sql_alchemy.add(message)
 
     tool_definition = ToolDefinition(
-        name="test-tool", description="tool for testing", parameters=None, tool_source=ToolSource.INTERNAL
+        name="test-tool",
+        description="tool for testing",
+        parameters=None,
+        tool_source=ToolSource.INTERNAL,
     )
 
     sql_alchemy.add(tool_definition)
@@ -54,4 +57,7 @@ def test_tool_def_does_not_delete_when_related_message_does(sql_alchemy: Session
 
     sql_alchemy.refresh(loaded_tool_definition)
     assert loaded_tool_definition is not None
-    assert loaded_tool_definition.messages is None or len(loaded_tool_definition.messages) == 0
+    assert (
+        loaded_tool_definition.messages is None
+        or len(loaded_tool_definition.messages) == 0
+    )

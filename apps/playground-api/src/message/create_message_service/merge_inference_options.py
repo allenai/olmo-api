@@ -1,6 +1,6 @@
 import src.dao.message.message_models as message
-from src.dao.engine_models.message import Message
-from src.dao.engine_models.model_config import ModelConfig
+from db.models.message import Message
+from db.models.model_config import ModelConfig
 
 
 def merge_inference_options(
@@ -31,7 +31,11 @@ def merge_inference_options(
     merged_inference_options = (
         default_inference_options.model_dump()
         # Excluding None from these lets us keep the options from the higher set of options
-        | (parent_inference_options.model_dump(exclude_none=True) if parent_inference_options is not None else {})
+        | (
+            parent_inference_options.model_dump(exclude_none=True)
+            if parent_inference_options is not None
+            else {}
+        )
         | request_inference_options.model_dump(exclude_none=True)
     )
 

@@ -3,9 +3,9 @@ from typing import Any, Literal
 
 from pydantic import computed_field
 
+from db.models.tool_definitions import ToolSource
 from src import obj
 from src.api_interface import APIInterface
-from src.dao.engine_models.tool_definitions import ToolSource
 
 
 class ChunkType(StrEnum):
@@ -109,4 +109,11 @@ class StreamEndChunk(BaseChunk):
         return ChunkType.END
 
 
-Chunk = ModelResponseChunk | ToolCallChunk | ErrorChunk | ThinkingChunk | StreamStartChunk | StreamEndChunk
+Chunk = (
+    ModelResponseChunk
+    | ToolCallChunk
+    | ErrorChunk
+    | ThinkingChunk
+    | StreamStartChunk
+    | StreamEndChunk
+)

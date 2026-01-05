@@ -2,7 +2,7 @@ import logging
 
 from werkzeug import exceptions
 
-from src.dao.engine_models.model_config import ModelConfig, MultiModalModelConfig
+from db.models.model_config import ModelConfig, MultiModalModelConfig
 from src.dao.flask_sqlalchemy_session import current_session
 from src.model_config.get_model_config_service import get_single_model_config_admin
 

@@ -3,8 +3,8 @@ from zoneinfo import ZoneInfo
 
 import time_machine
 
+from db.models.model_config import ModelHost, ModelType, PromptType
 from src.config.Model import Model, ModelValidationContext
-from src.dao.engine_models.model_config import ModelHost, ModelType, PromptType
 
 
 @time_machine.travel(destination=datetime(2025, 1, 1, tzinfo=UTC))
@@ -198,8 +198,12 @@ def test_converts_times_to_utc() -> None:
         "system_prompt": None,
         "family_id": None,
         "family_name": None,
-        "available_time": datetime(2025, 1, 1).astimezone(ZoneInfo("America/New_York")).isoformat(),
-        "deprecation_time": datetime(2026, 1, 1).astimezone(ZoneInfo("America/Los_Angeles")).isoformat(),
+        "available_time": datetime(2025, 1, 1)
+        .astimezone(ZoneInfo("America/New_York"))
+        .isoformat(),
+        "deprecation_time": datetime(2026, 1, 1)
+        .astimezone(ZoneInfo("America/Los_Angeles"))
+        .isoformat(),
         "internal": False,
         "prompt_type": PromptType.TEXT_ONLY,
     })

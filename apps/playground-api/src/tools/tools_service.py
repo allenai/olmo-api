@@ -2,18 +2,19 @@ from typing import TYPE_CHECKING
 
 from pydantic_ai.messages import ToolReturnPart
 from pydantic_ai.tools import ToolDefinition
+
+from db.models.message import Message
+from db.models.tool_call import ToolCall
+from db.models.tool_definitions import ToolDefinition as Ai2ToolDefinition
+from db.models.tool_definitions import ToolSource
 from src.config.get_config import get_config
-from src.dao.engine_models.message import Message
-from src.dao.engine_models.tool_call import ToolCall
-from src.dao.engine_models.tool_definitions import ToolDefinition as Ai2ToolDefinition
-from src.dao.engine_models.tool_definitions import ToolSource
 
 from .internal_tools_service import call_internal_tool, get_internal_tools
 from .mcp_service import call_mcp_tool, get_general_mcp_tools
 
 if TYPE_CHECKING:
+    from db.models.model_config import ModelConfig
     from src.config.Model import ModelBase
-    from src.dao.engine_models.model_config import ModelConfig
 
 
 def map_tool_def_to_pydantic(tool: Ai2ToolDefinition) -> ToolDefinition:
@@ -42,13 +43,17 @@ def get_available_tools(model: "ModelConfig | ModelBase") -> list[Ai2ToolDefinit
         return []
 
     # HACK: We'll want to replace this with a way to determine what tools are available on models
-    internal_tools = get_internal_tools() if get_config().feature_flags.show_internal_tools else []
+    internal_tools = (
+        get_internal_tools() if get_config().feature_flags.show_internal_tools else []
+    )
     mcp_tools = get_general_mcp_tools()
 
     return internal_tools + mcp_tools
 
 
-def call_tool(tool_call: ToolCall, tool_definition: Ai2ToolDefinition) -> ToolReturnPart:
+def call_tool(
+    tool_call: ToolCall, tool_definition: Ai2ToolDefinition
+) -> ToolReturnPart:
     tool_response: str
     match tool_call.tool_source:
         case ToolSource.INTERNAL:

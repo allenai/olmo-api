@@ -1,4 +1,4 @@
-from src.dao.engine_models.model_config import ModelConfig, ModelHost, ModelType, PromptType
+from db.models.model_config import ModelConfig, ModelHost, ModelType, PromptType
 from src.dao.message.message_models import InferenceOpts
 from src.pydantic_inference.mapping.settings.map_settings import pydantic_settings_map
 
@@ -21,7 +21,14 @@ default_inference_constraints = {
 
 class TestPydanticSettingsMap:
     def test_should_map_all_opts_when_passed(self):
-        opts = InferenceOpts(max_tokens=1000, temperature=0.5, top_p=0.05, n=1, logprobs=None, stop=["/n", "<end>"])
+        opts = InferenceOpts(
+            max_tokens=1000,
+            temperature=0.5,
+            top_p=0.05,
+            n=1,
+            logprobs=None,
+            stop=["/n", "<end>"],
+        )
         model_config = ModelConfig(
             id="test-model",
             host=ModelHost.TestBackend,
@@ -47,7 +54,14 @@ class TestPydanticSettingsMap:
         assert result.get("extra_body") is None
 
     def test_should_map_reasoning_effort_when_thinking_enabled(self):
-        opts = InferenceOpts(max_tokens=1000, temperature=0.5, top_p=0.05, n=1, logprobs=None, stop=["/n", "<end>"])
+        opts = InferenceOpts(
+            max_tokens=1000,
+            temperature=0.5,
+            top_p=0.05,
+            n=1,
+            logprobs=None,
+            stop=["/n", "<end>"],
+        )
         model_config = ModelConfig(
             id="test-model",
             host=ModelHost.TestBackend,
@@ -66,7 +80,14 @@ class TestPydanticSettingsMap:
         assert result.get("openai_reasoning_effort") == "low"
 
     def test_should_pass_extra_body_through(self):
-        opts = InferenceOpts(max_tokens=1000, temperature=0.5, top_p=0.05, n=1, logprobs=None, stop=["/n", "<end>"])
+        opts = InferenceOpts(
+            max_tokens=1000,
+            temperature=0.5,
+            top_p=0.05,
+            n=1,
+            logprobs=None,
+            stop=["/n", "<end>"],
+        )
         model_config = ModelConfig(
             id="test-model",
             host=ModelHost.TestBackend,
@@ -81,6 +102,8 @@ class TestPydanticSettingsMap:
         )
         extra_body = {"foo": "bar", "number": 42}
 
-        result = pydantic_settings_map(opts=opts, model_config=model_config, extra_body=extra_body)
+        result = pydantic_settings_map(
+            opts=opts, model_config=model_config, extra_body=extra_body
+        )
 
         assert result.get("extra_body") == extra_body

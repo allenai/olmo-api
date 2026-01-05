@@ -4,6 +4,8 @@ import string
 # obj.ID is a unique identifier for an object.
 ID = str
 
+OBJECT_ID_LENGTH = 8
+
 
 def NewID(prefix: str) -> ID:  # noqa: N802
     """
@@ -13,7 +15,7 @@ def NewID(prefix: str) -> ID:  # noqa: N802
     Based off of: https://github.com/allenai/emory/blob/main/api/docid/docid.go.
     """
     id = ""
-    while len(id) <= 8:
+    while len(id) <= OBJECT_ID_LENGTH:
         id += string.ascii_uppercase[secrets.randbelow(len(string.ascii_uppercase))]
         id += string.digits[secrets.randbelow(len(string.digits))]
     return f"{prefix}_{id}"

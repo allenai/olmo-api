@@ -46,7 +46,7 @@ ignore_missing_imports = true
 [tool.ruff]
 line-length = 120
 target-version = "py311"
-exclude = ["packages/infini-gram-api-client"]
+extend-exclude = ["packages/infini-gram-api-client"]
 
 [tool.ruff.lint]
 preview = true
@@ -701,6 +701,7 @@ mark-parentheses = false
 
 [tool.ruff.lint.extend-per-file-ignores]
 "test_*.py" = ["PLC1901", "PLR2004", "PLR6301", "S", "TID252"]
+"apps/db-migrations/**/*.py" = ["INP001"]
 
 [tool.ruff.format]
 preview = true

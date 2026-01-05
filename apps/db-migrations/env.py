@@ -6,8 +6,8 @@ from alembic import context
 from dotenv import find_dotenv, load_dotenv
 from sqlalchemy import engine_from_config, pool
 
+from db.make_url import make_url
 from db.models.base import Base
-from src.db.init_sqlalchemy import make_psycopg3_url
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -41,7 +41,7 @@ db_username = os.getenv("MIGRATION_USERNAME")
 db_password = os.getenv("MIGRATION_PASSWORD")
 db_url = (
     # For some reason "autosave" works in the main application but not in alembic
-    make_psycopg3_url(conninfo).set(username=db_username, password=db_password).difference_update_query(["autosave"])
+    make_url(conninfo).set(username=db_username, password=db_password).difference_update_query(["autosave"])
 )
 
 
@@ -54,7 +54,7 @@ alembic_postgresql_enum.set_configuration(
 )
 
 
-def include_name(name, type_, parent_names):
+def include_name(name, type_, parent_names):  # noqa: ARG001
     if type_ == "table":
         return name in target_metadata.tables
     return True

@@ -1,9 +1,10 @@
 from typing import TYPE_CHECKING, Any
 
-from core import new_id_generator
 from sqlalchemy import Enum, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from core import new_id_generator
 
 from .base import Base
 from .tool_definitions import ToolSource

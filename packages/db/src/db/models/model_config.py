@@ -1,11 +1,12 @@
 from datetime import datetime
 from enum import StrEnum
 
+from sqlalchemy import ARRAY, ForeignKey, Integer, Sequence, String, func, text
+from sqlalchemy.orm import Mapped, mapped_column
+
 from infini_gram_api_client.models.available_infini_gram_index_id import (
     AvailableInfiniGramIndexId,
 )
-from sqlalchemy import ARRAY, ForeignKey, Integer, Sequence, String, func, text
-from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
 

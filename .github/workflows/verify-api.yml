@@ -40,16 +40,6 @@ jobs:
         uses: ./.github/actions/set-up-uv
 
       - run: uv run ruff check --exclude ./apps/playground-api --output-format=github
-
-    debug-lint:
-      runs-on: ubuntu-latest  
-      steps:
-      - uses: actions/checkout@v6
-  
-      - name: Set up uv
-        uses: ./.github/actions/set-up-uv
-
-      - run: uv run ruff check --output-format=github --select I001 -v apps/db-migrations/env.py
       
     format:
       runs-on: ubuntu-latest 

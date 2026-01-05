@@ -1,7 +1,6 @@
 import datetime
 from typing import Any, Optional
 
-from core.object_id import new_id_generator
 from sqlalchemy import (
     ARRAY,
     Boolean,
@@ -16,6 +15,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from core.object_id import new_id_generator
 from db.models.base import Base
 from db.models.completion import Completion
 from db.models.input_parts import InputPart

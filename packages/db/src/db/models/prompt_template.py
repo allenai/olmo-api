@@ -1,7 +1,6 @@
 import datetime
 from typing import TYPE_CHECKING, Any
 
-from core.object_id import new_id_generator
 from sqlalchemy import (
     ARRAY,
     DateTime,
@@ -10,6 +9,8 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from core.object_id import new_id_generator
 
 from .base import Base
 from .model_config import ModelType

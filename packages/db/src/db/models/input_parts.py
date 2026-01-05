@@ -1,8 +1,9 @@
 from enum import StrEnum
 from typing import Literal, TypeAlias
 
-from core.api_interface import APIInterface
 from pydantic import Field
+
+from core.api_interface import APIInterface
 
 
 class PointPartType(StrEnum):

@@ -4,11 +4,4 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = [
-    "core",
-    "db",
-]
-
-[tool.uv.sources]
-core = { workspace = true }
-db = { workspace = true }
+dependencies = ["core", "db"]

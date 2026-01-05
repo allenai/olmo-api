@@ -68,7 +68,3 @@ extend = "../../pyproject.toml"
 [tool.ruff.lint.extend-per-file-ignores]
 "test_*.py" = ["PLC1901", "PLR2004", "PLR6301", "S", "TID252"]
 "__init__.py" = ["PLC0414"]
-
-[tool.uv.sources]
-core = { workspace = true }
-db = { workspace = true }

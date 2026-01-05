@@ -13,6 +13,8 @@ dev = ["mypy>=1.19.1", "ruff>=0.11.7"]
 
 [tool.uv.sources]
 infini-gram-api-client = { workspace = true }
+db = { workspace = true }
+core = { workspace = true }
 inferd = { path = "vendor/inferd-0.5.9-0_v0.5.9-py3-none-any.whl" }
 
 [tool.uv.workspace]

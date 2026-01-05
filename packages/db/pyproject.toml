@@ -10,8 +10,6 @@ dependencies = ["core", "sqlalchemy==2.0.44"]
 requires = ["uv_build>=0.9.21,<0.10.0"]
 build-backend = "uv_build"
 
-[tool.uv.sources]
-core = { workspace = true }
 
 [tool.ruff]
 extend = "../../pyproject.toml"

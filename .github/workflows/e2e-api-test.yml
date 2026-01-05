@@ -1,43 +1,45 @@
 name: e2e API Tests
 on:
-    push:
-        branches: [main, dev]
-    pull_request:
-        branches: [main, dev]
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
 
 jobs:
-    e2e-test:
-        runs-on: ubuntu-latest
+  e2e-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
 
-        steps:
-            - uses: actions/checkout@v4.2.2
+      - name: Setup Config
+        env:
+          CONFIG_JSON: ${{ secrets.CONFIG_JSON }}
+        run: |
+          echo $CONFIG_JSON | base64 --decode > config.json
 
-            - name: Setup Config
-              env:
-                  CONFIG_JSON: ${{ secrets.CONFIG_JSON }}
-              run: |
-                  echo $CONFIG_JSON | base64 --decode > config.json
+      - name: Setup Gcloud Credentials
+        env:
+          GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+        run: |
+          echo $GOOGLE_SERVICE_ACCOUNT | base64 --decode > service_account.json
 
-            - name: Setup Gcloud Credentials
-              env:
-                  GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
-              run: |
-                  echo $GOOGLE_SERVICE_ACCOUNT | base64 --decode > service_account.json
+      - name: Setup modal
+        env:
+          MODAL_TOML: ${{ secrets.MODAL_TOML }}
+        run: |
+          echo $MODAL_TOML | base64 --decode > .modal.toml
 
-            - name: Setup modal
-              env:
-                  MODAL_TOML: ${{ secrets.MODAL_TOML }}
-              run: |
-                  echo $MODAL_TOML | base64 --decode > .modal.toml
+      - name: Run docker compose
+        uses: hoverkraft-tech/compose-action@v2
+        with:
+          compose-file: "./docker-compose.yaml"
+        env:
+          FLASK_CONFIG_PATH: "./test.config.json"
+          E2E_AUTH0_CLIENT_SECRET: ${{ secrets.E2E_AUTH0_CLIENT_SECRET }}
+          
+      - name: Set up uv
+        uses: ./.github/actions/set-up-uv
 
-            - name: Run docker compose
-              uses: hoverkraft-tech/compose-action@v2.0.1
-              with:
-                  compose-file: "./docker-compose.yaml"
-              env:
-                  FLASK_CONFIG_PATH: "./config.test.json"
-                  E2E_AUTH0_CLIENT_SECRET: ${{ secrets.E2E_AUTH0_CLIENT_SECRET }}
+      - name: Test with pytest
+        run: FLASK_CONFIG_PATH=./config.json E2E_AUTH0_CLIENT_SECRET=${{ secrets.E2E_AUTH0_CLIENT_SECRET }} uv run pytest ./e2e
 
-            - name: Execute e2e tests
-              run: |
-                   docker compose exec api pytest ./e2e

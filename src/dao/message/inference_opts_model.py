@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from pydantic import BaseModel, Field
 
@@ -24,11 +24,12 @@ class InferenceOpts(BaseModel):
             return None
 
         # Using model_construct since we want to trust that the DB has valid data
+        # TODO: convert this to use PydanticType
         return InferenceOpts.model_construct(
             max_tokens=message.opts.get("max_tokens", None),
             temperature=message.opts.get("temperature", None),
             top_p=message.opts.get("top_p", None),
             stop=message.opts.get("stop", None),
-            n=message.opts.get("n", None),
+            n=cast(int | None, message.opts.get("n", None)),  # type: ignore [arg-type]
             logprobs=message.opts.get("logprobs", None),
         )

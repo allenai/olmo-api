@@ -25,5 +25,6 @@
     "ruff.lint.preview": true,
     "gitlens.advanced.blame.customArguments": [
         "--ignore-revs-file .git-blame-ignore-revs"
-    ]
+    ],
+    "mypy-type-checker.importStrategy": "fromEnvironment",
 }

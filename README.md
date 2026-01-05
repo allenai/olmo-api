@@ -20,6 +20,13 @@ To start a local server, follow these steps:
     docker compose up --build --watch
     ```
 
+### Adding a new package
+We use uv's workspaces to split code into larger chunks. 
+
+To add a new package, cd to `packages` and run `uv init --lib --package package-name`. Make sure you run `uv add package-name --package <DEPENDENT_PACKAGE>` for any packages that depend on it.
+
+To add a new app, cd to `apps` and run `uv init app-name`.
+
 ### Reset Schema
 
 The API uses a local database for persistence. If you'd like to delete all

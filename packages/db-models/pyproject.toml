@@ -12,3 +12,6 @@ build-backend = "uv_build"
 
 [tool.uv.sources]
 core = { workspace = true }
+
+[tool.ruff.lint]
+ignore = ["RUF012"]

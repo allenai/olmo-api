@@ -11,6 +11,8 @@ dependencies = [
     "authlib==1.3.2",
     "beaker-py==2.5.0",
     "beautifulsoup4==4.12.2",
+    "core",
+    "db-models",
     "dramatiq[redis,watch]==2.0.0",
     "flask==2.3.3",
     "flask-pydantic-api==1.7.0",
@@ -60,18 +62,12 @@ dev = [
     "types-requests==2.32.0.20240914",
 ]
 
-[tool.pytest.ini_options]
-markers = [
-    "integration: mark a test as an integration test that can use the DB",
-]
-
-[[tool.mypy.overrides]]
-module = ["infini_gram_api_client"]
-ignore_errors = true
-
 
 [tool.ruff.lint.extend-per-file-ignores]
 "test_*.py" = ["PLC1901", "PLR2004", "PLR6301", "S", "TID252"]
 "__init__.py" = ["PLC0414"]
-"src/dao/engine_models/*.py" = ["RUF012"]
 "db_migrations/*.py" = ["INP001"]
+
+[tool.uv.sources]
+core = { workspace = true }
+db-models = { workspace = true }

@@ -9,11 +9,11 @@ resolution-markers = [
 
 [manifest]
 members = [
+    "core",
     "db-models",
     "infini-gram-api-client",
     "playground",
     "playground-api",
-    "core",
 ]
 
 [[package]]
@@ -534,6 +534,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/d8/53/6f443c9a4a8358a93
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6", size = 25335, upload-time = "2022-10-25T02:36:20.889Z" },
 ]
+
+[[package]]
+name = "core"
+version = "0.1.0"
+source = { editable = "packages/core" }
 
 [[package]]
 name = "cryptography"
@@ -2594,6 +2599,8 @@ dependencies = [
     { name = "authlib" },
     { name = "beaker-py" },
     { name = "beautifulsoup4" },
+    { name = "core" },
+    { name = "db-models" },
     { name = "dramatiq", extra = ["redis", "watch"] },
     { name = "flask" },
     { name = "flask-pydantic-api" },
@@ -2650,6 +2657,8 @@ requires-dist = [
     { name = "authlib", specifier = "==1.3.2" },
     { name = "beaker-py", specifier = "==2.5.0" },
     { name = "beautifulsoup4", specifier = "==4.12.2" },
+    { name = "core", editable = "packages/core" },
+    { name = "db-models", editable = "packages/db-models" },
     { name = "dramatiq", extras = ["redis", "watch"], specifier = "==2.0.0" },
     { name = "flask", specifier = "==2.3.3" },
     { name = "flask-pydantic-api", specifier = "==1.7.0" },
@@ -2698,11 +2707,6 @@ dev = [
     { name = "types-protobuf", specifier = "==5.29.1.20250208" },
     { name = "types-requests", specifier = "==2.32.0.20240914" },
 ]
-
-[[package]]
-name = "core"
-version = "0.1.0"
-source = { editable = "packages/core" }
 
 [[package]]
 name = "pluggy"

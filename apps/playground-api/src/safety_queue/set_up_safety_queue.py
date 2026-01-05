@@ -16,9 +16,7 @@ from src.otel.otel_setup import setup_otel
 
 class LogFormatterMiddleware(dramatiq.Middleware):
     @override
-    def after_worker_boot(
-        self, broker: dramatiq.Broker, worker: dramatiq.Worker
-    ) -> None:
+    def after_worker_boot(self, broker: dramatiq.Broker, worker: dramatiq.Worker) -> None:
         root_logger = logging.getLogger()
         for handler in root_logger.handlers:
             handler.setFormatter(util.StackdriverJsonFormatter())
@@ -26,17 +24,13 @@ class LogFormatterMiddleware(dramatiq.Middleware):
 
 class OtelMiddleware(dramatiq.Middleware):
     @override
-    def after_worker_boot(
-        self, broker: dramatiq.Broker, worker: dramatiq.Worker
-    ) -> None:
+    def after_worker_boot(self, broker: dramatiq.Broker, worker: dramatiq.Worker) -> None:
         setup_otel()
 
 
 def set_up_safety_queue() -> None:
     config = get_config()
-    redis_broker = RedisBroker(
-        url=config.queue_url, namespace="playground_safety_queue"
-    )
+    redis_broker = RedisBroker(url=config.queue_url, namespace="playground_safety_queue")
 
     old_broker = dramatiq.get_broker()
     # reconfigure actors to use the new broker

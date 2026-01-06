@@ -3,16 +3,16 @@ This uses Alembic to auto-generate migrations. The tutorial can be found here: h
 
 ## Commands
 ### To auto-generate migrations locally:
-`alembic revision -m "<YOUR MESSAGE HERE>" --autogenerate`
+`uv run alembic revision -m "<YOUR MESSAGE HERE>" --autogenerate`
 
 ### To run migrations locally:
-`alembic upgrade head`
+`uv run alembic upgrade head`
 
 ### To downgrade to the original config:
-`alembic downgrade base`
+`uv run alembic downgrade base`
 
 ### To generate migration sql for prod:
-`alembic upgrade head --sql > schema/02-schema.sql`
+`uv run alembic upgrade head --sql > schema/02-schema.sql`
 
 ## Gotchas
 If you make a new table you'll need to grant access to it in a second migration. See [this `model_config` migration](./versions/4d6e17a0fdf6_grant_access_to_model_config_table.py) for an example.
@@ -27,7 +27,7 @@ You'll also need to make sure it's imported into `env.py`. In most cases you can
 To run schema migrations:
 
 1. Make a new migration file:
-    `alembic upgrade head --sql > schema/02-schema.sql`
+    `uv run alembic upgrade head --sql > schema/02-schema.sql`
 2. Connect to the database:
 
     ```
@@ -48,7 +48,7 @@ To run schema migrations:
 ### Running a single migration on Production
 
 1. Get the SQL:
-    `alembic upgrade <previous-revision>:head --sql`
+    `uv run alembic upgrade <previous-revision>:head --sql`
 
 2. Follow the same connection steps as above
 
@@ -65,8 +65,8 @@ To run schema migrations:
 
 ### Reverting a migration on Production
 If you know which revision caused the problem, run 
-```
-alembic downgrade head:<bad-revision> --sql > downgrade.sql
+```bash
+uv run alembic downgrade head:<bad-revision> --sql > downgrade.sql
 ```
 
 Then run the downgrade SQL on prod.

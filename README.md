@@ -40,8 +40,8 @@ docker compose down --volumes && docker compose up --build
 
 To run them, execute:
 
-```
-docker compose exec api pytest -m "not integration"
+```bash
+uv run pytest -m "not integration"
 ```
 
 ### Type check
@@ -49,7 +49,7 @@ docker compose exec api pytest -m "not integration"
 To check all types run:
 
 ```bash
-mypy . --config ./pyproject.toml
+uv run mypy . --config ./pyproject.toml
 ```
 
 ## More Documentation

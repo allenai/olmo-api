@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: api
+Version: 0.1.0
+Summary: Add your description here
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: asgi-correlation-id>=4.3.4
+Requires-Dist: fastapi-problem>=0.11.6
+Requires-Dist: fastapi[standard]>=0.128.0
+Requires-Dist: opentelemetry-instrumentation-fastapi>=0.59b0
+Requires-Dist: pydantic-settings>=2.12.0
+Requires-Dist: structlog-gcp>=0.5.0

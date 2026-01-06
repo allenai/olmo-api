@@ -69,7 +69,7 @@ services:
   fastapi:
     build: 
       context: .
-      dockerfile: apps/fast-api/Dockerfile
+      dockerfile: apps/api/Dockerfile
       target: dev
       
     volumes:

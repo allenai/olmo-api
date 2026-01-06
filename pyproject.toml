@@ -14,7 +14,7 @@ dependencies = [
     "beaker-py==2.5.0",
     "beautifulsoup4==4.12.2",
     "dramatiq[redis,watch]==2.0.0",
-    "flask==2.3.3",
+    "flask==3.1.2",
     "flask-pydantic-api==1.7.0",
     "google-cloud-language==2.15.0",
     "google-cloud-recaptcha-enterprise==1.27.0",

@@ -6,9 +6,6 @@ The HTTP API used by http://playground.allenai.org
 
 ### Getting Started
 
-Install ffmpeg:
-On OSX, ensure you have `homebrew` installed then run `brew install ffmpeg`
-
 To start a local server, follow these steps:
 
 1. Generate a local `config.json` file:
@@ -20,7 +17,7 @@ To start a local server, follow these steps:
 2. Next open another terminal and launch the application like so:
 
     ```
-    docker compose up --build
+    docker compose up --build --watch
     ```
 
 ### Reset Schema
@@ -54,6 +51,8 @@ mypy . --config ./pyproject.toml
 -   [Model Configuration](./docs/model-config.md)
 
 ## Running the API outside of Docker:
+
+On macOS, ensure you have `homebrew` installed then run `brew install ffmpeg`
 
 Change `db.conninfo` in `config.json` to "postgres://app:llmz@127.0.0.1:5555/llmx?sslmode=disable"
 

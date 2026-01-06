@@ -38,7 +38,7 @@ default_inference_constraints = {
 def create_model_config(
     partial_config: dict[str, Any] | None = None,
 ) -> ModelConfig | MultiModalModelConfig:
-    values = {
+    values: dict[str, Any] = {
         "id": "id",
         "name": "name",
         "host": ModelHost.InferD,

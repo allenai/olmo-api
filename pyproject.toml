@@ -48,7 +48,7 @@ dependencies = [
     "python-json-logger==2.0.7",
     "rank-bm25==0.2.2",
     "requests==2.32.4",
-    "sqlalchemy==2.0.44",
+    "sqlalchemy==2.0.45",
 ]
 
 [dependency-groups]

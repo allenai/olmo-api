@@ -61,4 +61,4 @@ WORKDIR /app/apps/api/
 # Use the non-root user to run our application
 USER nonroot
 
-CMD ["/app/.venv/bin/fastapi", "run", "main.py", "--port", "88"]
+CMD ["/app/.venv/bin/fastapi", "run", "main.py", "--port", "8888"]

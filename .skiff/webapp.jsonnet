@@ -479,7 +479,7 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
         },
     };
 
-    local fastApiFQN = fullyQualifiedName + 'fastapi';
+    local fastApiFQN = fullyQualifiedName + '-fastapi';
     local fastApiPort = 8888;
         // This is used to verify that the API is functional.
     local fastApiHealthCheck = {

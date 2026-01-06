@@ -20,13 +20,13 @@ COPY vendor vendor
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-workspace --package=playground-api
+    uv sync --frozen --no-install-workspace --package=flask-api
 
 COPY . /app
 
-# the safety worker code is inside the playground-api package so we're installing that
+# the safety worker code is inside the flask-api package so we're installing that
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --package=playground-api
+    uv sync --locked --package=flask-api
 
 
 # Then, use a final image without uv

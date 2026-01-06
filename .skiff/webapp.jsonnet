@@ -667,7 +667,7 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
             selector: selectorLabels,
             ports: [
                 {
-                    port: apiPort,
+                    port: fastApiPort,
                     name: 'http'
                 }
             ]

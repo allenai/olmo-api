@@ -7,7 +7,7 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 from uvicorn.protocols.utils import get_path_with_query_string
 
-from src.config import settings
+from api.config import settings
 
 app_logger = structlog.stdlib.get_logger(settings.LOG_NAME)
 access_logger = structlog.stdlib.get_logger(settings.LOG_ACCESS_NAME)

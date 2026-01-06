@@ -1,9 +1,9 @@
 from datetime import datetime
 
-from core.api_interface import APIInterface
 from flask import request
 from werkzeug import exceptions
 
+from core.api_interface import APIInterface
 from src import db
 from src.dao.user import User
 from src.hubspot_service import create_contact
@@ -20,9 +20,7 @@ class UpsertUserRequest(APIInterface):
     media_collection_acceptance_revoked_date: datetime | None = None
 
 
-def upsert_user(
-    dbc: db.Client, client: str, *, should_create_contact: bool
-) -> User | None:
+def upsert_user(dbc: db.Client, client: str, *, should_create_contact: bool) -> User | None:
     request = _map_and_validate_upsert_user_request(client)
 
     user = dbc.user.get_by_client(request.client)

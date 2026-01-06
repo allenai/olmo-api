@@ -17,8 +17,6 @@ from openai.types.chat import (
 from openai.types.chat.chat_completion_content_part_image_param import ImageURL
 from openai.types.chat.chat_completion_content_part_input_audio_param import InputAudio
 from openai.types.chat.chat_completion_content_part_param import File, FileFile
-from typing_extensions import TypedDict
-
 from pydantic_ai import ModelProfile, RunContext, UnexpectedModelBehavior, _utils, usage
 from pydantic_ai.messages import (
     AudioUrl,
@@ -41,6 +39,7 @@ from pydantic_ai.models import (
 )
 from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
 from pydantic_ai.settings import ModelSettings
+from typing_extensions import TypedDict
 
 _CHAT_FINISH_REASON_MAP: dict[
     Literal["stop", "length", "tool_calls", "content_filter", "function_call"], FinishReason

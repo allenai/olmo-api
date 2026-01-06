@@ -1,10 +1,10 @@
 from datetime import datetime
 from typing import Any
 
-from core.api_interface import APIInterface
-from db.models.model_config import ModelType
 from pydantic import Field, RootModel
 
+from core.api_interface import APIInterface
+from db.models.model_config import ModelType
 from src.thread.thread_models import InferenceOptionsResponse, ToolDefinition
 
 

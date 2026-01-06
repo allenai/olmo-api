@@ -1,9 +1,9 @@
 from time import time_ns
 from typing import IO, cast
 
-from core.api_interface import APIInterface
 from pydub import AudioSegment  # type: ignore
 
+from core.api_interface import APIInterface
 from src.config.get_models import get_model_by_id
 from src.constants import OLMO_ASR_MODEL_ID
 from src.dao.message.message_models import Role
@@ -32,11 +32,7 @@ def get_transcription(request: GetTranscriptionRequest):
     olmo_asr_engine = OlmoAsrModalEngine()
 
     model = get_model_by_id(id=OLMO_ASR_MODEL_ID)
-    messages = [
-        InferenceEngineMessage(
-            role=Role.User, content="", files=[converted_audio_file.read()]
-        )
-    ]
+    messages = [InferenceEngineMessage(role=Role.User, content="", files=[converted_audio_file.read()])]
 
     start_generation_ns = time_ns()
     response = next(

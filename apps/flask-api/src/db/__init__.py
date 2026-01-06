@@ -1,1 +1,1 @@
-from .init_psycopg import Client as Client  # noqa: PLC0414
+from .init_psycopg import Client as Client

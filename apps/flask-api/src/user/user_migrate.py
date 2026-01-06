@@ -1,6 +1,6 @@
-from core.api_interface import APIInterface
 from pydantic import Field
 
+from core.api_interface import APIInterface
 from src import db
 from src.config.get_config import get_config
 from src.dao.flask_sqlalchemy_session import current_session
@@ -32,9 +32,7 @@ def migrate_user_from_anonymous_user(
     updated_user = None
 
     if previous_user is not None and new_user is not None:
-        most_recent_terms_accepted_date = max(
-            previous_user.terms_accepted_date, new_user.terms_accepted_date
-        )
+        most_recent_terms_accepted_date = max(previous_user.terms_accepted_date, new_user.terms_accepted_date)
         most_recent_data_collection_accepted_date = max(
             (
                 d
@@ -92,9 +90,7 @@ def migrate_user_from_anonymous_user(
         for url in msg.file_urls or []:
             filename = url.split("/")[-1]
             whole_name = f"{msg.root}/{filename}"
-            storage_client.migrate_anonymous_file(
-                whole_name, bucket_name=config.google_cloud_services.storage_bucket
-            )
+            storage_client.migrate_anonymous_file(whole_name, bucket_name=config.google_cloud_services.storage_bucket)
 
     updated_messages_count = message_repository.migrate_messages_to_new_user(
         previous_user_id=anonymous_user_id, new_user_id=new_user_id

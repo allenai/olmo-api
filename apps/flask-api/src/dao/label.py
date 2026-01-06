@@ -2,9 +2,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import IntEnum
 
-from core.object_id import ID, NewID
 from psycopg_pool import ConnectionPool
 from werkzeug import exceptions
+
+from core.object_id import ID, NewID
 
 from . import paged
 
@@ -43,9 +44,7 @@ class Store:
     def __init__(self, pool: ConnectionPool):
         self.pool = pool
 
-    def create(
-        self, message: str, rating: Rating, creator: str, comment: str | None
-    ) -> Label:
+    def create(self, message: str, rating: Rating, creator: str, comment: str | None) -> Label:
         if comment is not None and comment.strip() == "":
             msg = "comment cannot be empty"
             raise exceptions.BadRequest(msg)
@@ -98,11 +97,7 @@ class Store:
             if field not in allowed:
                 msg = f"invalid sort field: {field}"
                 raise ValueError(msg)
-            dir = (
-                opts.sort.direction.value
-                if opts.sort is not None
-                else paged.SortDirection.DESC.value
-            )
+            dir = opts.sort.direction.value if opts.sort is not None else paged.SortDirection.DESC.value
             q = f"""
                     SELECT
                         id, message, rating, creator, comment, created, deleted,

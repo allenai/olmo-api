@@ -1,17 +1,17 @@
 from typing import cast
 
 import pytest
+
 from infini_gram_api_client.models.attribution_response import (
     AttributionResponse,
 )
-
 from src.attribution.flatten_spans import flatten_spans
 
 # There's two tests in here. I had trouble with the second (penguin) response not mapping correctly so I figured it'd be good to test that specific one too.
 # If we want, we can craft responses to test specific parts of the fn
 
 
-@pytest.mark.skip()
+@pytest.mark.skip
 def test_collapse_spans_collapses_spans():
     parsed_response = AttributionResponse.from_dict(example_response)
 
@@ -38,7 +38,7 @@ def test_collapse_spans_collapses_spans():
     assert sum(len(span.documents) for span in collapsed_spans[3].nested_spans) == len(collapsed_spans[3].documents)
 
 
-@pytest.mark.skip()
+@pytest.mark.skip
 def test_collapse_spans_collapses_penguin_spans():
     parsed_response = AttributionResponse.from_dict(example_penguin_response)
 

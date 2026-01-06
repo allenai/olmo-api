@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-import core.object_id as obj
 from psycopg_pool import ConnectionPool
 from werkzeug import exceptions
+
+import core.object_id as obj
 
 PromptTemplateRow = tuple[str, str, str, str, datetime, datetime, datetime | None]
 
@@ -54,10 +55,7 @@ class Store:
                         name,
                         id
                 """
-            return [
-                PromptTemplate.from_row(row)
-                for row in cur.execute(q, (deleted,)).fetchall()
-            ]
+            return [PromptTemplate.from_row(row) for row in cur.execute(q, (deleted,)).fetchall()]
 
     def create_prompt(self, name, content, author) -> PromptTemplate:
         if name.strip() == "":

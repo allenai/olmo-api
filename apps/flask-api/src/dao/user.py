@@ -1,8 +1,9 @@
 from datetime import datetime
 
+from psycopg_pool import ConnectionPool
+
 import core.object_id as obj
 from core.api_interface import APIInterface
-from psycopg_pool import ConnectionPool
 
 UserRow = tuple[
     str,

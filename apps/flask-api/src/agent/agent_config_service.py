@@ -1,8 +1,8 @@
 import logging
 
-from core.api_interface import APIInterface
 from werkzeug import exceptions
 
+from core.api_interface import APIInterface
 from src.agent.agent_model import Agent
 
 

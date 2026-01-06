@@ -1,8 +1,8 @@
 from typing import Annotated
 
-from core.api_interface import APIInterface
 from pydantic import AfterValidator, Field, field_validator
 
+from core.api_interface import APIInterface
 from src import db
 from src.agent.agent_config_service import get_agent_by_id
 from src.dao.flask_sqlalchemy_session import current_session
@@ -24,9 +24,9 @@ class AgentChatRequest(APIInterface):
     content: str = Field(min_length=1)
     template: str | None = Field(default=None)
     bypass_safety_check: bool = Field(default=False)
-    captcha_token: Annotated[
-        str | None, AfterValidator(captcha_token_required_if_captcha_enabled)
-    ] = Field(default=None)
+    captcha_token: Annotated[str | None, AfterValidator(captcha_token_required_if_captcha_enabled)] = Field(
+        default=None
+    )
     max_steps: int | None = Field(default=None)
 
     @field_validator("content", mode="after")
@@ -35,17 +35,10 @@ class AgentChatRequest(APIInterface):
         return value.replace("\r\n", "\n")
 
 
-def stream_agent_chat(
-    request: AgentChatRequest, dbc: db.Client, storage_client: GoogleCloudStorage
-):
+def stream_agent_chat(request: AgentChatRequest, dbc: db.Client, storage_client: GoogleCloudStorage):
     agent = get_agent_by_id(request.agent_id)
-    agent_mcp_servers = [
-        find_mcp_config_by_id(mcp_server_id)
-        for mcp_server_id in (agent.mcp_server_ids or [])
-    ]
-    mcp_server_ids = {
-        mcp_server.id for mcp_server in agent_mcp_servers if mcp_server is not None
-    }
+    agent_mcp_servers = [find_mcp_config_by_id(mcp_server_id) for mcp_server_id in (agent.mcp_server_ids or [])]
+    mcp_server_ids = {mcp_server.id for mcp_server in agent_mcp_servers if mcp_server is not None}
 
     stream_model_message_request = ModelMessageStreamInput(
         parent=request.parent,

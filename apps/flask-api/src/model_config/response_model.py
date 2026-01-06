@@ -2,6 +2,8 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Annotated, Literal
 
+from pydantic import AwareDatetime, ByteSize, Field, RootModel, computed_field
+
 from core.api_interface import APIInterface
 from db.models.model_config import (
     FileRequiredToPromptOption,
@@ -12,7 +14,6 @@ from db.models.model_config import (
 from infini_gram_api_client.models.available_infini_gram_index_id import (
     AvailableInfiniGramIndexId,
 )
-from pydantic import AwareDatetime, ByteSize, Field, RootModel, computed_field
 
 
 class ModelAvailability(StrEnum):
@@ -60,9 +61,7 @@ class BaseResponseModel(APIInterface):
         if self.internal:
             return ModelAvailability.INTERNAL
 
-        if self.available_time is not None and self.available_time > datetime.now(
-            tz=UTC
-        ):
+        if self.available_time is not None and self.available_time > datetime.now(tz=UTC):
             return ModelAvailability.PRERELEASE
 
         return ModelAvailability.PUBLIC

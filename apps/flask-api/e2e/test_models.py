@@ -3,11 +3,11 @@ import operator
 from uuid import uuid4
 
 import requests
+
+from db.models.model_config import ModelHost, ModelType, PromptType
 from infini_gram_api_client.models.available_infini_gram_index_id import (
     AvailableInfiniGramIndexId,
 )
-
-from db.models.model_config import ModelHost, ModelType, PromptType
 from src.model_config.create_model_config_service import (
     BaseCreateModelConfigRequest,
     CreateMultiModalModelConfigRequest,

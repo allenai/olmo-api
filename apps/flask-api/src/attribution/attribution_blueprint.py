@@ -1,7 +1,7 @@
 from flask import Blueprint
-from infini_gram_api_client import Client
 from werkzeug import exceptions
 
+from infini_gram_api_client import Client
 from src.attribution.attribution_service import (
     AttributionResponse,
     GetAttributionRequest,

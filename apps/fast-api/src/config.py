@@ -1,7 +1,5 @@
 from enum import StrEnum
 
-from fastapi_structlog import LogSettings
-from fastapi_structlog.settings import DBSettings, SysLogSettings
 from pydantic_settings import BaseSettings
 
 
@@ -26,10 +24,10 @@ class Environment(StrEnum):
 
 class Settings(BaseSettings):
     ENV: Environment = Environment.PRODUCTION
-    log: LogSettings
-    # config: Config
+    LOG_LEVEL: str = "INFO"
+    LOG_JSON_FORMAT: bool = True
+    LOG_NAME: str = "olmo-api.app_logs"
+    LOG_ACCESS_NAME: str = "olmo-api.access_logs"
 
 
-log_settings = LogSettings(syslog=SysLogSettings(), db=DBSettings())
-
-settings = Settings(log=log_settings)
+settings = Settings()

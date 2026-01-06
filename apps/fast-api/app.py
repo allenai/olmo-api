@@ -1,11 +1,10 @@
 from fastapi import FastAPI
 from fastapi_problem.handler import add_exception_handler, new_exception_handler
-from fastapi_structlog import setup_logger
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from src.config import settings
 from src.health import health_router
-from src.logging import add_logging_middlware
+from src.logging import StructLogMiddleware, setup_logging
 
 
 def create_app() -> FastAPI:
@@ -18,8 +17,8 @@ def create_app() -> FastAPI:
 
     app.include_router(health_router)
 
-    setup_logger(settings.log)
-    add_logging_middlware(app)
+    setup_logging(json_logs=settings.LOG_JSON_FORMAT, log_level=settings.LOG_LEVEL)
+    app.add_middleware(StructLogMiddleware)
 
     FastAPIInstrumentor.instrument_app(app)
 

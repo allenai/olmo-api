@@ -3,6 +3,7 @@
 /.venv
 /.pytest_cache
 /config.json
+/pyrightconfig.json
 /service_account.json
 .env
 .env.local

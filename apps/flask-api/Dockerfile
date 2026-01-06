@@ -47,7 +47,7 @@ COPY --from=builder --chown=nonroot:nonroot /app /app
 ENV PATH="/app/.venv/bin:$PATH"
 
 FROM runner AS dev
-WORKDIR /app/apps/playground-api/
+WORKDIR /app/apps/flask-api/
 
 # Use the non-root user to run our application
 USER nonroot
@@ -56,7 +56,7 @@ ENTRYPOINT ["./dev.sh"]
 
 FROM runner AS prod
 # Use `/app` as the working directory
-WORKDIR /app/apps/playground-api/
+WORKDIR /app/apps/flask-api/
 
 # Use the non-root user to run our application
 USER nonroot

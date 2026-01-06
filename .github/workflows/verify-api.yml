@@ -19,7 +19,7 @@ jobs:
           uses: ./.github/actions/set-up-uv
 
         - name: Test with pytest
-          run: uv run pytest --ignore ./apps/playground-api/e2e
+          run: uv run pytest --ignore ./apps/flask-api/e2e
 
     type-check:
       runs-on: ubuntu-latest
@@ -39,7 +39,7 @@ jobs:
       - name: Set up uv
         uses: ./.github/actions/set-up-uv
 
-      - run: uv run ruff check --exclude ./apps/playground-api --output-format=github
+      - run: uv run ruff check --exclude ./apps/flask-api --output-format=github
       
     format:
       runs-on: ubuntu-latest 

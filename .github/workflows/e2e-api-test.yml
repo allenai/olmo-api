@@ -40,5 +40,5 @@ jobs:
         uses: ./.github/actions/set-up-uv
 
       - name: Test with pytest
-        run: FLASK_CONFIG_PATH=./config.json E2E_AUTH0_CLIENT_SECRET=${{ secrets.E2E_AUTH0_CLIENT_SECRET }} uv run pytest ./apps/playground-api/e2e
+        run: FLASK_CONFIG_PATH=./config.json E2E_AUTH0_CLIENT_SECRET=${{ secrets.E2E_AUTH0_CLIENT_SECRET }} uv run pytest ./apps/flask-api/e2e
 

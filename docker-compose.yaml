@@ -33,7 +33,7 @@ services:
   api:
     build: 
       context: .
-      dockerfile: apps/playground-api/Dockerfile
+      dockerfile: apps/flask-api/Dockerfile
       target: dev
       
     volumes:

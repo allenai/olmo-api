@@ -1,6 +1,8 @@
 import datetime
 from typing import TYPE_CHECKING, Any
 
+import core.object_id as obj
+from db.models.model_config import ModelType
 from sqlalchemy import (
     ARRAY,
     DateTime,
@@ -9,9 +11,6 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from db.models.model_config import ModelType
-from src import obj
 
 from .base import Base
 
@@ -24,7 +23,9 @@ class PromptTemplate(Base, kw_only=True):
     __tablename__ = "prompt_template"
     __table_args__ = (PrimaryKeyConstraint("id", name="prompt_template_pkey"),)
 
-    id: Mapped[str] = mapped_column(Text, primary_key=True, default_factory=obj.new_id_generator("p_tpl"))
+    id: Mapped[str] = mapped_column(
+        Text, primary_key=True, default_factory=obj.new_id_generator("p_tpl")
+    )
     name: Mapped[str] = mapped_column(Text)
     content: Mapped[str] = mapped_column(Text)
     creator: Mapped[str]
@@ -34,7 +35,9 @@ class PromptTemplate(Base, kw_only=True):
 
     opts: Mapped[dict]
     model_type: Mapped[ModelType]
-    file_urls: Mapped[list[str] | None] = mapped_column(ARRAY(Text), nullable=True, default=None)
+    file_urls: Mapped[list[str] | None] = mapped_column(
+        ARRAY(Text), nullable=True, default=None
+    )
     tool_definitions: Mapped[list["ToolDefinition"] | None] = relationship(
         "ToolDefinition",
         secondary="prompt_template_tool_definition_association",
@@ -43,6 +46,10 @@ class PromptTemplate(Base, kw_only=True):
     )
 
     # NOTE: JSONB changes aren't tracked by SQLAlchemy automatically
-    extra_parameters: Mapped[dict[str, Any] | None] = mapped_column(nullable=True, default=None)
+    extra_parameters: Mapped[dict[str, Any] | None] = mapped_column(
+        nullable=True, default=None
+    )
 
-    messages: Mapped[list["Message"]] = relationship("Message", back_populates="prompt_template")
+    messages: Mapped[list["Message"]] = relationship(
+        "Message", back_populates="prompt_template"
+    )

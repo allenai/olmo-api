@@ -1,6 +1,5 @@
+from core.api_interface import APIInterface
 from pydantic import Field
-
-from src.api_interface import APIInterface
 
 
 class AuthenticatedClient(APIInterface):

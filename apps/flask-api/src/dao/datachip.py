@@ -3,10 +3,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from core.object_id import NewID
 from psycopg import errors
 from psycopg_pool import ConnectionPool
-
-from src import obj
 
 from . import paged
 
@@ -114,7 +113,9 @@ class Store:
 
             total = rows[0][0]
             dc = [Datachip(*row[1:]) for row in rows]
-            return DatachipList(datachips=dc, meta=paged.ListMeta(total, opts.offset, opts.limit))
+            return DatachipList(
+                datachips=dc, meta=paged.ListMeta(total, opts.offset, opts.limit)
+            )
 
     def create(self, name: str, content: str, creator: str) -> Datachip:
         if not is_valid_datachip_name(name):
@@ -132,7 +133,7 @@ class Store:
                             RETURNING
                                 id, name, ref, content, creator, created, updated
                         """,
-                    (obj.NewID("dc"), name, ref, content, creator),
+                    (NewID("dc"), name, ref, content, creator),
                 )
                 row = cur.fetchone()
                 if row is None:

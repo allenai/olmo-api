@@ -1,13 +1,13 @@
 from datetime import UTC, datetime, timedelta
 from itertools import chain
 
-from werkzeug import exceptions
-
+import core.object_id as obj
 from db.models.message import Message
 from db.models.model_config import ModelConfig
 from db.models.tool_call import ToolCall
 from db.models.tool_definitions import ToolDefinition, ToolSource
-from src import obj
+from werkzeug import exceptions
+
 from src.auth.token import Token
 from src.dao.message.message_models import Role
 from src.dao.message.message_repository import BaseMessageRepository
@@ -20,7 +20,9 @@ from src.tools.tools_service import get_available_tools
 
 def get_expiration_time(client_auth: Token):
     # We currently want anonymous users' messages to expire after 1 days
-    return datetime.now(UTC) + timedelta(days=1) if client_auth.is_anonymous_user else None
+    return (
+        datetime.now(UTC) + timedelta(days=1) if client_auth.is_anonymous_user else None
+    )
 
 
 def create_message_id():
@@ -69,7 +71,10 @@ def setup_msg_thread(
         message_chain.append(parent)
 
     if request.root is not None:
-        messages = message_repository.get_messages_by_root(request.root.id, client_auth.client) or []
+        messages = (
+            message_repository.get_messages_by_root(request.root.id, client_auth.client)
+            or []
+        )
         msgs: dict[str, Message] = {}
         for message in messages:
             msgs[message.id] = message
@@ -113,7 +118,11 @@ def map_tools_for_user_message(
 
     if include_mcp_servers is None:
         selected_tools = (
-            (tool for tool in get_available_tools(model) if tool.name in request.selected_tools)
+            (
+                tool
+                for tool in get_available_tools(model)
+                if tool.name in request.selected_tools
+            )
             if request.selected_tools is not None
             else []
         )

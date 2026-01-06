@@ -1,9 +1,9 @@
 import logging
 
+from core.api_interface import APIInterface
 from werkzeug import exceptions
 
 from src.agent.agent_model import Agent
-from src.api_interface import APIInterface
 
 
 class AgentDTO(APIInterface):

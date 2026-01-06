@@ -1,11 +1,10 @@
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import computed_field
-
+import core.object_id as obj
+from core.api_interface import APIInterface
 from db.models.tool_definitions import ToolSource
-from src import obj
-from src.api_interface import APIInterface
+from pydantic import computed_field
 
 
 class ChunkType(StrEnum):
@@ -109,4 +108,11 @@ class StreamEndChunk(BaseChunk):
         return ChunkType.END
 
 
-Chunk = ModelResponseChunk | ToolCallChunk | ErrorChunk | ThinkingChunk | StreamStartChunk | StreamEndChunk
+Chunk = (
+    ModelResponseChunk
+    | ToolCallChunk
+    | ErrorChunk
+    | ThinkingChunk
+    | StreamStartChunk
+    | StreamEndChunk
+)

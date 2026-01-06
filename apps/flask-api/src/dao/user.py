@@ -1,11 +1,19 @@
 from datetime import datetime
 
+import core.object_id as obj
+from core.api_interface import APIInterface
 from psycopg_pool import ConnectionPool
 
-from src import obj
-from src.api_interface import APIInterface
-
-UserRow = tuple[str, str, datetime, datetime | None, datetime | None, datetime | None, datetime | None, datetime | None]
+UserRow = tuple[
+    str,
+    str,
+    datetime,
+    datetime | None,
+    datetime | None,
+    datetime | None,
+    datetime | None,
+    datetime | None,
+]
 
 
 class User(APIInterface):

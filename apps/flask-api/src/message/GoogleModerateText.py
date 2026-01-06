@@ -1,5 +1,6 @@
 from time import time_ns
 
+from core.api_interface import APIInterface
 from flask import current_app
 from google.cloud.language_v2 import (
     Document,
@@ -8,7 +9,6 @@ from google.cloud.language_v2 import (
     ModerateTextResponse,
 )
 
-from src.api_interface import APIInterface
 from src.config.get_config import get_config
 from src.message.SafetyChecker import (
     SafetyChecker,
@@ -36,9 +36,13 @@ class GoogleModerateTextResponse(SafetyCheckResponse):
         self.result = result
 
         config = get_config()
-        self.confidence_threshold = config.google_moderate_text.default_confidence_threshold
+        self.confidence_threshold = (
+            config.google_moderate_text.default_confidence_threshold
+        )
         self.severity_threshold = config.google_moderate_text.default_severity_threshold
-        self.unsafe_violation_categories = config.google_moderate_text.default_unsafe_violation_categories
+        self.unsafe_violation_categories = (
+            config.google_moderate_text.default_unsafe_violation_categories
+        )
 
     def is_safe(self) -> bool:
         violations = self.get_violations()
@@ -62,7 +66,11 @@ class GoogleModerateTextResponse(SafetyCheckResponse):
 
     def get_scores(self):
         return [
-            {"name": category.name, "confidence": category.confidence, "severity": category.severity}
+            {
+                "name": category.name,
+                "confidence": category.confidence,
+                "severity": category.severity,
+            }
             for category in self.result.moderation_categories
         ]
 
@@ -71,11 +79,14 @@ class GoogleModerateText(SafetyChecker):
     client: LanguageServiceClient
 
     def __init__(self):
-        self.client = LanguageServiceClient(client_options={"api_key": get_config().google_cloud_services.api_key})
+        self.client = LanguageServiceClient(
+            client_options={"api_key": get_config().google_cloud_services.api_key}
+        )
 
     def check_request(self, req: SafetyCheckRequest) -> SafetyCheckResponse:
         request = ModerateTextRequest(
-            document=Document(content=req.content, type=Document.Type.PLAIN_TEXT), model_version="MODEL_VERSION_2"
+            document=Document(content=req.content, type=Document.Type.PLAIN_TEXT),
+            model_version="MODEL_VERSION_2",
         )
 
         start_ns = time_ns()

@@ -2,10 +2,9 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any
 
+from core.object_id import ID
 from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool
-
-from src import obj
 
 from src.dao.message.message_models import (
     InferenceOpts,
@@ -53,7 +52,7 @@ class CompletionOutput:
 
 @dataclass
 class Completion:
-    id: obj.ID
+    id: ID
     input: str
     outputs: list[CompletionOutput]
     opts: InferenceOpts
@@ -148,7 +147,7 @@ class Store:
                         output_tokens
                 """
             values = (
-                obj.NewID("cpl"),
+                NewID("cpl"),
                 input,
                 Jsonb([asdict(o) for o in outputs]),
                 Jsonb(opts.model_dump()),

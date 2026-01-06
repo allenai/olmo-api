@@ -2,10 +2,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import IntEnum
 
+from core.object_id import ID, NewID
 from psycopg_pool import ConnectionPool
 from werkzeug import exceptions
-
-from src import obj
 
 from . import paged
 
@@ -21,7 +20,7 @@ LabelRow = tuple[str, str, int, str, str | None, datetime, datetime | None]
 
 @dataclass
 class Label:
-    id: obj.ID
+    id: ID
     message: str
     rating: Rating
     creator: str
@@ -44,7 +43,9 @@ class Store:
     def __init__(self, pool: ConnectionPool):
         self.pool = pool
 
-    def create(self, message: str, rating: Rating, creator: str, comment: str | None) -> Label:
+    def create(
+        self, message: str, rating: Rating, creator: str, comment: str | None
+    ) -> Label:
         if comment is not None and comment.strip() == "":
             msg = "comment cannot be empty"
             raise exceptions.BadRequest(msg)
@@ -57,7 +58,13 @@ class Store:
                     RETURNING
                         id, message, rating, creator, comment, created, deleted
                 """
-            values = (obj.NewID("lbl"), message, rating, creator, comment.strip() if comment is not None else None)
+            values = (
+                NewID("lbl"),
+                message,
+                rating,
+                creator,
+                comment.strip() if comment is not None else None,
+            )
             row = cur.execute(q, values).fetchone()
             if row is None:
                 msg = "failed to create label"
@@ -91,7 +98,11 @@ class Store:
             if field not in allowed:
                 msg = f"invalid sort field: {field}"
                 raise ValueError(msg)
-            dir = opts.sort.direction.value if opts.sort is not None else paged.SortDirection.DESC.value
+            dir = (
+                opts.sort.direction.value
+                if opts.sort is not None
+                else paged.SortDirection.DESC.value
+            )
             q = f"""
                     SELECT
                         id, message, rating, creator, comment, created, deleted,
@@ -126,7 +137,12 @@ class Store:
             rows = cur.execute(q, values).fetchall()  # type: ignore
             total = rows[0][7] if len(rows) > 0 else 0
             labels = [Label.from_row(row[:7]) for row in rows]
-            meta = paged.ListMeta(total, opts.offset, opts.limit, paged.Sort(field, paged.SortDirection(dir)))
+            meta = paged.ListMeta(
+                total,
+                opts.offset,
+                opts.limit,
+                paged.Sort(field, paged.SortDirection(dir)),
+            )
             return LabelsList(meta, labels)
 
     def delete(self, id: str) -> Label | None:

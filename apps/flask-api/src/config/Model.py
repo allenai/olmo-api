@@ -1,6 +1,13 @@
 from datetime import UTC, datetime
 from typing import Annotated, Literal, TypedDict
 
+from core.api_interface import APIInterface
+from db.models.model_config import (
+    FileRequiredToPromptOption,
+    ModelHost,
+    ModelType,
+    PromptType,
+)
 from infini_gram_api_client.models.available_infini_gram_index_id import (
     AvailableInfiniGramIndexId,
 )
@@ -14,14 +21,6 @@ from pydantic import (
     ValidationInfo,
     computed_field,
 )
-
-from db.models.model_config import (
-    FileRequiredToPromptOption,
-    ModelHost,
-    ModelType,
-    PromptType,
-)
-from src.api_interface import APIInterface
 
 
 class ModelValidationContext(TypedDict):
@@ -63,12 +62,12 @@ class ModelBase(BaseModel):
     system_prompt: str | None = None
     family_id: str | None = None
     family_name: str | None = None
-    available_time: Annotated[AwareDatetime | None, AfterValidator(map_datetime_to_utc)] = Field(
-        default=None, exclude=True
-    )
-    deprecation_time: Annotated[AwareDatetime | None, AfterValidator(map_datetime_to_utc)] = Field(
-        default=None, exclude=True
-    )
+    available_time: Annotated[
+        AwareDatetime | None, AfterValidator(map_datetime_to_utc)
+    ] = Field(default=None, exclude=True)
+    deprecation_time: Annotated[
+        AwareDatetime | None, AfterValidator(map_datetime_to_utc)
+    ] = Field(default=None, exclude=True)
     accepts_files: bool = Field(default=False)
     available_tools: list[AvailableTool] | None = Field(default=None)
     can_call_tools: bool = Field(default=False)
@@ -92,7 +91,9 @@ class ModelBase(BaseModel):
 
     stop_default: list[str] | None = None
 
-    should_show_internal_models: Annotated[bool, AfterValidator(get_show_internal_models_from_context)] = Field(
+    should_show_internal_models: Annotated[
+        bool, AfterValidator(get_show_internal_models_from_context)
+    ] = Field(
         default=False,
         exclude=True,
         # validate_default needs to be set so this always gets the value from context
@@ -104,8 +105,12 @@ class ModelBase(BaseModel):
     def is_visible(self) -> bool:
         now = datetime.now().astimezone(UTC)
 
-        model_is_available = True if self.available_time is None else now >= self.available_time
-        model_is_before_deprecation_time = True if self.deprecation_time is None else now < self.deprecation_time
+        model_is_available = (
+            True if self.available_time is None else now >= self.available_time
+        )
+        model_is_before_deprecation_time = (
+            True if self.deprecation_time is None else now < self.deprecation_time
+        )
 
         if self.should_show_internal_models and model_is_before_deprecation_time:
             return True
@@ -161,7 +166,9 @@ class MultiModalModel(ModelBase):
         default=None,
         description="The maximum total file size a user is allowed to send. Adds up the size of every file.",
     )
-    allow_files_in_followups: Annotated[bool, BeforeValidator(none_to_false_validator)] = Field(
+    allow_files_in_followups: Annotated[
+        bool, BeforeValidator(none_to_false_validator)
+    ] = Field(
         default=False,
         description="Defines if a user is allowed to send files with follow-up prompts. To require a file to prompt, use require_file_to_prompt",
     )

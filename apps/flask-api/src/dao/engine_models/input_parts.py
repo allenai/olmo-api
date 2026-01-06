@@ -1,9 +1,8 @@
 from enum import StrEnum
 from typing import Literal, TypeAlias
 
+from core.api_interface import APIInterface
 from pydantic import Field
-
-from src.api_interface import APIInterface
 
 
 class PointPartType(StrEnum):
@@ -11,7 +10,9 @@ class PointPartType(StrEnum):
 
 
 class Molmo2PointPart(APIInterface):
-    type: Literal[PointPartType.MOLMO_2_INPUT_POINT] = Field(default=PointPartType.MOLMO_2_INPUT_POINT, init=False)
+    type: Literal[PointPartType.MOLMO_2_INPUT_POINT] = Field(
+        default=PointPartType.MOLMO_2_INPUT_POINT, init=False
+    )
     x: int
     y: int
     time: float

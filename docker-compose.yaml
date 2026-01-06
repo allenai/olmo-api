@@ -62,7 +62,7 @@ services:
 
         - action: restart
           path: ./config.json
-          target: ./config.json
+          target: /app/config.json
 
     ports:
       - 8000:8000
@@ -98,7 +98,7 @@ services:
 
         - action: restart
           path: ./config.json
-          target: ./config.json
+          target: /app/config.json
 
     ports:
       # We use the Prometheus middleware to check if a worker is healthy

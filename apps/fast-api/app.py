@@ -6,6 +6,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from src.config import settings
 from src.health import health_router
 from src.logging import add_logging_middlware
+from src.v5 import v5_router
 
 
 def create_app() -> FastAPI:
@@ -17,6 +18,7 @@ def create_app() -> FastAPI:
     add_exception_handler(app, new_exception_handler())
 
     app.include_router(health_router)
+    app.include_router(v5_router)
 
     setup_logger(settings.log)
     add_logging_middlware(app)
@@ -24,5 +26,6 @@ def create_app() -> FastAPI:
     FastAPIInstrumentor.instrument_app(app)
 
     return app
+
 
 app = create_app()

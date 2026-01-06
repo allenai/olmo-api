@@ -9,10 +9,10 @@ resolution-markers = [
 
 [manifest]
 members = [
+    "api",
     "core",
     "db",
     "db-migrations",
-    "fast-api",
     "flask-api",
     "infini-gram-api-client",
     "playground",
@@ -229,6 +229,29 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/16/ce/8a777047513153587e5434fd752e89334ac33e379aa3497db860eeb60377/anyio-4.12.0.tar.gz", hash = "sha256:73c693b567b0c55130c104d0b43a9baf3aa6a31fc6110116509f27bf75e21ec0", size = 228266, upload-time = "2025-11-28T23:37:38.911Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7f/9c/36c5c37947ebfb8c7f22e0eb6e4d188ee2d53aa3880f3f2744fb894f0cb1/anyio-4.12.0-py3-none-any.whl", hash = "sha256:dad2376a628f98eeca4881fc56cd06affd18f659b17a747d3ff0307ced94b1bb", size = 113362, upload-time = "2025-11-28T23:36:57.897Z" },
+]
+
+[[package]]
+name = "api"
+version = "0.1.0"
+source = { editable = "apps/api" }
+dependencies = [
+    { name = "asgi-correlation-id" },
+    { name = "fastapi", extra = ["standard"] },
+    { name = "fastapi-problem" },
+    { name = "opentelemetry-instrumentation-fastapi" },
+    { name = "pydantic-settings" },
+    { name = "structlog-gcp" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "asgi-correlation-id", specifier = ">=4.3.4" },
+    { name = "fastapi", extras = ["standard"], specifier = ">=0.128.0" },
+    { name = "fastapi-problem", specifier = ">=0.11.6" },
+    { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.59b0" },
+    { name = "pydantic-settings", specifier = ">=2.12.0" },
+    { name = "structlog-gcp", specifier = ">=0.5.0" },
 ]
 
 [[package]]
@@ -749,29 +772,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/cc/28/c14e053b6762b1044f34a13aab6859bbf40456d37d23aa286ac24cfd9a5d/executing-2.2.1.tar.gz", hash = "sha256:3632cc370565f6648cc328b32435bd120a1e4ebb20c77e3fdde9a13cd1e533c4", size = 1129488, upload-time = "2025-09-01T09:48:10.866Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c1/ea/53f2148663b321f21b5a606bd5f191517cf40b7072c0497d3c92c4a13b1e/executing-2.2.1-py2.py3-none-any.whl", hash = "sha256:760643d3452b4d777d295bb167ccc74c64a81df23fb5e08eff250c425a4b2017", size = 28317, upload-time = "2025-09-01T09:48:08.5Z" },
-]
-
-[[package]]
-name = "fast-api"
-version = "0.1.0"
-source = { virtual = "apps/fast-api" }
-dependencies = [
-    { name = "asgi-correlation-id" },
-    { name = "fastapi", extra = ["standard"] },
-    { name = "fastapi-problem" },
-    { name = "opentelemetry-instrumentation-fastapi" },
-    { name = "pydantic-settings" },
-    { name = "structlog-gcp" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "asgi-correlation-id", specifier = ">=4.3.4" },
-    { name = "fastapi", extras = ["standard"], specifier = ">=0.128.0" },
-    { name = "fastapi-problem", specifier = ">=0.11.6" },
-    { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.59b0" },
-    { name = "pydantic-settings", specifier = ">=2.12.0" },
-    { name = "structlog-gcp", specifier = ">=0.5.0" },
 ]
 
 [[package]]

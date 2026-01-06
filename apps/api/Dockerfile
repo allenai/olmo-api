@@ -20,12 +20,12 @@ COPY vendor vendor
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-workspace --package=fast-api
+    uv sync --frozen --no-install-workspace --package=api
 
 COPY . /app
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --package=fast-api
+    uv sync --locked --package=api
 
 
 # Then, use a final image without uv
@@ -47,18 +47,18 @@ COPY --from=builder --chown=nonroot:nonroot /app /app
 ENV PATH="/app/.venv/bin:$PATH"
 
 FROM runner AS dev
-WORKDIR /app/apps/fast-api/
+WORKDIR /app/apps/api/
 
 # Use the non-root user to run our application
 USER nonroot
 
-CMD ["/app/.venv/bin/fastapi", "run", "app.py", "--port", "8888"]
+CMD ["/app/.venv/bin/fastapi", "run", "main.py", "--port", "8888"]
 
 FROM runner AS prod
 # Use `/app` as the working directory
-WORKDIR /app/apps/fast-api/
+WORKDIR /app/apps/api/
 
 # Use the non-root user to run our application
 USER nonroot
 
-CMD ["/app/.venv/bin/fastapi", "run", "app.py", "--port", "88"]
+CMD ["/app/.venv/bin/fastapi", "run", "main.py", "--port", "88"]

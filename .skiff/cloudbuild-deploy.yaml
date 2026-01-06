@@ -30,7 +30,7 @@ steps:
     '-t', 'gcr.io/$PROJECT_ID/$REPO_NAME-fastapi:$COMMIT_SHA',
     '--cache-from', 'gcr.io/$PROJECT_ID/$REPO_NAME-fastapi:latest',
     '--build-arg', 'BUILDKIT_INLINE_CACHE=1',
-    '-f', 'apps/fast-api/Dockerfile',
+    '-f', 'apps/api/Dockerfile',
     '.',
   ]
 

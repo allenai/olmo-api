@@ -19,6 +19,18 @@ To start a local server, follow these steps:
     ```
     docker compose up --build --watch
     ```
+    
+#### Running without Docker
+This project uses [uv](https://docs.astral.sh/uv). To run it locally, follow their [installation guide](https://docs.astral.sh/uv/#installation).
+
+After uv is installed, run `uv sync --all-packages` at the root of this project.
+
+### Adding a new package
+We use uv's workspaces to split code into larger chunks. 
+
+To add a new package, cd to `packages` and run `uv init --lib --package package-name`. Make sure you run `uv add package-name --package <DEPENDENT_PACKAGE>` for any packages that depend on it.
+
+To add a new app, cd to `apps` and run `uv init app-name`.
 
 ### Reset Schema
 
@@ -33,8 +45,8 @@ docker compose down --volumes && docker compose up --build
 
 To run them, execute:
 
-```
-docker compose exec api pytest -m "not integration"
+```bash
+uv run pytest -m "not integration"
 ```
 
 ### Type check
@@ -42,7 +54,7 @@ docker compose exec api pytest -m "not integration"
 To check all types run:
 
 ```bash
-mypy . --config ./pyproject.toml
+uv run mypy . --config ./pyproject.toml
 ```
 
 ## More Documentation

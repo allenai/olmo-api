@@ -1,0 +1,179 @@
+from collections.abc import Sequence
+from datetime import datetime
+from typing import Any, cast
+
+from pydantic import (
+    AwareDatetime,
+    Field,
+    computed_field,
+    field_serializer,
+    field_validator,
+)
+
+from core.api_interface import APIInterface
+from db.models.input_parts import InputPart
+from db.models.message import Message as SQLAMessage
+from db.models.model_config import ModelType
+from db.models.tool_definitions import ToolSource
+from src.dao.label import Rating
+from src.dao.message.message_models import InferenceOpts, Message, Role
+from src.inference.InferenceEngine import FinishReason
+from src.message.map_text_snippet import text_snippet
+from src.message.message_chunk import ErrorCode, ErrorSeverity
+
+
+class LabelResponse(APIInterface):
+    id: str
+    message: str
+    rating: Rating
+    creator: str
+    comment: str | None = Field(default=None)
+    created: AwareDatetime
+    deleted: AwareDatetime | None = Field(default=None)
+
+
+class InferenceOptionsResponse(InferenceOpts, APIInterface): ...
+
+
+class LogProbResponse(APIInterface):
+    token_id: int
+    text: str
+    logprob: float
+
+
+class ToolCall(APIInterface):
+    tool_name: str
+    args: str | dict[str, Any] | None = None
+    tool_call_id: str
+    tool_source: ToolSource
+
+
+class ToolDefinition(APIInterface):
+    name: str
+    description: str
+    parameters: dict[str, Any] | None = None
+    tool_source: ToolSource
+
+
+TOOL_NAMES_TO_TRUNCATE = {
+    "tulu-deep-research_serper_google_webpage_search",
+    "serper_google_webpage_search",
+}
+CONTENT_TRUNCATION_LIMIT = 150
+
+
+class FlatMessage(APIInterface):
+    id: str
+    content: str
+    input_parts: list[InputPart] | None = Field(default=None)
+    creator: str
+    role: Role
+    opts: InferenceOptionsResponse
+    root: str
+    created: AwareDatetime
+    model_id: str
+    model_host: str
+    agent_id: str | None = Field(default=None)
+    deleted: AwareDatetime | None = Field(default=None)
+    parent: str | None = Field(default=None)
+    template: str | None = Field(default=None)
+    children: list[str] | None = Field(default=None)
+    completion: str | None = Field(default=None)
+    final: bool = Field(default=False)
+    original: str | None = Field(default=None)
+    private: bool = Field(default=False)
+    model_type: ModelType | None = None
+    finish_reason: FinishReason | None = None
+    harmful: bool | None = None
+    expiration_time: AwareDatetime | None = Field(default=None)
+    labels: list[LabelResponse] = Field(default_factory=list)
+    file_urls: list[str] | None = Field(default=None)
+    tool_calls: list[ToolCall] | None = Field(default=None)
+    thinking: str | None = Field(default=None)
+    tool_definitions: list[ToolDefinition] | None = Field(default=None)
+    extra_parameters: dict[str, Any] | None = Field(default=None)
+    error_code: ErrorCode | None = Field(default=None)
+    error_description: str | None = Field(default=None)
+    error_severity: ErrorSeverity | None = Field(default=None)
+
+    @field_validator("children", mode="before")
+    @classmethod
+    def map_message_children_to_ids(cls, value):
+        if isinstance(value, list):
+            if len(value) == 0:
+                return value
+
+            if isinstance(value[0], (Message, SQLAMessage)):
+                value = cast(list[Message] | list[SQLAMessage], value)
+                return [child.id for child in value]
+
+        return value
+
+    @computed_field  # type:ignore
+    @property
+    def snippet(self) -> str:
+        return text_snippet(self.content)
+
+    @computed_field  # type:ignore
+    @property
+    def is_limit_reached(self) -> bool:
+        return self.finish_reason == FinishReason.Length
+
+    @computed_field  # type:ignore
+    @property
+    def is_older_than_30_days(self) -> bool:
+        time_since_creation = datetime.now(tz=self.created.tzinfo) - self.created
+        return time_since_creation.days > 30  # noqa: PLR2004
+
+    @staticmethod
+    def from_message(message: Message | SQLAMessage) -> "FlatMessage":
+        return FlatMessage.model_validate(message)
+
+    @staticmethod
+    def from_message_with_children(
+        message: Message | SQLAMessage,
+    ) -> list["FlatMessage"]:
+        return _map_messages(message)
+
+    @field_serializer("content")
+    def truncate_legally_required_tool_responses(self, v: str) -> str:
+        if self.role == Role.ToolResponse and any(
+            tool_call.tool_name in TOOL_NAMES_TO_TRUNCATE for tool_call in self.tool_calls or []
+        ):
+            words = v.split(" ")
+            truncated_text = " ".join(words[: CONTENT_TRUNCATION_LIMIT - 1])
+
+            if v != truncated_text:
+                # We only want to add the … if the text has been shortened
+                truncated_text += "…"
+
+            return truncated_text
+
+        return v
+
+
+def _map_messages(message: Message | SQLAMessage) -> list[FlatMessage]:
+    messages = [FlatMessage.from_message(message)]
+
+    if message.children is None or len(message.children) == 0:
+        return messages
+
+    mapped_messages = [child_child for child in message.children for child_child in _map_messages(child)]
+    return [*messages, *mapped_messages]
+
+
+class Thread(APIInterface):
+    id: str
+    messages: list[FlatMessage]
+
+    @staticmethod
+    def from_message(message: Message | SQLAMessage) -> "Thread":
+        messages = FlatMessage.from_message_with_children(message)
+
+        return Thread(id=message.id, messages=messages)
+
+    @staticmethod
+    def from_messages(messages: Sequence[SQLAMessage]) -> "Thread":
+        mapped_messages = [FlatMessage.from_message(message) for message in messages]
+
+        return Thread(id=mapped_messages[0].id, messages=mapped_messages)

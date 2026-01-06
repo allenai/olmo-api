@@ -3,12 +3,12 @@ x-shared-env: &shared-env
   PYTHON_ENV: development
   UV_NO_DEV: 0
   LOG_LEVEL: DEBUG
-  GOOGLE_APPLICATION_CREDENTIALS: service_account.json
+  GOOGLE_APPLICATION_CREDENTIALS: /secret/cfg/service_account.json
   SHA: DEV
   MODAL_CONFIG_PATH: /secret/.modal.toml
   OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
   OTEL_SERVICE_NAME: olmo-api
-  FLASK_CONFIG_PATH: ./config.json
+  FLASK_CONFIG_PATH: /app/config.json
   E2E_AUTH0_CLIENT_SECRET: ${E2E_AUTH0_CLIENT_SECRET}
 
 
@@ -33,6 +33,7 @@ services:
   api:
     build: 
       context: .
+      dockerfile: apps/flask-api/Dockerfile
       target: dev
       
     volumes:
@@ -61,7 +62,6 @@ services:
 
         - action: restart
           path: ./config.json
-          target: ./config.json
 
     ports:
       - 8000:8000
@@ -69,7 +69,7 @@ services:
   
   safety-worker:
     build:
-      dockerfile: safety-worker.Dockerfile
+      dockerfile: apps/safety-worker/safety-worker.Dockerfile
       context: .
       target: dev
       
@@ -97,17 +97,10 @@ services:
 
         - action: restart
           path: ./config.json
-          target: ./config.json
 
     ports:
       # We use the Prometheus middleware to check if a worker is healthy
       - 9191:9191
-
-  message-deletion-job:
-    build: ./message_deletion_job
-    profiles: [ "scheduled-job" ]
-    volumes:
-      - ./config.json:/secret/cfg/config.json
 
   redis:
     image: redis:7

@@ -10,6 +10,7 @@ steps:
     '-t', 'gcr.io/$PROJECT_ID/$REPO_NAME-api:$COMMIT_SHA',
     '--cache-from', 'gcr.io/$PROJECT_ID/$REPO_NAME-api:latest',
     '--build-arg', 'BUILDKIT_INLINE_CACHE=1',
+    '-f', 'apps/flask-api/Dockerfile',
     '.',
   ]
 
@@ -29,7 +30,7 @@ steps:
     '-t', 'gcr.io/$PROJECT_ID/$REPO_NAME-safety-worker:$COMMIT_SHA',
     '--cache-from', 'gcr.io/$PROJECT_ID/$REPO_NAME-safety-worker:latest',
     '--build-arg', 'BUILDKIT_INLINE_CACHE=1',
-    '-f', 'safety-worker.Dockerfile',
+    '-f', 'apps/safety-worker/safety-worker.Dockerfile',
     '.',
   ]
 

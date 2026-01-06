@@ -1,0 +1,226 @@
+from dataclasses import dataclass, field
+from enum import StrEnum
+from time import time_ns
+from typing import Any, cast
+
+from flask import current_app
+from flask import request as flask_request
+from werkzeug import exceptions
+
+import src.dao.message.message_models as message
+from db.models.message import Message
+from db.models.model_config import PromptType
+from src import db
+from src.auth.auth_service import authn
+from src.config.get_config import cfg
+from src.config.get_models import get_model_by_id
+from src.dao.message.inference_opts_model import InferenceOpts
+from src.dao.message.message_repository import BaseMessageRepository
+from src.flask_pydantic_api.utils import UploadedFile
+from src.message.create_message_request import (
+    CreateMessageRequest,
+    CreateMessageRequestWithFullMessages,
+    CreateToolDefinition,
+    InputPart,
+)
+from src.message.create_message_service.database import create_message_id
+from src.message.create_message_service.merge_inference_options import (
+    merge_inference_options,
+)
+from src.message.create_message_service.safety import (
+    validate_message_security_and_safety,
+)
+from src.message.create_message_service.stream_new_message import create_new_message
+from src.message.GoogleCloudStorage import GoogleCloudStorage
+from src.message.SafetyChecker import (
+    SafetyCheckerType,
+)
+from src.message.validate_message_files_from_config import (
+    validate_message_files_from_config,
+)
+from src.model_config.base_model_config import (
+    validate_inference_parameters_against_model_constraints,
+)
+from src.otel.default_tracer import get_default_tracer
+
+tracer = get_default_tracer()
+
+
+class MessageType(StrEnum):
+    MODEL = "model"
+    AGENT = "agent"
+
+
+@dataclass(kw_only=True)
+class ModelMessageStreamInput:
+    parent: str | None = None
+    content: str | None
+    input_parts: list[InputPart] | None = field(default=None)
+    role: message.Role | None = message.Role.User
+    original: str | None = None
+    private: bool = False
+    template: str | None = None
+    model: str
+
+    tool_call_id: str | None = None
+    tool_definitions: list[CreateToolDefinition] | None = None
+    selected_tools: list[str] | None = None
+    enable_tool_calling: bool = False
+
+    mcp_server_ids: set[str] | None = None
+    """Intended to be used by agent flows to pass MCP servers in"""
+
+    bypass_safety_check: bool = False
+
+    captcha_token: str | None = None
+
+    max_tokens: int | None = None
+    temperature: float | None = None
+    top_p: float | None = None
+    stop: list[str] | None = field(default_factory=list)
+    max_steps: int | None = None
+    # n and logprobs are deliberately excluded since we don't currently support them
+
+    extra_parameters: dict[str, Any] | None = None
+
+    files: list[UploadedFile] | None = None
+
+    request_type: MessageType
+
+    @staticmethod
+    def from_model_create_message_request(create_message_request: CreateMessageRequest):
+        return ModelMessageStreamInput(
+            **create_message_request.model_dump(exclude={"host", "n", "logprobs", "input_parts"}, by_alias=False),
+            request_type=MessageType.MODEL,
+            input_parts=create_message_request.input_parts,
+        )
+
+
+@tracer.start_as_current_span("stream_message_from_model")
+def stream_message_from_model(
+    request: ModelMessageStreamInput,
+    dbc: db.Client,
+    storage_client: GoogleCloudStorage,
+    message_repository: BaseMessageRepository,
+    checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
+    # HACK: I'm getting agent support in quickly. Ideally we'd have a different, better way of handling requests for agents instead of models
+    agent_id: str | None = None,
+):
+    client_auth = authn()
+    model = get_model_by_id(request.model)
+    parent_message, root_message, private = get_parent_and_root_messages_and_private(
+        request.parent,
+        message_repository,
+        request.private,
+        is_anonymous_user=client_auth.is_anonymous_user,
+    )
+
+    inference_options = merge_inference_options(
+        model,
+        parent_message=parent_message,
+        max_tokens=request.max_tokens,
+        temperature=request.temperature,
+        top_p=request.top_p,
+        stop=request.stop,
+    )
+
+    mapped_request = CreateMessageRequestWithFullMessages(
+        parent_id=request.parent,
+        parent=parent_message,
+        opts=inference_options,
+        extra_parameters=request.extra_parameters,
+        # HACK: This lets us send an empty content without having to dive too deep into the code. We should figure out how to make this nullable in the future.
+        content=request.content or "",
+        input_parts=request.input_parts,
+        role=cast(message.Role, request.role),
+        original=request.original,
+        private=private,
+        root=root_message,
+        template=request.template,
+        model=request.model,
+        agent=agent_id,
+        client=client_auth.client,
+        files=request.files,
+        captcha_token=request.captcha_token,
+        tool_call_id=request.tool_call_id,
+        create_tool_definitions=request.tool_definitions,
+        enable_tool_calling=request.enable_tool_calling,
+        selected_tools=request.selected_tools,
+        bypass_safety_check=request.bypass_safety_check,
+        mcp_server_ids=request.mcp_server_ids,
+        max_steps=request.max_steps,
+    )
+
+    if model.prompt_type == PromptType.FILES_ONLY and not cfg.feature_flags.allow_files_only_model_in_thread:
+        current_app.logger.error("Tried to use a files only model in a normal thread stream %s/%s", id, model)
+
+        # HACK: I want OLMoASR to be set up like a normal model but don't want people to stream to it yet
+        model_not_available_message = "This model isn't available yet"
+        raise exceptions.BadRequest(model_not_available_message)
+
+    validate_message_files_from_config(request.files, config=model, has_parent=mapped_request.parent is not None)
+    validate_inference_parameters_against_model_constraints(
+        model,
+        InferenceOpts(
+            max_tokens=mapped_request.opts.max_tokens,
+            temperature=mapped_request.opts.temperature,
+            top_p=mapped_request.opts.top_p,
+            stop=mapped_request.opts.stop,
+            n=mapped_request.opts.n,
+            logprobs=mapped_request.opts.logprobs,
+        ),
+    )
+
+    user_ip_address = flask_request.remote_addr
+    user_agent = flask_request.user_agent.string
+
+    start_time_ns = time_ns()
+
+    new_message_id = create_message_id()
+
+    validate_message_security_and_safety(
+        request=mapped_request,
+        client_auth=client_auth,
+        checker_type=checker_type,
+        user_ip_address=user_ip_address,
+        user_agent=user_agent,
+        storage_client=storage_client,
+        message_id=new_message_id,
+    )
+
+    return create_new_message(
+        mapped_request,
+        dbc,
+        model=model,
+        storage_client=storage_client,
+        checker_type=checker_type,
+        start_time_ns=start_time_ns,
+        client_auth=client_auth,
+        message_repository=message_repository,
+        new_message_id=new_message_id,
+    )
+
+
+def get_parent_and_root_messages_and_private(
+    parent_message_id: str | None,
+    message_repository: BaseMessageRepository,
+    request_private: bool | None,
+    is_anonymous_user: bool,
+) -> tuple[Message | None, Message | None, bool]:
+    parent_message = message_repository.get_message_by_id(parent_message_id) if parent_message_id is not None else None
+    root_message = message_repository.get_message_by_id(parent_message.root) if parent_message is not None else None
+
+    private = (
+        # Anonymous users aren't allowed to share messages
+        True
+        if is_anonymous_user
+        else (
+            request_private
+            if request_private is not None
+            else root_message.private
+            if root_message is not None
+            else False
+        )
+    )
+
+    return parent_message, root_message, private

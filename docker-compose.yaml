@@ -66,6 +66,22 @@ services:
     ports:
       - 8000:8000
 
+  fastapi:
+    build: 
+      context: .
+      dockerfile: apps/fast-api/Dockerfile
+      target: dev
+      
+    volumes:
+      - ./service_account.json:/secret/cfg/service_account.json
+      - ./.modal.toml:/secret/.modal.toml
+      
+    environment:
+      <<: *shared-env
+
+    ports:
+      - 8888:8888
+
   
   safety-worker:
     build:

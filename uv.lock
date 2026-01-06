@@ -2646,7 +2646,7 @@ dev = [
     { name = "pytest-postgresql", specifier = "==7.0.2" },
     { name = "ruff", specifier = ">=0.11.7" },
     { name = "time-machine", specifier = "==2.16.0" },
-    { name = "types-beautifulsoup4", specifier = "==4.12.0.20250204" },
+    { name = "types-beautifulsoup4", specifier = "==4.12.0.20250516" },
     { name = "types-protobuf", specifier = "==5.29.1.20250208" },
     { name = "types-requests", specifier = "==2.32.0.20240914" },
 ]
@@ -3862,14 +3862,14 @@ wheels = [
 
 [[package]]
 name = "types-beautifulsoup4"
-version = "4.12.0.20250204"
+version = "4.12.0.20250516"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "types-html5lib" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/11/6c/00fd71754ac3babe121c73b52e0de7ec05acd627edcb7ee652223c084d69/types_beautifulsoup4-4.12.0.20250204.tar.gz", hash = "sha256:f083d8edcbd01279f8c3995b56cfff2d01f1bb894c3b502ba118d36fbbc495bf", size = 16641, upload-time = "2025-02-04T02:39:16.241Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6d/d1/32b410f6d65eda94d3dfb0b3d0ca151f12cb1dc4cef731dcf7cbfd8716ff/types_beautifulsoup4-4.12.0.20250516.tar.gz", hash = "sha256:aa19dd73b33b70d6296adf92da8ab8a0c945c507e6fb7d5db553415cc77b417e", size = 16628, upload-time = "2025-05-16T03:09:09.93Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b1/ec/9097e9f7f5901e4d7834c7e0bc8f775f9ffa448ae31471457a1ebafeb4c5/types_beautifulsoup4-4.12.0.20250204-py3-none-any.whl", hash = "sha256:57ce9e75717b63c390fd789c787d267a67eb01fa6d800a03b9bdde2e877ed1eb", size = 17061, upload-time = "2025-02-04T02:39:14.559Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/79/d84de200a80085b32f12c5820d4fd0addcbe7ba6dce8c1c9d8605e833c8e/types_beautifulsoup4-4.12.0.20250516-py3-none-any.whl", hash = "sha256:5923399d4a1ba9cc8f0096fe334cc732e130269541d66261bb42ab039c0376ee", size = 16879, upload-time = "2025-05-16T03:09:09.051Z" },
 ]
 
 [[package]]

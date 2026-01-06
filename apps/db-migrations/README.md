@@ -17,7 +17,7 @@ This uses Alembic to auto-generate migrations. The tutorial can be found here: h
 ## Gotchas
 If you make a new table you'll need to grant access to it in a second migration. See [this `model_config` migration](./versions/4d6e17a0fdf6_grant_access_to_model_config_table.py) for an example.
 
-You'll also need to make sure it's imported into `env.py`. In most cases you can add it to `src/dao/engine_models/__init__.py` and it will automatically import the model.
+You'll also need to make sure it's imported into `env.py`. In most cases you can add it to `packages/db/models/__init__.py` and it will automatically import the model.
 
 ### Running migration on Production
 

@@ -480,6 +480,12 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
     };
 
     local fastApiFQN = fullyQualifiedName + 'fastApi';
+    local fastApiPort = 8888;
+        // This is used to verify that the API is functional.
+    local fastApiHealthCheck = {
+        port: fastApiPort,
+        scheme: 'HTTP'
+    };
 
     local fastApiDeployment = {
         apiVersion: 'apps/v1',
@@ -591,14 +597,14 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
                             # for long periods send a note to reviz@allenai.org so we can work
                             # with you to craft the right livenessProbe.
                             readinessProbe: {
-                                httpGet: apiHealthCheck + {
+                                httpGet: fastApiHealthCheck + {
                                     path: '/health?check=rdy'
                                 },
                                 periodSeconds: 10,
                                 failureThreshold: 3
                             },
                             startupProbe: {
-                                httpGet: apiHealthCheck + {
+                                httpGet: fastApiHealthCheck + {
                                     path: '/health?check=rdy'
                                 },
                                 periodSeconds: 10,
@@ -739,13 +745,13 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
                     http: {
                         paths: [
                             {
-                                path: '/v5/',
+                                path: '/v5',
                                 pathType: 'Prefix',
                                 backend: {
                                     service: {
                                         name: fastApiFQN,
                                         port: {
-                                            number: apiPort
+                                            number: fastApiPort
                                         }
                                     }
                                 }

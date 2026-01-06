@@ -82,6 +82,26 @@ services:
     ports:
       - 8888:8888
 
+    develop:
+      watch:
+        # Sync the working directory with the `/app` directory in the container
+        - action: sync
+          path: .
+          target: /app
+          # Exclude the project virtual environment — it could be for a
+          # different platform in the container
+          ignore:
+            - apps/db-migrations/
+            - apps/flask-api/
+            - apps/safety-worker/
+
+        # Rebuild the image if dependencies change by checking uv.lock
+        - action: rebuild
+          path: ./uv.lock
+
+        - action: restart
+          path: ./config.json
+
   
   safety-worker:
     build:

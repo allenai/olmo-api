@@ -1,7 +1,7 @@
 from fastapi import APIRouter, status
-
-from api.db.sqlalchemy import SessionDependency
 from sqlalchemy import select
+
+from api.db.sqlalchemy_engine import SessionDependency
 
 health_router = APIRouter(prefix="/health")
 

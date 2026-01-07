@@ -2,11 +2,11 @@ from collections.abc import AsyncGenerator
 from typing import Annotated, Any
 
 from fastapi import Depends
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from api.config import settings
 from db.url import make_url
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.ext.asyncio.session import AsyncSession
 
 url = make_url(settings.DATABASE_URL)
 

@@ -8,7 +8,11 @@ from sqlalchemy.ext.asyncio.session import AsyncSession
 
 url = make_url(settings.DATABASE_URL)
 
-engine = create_async_engine(url)
+engine = create_async_engine(
+    url,
+    pool_size=settings.DATABASE_MIN_POOL_SIZE,
+    max_overflow=settings.DATABASE_MAX_OVERFLOW_CONNECTIONS,
+)
 
 Session = async_sessionmaker(engine)
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, status
-from sqlalchemy import select
 
 from api.db.sqlalchemy import SessionDependency
+from sqlalchemy import select
 
 health_router = APIRouter(prefix="/health")
 
@@ -11,5 +11,3 @@ health_router = APIRouter(prefix="/health")
 async def health(session: SessionDependency) -> None:
     async with session.begin():
         await session.execute(select(1))
-
-    return

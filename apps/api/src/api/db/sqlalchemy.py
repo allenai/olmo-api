@@ -1,8 +1,10 @@
-from typing import Annotated, Any, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Annotated, Any
+
+from fastapi import Depends
 
 from api.config import settings
 from db.url import make_url
-from fastapi import Depends
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.ext.asyncio.session import AsyncSession
 
@@ -24,4 +26,4 @@ async def get_session() -> AsyncGenerator[AsyncSession, Any]:
 
 SessionDependency = Annotated[AsyncSession, Depends(get_session)]
 
-__all__ = ("get_session", "SessionDependency")
+__all__ = ("SessionDependency", "get_session")

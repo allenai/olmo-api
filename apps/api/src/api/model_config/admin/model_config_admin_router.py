@@ -1,8 +1,9 @@
+from fastapi import APIRouter
+
 from api.model_config.admin.model_config_admin_service import (
     AdminModelResponse,
     ModelConfigAdminServiceDependency,
 )
-from fastapi import APIRouter
 
 model_config_admin_router = APIRouter(prefix="/admin")
 

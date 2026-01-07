@@ -660,7 +660,7 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
                                 },
                                 {
                                     name: 'env',
-                                    mountPath: '/run/secrets',
+                                    mountPath: '/secret/env',
                                     readOnly: true
                                 }
                             ]

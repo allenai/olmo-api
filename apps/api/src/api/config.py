@@ -1,14 +1,15 @@
+import os
 from enum import StrEnum
 
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 # Taken from https://github.com/zhanymkanov/fastapi_production_template/blob/main/src/constants.py#L12
 class Environment(StrEnum):
     PRODUCTION = "production"
     DEVELOPMENT = "development"
-    TEST = "TEST"
+    TEST = "test"
 
     @property
     def is_debug(self):
@@ -23,6 +24,9 @@ class Environment(StrEnum):
         return self == self.PRODUCTION
 
 
+ENV = os.getenv("ENV", Environment.PRODUCTION.value)
+
+
 class Settings(BaseSettings):
     ENV: Environment = Environment.PRODUCTION
     LOG_LEVEL: str = "INFO"
@@ -32,6 +36,12 @@ class Settings(BaseSettings):
     DATABASE_URL: str = Field(init=False)
     DATABASE_MIN_POOL_SIZE: int = 3
     DATABASE_MAX_OVERFLOW_CONNECTIONS: int = 5
+
+    model_config = SettingsConfigDict(
+        extra="ignore",
+        env_file=(".env", f".env.${ENV}", ".env.local", f".env.${ENV}.local"),
+        secrets_dir="/run/secrets",
+    )
 
 
 settings = Settings()

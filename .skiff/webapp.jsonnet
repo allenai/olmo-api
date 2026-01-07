@@ -480,14 +480,19 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
     };
 
     local fastApiFQN = fullyQualifiedName + '-fastapi';
+    local fastApiAppName = config.appName + '-fastapi';
+    local fastApiSelectorLabels = {
+        app: fastApiAppName,
+        env: env
+    };
     local fastApiPort = 8888;
         // This is used to verify that the API is functional.
     local fastApiHealthCheck = {
         port: fastApiPort,
         scheme: 'HTTP'
     };
-    local fastApiPodLabels = podLabels + { app: config.appName + '-fastapi', onlyOneOfPerNode: config.appName + '-fastapi-' + env };
-
+    local fastApiPodLabels = podLabels + { app: fastApiSelectorLabels, onlyOneOfPerNode: fastApiSelectorLabels + '-' + env };
+    local numFastApiReplicas = if env == 'prod' then config.fastApiReplicas.prod else 1;
 
     local fastApiDeployment = {
         apiVersion: 'apps/v1',
@@ -505,13 +510,13 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
             strategy: {
                 type: 'RollingUpdate',
                 rollingUpdate: {
-                    maxSurge: numReplicas // This makes deployments faster.
+                    maxSurge: numFastApiReplicas // This makes deployments faster.
                 }
             },
             revisionHistoryLimit: 3,
-            replicas: numReplicas,
+            replicas: numFastApiReplicas,
             selector: {
-                matchLabels: selectorLabels
+                matchLabels: fastApiSelectorLabels
             },
             template: {
                 metadata: {
@@ -666,7 +671,7 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
             annotations: annotations
         },
         spec: {
-            selector: selectorLabels,
+            selector: fastApiSelectorLabels,
             ports: [
                 {
                     port: fastApiPort,
@@ -685,9 +690,9 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
             labels: labels,
         },
         spec: {
-            minAvailable: if numReplicas > 1 then 1 else 0,
+            minAvailable: if numFastApiReplicas > 1 then 1 else 0,
             selector: {
-                matchLabels: selectorLabels,
+                matchLabels: fastApiSelectorLabels,
             },
         },
     };

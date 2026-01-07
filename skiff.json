@@ -8,7 +8,7 @@
     "workerReplicas": {
         "prod": 2
     },
-    "fastapiReplicas": {
+    "fastApiReplicas": {
         "prod": 2
     }
 }

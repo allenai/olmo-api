@@ -39,7 +39,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         extra="ignore",
-        env_file=(".env", f".env.${ENV}", ".env.local", f".env.${ENV}.local"),
+        env_file=(".env", f".env.{ENV}", ".env.local", f".env.{ENV}.local"),
         secrets_dir="/secret/env",
     )
 

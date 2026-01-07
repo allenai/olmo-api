@@ -1,5 +1,6 @@
 from enum import StrEnum
 
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -28,6 +29,8 @@ class Settings(BaseSettings):
     LOG_JSON_FORMAT: bool = True
     LOG_NAME: str = "olmo-api.app_logs"
     LOG_ACCESS_NAME: str = "olmo-api.access_logs"
+    DATABASE_URL: str = Field(init=False)
+    DATABASE_MIN_SIZE: int = 1
 
 
 settings = Settings()

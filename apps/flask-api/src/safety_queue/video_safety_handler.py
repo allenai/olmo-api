@@ -2,6 +2,7 @@ from logging import getLogger
 from pathlib import Path
 
 import dramatiq
+from db.url import make_url
 from google.api_core import operation_async  # type: ignore
 from google.cloud.videointelligence_v1 import (
     AnnotateVideoProgress,
@@ -13,7 +14,6 @@ from sqlalchemy.orm import Session
 
 from src.config.get_config import get_config
 from src.dao.message.message_repository import MessageRepository
-from src.db.init_sqlalchemy import make_psycopg3_url
 from src.message.google_video_intelligence.get_video_client import (
     get_async_video_intelligence_client,
 )
@@ -41,7 +41,7 @@ SAFETY_QUEUE_NAME = "safety"
 def _make_worker_db_engine() -> Engine:
     config = get_config()
     # For some reason "autosave" works in the main application but not here
-    url = make_psycopg3_url(config.db.conninfo).difference_update_query(["autosave"])
+    url = make_url(config.db.conninfo).difference_update_query(["autosave"])
     return create_engine(url, poolclass=NullPool)
 
 
@@ -67,7 +67,9 @@ def handle_retry_exhausted(*args, **kwargs) -> None:
     on_retry_exhausted=handle_retry_exhausted.actor_name,
 )
 @tracer.start_as_current_span("handle_video_safety_check")
-async def handle_video_safety_check(operation_name: str, message_id: str, safety_file_url: str) -> None:
+async def handle_video_safety_check(
+    operation_name: str, message_id: str, safety_file_url: str
+) -> None:
     span = trace.get_current_span()
     span.set_attributes({
         "operationName": operation_name,
@@ -80,7 +82,9 @@ async def handle_video_safety_check(operation_name: str, message_id: str, safety
         video_client = get_async_video_intelligence_client()
 
         # Hacky but I couldn't find a better way to get an ops client https://stackoverflow.com/questions/71860530/how-do-i-poll-google-long-running-operations-using-python-library
-        raw_operation = await video_client.transport.operations_client.get_operation(operation_name)
+        raw_operation = await video_client.transport.operations_client.get_operation(
+            operation_name
+        )
         if raw_operation is None:
             span.set_status(
                 trace.StatusCode.ERROR,
@@ -113,7 +117,9 @@ async def handle_video_safety_check(operation_name: str, message_id: str, safety
         message = message_repository.get_message_by_id(message_id)
 
         if message is None:
-            not_found_message = f"Message {message_id} not found when evaluating a video safety check"
+            not_found_message = (
+                f"Message {message_id} not found when evaluating a video safety check"
+            )
             logger.error(
                 not_found_message,
                 extra={"operation": operation_name, "message_id": message_id},

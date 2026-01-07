@@ -14,9 +14,26 @@
                 "GOOGLE_APPLICATION_CREDENTIALS": "service_account.json",
                 "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4318"
             },
-            "args": ["run", "--no-debugger", "-p 8000"],
+            "args": [
+                "run",
+                "--no-debugger",
+                "-p 8000"
+            ],
             "jinja": true,
             "justMyCode": false
+        },
+        {
+            "name": "Python Debugger: FastAPI",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "apps.api.main:app",
+                "--reload",
+                "--port",
+                "8888"
+            ],
+            "jinja": true
         },
         {
             "name": "Python Debugger: Safety Worker",
@@ -31,7 +48,16 @@
                 "GOOGLE_APPLICATION_CREDENTIALS": "service_account.json",
                 "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4318"
             },
-            "args": ["-p", "1", "-t", "1", "src.safety_queue.set_up_safety_queue:set_up_safety_queue", "src.safety_queue.video_safety_handler", "--watch", "src/safety_queue"],
+            "args": [
+                "-p",
+                "1",
+                "-t",
+                "1",
+                "src.safety_queue.set_up_safety_queue:set_up_safety_queue",
+                "src.safety_queue.video_safety_handler",
+                "--watch",
+                "src/safety_queue"
+            ],
             "jinja": true,
             "justMyCode": false
         },
@@ -40,7 +66,12 @@
             "type": "debugpy",
             "request": "launch",
             "module": "alembic",
-            "args": ["revision", "-m", "\"debug\"", "--autogenerate"],
+            "args": [
+                "revision",
+                "-m",
+                "\"debug\"",
+                "--autogenerate"
+            ],
             "envFile": "${workspaceFolder}/.env.local"
         },
         {
@@ -48,7 +79,11 @@
             "type": "debugpy",
             "request": "launch",
             "module": "pytest",
-            "args": ["${file}", "-v", "-s"],
+            "args": [
+                "${file}",
+                "-v",
+                "-s"
+            ],
             "console": "integratedTerminal",
             "justMyCode": false,
             "cwd": "${workspaceFolder}",

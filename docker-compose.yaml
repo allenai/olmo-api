@@ -30,7 +30,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./schema:/docker-entrypoint-initdb.d
 
-  api:
+  flask-api:
     build: 
       context: .
       dockerfile: apps/flask-api/Dockerfile

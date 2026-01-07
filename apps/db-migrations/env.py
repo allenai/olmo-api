@@ -3,10 +3,11 @@ from logging.config import fileConfig
 
 import alembic_postgresql_enum
 from alembic import context
-from db.make_url import make_url
-from db.models.base import Base
 from dotenv import find_dotenv, load_dotenv
 from sqlalchemy import engine_from_config, pool
+
+from db.models.base import Base
+from db.url import make_url
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -38,6 +39,8 @@ load_dotenv(env_file)
 conninfo = os.getenv("MIGRATION_CONNINFO")
 db_username = os.getenv("MIGRATION_USERNAME")
 db_password = os.getenv("MIGRATION_PASSWORD")
+
+assert conninfo is not None, "MIGRATION_CONNINFO must be set"  # noqa: S101
 db_url = make_url(conninfo)
 
 

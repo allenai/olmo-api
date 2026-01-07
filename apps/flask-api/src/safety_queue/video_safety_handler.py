@@ -40,8 +40,7 @@ SAFETY_QUEUE_NAME = "safety"
 
 def _make_worker_db_engine() -> Engine:
     config = get_config()
-    # For some reason "autosave" works in the main application but not here
-    url = make_url(config.db.conninfo).difference_update_query(["autosave"])
+    url = make_url(config.db.conninfo)
     return create_engine(url, poolclass=NullPool)
 
 

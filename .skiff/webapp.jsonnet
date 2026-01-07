@@ -579,6 +579,15 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
                                 {
                                     name: 'MODAL_CONFIG_PATH',
                                     value: '/secret/.modal.toml'
+                                },
+                                {
+                                    name: 'DATABASE_URL',
+                                    valueFrom: {
+                                        secretKeyRef: {
+                                            name: 'env',
+                                            key: 'DATABASE_URL'
+                                        }
+                                    }
                                 }
                             ],
                             # The "probes" below allow Kubernetes to determine

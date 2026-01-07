@@ -1,4 +1,4 @@
-from typing import Annotated, AsyncGenerator
+from typing import Annotated, Any, AsyncGenerator
 
 from api.config import settings
 from db.url import make_url
@@ -17,7 +17,7 @@ engine = create_async_engine(
 Session = async_sessionmaker(engine)
 
 
-async def get_session() -> AsyncGenerator[AsyncSession]:
+async def get_session() -> AsyncGenerator[AsyncSession, Any]:
     async with Session() as session:
         yield session
 

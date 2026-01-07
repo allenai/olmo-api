@@ -30,8 +30,8 @@ class Settings(BaseSettings):
     LOG_NAME: str = "olmo-api.app_logs"
     LOG_ACCESS_NAME: str = "olmo-api.access_logs"
     DATABASE_URL: str = Field(init=False)
-    DATABASE_MIN_POOL_SIZE: int = 5
-    DATABASE_MAX_OVERFLOW_CONNECTIONS: int = 10
+    DATABASE_MIN_POOL_SIZE: int = 3
+    DATABASE_MAX_OVERFLOW_CONNECTIONS: int = 5
 
 
 settings = Settings()

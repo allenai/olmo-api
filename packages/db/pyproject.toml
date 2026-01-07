@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["core", "sqlalchemy==2.0.44"]
+dependencies = ["core", "infini-gram-api-client", "sqlalchemy==2.0.44"]
 
 [build-system]
 requires = ["uv_build>=0.9.21,<0.10.0"]
@@ -16,3 +16,6 @@ extend = "../../pyproject.toml"
 
 [tool.ruff.lint]
 ignore = ["RUF012"]
+
+[tool.uv.sources]
+infini-gram-api-client = { workspace = true }

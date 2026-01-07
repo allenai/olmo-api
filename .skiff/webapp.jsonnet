@@ -491,7 +491,7 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
         port: fastApiPort,
         scheme: 'HTTP'
     };
-    local fastApiPodLabels = podLabels + { app: fastApiAppName, onlyOneOfPerNode: fastApiSelectorLabels + '-' + env };
+    local fastApiPodLabels = podLabels + { app: fastApiAppName, onlyOneOfPerNode: fastApiAppName + '-' + env };
     local numFastApiReplicas = if env == 'prod' then config.fastApiReplicas.prod else 1;
 
     local fastApiDeployment = {

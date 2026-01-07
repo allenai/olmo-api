@@ -29,3 +29,8 @@ extend = "../../pyproject.toml"
 [tool.uv.sources]
 db = { workspace = true }
 core = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "rich>=13.9.4",
+]

@@ -79,6 +79,8 @@ services:
     environment:
       <<: *shared-env
       DATABASE_URL: "postgres://app:llmz@db:5432/llmx?sslmode=disable"
+      ENV: development
+      LOG_JSON_FORMAT: false
 
     ports:
       - 8888:8888

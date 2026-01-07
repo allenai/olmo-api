@@ -248,6 +248,11 @@ dependencies = [
     { name = "structlog-gcp" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "rich" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "asgi-correlation-id", specifier = ">=4.3.4" },
@@ -261,6 +266,9 @@ requires-dist = [
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.44" },
     { name = "structlog-gcp", specifier = ">=0.5.0" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "rich", specifier = ">=13.9.4" }]
 
 [[package]]
 name = "argcomplete"

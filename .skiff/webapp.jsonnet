@@ -486,7 +486,7 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
         port: fastApiPort,
         scheme: 'HTTP'
     };
-    local fastApiPodLabels = podLabels + { app: config.appName + '-fastapi', onlyOneOfPerNode: config.appName + '-fastapi' + env };
+    local fastApiPodLabels = podLabels + { app: config.appName + '-fastapi', onlyOneOfPerNode: config.appName + '-fastapi-' + env };
 
 
     local fastApiDeployment = {

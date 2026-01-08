@@ -6,8 +6,8 @@ from opentelemetry import trace
 from werkzeug import exceptions
 from werkzeug.datastructures import FileStorage
 
+from core.auth.token import Token
 from src.auth.auth_utils import Permissions, user_has_permission
-from src.auth.token import Token
 from src.bot_detection.create_assessment import create_assessment
 from src.config.get_config import cfg
 from src.message.create_message_request import (

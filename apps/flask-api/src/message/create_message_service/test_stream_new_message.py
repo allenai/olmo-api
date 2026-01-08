@@ -9,12 +9,12 @@ from pydantic_ai.messages import (
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
+from core.auth.token import Token
 from db.models.message import Message
 from db.models.model_config import ModelConfig, ModelHost, ModelType, PromptType
 from db.models.tool_call import ToolCall
 from db.models.tool_definitions import ToolDefinition, ToolSource
 from src import db
-from src.auth.token import Token
 from src.dao.message.message_models import MessageStreamError, Role
 from src.dao.message.message_repository import MessageRepository
 from src.message.create_message_request import CreateMessageRequestWithFullMessages

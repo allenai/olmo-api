@@ -3,7 +3,8 @@ from typing import cast
 import requests
 from flask import current_app
 
-from src.auth.auth_service import UserInfo, get_user_info
+from core.auth.user_info import UserInfo
+from src.auth.auth_service import get_user_info
 from src.config.get_config import cfg
 
 HUBSPOT_URL = "https://api.hubapi.com"

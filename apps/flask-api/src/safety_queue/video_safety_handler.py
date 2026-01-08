@@ -11,9 +11,9 @@ from opentelemetry import trace
 from sqlalchemy import Engine, NullPool, create_engine
 from sqlalchemy.orm import Session
 
+from db.url import make_url
 from src.config.get_config import get_config
 from src.dao.message.message_repository import MessageRepository
-from src.db.init_sqlalchemy import make_psycopg3_url
 from src.message.google_video_intelligence.get_video_client import (
     get_async_video_intelligence_client,
 )
@@ -40,8 +40,7 @@ SAFETY_QUEUE_NAME = "safety"
 
 def _make_worker_db_engine() -> Engine:
     config = get_config()
-    # For some reason "autosave" works in the main application but not here
-    url = make_psycopg3_url(config.db.conninfo).difference_update_query(["autosave"])
+    url = make_url(config.db.conninfo)
     return create_engine(url, poolclass=NullPool)
 
 

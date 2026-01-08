@@ -6,8 +6,8 @@ from alembic import context
 from dotenv import find_dotenv, load_dotenv
 from sqlalchemy import engine_from_config, pool
 
-from db.make_url import make_url
 from db.models.base import Base
+from db.url import make_url
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -39,10 +39,9 @@ load_dotenv(env_file)
 conninfo = os.getenv("MIGRATION_CONNINFO")
 db_username = os.getenv("MIGRATION_USERNAME")
 db_password = os.getenv("MIGRATION_PASSWORD")
-db_url = (
-    # For some reason "autosave" works in the main application but not in alembic
-    make_url(conninfo).set(username=db_username, password=db_password).difference_update_query(["autosave"])
-)
+
+assert conninfo is not None, "MIGRATION_CONNINFO must be set"  # noqa: S101
+db_url = make_url(conninfo)
 
 
 def include_enum_name(name: str) -> bool:

@@ -561,6 +561,12 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
                             secret: {
                                 secretName: 'modal'
                             }
+                        },
+                        {
+                            name: "env",
+                            secret: {
+                                secretName: "env"
+                            }
                         }
                     ],
                     containers: [
@@ -650,6 +656,11 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
                                 {
                                     name: 'modal',
                                     mountPath: '/secret',
+                                    readOnly: true
+                                },
+                                {
+                                    name: 'env',
+                                    mountPath: '/secret/env',
                                     readOnly: true
                                 }
                             ]

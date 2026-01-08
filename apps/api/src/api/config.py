@@ -24,11 +24,11 @@ class Environment(StrEnum):
         return self == self.PRODUCTION
 
 
-ENV = os.getenv("ENV", Environment.DEVELOPMENT.value)
+ENV = os.getenv("ENV", Environment.PRODUCTION.value)
 
 
 class Settings(BaseSettings):
-    ENV: Environment = Environment.DEVELOPMENT
+    ENV: Environment = Environment.PRODUCTION
     LOG_LEVEL: str = "INFO"
     LOG_JSON_FORMAT: bool = True
     LOG_NAME: str = "olmo-api.app_logs"

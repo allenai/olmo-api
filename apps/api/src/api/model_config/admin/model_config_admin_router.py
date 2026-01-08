@@ -6,7 +6,7 @@ from api.model_config.admin.model_config_admin_service import (
     ModelConfigAdminServiceDependency,
 )
 
-model_config_admin_router = APIRouter(prefix="/admin")
+model_config_admin_router = APIRouter(prefix="/models")
 
 
 @model_config_admin_router.get("/")

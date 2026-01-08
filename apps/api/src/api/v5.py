@@ -12,4 +12,4 @@ def hello_world() -> str:
 
 
 if not settings.ENV.is_production:
-    v5_router.include_router(model_config_admin_router)
+    v5_router.include_router(model_config_admin_router, prefix="/admin")

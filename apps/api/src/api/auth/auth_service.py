@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from functools import lru_cache
 from typing import Annotated
 
 from authlib.oauth2 import OAuth2Error
@@ -9,6 +10,13 @@ from core.auth.token import Token
 from core.auth.token_validator import Auth0JWTBearerTokenValidator
 
 
+@lru_cache
+def get_bearer_token_validator() -> Auth0JWTBearerTokenValidator:
+    return Auth0JWTBearerTokenValidator(
+        domain=settings.AUTH_DOMAIN,
+        audience=settings.AUTH_AUDIENCE,
+    )
+
 class AuthService:
     def __init__(
         self,
@@ -17,10 +25,7 @@ class AuthService:
     ):
         self.authorization = authorization
         self.anonymous_user_id = anonymous_user_id
-        self.validator = Auth0JWTBearerTokenValidator(
-            domain=settings.AUTH_DOMAIN,
-            audience=settings.AUTH_AUDIENCE,
-        )
+        self.validator = get_bearer_token_validator()
 
     def _get_token_from_header(self) -> str | None:
         if not self.authorization:

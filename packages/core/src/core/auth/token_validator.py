@@ -15,7 +15,7 @@ OLD_AUTH0_ISSUER = "https://allenai-public.us.auth0.com/"
 class Auth0JWTBearerTokenValidator(JWTBearerTokenValidator):
     def __init__(self, domain: str, audience: str):
         issuer = f"https://{domain}/"
-        jsonurl = urlopen(f"{issuer}.well-known/jwks.json")
+        jsonurl = urlopen(f"{issuer}.well-known/jwks.json")  # noqa: S310
         public_key = JsonWebKey.import_key_set(json.loads(jsonurl.read()))
         super().__init__(public_key)
         self.claims_options = {

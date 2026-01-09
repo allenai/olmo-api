@@ -9,10 +9,12 @@ event_router = APIRouter()
 
 logger = logging.getLogger()
 
+
 class Event(BaseModel):
     occurred: datetime
     type: str
     details: dict[str, Any]
+
 
 # Log events from the UI
 # Using post with path instead of a route prefix to prevent unnecessary redirects

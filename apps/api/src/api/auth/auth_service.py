@@ -17,6 +17,7 @@ def get_bearer_token_validator() -> Auth0JWTBearerTokenValidator:
         audience=settings.AUTH_AUDIENCE,
     )
 
+
 class AuthService:
     def __init__(
         self,

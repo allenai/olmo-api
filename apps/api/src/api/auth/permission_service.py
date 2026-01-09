@@ -1,16 +1,9 @@
-from enum import StrEnum
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
 
 from api.auth.auth_service import AuthServiceDependency
-from core.auth.token import Token
-
-
-class Permissions(StrEnum):
-    READ_INTERNAL_MODELS = "read:internal-models"
-    WRITE_MODEL_CONFIG = "write:model-config"
-    WRITE_BYPASS_SAFETY_CHECKS = "write:bypass-safety-check"
+from core.auth import Permissions, Token
 
 
 class PermissionService:

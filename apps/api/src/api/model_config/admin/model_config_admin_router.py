@@ -1,10 +1,11 @@
 from fastapi import APIRouter
 
-from api.auth.permission_service import Permissions, PermissionServiceDependency
+from api.auth.permission_service import PermissionServiceDependency
 from api.model_config.admin.model_config_admin_service import (
     AdminModelResponse,
     ModelConfigAdminServiceDependency,
 )
+from core.auth import Permissions
 
 model_config_admin_router = APIRouter(prefix="/models")
 

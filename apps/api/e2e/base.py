@@ -19,10 +19,11 @@ class AuthenticatedClient:
 
 
 class IntegrationTest(TestCase):
+    client: TestClient
     auth0_token: str | None = None
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         cls.client = TestClient(app)
 
     def get_auth0_token(self):

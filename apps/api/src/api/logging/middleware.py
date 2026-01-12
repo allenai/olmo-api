@@ -1,3 +1,4 @@
+# Adapted from https://wazaari.dev/blog/fastapi-structlog-integration#logging-middleware
 import time
 from typing import TypedDict
 
@@ -11,7 +12,6 @@ from api.config import settings
 
 app_logger = structlog.stdlib.get_logger(settings.LOG_NAME)
 access_logger = structlog.stdlib.get_logger(settings.LOG_ACCESS_NAME)
-
 
 class AccessInfo(TypedDict, total=False):
     status_code: int

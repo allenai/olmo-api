@@ -1,3 +1,4 @@
+from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import FastAPI
 from fastapi_problem.handler import add_exception_handler, new_exception_handler
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -21,6 +22,8 @@ def create_app() -> FastAPI:
 
     setup_logging(json_logs=settings.LOG_JSON_FORMAT, log_level=settings.LOG_LEVEL)
     app.add_middleware(StructLogMiddleware)
+
+    app.add_middleware(CorrelationIdMiddleware)
 
     FastAPIInstrumentor.instrument_app(app)
 

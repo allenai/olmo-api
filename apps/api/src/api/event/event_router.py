@@ -1,13 +1,13 @@
-import logging
 from datetime import datetime
 from typing import Any
 
+import structlog
 from fastapi import APIRouter
 from pydantic import BaseModel
 
 event_router = APIRouter()
 
-logger = logging.getLogger()
+logger = structlog.getLogger()
 
 
 class Event(BaseModel):
@@ -20,4 +20,4 @@ class Event(BaseModel):
 # Using post with path instead of a route prefix to prevent unnecessary redirects
 @event_router.post("/event")
 def event(event: Event) -> None:
-    logger.info("[Event] %s %s %s", event.type, event.occurred, event.details)
+    logger.info("UI Event", type=event.type, event_date=event.occurred, details=event.details)

@@ -253,6 +253,10 @@ dependencies = [
 dev = [
     { name = "rich" },
 ]
+test = [
+    { name = "httpx" },
+    { name = "pytest" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -271,6 +275,10 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [{ name = "rich", specifier = ">=13.9.4" }]
+test = [
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "pytest", specifier = ">=8.3.2" },
+]
 
 [[package]]
 name = "argcomplete"

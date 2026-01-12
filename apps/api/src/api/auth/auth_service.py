@@ -45,6 +45,10 @@ class AuthService:
         Raises OAuth2Error if token is invalid
         """
         token_data = self.validator.authenticate_token(token_string)
+
+        if token_data is None:
+            raise OAuth2Error(error="invalid_token", description="Invalid token")
+
         return Token(
             client=token_data.sub,
             is_anonymous_user=False,

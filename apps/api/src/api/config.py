@@ -1,5 +1,6 @@
 import os
 from enum import StrEnum
+from typing import Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -38,6 +39,10 @@ class Settings(BaseSettings):
     DATABASE_MAX_OVERFLOW_CONNECTIONS: int = 5
     AUTH_DOMAIN: str = Field(init=False)
     AUTH_AUDIENCE: str = Field(init=False)
+
+    # Testing
+    E2E_AUTH0_CLIENT_ID: str | None = None
+    E2E_AUTH0_CLIENT_SECRET: str | None = None
 
     model_config = SettingsConfigDict(
         extra="ignore",

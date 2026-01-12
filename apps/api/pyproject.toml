@@ -35,3 +35,7 @@ core = { workspace = true }
 dev = [
     "rich>=13.9.4",
 ]
+test = [
+    "httpx>=0.28.1",
+    "pytest>=8.3.2",
+]

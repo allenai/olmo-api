@@ -2,7 +2,7 @@ import uuid
 from dataclasses import dataclass
 from unittest import TestCase
 
-import httpx
+import requests
 from fastapi.testclient import TestClient
 
 from api.config import settings
@@ -35,15 +35,15 @@ class IntegrationTest(TestCase):
                 "grant_type": "client_credentials",
             }
             headers = {"content-type": "application/json"}
-            with httpx.Client() as client:
-                response = client.post(
-                    f"https://{settings.AUTH_DOMAIN}/oauth/token",
-                    json=payload,
-                    headers=headers,
-                )
-                response.raise_for_status()
 
-                self.auth0_token = response.json().get("access_token")
+            response = requests.post(
+                f"https://{settings.AUTH_DOMAIN}/oauth/token",
+                json=payload,
+                headers=headers,
+            )
+            response.raise_for_status()
+
+            self.auth0_token = response.json().get("access_token")
 
         return self.auth0_token
 

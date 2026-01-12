@@ -10,6 +10,7 @@ v5_router = APIRouter(prefix="/v5")
 
 v5_router.include_router(event_router)
 
+
 @v5_router.get("/whoami")
 def whoami(auth_service: AuthServiceDependency) -> dict:
     """

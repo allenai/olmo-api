@@ -46,6 +46,7 @@ jobs:
         env:
           E2E_AUTH0_CLIENT_ID: ${{ secrets.E2E_AUTH0_CLIENT_ID }}
           E2E_AUTH0_CLIENT_SECRET: ${{ secrets.E2E_AUTH0_CLIENT_SECRET }}
-          AUTH_DOMAIN: auth0.allenai.org
-          AUTH_AUDIENCE: https://olmo-api.allen.ai
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          AUTH_DOMAIN: ${{ env.AUTH_DOMAIN }}
+          AUTH_AUDIENCE: ${{ env.AUTH_AUDIENCE }}
         run: uv run pytest ./apps/api/e2e

@@ -12,6 +12,10 @@ on:
 jobs:
     unit-test:
       runs-on: ubuntu-latest
+      env:
+        DATABASE_URL: ${{ env.DATABASE_URL }}
+        AUTH_DOMAIN: ${{ env.AUTH_DOMAIN }}
+        AUTH_AUDIENCE: ${{ env.AUTH_AUDIENCE }}
       steps:
         - uses: actions/checkout@v6
 

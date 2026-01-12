@@ -25,7 +25,7 @@ jobs:
         - name: Test with pytest
           run: uv run pytest --ignore ./apps/flask-api/e2e --ignore ./apps/api/e2e
 
-    type-check:
+    type-check-api:
       runs-on: ubuntu-latest
       steps:
         - uses: actions/checkout@v6
@@ -33,7 +33,17 @@ jobs:
         - name: Set up uv
           uses: ./.github/actions/set-up-uv
 
-        - run: uv run mypy .
+        - run: uv run mypy apps/api packages
+
+    type-check-flask:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v6
+
+        - name: Set up uv
+          uses: ./.github/actions/set-up-uv
+
+        - run: uv run mypy apps/flask-api
 
     lint:
       runs-on: ubuntu-latest  

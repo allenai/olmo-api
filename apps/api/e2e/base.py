@@ -37,9 +37,7 @@ class IntegrationTest(TestCase):
             headers = {"content-type": "application/json"}
 
             response = requests.post(
-                f"https://{settings.AUTH_DOMAIN}/oauth/token",
-                json=payload,
-                headers=headers,
+                f"https://{settings.AUTH_DOMAIN}/oauth/token", json=payload, headers=headers, timeout=5
             )
             response.raise_for_status()
 

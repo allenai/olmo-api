@@ -43,4 +43,9 @@ jobs:
         run: FLASK_CONFIG_PATH=./config.json E2E_AUTH0_CLIENT_SECRET=${{ secrets.E2E_AUTH0_CLIENT_SECRET }} uv run pytest ./apps/flask-api/e2e
 
       - name: Test fastapi with pytest
-        run: E2E_AUTH0_CLIENT_SECRET=${{ secrets.E2E_AUTH0_CLIENT_SECRET }} uv run pytest ./apps/api/e2e
+        env:
+          E2E_AUTH0_CLIENT_ID=${{ secrets.E2E_AUTH0_CLIENT_ID }}
+          E2E_AUTH0_CLIENT_SECRET=${{ secrets.E2E_AUTH0_CLIENT_SECRET }}
+          AUTH_DOMAIN=auth0.allenai.org
+          AUTH_AUDIENCE=https://olmo-api.allen.ai
+        run: uv run pytest ./apps/api/e2e

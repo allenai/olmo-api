@@ -1,3 +1,4 @@
+# Adapted from https://wazaari.dev/blog/fastapi-structlog-integration#logging-middleware
 import time
 from typing import TypedDict
 

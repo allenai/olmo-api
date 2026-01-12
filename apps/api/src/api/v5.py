@@ -2,15 +2,13 @@ from fastapi import APIRouter
 
 from api.auth.auth_service import AuthServiceDependency
 from api.config import settings
+from api.event import event_router
 from api.model_config.admin.model_config_admin_router import model_config_admin_router
 
 v5_router = APIRouter(prefix="/v5")
 
 
-@v5_router.get("/hello")
-def hello_world() -> str:
-    return "Hello world"
-
+v5_router.include_router(event_router)
 
 @v5_router.get("/whoami")
 def whoami(auth_service: AuthServiceDependency) -> dict:

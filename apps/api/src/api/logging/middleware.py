@@ -13,6 +13,7 @@ from api.config import settings
 app_logger = structlog.stdlib.get_logger(settings.LOG_NAME)
 access_logger = structlog.stdlib.get_logger(settings.LOG_ACCESS_NAME)
 
+
 class AccessInfo(TypedDict, total=False):
     status_code: int
     start_time: float

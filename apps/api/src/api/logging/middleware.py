@@ -2,7 +2,6 @@ import time
 from typing import TypedDict
 
 import structlog
-from asgi_correlation_id import correlation_id
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 from uvicorn.protocols.utils import get_path_with_query_string
@@ -29,7 +28,6 @@ class StructLogMiddleware:
             return
 
         structlog.contextvars.clear_contextvars()
-        structlog.contextvars.bind_contextvars(request_id=correlation_id.get())
 
         info = AccessInfo()
 
@@ -72,7 +70,6 @@ class StructLogMiddleware:
                     "url": str(url),
                     "status_code": info.get("status_code"),
                     "method": http_method,
-                    "request_id": correlation_id.get(),
                     "version": http_version,
                 },
                 network={"client": {"ip": client_host, "port": client_port}},

@@ -6,7 +6,6 @@ readme = "README.md"
 requires-python = ">=3.11"
 
 dependencies = [
-    "asgi-correlation-id>=4.3.4",
     "core",
     "db",
     "fastapi-problem>=0.11.6",
@@ -31,6 +30,4 @@ db = { workspace = true }
 core = { workspace = true }
 
 [dependency-groups]
-dev = [
-    "rich>=13.9.4",
-]
+dev = ["rich>=13.9.4"]

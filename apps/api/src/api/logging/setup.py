@@ -2,6 +2,7 @@ import logging
 
 import structlog
 import structlog_gcp
+from opentelemetry import trace
 from structlog.types import EventDict, Processor
 
 
@@ -14,6 +15,28 @@ def drop_color_message_key(_, __, event_dict: EventDict) -> EventDict:
     return event_dict
 
 
+# partially taken from https://www.structlog.org/en/stable/frameworks.html#opentelemetry
+def add_open_telemetry_spans(_, __, event_dict: EventDict) -> EventDict:
+    span = trace.get_current_span()
+    if not span.is_recording():
+        event_dict["span"] = None
+        return event_dict
+
+    ctx = span.get_span_context()
+    parent = getattr(span, "parent", None)
+
+    event_dict["span"] = {
+        "span_id": format(ctx.span_id, "016x"),
+        "trace_id": format(ctx.trace_id, "032x"),
+        "parent_span_id": None if not parent else format(parent.span_id, "016x"),
+    }
+
+    event_dict["logging.googleapis.com/spanId"] = ctx.span_id
+    event_dict["logging.googleapis.com/trace"] = ctx.trace_id
+
+    return event_dict
+
+
 def setup_logging(*, json_logs: bool = False, log_level: str = "INFO"):
     shared_processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,
@@ -22,6 +45,7 @@ def setup_logging(*, json_logs: bool = False, log_level: str = "INFO"):
         structlog.stdlib.PositionalArgumentsFormatter(),
         structlog.stdlib.ExtraAdder(),
         drop_color_message_key,
+        add_open_telemetry_spans,
         structlog.processors.StackInfoRenderer(),
     ]
 

@@ -1,4 +1,5 @@
 import logging
+import os
 
 import structlog
 import structlog_gcp
@@ -32,7 +33,9 @@ def add_open_telemetry_spans(_, __, event_dict: EventDict) -> EventDict:
     }
 
     event_dict["logging.googleapis.com/spanId"] = ctx.span_id
-    event_dict["logging.googleapis.com/trace"] = ctx.trace_id
+
+    gcloud_service = os.environ.get("K_SERVICE", default="unknown service")
+    event_dict["logging.googleapis.com/trace"] = f"projects/{gcloud_service}/traces/{ctx.trace_id}"
 
     return event_dict
 

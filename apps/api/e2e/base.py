@@ -5,8 +5,9 @@ from unittest import TestCase
 import requests
 from fastapi.testclient import TestClient
 
-from api.config import settings
 from main import app
+
+from .conftest import settings
 
 ANONYMOUS_USER_ID_HEADER = "X-Anonymous-User-ID"
 

@@ -39,10 +39,6 @@ class Settings(BaseSettings):
     AUTH_DOMAIN: str = Field(init=False)
     AUTH_AUDIENCE: str = Field(init=False)
 
-    # Testing
-    E2E_AUTH0_CLIENT_ID: str | None = None
-    E2E_AUTH0_CLIENT_SECRET: str | None = None
-
     model_config = SettingsConfigDict(
         extra="ignore",
         env_file=(".env", f".env.{ENV}", ".env.local", f".env.{ENV}.local"),

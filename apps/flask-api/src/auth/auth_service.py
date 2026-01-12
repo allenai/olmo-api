@@ -4,6 +4,8 @@ from http import HTTPStatus
 
 import requests
 from flask import Request, current_app, request
+from opentelemetry import trace
+from opentelemetry.trace.span import INVALID_SPAN
 from werkzeug import exceptions
 
 from src.auth.resource_protectors import anonymous_auth_protector
@@ -54,6 +56,12 @@ def authn() -> Token:
     agent = request_agent()
     if agent is None or agent.expired():
         raise exceptions.Unauthorized
+
+    current_span = trace.get_current_span()
+    if current_span is not INVALID_SPAN:
+        current_span.set_attribute("client.id", agent.client)
+        current_span.set_attribute("client.created", str(agent.created))
+        current_span.set_attribute("client.expires", str(agent.expires))
 
     current_app.logger.info({
         "path": request.path,

@@ -19,6 +19,21 @@
             "justMyCode": false
         },
         {
+            "name": "Python Debugger: FastAPI",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "env": {
+                "ENV": "development"
+            },
+            "args": [
+                "apps.api.main:app",
+                "--reload",
+                "--port", "8888"
+            ],
+            "jinja": true
+        },
+        {
             "name": "Python Debugger: Safety Worker",
             "type": "debugpy",
             "request": "launch",

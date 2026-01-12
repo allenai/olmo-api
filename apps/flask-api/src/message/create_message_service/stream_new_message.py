@@ -16,12 +16,12 @@ from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models import ModelRequestParameters
 
 import core.object_id as obj
+from core.auth.token import Token
 from db.models.message import Message
 from db.models.model_config import ModelConfig
 from db.models.tool_call import ToolCall
 from db.models.tool_definitions import ToolSource
 from src import db, parse
-from src.auth.token import Token
 from src.dao.completion import CompletionOutput
 from src.dao.message.message_models import (
     MessageChunk,

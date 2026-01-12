@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str = Field(init=False)
     DATABASE_MIN_POOL_SIZE: int = 3
     DATABASE_MAX_OVERFLOW_CONNECTIONS: int = 5
+    AUTH_DOMAIN: str = Field(init=False)
+    AUTH_AUDIENCE: str = Field(init=False)
 
     model_config = SettingsConfigDict(
         extra="ignore",

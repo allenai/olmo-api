@@ -4,11 +4,11 @@ from itertools import chain
 from werkzeug import exceptions
 
 import core.object_id as obj
+from core.auth.token import Token
 from db.models.message import Message
 from db.models.model_config import ModelConfig
 from db.models.tool_call import ToolCall
 from db.models.tool_definitions import ToolDefinition, ToolSource
-from src.auth.token import Token
 from src.dao.message.message_models import Role
 from src.dao.message.message_repository import BaseMessageRepository
 from src.message.create_message_request import (

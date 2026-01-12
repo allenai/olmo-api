@@ -7,6 +7,10 @@ on:
 jobs:
   e2e-test:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ vars.DATABASE_URL }}
+      AUTH_DOMAIN: ${{ vars.AUTH_DOMAIN }}
+      AUTH_AUDIENCE: ${{ vars.AUTH_AUDIENCE }}
     steps:
       - uses: actions/checkout@v6
 
@@ -39,6 +43,11 @@ jobs:
       - name: Set up uv
         uses: ./.github/actions/set-up-uv
 
-      - name: Test with pytest
+      - name: Test flask api with pytest
         run: FLASK_CONFIG_PATH=./config.json E2E_AUTH0_CLIENT_SECRET=${{ secrets.E2E_AUTH0_CLIENT_SECRET }} uv run pytest ./apps/flask-api/e2e
 
+      - name: Test fastapi with pytest
+        env:
+          E2E_AUTH0_CLIENT_ID: ${{ secrets.E2E_AUTH0_CLIENT_ID }}
+          E2E_AUTH0_CLIENT_SECRET: ${{ secrets.E2E_AUTH0_CLIENT_SECRET }}
+        run: uv run pytest ./apps/api/e2e

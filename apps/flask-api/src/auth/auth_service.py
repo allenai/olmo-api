@@ -8,17 +8,9 @@ from opentelemetry import trace
 from opentelemetry.trace.span import INVALID_SPAN
 from werkzeug import exceptions
 
+from core.auth import Token, UserInfo
 from src.auth.resource_protectors import anonymous_auth_protector
 from src.config.get_config import get_config
-
-from .token import Token
-
-
-@dataclass
-class UserInfo:
-    email: str | None = None
-    first_name: str | None = None
-    last_name: str | None = None
 
 
 def token_from_request(r: Request) -> str | None:

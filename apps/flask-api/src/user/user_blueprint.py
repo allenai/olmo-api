@@ -4,10 +4,10 @@ from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 from werkzeug import exceptions
 
+from core.auth.authenticated_client import AuthenticatedClient
 from src import db
 from src.auth.auth_service import authn, request_agent
 from src.auth.auth_utils import get_permissions
-from src.auth.authenticated_client import AuthenticatedClient
 from src.auth.resource_protectors import required_auth_protector
 from src.flask_pydantic_api.api_wrapper import pydantic_api
 from src.message.GoogleCloudStorage import GoogleCloudStorage

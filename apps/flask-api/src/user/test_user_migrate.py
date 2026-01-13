@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 
 from core.object_id import NewID
+from db.models.inference_opts import InferenceOpts
 from db.models.message import Message
 from db.models.model_config import ModelHost
 from src.dao.message.message_models import Role
@@ -41,7 +42,7 @@ class TestMigrateUserFromAnonymousUser:
             creator=anonymous_user_id,
             role=Role.User.value,
             root=message1_id,
-            opts={},
+            opts=InferenceOpts(),
             final=True,
             private=False,
             model_id="test-model",
@@ -58,7 +59,7 @@ class TestMigrateUserFromAnonymousUser:
             creator=anonymous_user_id,
             role=Role.Assistant.value,
             root=message1_id,  # Same root as message1
-            opts={},
+            opts=InferenceOpts(),
             final=True,
             private=False,
             model_id="test-model",
@@ -131,7 +132,7 @@ class TestMigrateUserFromAnonymousUser:
             creator=anonymous_user_id,
             role=Role.User.value,
             root=message_id,
-            opts={},
+            opts=InferenceOpts(),
             final=True,
             private=False,
             model_id="test-model",
@@ -273,7 +274,7 @@ class TestMigrateUserFromAnonymousUser:
                 creator=anonymous_user_id,
                 role=Role.User.value if i % 2 == 0 else Role.Assistant.value,
                 root=message_id,
-                opts={},
+                opts=InferenceOpts(),
                 final=True,
                 private=False,
                 model_id="test-model",

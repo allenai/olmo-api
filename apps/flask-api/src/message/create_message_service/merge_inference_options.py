@@ -1,4 +1,5 @@
 import src.dao.message.message_models as message
+from db.models.inference_opts import InferenceOpts
 from db.models.message import Message
 from db.models.model_config import ModelConfig
 
@@ -10,7 +11,7 @@ def merge_inference_options(
     temperature: float | None,
     top_p: float | None,
     stop: list[str] | None,
-) -> message.InferenceOpts:
+) -> InferenceOpts:
     """
     Combines inference options from the model config, parent message, and request.
 

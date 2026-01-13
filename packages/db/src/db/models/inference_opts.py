@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from pydantic import Field
 
@@ -27,20 +27,17 @@ class InferenceOpts(APIInterface):
             return None
 
         # Using model_construct since we want to trust that the DB has valid data
-        # TODO: convert this to use PydanticType
         return InferenceOpts.model_construct(
-            max_tokens=message.opts.get("max_tokens", None),
-            temperature=message.opts.get("temperature", None),
-            top_p=message.opts.get("top_p", None),
-            stop=message.opts.get("stop", None),
-            n=cast(int | None, message.opts.get("n", None)),  # type: ignore [arg-type]
-            logprobs=message.opts.get("logprobs", None),
+            max_tokens=message.opts.max_tokens,
+            temperature=message.opts.temperature,
+            top_p=message.opts.top_p,
+            stop=message.opts.stop,
+            n=message.opts.n,
+            logprobs=message.opts.logprobs,
         )
 
     @staticmethod
-    def from_model_config_defaults(
-        model_config: "ModelConfig",
-    ) -> "InferenceOpts":
+    def from_model_config_defaults(model_config: "ModelConfig") -> "InferenceOpts":
         return InferenceOpts.model_construct(
             max_tokens=model_config.max_tokens_default,
             temperature=model_config.temperature_default,

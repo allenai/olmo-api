@@ -1,9 +1,7 @@
 import uuid
 from dataclasses import dataclass
-from typing import Any
 from unittest import TestCase
 
-import pytest
 import requests
 from fastapi.testclient import TestClient
 

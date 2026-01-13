@@ -43,18 +43,38 @@ docker compose down --volumes && docker compose up --build
 
 ### Tests
 
-To run them, execute:
+To run the Flask tests, execute:
 
 ```bash
-uv run pytest -m "not integration"
+FLASK_CONFIG_PATH="./test.config.json" uv run --python 3.11 pytest apps/flask-api -m "not integration"
+```
+
+To run the FastAPI tests, execute
+
+```bash
+uv run pytest app/api
 ```
 
 ### Type check
 
-To check all types run:
+To check types run separately for api and flask-api:
 
 ```bash
-uv run mypy . --config ./pyproject.toml
+uv run mypy apps/api packages
+uv run mypy apps/flask-api
+```
+
+### Formatting / Linting
+
+To run the formatter / linter:
+
+```bash
+uv run ruff format
+```
+
+To just check without making changes to the files:
+```bash
+uv run ruff format --check
 ```
 
 ## More Documentation

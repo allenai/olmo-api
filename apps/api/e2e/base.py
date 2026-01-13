@@ -1,7 +1,9 @@
 import uuid
 from dataclasses import dataclass
+from typing import Any
 from unittest import TestCase
 
+import pytest
 import requests
 from fastapi.testclient import TestClient
 
@@ -26,6 +28,16 @@ class IntegrationTest(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.client = TestClient(app)
+
+    @classmethod
+    def auth(cls, u: AuthenticatedClient) -> dict[str, str]:
+        if u.is_anonymous:
+            return {ANONYMOUS_USER_ID_HEADER: str(u.client)}
+        return {"Authorization": f"Bearer {u.token}"}
+
+    @classmethod
+    def json(cls, h: dict[str, str]) -> dict[str, str]:
+        return {"Content-Type": "application/json", **h}
 
     def get_auth0_token(self):
         if self.auth0_token is None:
@@ -60,12 +72,5 @@ class IntegrationTest(TestCase):
         client_id = r.json()["client"]
         return AuthenticatedClient(client=client_id, token=auth0_token, is_anonymous=anonymous)
 
-    @classmethod
-    def auth(cls, u: AuthenticatedClient) -> dict[str, str]:
-        if u.is_anonymous:
-            return {ANONYMOUS_USER_ID_HEADER: str(u.client)}
-        return {"Authorization": f"Bearer {u.token}"}
-
-    @classmethod
-    def json(cls, h: dict[str, str]) -> dict[str, str]:
-        return {"Content-Type": "application/json", **h}
+    def auth_user(self):
+        return self.auth(self.user())

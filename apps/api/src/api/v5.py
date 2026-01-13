@@ -1,7 +1,6 @@
 from fastapi import APIRouter
 
 from api.auth.auth_service import AuthServiceDependency
-from api.config import settings
 from api.event import event_router
 from api.model_config.admin.model_config_admin_router import model_config_admin_router
 
@@ -25,5 +24,4 @@ def whoami(auth_service: AuthServiceDependency) -> dict:
     }
 
 
-if not settings.ENV.is_production:
-    v5_router.include_router(model_config_admin_router, prefix="/admin")
+v5_router.include_router(model_config_admin_router, prefix="/admin")

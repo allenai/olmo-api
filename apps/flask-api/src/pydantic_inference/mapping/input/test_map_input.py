@@ -1,6 +1,7 @@
 from pydantic_ai import AudioUrl, DocumentUrl, ImageUrl, VideoUrl
 from pydantic_ai.messages import ModelRequest
 
+from db.models.inference_opts import InferenceOpts
 from db.models.message import Message
 from src.dao.message.message_models import Role
 from src.pydantic_inference.mapping.input.map_input import pydantic_map_messages
@@ -23,7 +24,7 @@ def test_map_message_with_multimedia_urls() -> None:
             content=message_content,
             creator="test-user",
             role=Role.User,
-            opts={},
+            opts=InferenceOpts(),
             root=message_id,
             model_id="test-model",
             model_host="test-backend",

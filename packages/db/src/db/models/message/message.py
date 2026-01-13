@@ -18,6 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from core.object_id import new_id_generator
 from db.models.base import Base
 from db.models.completion import Completion
+from db.models.inference_opts import InferenceOpts
 from db.models.input_parts import InputPart
 from db.models.label import Label
 from db.models.prompt_template import PromptTemplate
@@ -62,7 +63,7 @@ class Message(Base, kw_only=True):
 
     creator: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(Text, nullable=False)
-    opts: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    opts: Mapped[InferenceOpts] = mapped_column(PydanticType(InferenceOpts), nullable=False)
     root: Mapped[str] = mapped_column(Text, nullable=False)
     created: Mapped[datetime.datetime] = mapped_column(
         DateTime(True), nullable=False, server_default=text("now()"), init=False

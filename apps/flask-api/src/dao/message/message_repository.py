@@ -11,7 +11,7 @@ from db.models.message import Message
 from db.models.model_config import ModelType
 from src.dao import label as old_label
 from src.dao import paged
-from src.dao.message.inference_opts_model import InferenceOpts
+from db.models.inference_opts import InferenceOpts
 from src.dao.message.message_models import Message as OldMessage
 from src.dao.message.message_models import Role, ThreadList
 from src.dao.paged import Opts
@@ -226,7 +226,7 @@ def map_sqla_to_old(message: Message) -> OldMessage:
         mapped_model_type = None
 
     # Build InferenceOpts without re-validation
-    mapped_opts = InferenceOpts.model_construct(**message.opts)
+    mapped_opts = InferenceOpts.model_construct(**message.opts.model_dump())
 
     # We don't currently expose logprobs from ORM messages in v4 stream
     mapped_logprobs = None

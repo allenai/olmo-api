@@ -6,10 +6,10 @@ from typing import Any
 
 import core.object_id as obj
 from core.api_interface import APIInterface
+from db.models.inference_opts import InferenceOpts
 from db.models.message import Message as SQLAMessage
 from db.models.model_config import ModelType
 from src.dao import label, paged
-from src.dao.message.inference_opts_model import InferenceOpts
 
 
 class ToolCall(APIInterface):

@@ -19,9 +19,7 @@ from db.models.message import Message
 from db.models.prompt_template import PromptTemplate  # noqa: F401
 from db.models.tool_definitions import ToolDefinition  # noqa: F401
 from src.config.get_config import get_config
-from src.dao.message.inference_opts_model import (
-    InferenceOpts,
-)
+from db.models.inference_opts import InferenceOpts
 from src.dao.message.message_models import Role
 from src.flask_pydantic_api.utils import UploadedFile
 

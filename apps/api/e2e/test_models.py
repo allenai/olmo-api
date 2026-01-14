@@ -231,8 +231,23 @@ async def test_get_a_list_of_models():
 
 
 @pytest.mark.skip(reason="Test not yet implemented")
-async def test_get_admin_models():
-    pass
+async def test_get_admin_models(client: AsyncClient, auth_user: AuthenticatedClient):
+    response = await list_admin_models(client, auth_user)
+
+    if isinstance(response, list):
+        # should have at least one model entity
+        assert len(response) > 0
+
+        # should have the following fields that match the model response
+        entity = response[0]
+        assert "is_visible" not in entity
+        assert "host" in entity
+        assert "modelIdOnHost" in entity
+        assert "availableTime" in entity
+        assert "deprecationTime" in entity
+    else:
+        msg = f"Response returned from GET {PUBLIC_MODEL_ENDPOINT} was not a list"
+        raise TypeError(msg)
 
 
 @pytest.mark.skip(reason="DELETE endpoint not yet implemented")

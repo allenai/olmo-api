@@ -1,3 +1,6 @@
+from datetime import UTC, datetime
+
+import structlog
 from fastapi import APIRouter
 
 from api.auth.permission_service import PermissionServiceDependency
@@ -13,6 +16,7 @@ from core.auth import Permissions
 
 model_config_admin_router = APIRouter(prefix="/models")
 
+logger = structlog.getLogger()
 
 @model_config_admin_router.get("/")
 async def get_admin_models(
@@ -30,6 +34,13 @@ async def create_admin_model(
     model_config_admin_create_service: ModelConfigCreateServiceDependency,
     permission_service: PermissionServiceDependency,
 ) -> ModelConfigResponse:
-    permission_service.require_permission(Permissions.WRITE_MODEL_CONFIG)
+    token = permission_service.require_permission(Permissions.WRITE_MODEL_CONFIG)
 
-    return await model_config_admin_create_service.create(request)
+    new_model = await model_config_admin_create_service.create(request)
+
+    logger.info("model_config.create",
+        user=token.client,
+        date=datetime.now(UTC),
+    )
+
+    return new_model

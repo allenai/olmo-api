@@ -10,7 +10,7 @@ from api.model_config.model_config_request import (
     BaseMultiModalModelConfigRequest,
     BaseTextOnlyModelConfigRequest,
 )
-from api.model_config.model_config_response_model import ModelConfigResponseModel
+from api.model_config.model_config_response import ModelConfigResponse
 from api.model_config.model_config_utils import get_model_config_class
 from core.api_interface import APIInterface
 
@@ -39,7 +39,7 @@ class ModelConfigAdminCreateService:
     def __init__(self, session: SessionDependency):
         self.session = session
 
-    async def create(self, request: RootCreateModelConfigRequest) -> ModelConfigResponseModel:
+    async def create(self, request: RootCreateModelConfigRequest) -> ModelConfigResponse:
         """
         Creates a new ModelConfig
 
@@ -61,7 +61,7 @@ class ModelConfigAdminCreateService:
                 self.session.add(new_model)
                 await self.session.flush()
 
-                return ModelConfigResponseModel.model_validate(new_model)
+                return ModelConfigResponse.model_validate(new_model)
 
             except IntegrityError as e:
                 # Duplicate ID causes 409 confict error

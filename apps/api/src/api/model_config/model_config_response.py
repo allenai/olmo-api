@@ -22,7 +22,7 @@ class ModelAvailability(StrEnum):
     PRERELEASE = "prerelease"
 
 
-class BaseModelConfigResponseModel(APIInterface):
+class BaseModelConfigResponse(APIInterface):
     id: str
     host: ModelHost
     name: str
@@ -76,11 +76,11 @@ class BaseModelConfigResponseModel(APIInterface):
     updated_time: AwareDatetime
 
 
-class TextOnlyModelConfigResponseModel(BaseModelConfigResponseModel):
+class TextOnlyModelConfigResponse(BaseModelConfigResponse):
     prompt_type: Literal[PromptType.TEXT_ONLY]
 
 
-class MultiModalModelConfigResponseModel(BaseModelConfigResponseModel):
+class MultiModalModelConfigResponse(BaseModelConfigResponse):
     prompt_type: Literal[PromptType.MULTI_MODAL, PromptType.FILES_ONLY]
     accepted_file_types: list[str]
     max_files_per_message: int | None = Field(default=None)
@@ -89,12 +89,12 @@ class MultiModalModelConfigResponseModel(BaseModelConfigResponseModel):
     allow_files_in_followups: bool | None = Field(default=None)
 
 
-class ModelConfigResponseModel(RootModel):
+class ModelConfigResponse(RootModel):
     root: Annotated[
-        TextOnlyModelConfigResponseModel | MultiModalModelConfigResponseModel,
+        TextOnlyModelConfigResponse | MultiModalModelConfigResponse,
         Field(discriminator="prompt_type"),
     ]
 
 
-class ModelConfigListResponseModel(RootModel):
-    root: list[ModelConfigResponseModel]
+class ModelConfigListResponse(RootModel):
+    root: list[ModelConfigResponse]

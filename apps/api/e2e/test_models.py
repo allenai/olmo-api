@@ -7,10 +7,10 @@ from api.model_config.admin.model_config_admin_create_service import (
     CreateMultiModalModelConfigRequest,
     CreateTextOnlyModelConfigRequest,
 )
-from api.model_config.model_config_response_model import (
+from api.model_config.model_config_response import (
     AvailableInfiniGramIndexId,
-    ModelConfigListResponseModel,
-    ModelConfigResponseModel,
+    ModelConfigListResponse,
+    ModelConfigResponse,
 )
 from db.models.model_config import ModelHost, ModelType, PromptType
 from e2e.conftest import AuthenticatedClient, auth_headers_for_user
@@ -161,13 +161,13 @@ async def test_create_model_with_toolcalling(
     )
     create_response.raise_for_status()
 
-    created_model = ModelConfigResponseModel.model_validate(create_response.json())
+    created_model = ModelConfigResponse.model_validate(create_response.json())
     assert created_model.root.created_time is not None
     assert created_model.root.model_type == ModelType.Chat
     assert created_model.root.can_call_tools is True
 
     available_models = await list_admin_models(client, auth_user)
-    available_models_validated = ModelConfigListResponseModel.model_validate(available_models)
+    available_models_validated = ModelConfigListResponse.model_validate(available_models)
 
     test_admin_model = next(
         (model for model in available_models_validated.root if model.root.id == model_id),
@@ -178,7 +178,7 @@ async def test_create_model_with_toolcalling(
 
     # Roughly:
     #
-    # public_models = ModelListResponseModel.model_validate(await list_public_models(client, auth_user))
+    # public_models = ModelListResponse.model_validate(await list_public_models(client, auth_user))
     # test_model = next((model for model in public_models.root if model.id == model_id), None)
     # assert test_model is not None, "The test model wasn't returned from the public endpoint"
     # assert test_model.can_call_tools is True
@@ -209,14 +209,14 @@ async def test_create_a_model_with_an_infini_gram_index(
     )
     create_response.raise_for_status()
 
-    created_model = ModelConfigResponseModel.model_validate(create_response.json()).root
+    created_model = ModelConfigResponse.model_validate(create_response.json()).root
     assert created_model.created_time is not None
     assert created_model.model_type == "chat"
     assert created_model.infini_gram_index == AvailableInfiniGramIndexId.OLMO_2_0325_32B
 
     available_models = await list_admin_models(client, auth_user)
 
-    test_model = ModelConfigResponseModel.model_validate(
+    test_model = ModelConfigResponse.model_validate(
         next((model for model in available_models if model.get("id") == model_id), None)
     )
     assert test_model.root is not None, "The test model wasn't returned from the GET request"

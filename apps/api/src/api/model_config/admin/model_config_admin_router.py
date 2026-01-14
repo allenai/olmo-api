@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
 
-import structlog
 from fastapi import APIRouter
 
 from api.auth.permission_service import PermissionServiceDependency
+from api.logging.fastapi_logger import FastAPIStructLogger
 from api.model_config.admin.model_config_admin_create_service import (
     ModelConfigCreateServiceDependency,
     RootCreateModelConfigRequest,
@@ -16,7 +16,7 @@ from core.auth import Permissions
 
 model_config_admin_router = APIRouter(prefix="/models")
 
-logger = structlog.getLogger()
+logger = FastAPIStructLogger()
 
 
 @model_config_admin_router.get("/")

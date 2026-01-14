@@ -1,13 +1,15 @@
 from typing import TYPE_CHECKING, cast
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from core.api_interface import APIInterface
 
 if TYPE_CHECKING:
     from db.models.message import Message
     from db.models.model_config import ModelConfig
 
 
-class InferenceOpts(BaseModel):
+class InferenceOpts(APIInterface):
     max_tokens: int | None = None
     temperature: float | None = None
     top_p: float | None = None

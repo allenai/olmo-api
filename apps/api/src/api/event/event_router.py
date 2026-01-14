@@ -1,13 +1,14 @@
 from datetime import datetime
 from typing import Any
 
-import structlog
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+from api.logging.fastapi_logger import FastAPIStructLogger
+
 event_router = APIRouter()
 
-logger = structlog.getLogger()
+logger = FastAPIStructLogger()
 
 
 class Event(BaseModel):
@@ -19,5 +20,6 @@ class Event(BaseModel):
 # Log events from the UI
 # Using post with path instead of a route prefix to prevent unnecessary redirects
 @event_router.post("/event")
-def event(event: Event) -> None:
-    logger.info("UI Event", type=event.type, event_date=event.occurred, details=event.details)
+def event(event: Event) -> bool:
+    logger.info("ui.event", type=event.type, event_date=event.occurred, details=event.details)
+    return True

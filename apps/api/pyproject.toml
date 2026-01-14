@@ -38,4 +38,6 @@ dev = [
 test = [
     "httpx>=0.28.1",
     "pytest>=8.3.2",
+    "pytest-asyncio>=0.25.2",
+    "pytest-postgresql>=7.0.2",
 ]

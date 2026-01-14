@@ -18,6 +18,7 @@ model_config_admin_router = APIRouter(prefix="/models")
 
 logger = structlog.getLogger()
 
+
 @model_config_admin_router.get("/")
 async def get_admin_models(
     model_config_admin_service: ModelConfigAdminReadServiceDependency,
@@ -38,7 +39,8 @@ async def create_admin_model(
 
     new_model = await model_config_admin_create_service.create(request)
 
-    logger.info("model_config.create",
+    logger.info(
+        "model_config.create",
         user=token.client,
         date=datetime.now(UTC),
     )

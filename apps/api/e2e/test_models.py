@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 import pytest
-from httpx import Response
+from httpx import AsyncClient
 
 from api.model_config.admin.model_config_admin_create_service import (
     CreateMultiModalModelConfigRequest,
@@ -13,7 +13,10 @@ from api.model_config.model_config_response_model import (
     ModelConfigResponseModel,
 )
 from db.models.model_config import ModelHost, ModelType, PromptType
-from e2e.base import IntegrationTest
+from e2e.conftest import AuthenticatedClient, auth_headers_for_user
+
+PUBLIC_MODEL_ENDPOINT = "/v5/models/"
+ADMIN_MODEL_CONFIG_ENDPOINT = "/v5/admin/models/"
 
 default_inference_constraints = {
     "max_tokens_default": 2048,
@@ -32,232 +35,236 @@ default_inference_constraints = {
 }
 
 
-class TestModelsBase(IntegrationTest):
-    PUBLIC_MODEL_ENDPOINT = "/v5/models/"
-    ADMIN_MODEL_CONFIG_ENDPOINT = "/v5/admin/models/"
-
-    created_model_ids: list[str]
-
-    def setUp(self) -> None:
-        self.created_model_ids = []
-
-    def tearDown(self) -> None:
-        # TODO: Uncomment when DELETE endpoint is implemented
-        #
-        # for model_id in self.created_model_ids:
-        #     delete_response = self.client.delete(
-        #         f"{self.ADMIN_MODEL_CONFIG_ENDPOINT}{model_id}",
-        #         headers=self.auth_user(),
-        #     )
-        #     assert delete_response.status_code == 204
-        pass
-
-    def create_model(
-        self,
-        request: CreateTextOnlyModelConfigRequest | CreateMultiModalModelConfigRequest,
-        *,
-        skip_cleanup: bool = False,
-    ) -> Response:
-        response = self.client.post(
-            self.ADMIN_MODEL_CONFIG_ENDPOINT,
-            json=request.model_dump(by_alias=True),
-            headers=self.auth_user(),
-        )
-
-        if not skip_cleanup and response.is_success:
-            created_model_parsed = response.json()
-            self.created_model_ids.append(created_model_parsed["id"])
-
-        return response
-
-    def list_admin_models(self) -> list[dict]:
-        response = self.client.get(
-            self.ADMIN_MODEL_CONFIG_ENDPOINT,
-            headers=self.auth_user(),
-        )
-        response.raise_for_status()
-        return response.json()
-
-    def list_public_models(self) -> list[dict]:
-        response = self.client.get(
-            self.PUBLIC_MODEL_ENDPOINT,
-            headers=self.auth_user(),
-        )
-        response.raise_for_status()
-        return response.json()
+async def list_admin_models(
+    client: AsyncClient,
+    user: AuthenticatedClient,
+) -> list[dict]:
+    response = await client.get(
+        ADMIN_MODEL_CONFIG_ENDPOINT,
+        headers=auth_headers_for_user(user),
+    )
+    response.raise_for_status()
+    return response.json()
 
 
-class TestModels(TestModelsBase):
-    def test_create_text_only_model(self):
-        model_id = "test-model-" + str(uuid4())
-        create_model_request = CreateTextOnlyModelConfigRequest(
-            id=model_id,
-            name="model made for testing",
-            description="This model is made for testing",
-            model_id_on_host="test-model-id",
-            model_type=ModelType.Chat,
-            host=ModelHost.BeakerQueues,
-            prompt_type=PromptType.TEXT_ONLY,
-            can_think=True,
-        )
+async def list_public_models(
+    client: AsyncClient,
+    user: AuthenticatedClient,
+) -> list[dict]:
+    response = await client.get(
+        PUBLIC_MODEL_ENDPOINT,
+        headers=auth_headers_for_user(user),
+    )
+    response.raise_for_status()
+    return response.json()
 
-        create_response = self.create_model(create_model_request)
-        create_response.raise_for_status()
 
-        created_model = create_response.json()
-        assert created_model["id"] == model_id
-        assert created_model["createdTime"] is not None
-        assert created_model["modelType"] == "chat"
-        assert created_model["canThink"] is True
-        assert created_model["temperatureDefault"] == default_inference_constraints["temperature_default"]
-        assert created_model["topPDefault"] == default_inference_constraints["top_p_default"]
-        assert created_model["maxTokensDefault"] == default_inference_constraints["max_tokens_default"]
-        assert created_model["stopDefault"] == default_inference_constraints["stop_default"]
+async def test_create_text_only_model(
+    client: AsyncClient,
+    auth_user: AuthenticatedClient,
+):
+    model_id = "test-model-" + str(uuid4())
+    create_model_request = CreateTextOnlyModelConfigRequest(
+        id=model_id,
+        name="model made for testing",
+        description="This model is made for testing",
+        model_id_on_host="test-model-id",
+        model_type=ModelType.Chat,
+        host=ModelHost.BeakerQueues,
+        prompt_type=PromptType.TEXT_ONLY,
+        can_think=True,
+    )
 
-        # Verify model appears in list
-        available_models = self.list_admin_models()
-        test_model = next((model for model in available_models if model["id"] == model_id), None)
-        assert test_model is not None, "The test model wasn't returned from the GET request"
+    create_response = await client.post(
+        ADMIN_MODEL_CONFIG_ENDPOINT,
+        json=create_model_request.model_dump(by_alias=True),
+        headers=auth_headers_for_user(auth_user),
+    )
+    create_response.raise_for_status()
 
-    def test_create_multi_model_model(self):
-        model_id = "test-mm-model-" + str(uuid4())
-        create_model_request = CreateMultiModalModelConfigRequest(
-            id=model_id,
-            name="multi-modal model made for testing",
-            description="This model is made for testing",
-            model_id_on_host="test-mm-model-id",
-            model_type=ModelType.Chat,
-            host=ModelHost.InferD,
-            prompt_type=PromptType.MULTI_MODAL,
-            accepted_file_types=["image/*"],
-            max_files_per_message=1,
-            allow_files_in_followups=False,
-        )
+    created_model = create_response.json()
+    assert created_model["id"] == model_id
+    assert created_model["createdTime"] is not None
+    assert created_model["modelType"] == "chat"
+    assert created_model["canThink"] is True
+    assert created_model["temperatureDefault"] == default_inference_constraints["temperature_default"]
+    assert created_model["topPDefault"] == default_inference_constraints["top_p_default"]
+    assert created_model["maxTokensDefault"] == default_inference_constraints["max_tokens_default"]
+    assert created_model["stopDefault"] == default_inference_constraints["stop_default"]
 
-        create_response = self.create_model(create_model_request)
-        create_response.raise_for_status()
+    # Verify model appears in list
+    available_models = await list_admin_models(client, auth_user)
+    test_model = next((model for model in available_models if model["id"] == model_id), None)
+    assert test_model is not None, "The test model wasn't returned from the GET request"
 
-        created_model = create_response.json()
-        assert created_model.get("createdTime") is not None
-        assert created_model.get("modelType") == "chat"
 
-        # Flask test used public model endpoint
-        # TODO: maybe switch back?
-        available_models = self.list_admin_models()
-        test_model = next((model for model in available_models if model.get("id") == model_id), None)
+async def test_create_multi_model_model(
+    client: AsyncClient,
+    auth_user: AuthenticatedClient,
+):
+    model_id = "test-mm-model-" + str(uuid4())
+    create_model_request = CreateMultiModalModelConfigRequest(
+        id=model_id,
+        name="multi-modal model made for testing",
+        description="This model is made for testing",
+        model_id_on_host="test-mm-model-id",
+        model_type=ModelType.Chat,
+        host=ModelHost.InferD,
+        prompt_type=PromptType.MULTI_MODAL,
+        accepted_file_types=["image/*"],
+        max_files_per_message=1,
+        allow_files_in_followups=False,
+    )
 
-        assert test_model is not None, "The test model wasn't returned from the GET request"
-        assert "image/*" in test_model.get("acceptedFileTypes", [])
-        assert test_model.get("maxFilesPerMessage") == 1
-        assert test_model.get("allowFilesInFollowups") is False
+    create_response = await client.post(
+        ADMIN_MODEL_CONFIG_ENDPOINT,
+        json=create_model_request.model_dump(by_alias=True),
+        headers=auth_headers_for_user(auth_user),
+    )
+    create_response.raise_for_status()
 
-    def test_create_model_with_toolcalling(self):
-        model_id = "test-tool-model-" + str(uuid4())
-        create_model_request = CreateTextOnlyModelConfigRequest(
-            id=model_id,
-            name="model made for testing",
-            description="This model is made for testing",
-            model_id_on_host="test-model-id",
-            model_type=ModelType.Chat,
-            host=ModelHost.InferD,
-            prompt_type=PromptType.TEXT_ONLY,
-            can_call_tools=True,
-        )
+    created_model = create_response.json()
+    assert created_model.get("createdTime") is not None
+    assert created_model.get("modelType") == "chat"
 
-        create_response = self.create_model(create_model_request)
-        create_response.raise_for_status()
+    # Flask test used public model endpoint
+    # TODO: maybe switch back?
+    available_models = await list_admin_models(client, auth_user)
+    test_model = next((model for model in available_models if model.get("id") == model_id), None)
 
-        created_model = ModelConfigResponseModel.model_validate(create_response.json())
-        assert created_model.root.created_time is not None
-        assert created_model.root.model_type == ModelType.Chat
-        assert created_model.root.can_call_tools is True
+    assert test_model is not None, "The test model wasn't returned from the GET request"
+    assert "image/*" in test_model.get("acceptedFileTypes", [])
+    assert test_model.get("maxFilesPerMessage") == 1
+    assert test_model.get("allowFilesInFollowups") is False
 
-        available_models = ModelConfigListResponseModel.model_validate(self.list_admin_models())
 
-        test_admin_model = next(
-            (model for model in available_models.root if model.root.id == model_id),
-            None,
-        )
-        assert test_admin_model is not None, "The test model wasn't returned from the GET request"
-        assert test_admin_model.root.can_call_tools is True
+async def test_create_model_with_toolcalling(
+    client: AsyncClient,
+    auth_user: AuthenticatedClient,
+):
+    model_id = "test-tool-model-" + str(uuid4())
+    create_model_request = CreateTextOnlyModelConfigRequest(
+        id=model_id,
+        name="model made for testing",
+        description="This model is made for testing",
+        model_id_on_host="test-model-id",
+        model_type=ModelType.Chat,
+        host=ModelHost.InferD,
+        prompt_type=PromptType.TEXT_ONLY,
+        can_call_tools=True,
+    )
 
-        # Rougly:
-        #
-        # public_models = ModelListResponseModel.model_validate(self.list_public_models())
-        # test_model = next((model for model in public_models.root if model.id == model_id), None)
-        # assert test_model is not None, "The test model wasn't returned from the public endpoint"
-        # assert test_model.can_call_tools is True
-        # assert test_model.available_tools is not None, "Available tools weren't set on a tool-calling model"
-        # assert len(test_model.available_tools) > 0
+    create_response = await client.post(
+        ADMIN_MODEL_CONFIG_ENDPOINT,
+        json=create_model_request.model_dump(by_alias=True),
+        headers=auth_headers_for_user(auth_user),
+    )
+    create_response.raise_for_status()
 
-    def test_create_a_model_with_an_infini_gram_index(self):
-        model_id = "test-tool-model-" + str(uuid4())
-        create_model_request = CreateTextOnlyModelConfigRequest(
-            id=model_id,
-            name="model made for testing",
-            description="This model is made for testing",
-            model_id_on_host="test-model-id",
-            model_type=ModelType.Chat,
-            host=ModelHost.InferD,
-            prompt_type=PromptType.TEXT_ONLY,
-            infini_gram_index=AvailableInfiniGramIndexId.OLMO_2_0325_32B,
-        )
+    created_model = ModelConfigResponseModel.model_validate(create_response.json())
+    assert created_model.root.created_time is not None
+    assert created_model.root.model_type == ModelType.Chat
+    assert created_model.root.can_call_tools is True
 
-        create_response = self.create_model(create_model_request)
-        create_response.raise_for_status()
+    available_models = await list_admin_models(client, auth_user)
+    available_models_validated = ModelConfigListResponseModel.model_validate(available_models)
 
-        created_model = ModelConfigResponseModel.model_validate(create_response.json()).root
-        assert created_model.created_time is not None
-        assert created_model.model_type == "chat"
-        assert created_model.infini_gram_index == AvailableInfiniGramIndexId.OLMO_2_0325_32B
+    test_admin_model = next(
+        (model for model in available_models_validated.root if model.root.id == model_id),
+        None,
+    )
+    assert test_admin_model is not None, "The test model wasn't returned from the GET request"
+    assert test_admin_model.root.can_call_tools is True
 
-        available_models = self.list_admin_models()
-
-        test_model = ModelConfigResponseModel.model_validate(
-            next(
-                (model for model in available_models if model.get("id") == model_id),
-                None,
-            )
-        ).root
-        assert test_model is not None, "The test model wasn't returned from the GET request"
-        assert created_model.infini_gram_index == AvailableInfiniGramIndexId.OLMO_2_0325_32B
-
-    # TODO: Implement skipped tests from from flask-api
+    # Roughly:
     #
-    @pytest.mark.skip(reason="Public endpoint not yet implemented")
-    def test_get_a_list_of_models(self):
-        pass
-
-    @pytest.mark.skip(reason="Test not yet implemented")
-    def test_get_admin_models(self):
-        pass
-
-    @pytest.mark.skip(reason="DELETE endpoint not yet implemented")
-    def test_should_delete_a_model(self):
-        pass
-
-    @pytest.mark.skip(reason="Reorder endpoint not yet implemented")
-    def test_should_reorder_models(self):
-        pass
-
-    @pytest.mark.skip(reason="UPDATE endpoint not yet implemented")
-    def test_should_update_a_text_only_model(self):
-        pass
-
-    @pytest.mark.skip(reason="UPDATE endpoint not yet implemented")
-    def test_should_update_a_multi_modal_model(self):
-        pass
-
-    @pytest.mark.skip(reason="UPDATE endpoint not yet implemented")
-    def test_should_error_on_invalid_constraints_update(self):
-        pass
+    # public_models = ModelListResponseModel.model_validate(await list_public_models(client, auth_user))
+    # test_model = next((model for model in public_models.root if model.id == model_id), None)
+    # assert test_model is not None, "The test model wasn't returned from the public endpoint"
+    # assert test_model.can_call_tools is True
+    # assert test_model.available_tools is not None, "Available tools weren't set on a tool-calling model"
+    # assert len(test_model.available_tools) > 0
 
 
-class TestModelsAnonymous(TestModelsBase):
-    @pytest.mark.skip(reason="Public endpoint not yet implemented")
-    def test_get_public_models(self):
-        pass
+async def test_create_a_model_with_an_infini_gram_index(
+    client: AsyncClient,
+    auth_user: AuthenticatedClient,
+):
+    model_id = "test-tool-model-" + str(uuid4())
+    create_model_request = CreateTextOnlyModelConfigRequest(
+        id=model_id,
+        name="model made for testing",
+        description="This model is made for testing",
+        model_id_on_host="test-model-id",
+        model_type=ModelType.Chat,
+        host=ModelHost.InferD,
+        prompt_type=PromptType.TEXT_ONLY,
+        infini_gram_index=AvailableInfiniGramIndexId.OLMO_2_0325_32B,
+    )
 
-    @pytest.mark.skip(reason="Anonymous auth not yet configured")
-    def test_get_admin_models_should_be_forbidden(self):
-        pass
+    create_response = await client.post(
+        ADMIN_MODEL_CONFIG_ENDPOINT,
+        json=create_model_request.model_dump(by_alias=True),
+        headers=auth_headers_for_user(auth_user),
+    )
+    create_response.raise_for_status()
+
+    created_model = ModelConfigResponseModel.model_validate(create_response.json()).root
+    assert created_model.created_time is not None
+    assert created_model.model_type == "chat"
+    assert created_model.infini_gram_index == AvailableInfiniGramIndexId.OLMO_2_0325_32B
+
+    available_models = await list_admin_models(client, auth_user)
+
+    test_model = ModelConfigResponseModel.model_validate(
+        next((model for model in available_models if model.get("id") == model_id), None)
+    )
+    assert test_model.root is not None, "The test model wasn't returned from the GET request"
+    assert created_model.infini_gram_index == AvailableInfiniGramIndexId.OLMO_2_0325_32B
+
+
+# TODO: Implement skipped tests from from flask-api
+#
+@pytest.mark.skip(reason="Public endpoint not yet implemented")
+async def test_get_a_list_of_models():
+    pass
+
+
+@pytest.mark.skip(reason="Test not yet implemented")
+async def test_get_admin_models():
+    pass
+
+
+@pytest.mark.skip(reason="DELETE endpoint not yet implemented")
+async def test_should_delete_a_model():
+    pass
+
+
+@pytest.mark.skip(reason="Reorder endpoint not yet implemented")
+async def test_should_reorder_models():
+    pass
+
+
+@pytest.mark.skip(reason="UPDATE endpoint not yet implemented")
+async def test_should_update_a_text_only_model():
+    pass
+
+
+@pytest.mark.skip(reason="UPDATE endpoint not yet implemented")
+async def test_should_update_a_multi_modal_model():
+    pass
+
+
+@pytest.mark.skip(reason="UPDATE endpoint not yet implemented")
+async def test_should_error_on_invalid_constraints_update():
+    pass
+
+
+@pytest.mark.skip(reason="Public endpoint not yet implemented")
+async def test_get_public_models():
+    pass
+
+
+@pytest.mark.skip(reason="Anonymous auth not yet configured")
+async def test_get_admin_models_should_be_forbidden():
+    pass

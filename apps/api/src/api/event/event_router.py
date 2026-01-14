@@ -19,5 +19,6 @@ class Event(BaseModel):
 # Log events from the UI
 # Using post with path instead of a route prefix to prevent unnecessary redirects
 @event_router.post("/event")
-def event(event: Event) -> None:
+def event(event: Event) -> bool:
     logger.info("UI Event", type=event.type, event_date=event.occurred, details=event.details)
+    return True

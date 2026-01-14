@@ -6,5 +6,5 @@
 /pyrightconfig.json
 /service_account.json
 .env
-.env.local
+.env*.local
 .modal.toml

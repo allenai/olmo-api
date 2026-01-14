@@ -225,9 +225,6 @@ def map_sqla_to_old(message: Message) -> OldMessage:
     except Exception:
         mapped_model_type = None
 
-    # Build InferenceOpts without re-validation
-    mapped_opts = InferenceOpts.model_construct(**message.opts.model_dump())
-
     # We don't currently expose logprobs from ORM messages in v4 stream
     mapped_logprobs = None
 
@@ -258,7 +255,7 @@ def map_sqla_to_old(message: Message) -> OldMessage:
         snippet=text_snippet(message.content),
         creator=message.creator,
         role=mapped_role,
-        opts=mapped_opts,
+        opts=message.opts,
         root=message.root,
         created=message.created,
         model_id=message.model_id,

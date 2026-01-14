@@ -26,15 +26,7 @@ class InferenceOpts(APIInterface):
         if message is None:
             return None
 
-        # Using model_construct since we want to trust that the DB has valid data
-        return InferenceOpts.model_construct(
-            max_tokens=message.opts.max_tokens,
-            temperature=message.opts.temperature,
-            top_p=message.opts.top_p,
-            stop=message.opts.stop,
-            n=message.opts.n,
-            logprobs=message.opts.logprobs,
-        )
+        return message.opts
 
     @staticmethod
     def from_model_config_defaults(model_config: "ModelConfig") -> "InferenceOpts":

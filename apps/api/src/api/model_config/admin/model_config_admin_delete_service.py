@@ -30,7 +30,8 @@ class ModelConfigAdminDeleteService:
             delete_model = result.one_or_none()
 
             if not delete_model:
-                raise ValueError("Model config not found!")
+                model_not_found_msg = "Model config not found!"
+                raise ValueError(model_not_found_msg)
 
             await self.session.delete(delete_model)
 

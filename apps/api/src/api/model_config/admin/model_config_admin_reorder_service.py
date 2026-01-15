@@ -4,7 +4,6 @@ from fastapi import Depends
 from sqlalchemy import select, update
 
 from api.db.sqlalchemy_engine import SessionDependency
-from api.model_config.model_config_response import ModelConfigResponse
 from core.api_interface import APIInterface
 from db.models.model_config import ModelConfig
 

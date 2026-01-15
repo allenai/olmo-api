@@ -78,7 +78,7 @@ async def create_tool_definition_in_db(
         RETURNING id
     """)
 
-    result = await db_session.execute(
+    await db_session.execute(
         query,
         {
             "id": tool_id,

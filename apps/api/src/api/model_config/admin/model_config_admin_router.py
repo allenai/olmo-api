@@ -14,6 +14,10 @@ from api.model_config.admin.model_config_admin_delete_service import (
 from api.model_config.admin.model_config_admin_read_service import (
     ModelConfigAdminReadServiceDependency,
 )
+from api.model_config.admin.model_config_admin_reorder_service import (
+    ModelConfigAdminReorderServiceDependency,
+    ReorderModelConfigRequest,
+)
 from api.model_config.admin.model_config_admin_update_service import (
     ModelConfigUpdateServiceDependency,
     RootUpdateModelConfigRequest,
@@ -54,6 +58,27 @@ async def create_admin_model(
     )
 
     return new_model
+
+
+@model_config_admin_router.put("/", status_code=status.HTTP_204_NO_CONTENT)
+async def sort_admin_model(
+    request: ReorderModelConfigRequest,
+    model_config_admin_reorder_service: ModelConfigAdminReorderServiceDependency,
+    permission_service: PermissionServiceDependency,
+):
+    token = permission_service.require_permission(Permissions.WRITE_MODEL_CONFIG)
+
+    try:
+        await model_config_admin_reorder_service.reorder(request)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+
+    logger.info(
+        "model_config.reorder",
+        user=token.client,
+        request={**request.model_dump()},
+        date=datetime.now(UTC),
+    )
 
 
 @model_config_admin_router.put("/{model_id}")

@@ -1,3 +1,4 @@
+import operator
 from typing import cast
 from uuid import uuid4
 
@@ -476,3 +477,47 @@ async def test_should_delete_a_model(client: AsyncClient, auth_user: Authenticat
 
     assert all(model["id"] != model_id for model in available_models), "Model wasn't deleted"
 
+
+async def test_should_reorder_models(client: AsyncClient, auth_user: AuthenticatedClient):
+    # Create models to arrange
+    model_ids = ["model-a", "model-b", "model-c"]
+    for model_id in model_ids:
+        create_model_request = CreateTextOnlyModelConfigRequest(
+            id=model_id,
+            name=f"{model_id} name",
+            description=f"{model_id} desc",
+            model_id_on_host=f"{model_id}-host",
+            model_type=ModelType.Chat,
+            host=ModelHost.InferD,
+            prompt_type=PromptType.TEXT_ONLY,
+        )
+
+        create_response = await client.post(
+            ADMIN_MODEL_CONFIG_ENDPOINT,
+            json=create_model_request.model_dump(by_alias=True),
+            headers=auth_headers_for_user(auth_user),
+        )
+        create_response.raise_for_status()
+
+    # reordered data
+    reordered = [
+        {"id": "model-c", "order": 1},
+        {"id": "model-b", "order": 2},
+        {"id": "model-a", "order": 3},
+    ]
+
+    reorder_response = await client.put(
+        ADMIN_MODEL_CONFIG_ENDPOINT, json={"ordered_models": reordered}, headers=auth_headers_for_user(auth_user)
+    )
+    reorder_response.raise_for_status()
+
+    models = await list_admin_models(client, auth_user)
+
+    test_models = sorted(
+        [m for m in models if m["id"] in model_ids],
+        key=operator.itemgetter("order"),
+    )
+
+    expected_order = ["model-c", "model-b", "model-a"]
+    actual_order = [m["id"] for m in test_models]
+    assert actual_order == expected_order, f"Expected order {expected_order}, got {actual_order}"

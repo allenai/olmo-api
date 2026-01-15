@@ -65,6 +65,49 @@ async def list_public_models(
     return response.json()
 
 
+# TODO: Implement skipped tests from from flask-api
+#
+@pytest.mark.skip(reason="Public endpoint not yet implemented")
+async def test_get_public_models():
+    # public models from {PUBLIC_MODEL_ENDPOINT}
+    pass
+
+
+@pytest.mark.skip(reason="Public endpoint not yet implemented")
+async def test_get_internal_models():
+    # internal models from {PUBLIC_MODEL_ENDPOINT}
+    # can maybe combine with above?
+    pass
+
+
+async def test_get_admin_models_should_be_forbidden(client: AsyncClient, anon_user: AuthenticatedClient):
+    response = await client.get(
+        ADMIN_MODEL_CONFIG_ENDPOINT,
+        headers=auth_headers_for_user(anon_user),
+    )
+
+    assert response.status_code == 401
+
+
+async def test_get_admin_models(client: AsyncClient, auth_user: AuthenticatedClient):
+    response = await list_admin_models(client, auth_user)
+
+    if isinstance(response, list):
+        # should have at least one model entity
+        assert len(response) > 0
+
+        # should have the following fields that match the model response
+        entity = response[0]
+        assert "is_visible" not in entity
+        assert "host" in entity
+        assert "modelIdOnHost" in entity
+        assert "availableTime" in entity
+        assert "deprecationTime" in entity
+    else:
+        msg = f"Response returned from GET {ADMIN_MODEL_CONFIG_ENDPOINT} was not a list"
+        raise TypeError(msg)
+
+
 async def test_create_text_only_model(
     client: AsyncClient,
     auth_user: AuthenticatedClient,
@@ -227,33 +270,6 @@ async def test_create_a_model_with_an_infini_gram_index(
     )
     assert test_model.root is not None, "The test model wasn't returned from the GET request"
     assert created_model.infini_gram_index == AvailableInfiniGramIndexId.OLMO_2_0325_32B
-
-
-# TODO: Implement skipped tests from from flask-api
-#
-@pytest.mark.skip(reason="Public endpoint not yet implemented")
-async def test_get_a_list_of_models():
-    pass
-
-
-@pytest.mark.skip(reason="Test not yet implemented")
-async def test_get_admin_models(client: AsyncClient, auth_user: AuthenticatedClient):
-    response = await list_admin_models(client, auth_user)
-
-    if isinstance(response, list):
-        # should have at least one model entity
-        assert len(response) > 0
-
-        # should have the following fields that match the model response
-        entity = response[0]
-        assert "is_visible" not in entity
-        assert "host" in entity
-        assert "modelIdOnHost" in entity
-        assert "availableTime" in entity
-        assert "deprecationTime" in entity
-    else:
-        msg = f"Response returned from GET {PUBLIC_MODEL_ENDPOINT} was not a list"
-        raise TypeError(msg)
 
 
 async def test_should_update_a_text_only_model(client: AsyncClient, auth_user: AuthenticatedClient):
@@ -430,21 +446,33 @@ async def test_should_error_on_invalid_constraints_update(client: AsyncClient, a
     assert update_model_too_low.status_code == 422
 
 
-@pytest.mark.skip(reason="DELETE endpoint not yet implemented")
-async def test_should_delete_a_model():
-    pass
+async def test_should_delete_a_model(client: AsyncClient, auth_user: AuthenticatedClient):
+    model_id = f"test-model-{uuid4()}"
 
+    create_model_request = CreateTextOnlyModelConfigRequest(
+        id=model_id,
+        name="model made for testing",
+        description="This model is made for testing",
+        model_id_on_host="test-model-id",
+        model_type=ModelType.Chat,
+        host=ModelHost.InferD,
+        prompt_type=PromptType.TEXT_ONLY,
+    )
 
-@pytest.mark.skip(reason="Reorder endpoint not yet implemented")
-async def test_should_reorder_models():
-    pass
+    create_response = await client.post(
+        ADMIN_MODEL_CONFIG_ENDPOINT,
+        json=create_model_request.model_dump(by_alias=True),
+        headers=auth_headers_for_user(auth_user),
+    )
+    create_response.raise_for_status()
 
+    delete_response = await client.delete(
+        f"{ADMIN_MODEL_CONFIG_ENDPOINT}{model_id}", headers=auth_headers_for_user(auth_user)
+    )
+    delete_response.raise_for_status()
+    assert delete_response.status_code == 204
 
-@pytest.mark.skip(reason="Public endpoint not yet implemented")
-async def test_get_public_models():
-    pass
+    available_models = await list_admin_models(client, auth_user)
 
+    assert all(model["id"] != model_id for model in available_models), "Model wasn't deleted"
 
-@pytest.mark.skip(reason="Anonymous auth not yet configured")
-async def test_get_admin_models_should_be_forbidden():
-    pass

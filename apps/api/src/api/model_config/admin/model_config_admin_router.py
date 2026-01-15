@@ -8,6 +8,9 @@ from api.model_config.admin.model_config_admin_create_service import (
     ModelConfigCreateServiceDependency,
     RootCreateModelConfigRequest,
 )
+from api.model_config.admin.model_config_admin_delete_service import (
+    ModelConfigAdminDeleteServiceDepenecy,
+)
 from api.model_config.admin.model_config_admin_read_service import (
     ModelConfigAdminReadServiceDependency,
 )
@@ -80,3 +83,21 @@ async def update_admin_model(
     )
 
     return updated_model
+
+
+@model_config_admin_router.delete("/{model_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_admin_model(
+    model_id: str,
+    model_config_admin_delete_service: ModelConfigAdminDeleteServiceDepenecy,
+    permission_service: PermissionServiceDependency,
+):
+    token = permission_service.require_permission(Permissions.WRITE_MODEL_CONFIG)
+
+    try:
+        await model_config_admin_delete_service.delete(model_id)
+
+        logger.info("model_config.delete", user=token.client, model_id=model_id, date=datetime.now(UTC))
+
+    except ValueError as e:
+        not_found_message = f"No model found with ID {model_id}"
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=not_found_message) from e

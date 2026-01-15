@@ -62,7 +62,10 @@ async def update_admin_model(
 ) -> ModelConfigResponse | None:
     token = permission_service.require_permission(Permissions.WRITE_MODEL_CONFIG)
 
-    updated_model = await model_config_admin_update_service.update(model_id, request)
+    try:
+        updated_model = await model_config_admin_update_service.update(model_id, request)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e)) from e
 
     if updated_model is None:
         not_found_message = f"No model found with ID {model_id}"

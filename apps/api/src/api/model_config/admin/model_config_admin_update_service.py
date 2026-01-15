@@ -7,9 +7,11 @@ from api.db.sqlalchemy_engine import SessionDependency
 from api.model_config.model_config_request import (
     BaseMultiModalModelConfigRequest,
     BaseTextOnlyModelConfigRequest,
+    validate_inference_parameters_against_model_constraints,
 )
 from api.model_config.model_config_response import ModelConfigResponse
 from api.model_config.model_config_utils import get_model_config_class
+from db.models.inference_opts import InferenceOpts
 from db.models.model_config import MultiModalModelConfig
 
 
@@ -101,6 +103,16 @@ class ModelConfigAdminUpdateService:
                 model_to_update.require_file_to_prompt = multi_modal_request.require_file_to_prompt
                 model_to_update.max_total_file_size = multi_modal_request.max_total_file_size
                 model_to_update.allow_files_in_followups = multi_modal_request.allow_files_in_followups
+
+            # to handle partial updates, we need to run the constraint validation explicitly
+            validate_inference_parameters_against_model_constraints(
+                model_to_update,
+                InferenceOpts(
+                    max_tokens=model_to_update.max_tokens_default,
+                    temperature=model_to_update.temperature_default,
+                    top_p=model_to_update.top_p_default,
+                ),
+            )
 
             return ModelConfigResponse.model_validate(model_to_update)
 

@@ -73,7 +73,7 @@ async def db_session(postgresql: AsyncConnection):
     async with engine.connect() as connection:
         transaction = await connection.begin()
 
-        Session = async_sessionmaker(bind=connection, expire_on_commit=False)  # noqa: N806
+        Session = async_sessionmaker(bind=connection, expire_on_commit=False, join_transaction_mode="create_savepoint")  # noqa: N806
 
         async def override_get_session():
             async with Session() as session:

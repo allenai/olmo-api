@@ -417,7 +417,7 @@ async def test_should_error_on_invalid_constraints_update(client: AsyncClient, a
         json=update_model_max_tokens,
         headers=auth_headers_for_user(auth_user),
     )
-    assert update_model_too_high.status_code == 400
+    assert update_model_too_high.status_code == 422
 
     temperature_override = {"temperature_default": cast(int, default_inference_constraints["temperature_lower"]) - 10}
     update_model_temperature = {**model_config_defaults, **temperature_override}
@@ -427,7 +427,7 @@ async def test_should_error_on_invalid_constraints_update(client: AsyncClient, a
         json=update_model_temperature,
         headers=auth_headers_for_user(auth_user),
     )
-    assert update_model_too_low.status_code == 400
+    assert update_model_too_low.status_code == 422
 
 
 @pytest.mark.skip(reason="DELETE endpoint not yet implemented")

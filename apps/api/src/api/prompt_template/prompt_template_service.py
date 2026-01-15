@@ -16,11 +16,13 @@ from db.models.tool_definitions import ToolSource
 
 class InferenceOptionsResponse(InferenceOpts, APIInterface): ...
 
+
 class ToolDefinition(APIInterface):
     name: str
     description: str
     parameters: dict[str, Any] | None = None
     tool_source: ToolSource
+
 
 class PromptTemplateResponse(APIInterface):
     id: str
@@ -41,16 +43,18 @@ class PromptTemplateResponse(APIInterface):
 class PromptTemplateResponseList(RootModel):
     root: list[PromptTemplateResponse]
 
+
 class PromptTemplateService:
     def __init__(self, session: SessionDependency):
         self.session = session
 
     async def get_all(self) -> PromptTemplateResponseList:
-         async with self.session.begin():
-
-            stmt = (select(PromptTemplate)
-                    .where(PromptTemplate.deleted == None)  # noqa: E711
-                    .options(selectinload(PromptTemplate.tool_definitions)))
+        async with self.session.begin():
+            stmt = (
+                select(PromptTemplate)
+                .where(PromptTemplate.deleted == None)  # noqa: E711
+                .options(selectinload(PromptTemplate.tool_definitions))
+            )
 
             result = await self.session.scalars(stmt)
 

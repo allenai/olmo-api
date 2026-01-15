@@ -114,10 +114,11 @@ async def associate_tool_with_template(
     )
     await db_session.commit()
 
+
 # TODO: after CRUD endpoints are added, remove these direct db update in favor of endpoints.
 async def create_three_sample_templates(
     db_session,
-    ) -> tuple[str, str, str]:
+) -> tuple[str, str, str]:
     """
     Helper function to create three prompt templates for testing:
     1. Basic template with minimal fields

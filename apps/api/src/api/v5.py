@@ -24,6 +24,7 @@ def whoami(auth_service: AuthServiceDependency) -> dict:
         "is_anonymous": token.is_anonymous_user,
     }
 
+
 # public routes
 v5_router.include_router(prompt_template_router, prefix="")
 

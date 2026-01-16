@@ -38,6 +38,7 @@ postgresql_proc = factories.postgresql_proc(
         Path("./schema/01-local.sql"),
         Path("./schema/02-schema.sql"),
         Path("./schema/03-add_models.sql"),
+        Path("./schema/04-add_initial_data.sql"),
     ],
 )
 

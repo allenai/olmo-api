@@ -19,6 +19,26 @@ INSERT INTO prompt_template (
 ) ON CONFLICT DO NOTHING;
 
 INSERT INTO prompt_template (
+    content,
+    creator,
+    extra_parameters,
+    file_urls,
+    id,
+    model_type,
+    name,
+    opts
+) VALUES (
+    'Count the boats in the images',
+    'paull',
+    NULL,
+    '{"https://storage.googleapis.com/ai2-playground-molmo/promptTemplates/Stock_278013497.jpeg","https://storage.googleapis.com/ai2-playground-molmo/promptTemplates/Stock_278013638.jpeg"}',
+    'images_counting_1',
+    'Chat',
+    'Count boats in multiple images',
+    '{"temperature":0}'
+) ON CONFLICT DO NOTHING;
+
+INSERT INTO prompt_template (
     id,
     name,
     content,

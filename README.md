@@ -77,6 +77,12 @@ To just check without making changes to the files:
 uv run ruff format --check
 ```
 
+To check for linting issues in fastapi:
+
+```bash
+uv run ruff check --exclude ./apps/flask-api
+```
+
 ## More Documentation
 
 -   [Database Access](./docs/db.md)

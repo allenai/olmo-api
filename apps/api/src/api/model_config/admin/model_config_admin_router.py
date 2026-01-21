@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
 
-from api.exceptions.not_found import NotFoundError
 from fastapi import APIRouter, HTTPException, status
 
 from api.auth.permission_service import PermissionServiceDependency
+from api.errors.not_found_error import NotFoundError
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.model_config.admin.model_config_admin_create_service import (
     ModelConfigCreateServiceDependency,

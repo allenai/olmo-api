@@ -1,2 +1,2 @@
 class NotFoundError(Exception):
-	pass
+    pass

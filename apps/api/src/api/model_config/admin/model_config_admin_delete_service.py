@@ -1,10 +1,10 @@
 from typing import Annotated
 
-from api.exceptions.not_found import NotFoundError
 from fastapi import Depends
 from sqlalchemy.sql import select
 
 from api.db.sqlalchemy_engine import SessionDependency
+from api.errors.not_found_error import NotFoundError
 from db.models.model_config import ModelConfig
 
 

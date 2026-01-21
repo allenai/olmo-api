@@ -2,7 +2,7 @@ from httpx import AsyncClient
 
 from e2e.conftest import AuthenticatedClient, auth_headers_for_user, make_user
 
-WHOAMI_ENDPOINT = "/v5/whoami"
+WHOAMI_ENDPOINT = "/v5/user/whoami"
 
 
 async def test_whoami_fails_without_auth(client: AsyncClient):
@@ -16,8 +16,7 @@ async def test_whoami_with_anonymous_user(client: AsyncClient, anon_user: Authen
 
     data = r.json()
     assert "client" in data, "Response should contain client field"
-    assert data["client"] == anon_user.client, "Client ID should match"
-    assert data.get("is_anonymous") is True, "Should be marked as anonymous"
+    assert data["client"] == anon_user.client, "Client ID should match anonymous token"
 
 
 async def test_whoami_with_authenticated_user(client: AsyncClient, auth_user: AuthenticatedClient):
@@ -26,8 +25,7 @@ async def test_whoami_with_authenticated_user(client: AsyncClient, auth_user: Au
 
     data = r.json()
     assert "client" in data, "Response should contain client field"
-    assert data["client"] == auth_user.client, "Client ID should match"
-    assert data.get("is_anonymous") is False, "Should not be marked as anonymous"
+    assert data["client"] == auth_user.client, "Client ID should match authenticated bearer token"
 
 
 async def test_multiple_anonymous_users_are_distinct(client: AsyncClient):

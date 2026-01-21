@@ -23,7 +23,7 @@ To start a local server, follow these steps:
 #### Running without Docker
 This project uses [uv](https://docs.astral.sh/uv). To run it locally, follow their [installation guide](https://docs.astral.sh/uv/#installation).
 
-After uv is installed, run `uv sync --all-packages` at the root of this project.
+After uv is installed, run `uv sync --all-packages --all-groups` at the root of this project.
 
 ### Adding a new package
 We use uv's workspaces to split code into larger chunks. 

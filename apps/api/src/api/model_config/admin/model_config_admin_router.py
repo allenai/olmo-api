@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 
+from api.exceptions.not_found import NotFoundError
 from fastapi import APIRouter, HTTPException, status
 
 from api.auth.permission_service import PermissionServiceDependency
@@ -123,6 +124,5 @@ async def delete_admin_model(
 
         logger.info("model_config.delete", user=token.client, model_id=model_id, date=datetime.now(UTC))
 
-    except ValueError as e:
-        not_found_message = f"No model found with ID {model_id}"
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=not_found_message) from e
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e

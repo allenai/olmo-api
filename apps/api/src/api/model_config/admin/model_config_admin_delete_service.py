@@ -1,5 +1,6 @@
 from typing import Annotated
 
+from api.exceptions.not_found import NotFoundError
 from fastapi import Depends
 from sqlalchemy.sql import select
 
@@ -30,8 +31,8 @@ class ModelConfigAdminDeleteService:
             delete_model = result.one_or_none()
 
             if not delete_model:
-                model_not_found_msg = "Model config not found!"
-                raise ValueError(model_not_found_msg)
+                model_not_found_msg = f"No model found with ID {model_id}"
+                raise NotFoundError(model_not_found_msg)
 
             await self.session.delete(delete_model)
 

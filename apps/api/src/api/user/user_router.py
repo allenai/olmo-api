@@ -17,7 +17,6 @@ async def get_user(
     """
     Get information for the current authenticated user.
 
-    Previously known as /whoami in the Flask API.
     Returns user authentication status, terms acceptance, and permissions.
     """
     token = auth_service.optional_auth()

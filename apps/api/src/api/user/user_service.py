@@ -12,6 +12,7 @@ from db.models.user import User
 # so that we can check if the user has accepted the latest version
 LAST_TERMS_UPDATE_DATE = datetime(2025, 12, 16, tzinfo=UTC)
 
+
 class UserService:
     def __init__(self, session: SessionDependency):
         self.session = session

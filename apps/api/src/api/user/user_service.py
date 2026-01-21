@@ -18,10 +18,9 @@ class UserService:
 
     async def get_by_client(self, client: str) -> User | None:
         """Get a user by their client ID."""
-        async with self.session.begin():
-            stmt = select(User).where(User.client == client)
-            result = await self.session.scalars(stmt)
-            return result.one_or_none()
+        stmt = select(User).where(User.client == client)
+        result = await self.session.scalars(stmt)
+        return result.one_or_none()
 
 
 UserServiceDependency = Annotated[UserService, Depends()]

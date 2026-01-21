@@ -48,7 +48,6 @@ ignore_missing_imports = true
 # taken from https://github.com/pypa/hatch/blob/master/ruff_defaults.toml
 [tool.ruff]
 line-length = 120
-target-version = "py311"
 src = [".", "apps/**/*", "packages/**/*"]
 extend-exclude = ["packages/infini-gram-api-client"]
 

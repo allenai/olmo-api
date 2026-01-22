@@ -2,6 +2,7 @@ import operator
 from typing import cast
 from uuid import uuid4
 
+from pydantic import HttpUrl
 import pytest
 from httpx import AsyncClient
 
@@ -119,6 +120,7 @@ async def test_create_text_only_model(
         name="model made for testing",
         description="This model is made for testing",
         model_id_on_host="test-model-id",
+        information_url=HttpUrl("https://google.com"),
         model_type=ModelType.Chat,
         host=ModelHost.BeakerQueues,
         prompt_type=PromptType.TEXT_ONLY,

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from httpx import ASGITransport, AsyncClient, Client
+from main import app
 from psycopg import AsyncConnection
 from pydantic import Field
 from pytest_postgresql import factories
@@ -12,7 +13,6 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from api.config import Settings
 from api.db.sqlalchemy_engine import get_session
 from db.url import make_url
-from main import app
 
 ANONYMOUS_USER_ID_HEADER = "X-Anonymous-User-ID"
 

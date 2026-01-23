@@ -2,9 +2,9 @@ import operator
 from typing import cast
 from uuid import uuid4
 
-from pydantic import HttpUrl
 import pytest
 from httpx import AsyncClient
+from pydantic import HttpUrl
 
 from api.model_config.admin.model_config_admin_create_service import (
     CreateMultiModalModelConfigRequest,

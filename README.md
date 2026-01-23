@@ -52,7 +52,7 @@ FLASK_CONFIG_PATH="./test.config.json" uv run --python 3.11 pytest apps/flask-ap
 To run the FastAPI tests, execute
 
 ```bash
-uv run pytest app/api
+uv run pytest apps/api
 ```
 
 ### Type check

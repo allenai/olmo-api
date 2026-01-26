@@ -756,6 +756,7 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
               ingressDenyAnno
         },
         spec: {
+            ingressClassName: 'nginx-node-port',
             tls: [ allenAITLS.spec + { hosts: allenAIHosts } ],
             rules: [
                 {

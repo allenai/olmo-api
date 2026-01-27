@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import Depends
@@ -76,7 +76,7 @@ class UserService:
 
             new_user = User(
                 client=token.client,
-                terms_accepted_date=request.terms_accepted_date,
+                terms_accepted_date=request.terms_accepted_date or datetime.now().astimezone(UTC),
                 acceptance_revoked_date=request.acceptance_revoked_date,
                 data_collection_accepted_date=request.data_collection_accepted_date,
                 data_collection_acceptance_revoked_date=request.data_collection_acceptance_revoked_date,

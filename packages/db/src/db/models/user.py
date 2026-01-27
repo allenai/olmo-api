@@ -14,7 +14,7 @@ class User(Base, kw_only=True):
 
     id: Mapped[str] = mapped_column(Text, primary_key=True, default_factory=new_id_generator("user"))
     client: Mapped[str] = mapped_column(Text, nullable=False, index=True)
-    terms_accepted_date: Mapped[datetime.datetime | None]
+    terms_accepted_date: Mapped[datetime.datetime]
     acceptance_revoked_date: Mapped[datetime.datetime | None]
     data_collection_accepted_date: Mapped[datetime.datetime | None]
     data_collection_acceptance_revoked_date: Mapped[datetime.datetime | None]

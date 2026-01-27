@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from api.auth.auth_service import AuthServiceDependency
+from api.user.user_migration_service import UserMigrationRequest, UserMigrationResponse, UserMigrationServiceDependency
 from api.user.user_service import UpsertUserRequest, UpsertUserResponse, UserServiceDependency
 from api.user.user_who_am_i_service import UserWhoAmIServiceDependency
 from core.auth.authenticated_client import AuthenticatedClient
@@ -40,5 +41,23 @@ async def upsert_user(
     token = auth_service.require_auth()
 
     user = await user_service.upsert_user(request, token)
+
+    return user
+
+@user_router.put("/migration")
+async def migrate_user(
+    request: UserMigrationRequest,
+    auth_service: AuthServiceDependency,
+    user_migration_service: UserMigrationServiceDependency,
+) -> UserMigrationResponse:
+    """
+    Create or update a user record.
+
+    Accepts user info and creates or updates the user in the database.
+    For authenticated (non-anonymous) users, also creates a HubSpot contact.
+    """
+    token = auth_service.require_auth()
+
+    user = await user_migration_service.migrate_user_from_anonymous_user(request, token)
 
     return user

@@ -53,7 +53,7 @@ async def make_user(*, client: AsyncClient, auth0_token: str | None = None, anon
     else:
         headers = {"Authorization": f"Bearer {auth0_token}"}
 
-    response = await client.get("/v5/whoami", headers=headers)
+    response = await client.get("/v5/user/whoami", headers=headers)
     response.raise_for_status()
     client_id = response.json().get("client")
     return AuthenticatedClient(client=client_id, token=auth0_token, is_anonymous=anonymous)

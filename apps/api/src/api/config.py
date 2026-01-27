@@ -42,6 +42,7 @@ class Settings(BaseSettings):
 
     AUTH_DOMAIN: str = Field(init=False)
     AUTH_AUDIENCE: str = Field(init=False)
+    HUBSPOT_TOKEN: str | None = None
 
     OTEL_COLLECTOR_TYPE: str = "cloud"
     OTEL_SERVICE_NAME: str = "olmo-api"

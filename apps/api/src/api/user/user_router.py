@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from api.auth.auth_service import AuthServiceDependency
+from api.user.user_service import UpsertUserRequest, UpsertUserResponse, UserServiceDependency
 from api.user.user_who_am_i_service import UserWhoAmIServiceDependency
 from core.auth.authenticated_client import AuthenticatedClient
 
@@ -22,3 +23,22 @@ async def get_who_am_i(
     auth_client = await who_am_i_service.get_by_client(token)
 
     return auth_client
+
+
+@user_router.put("/")
+async def upsert_user(
+    request: UpsertUserRequest,
+    auth_service: AuthServiceDependency,
+    user_service: UserServiceDependency,
+) -> UpsertUserResponse | None:
+    """
+    Create or update a user record.
+
+    Accepts user info and creates or updates the user in the database.
+    For authenticated (non-anonymous) users, also creates a HubSpot contact.
+    """
+    token = auth_service.require_auth()
+
+    user = await user_service.upsert_user(request, token)
+
+    return user

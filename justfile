@@ -21,8 +21,8 @@ verify: format lint type-check
 format:
   uv run ruff format
 
-lint:
-  uv run ruff check --exclude ./apps/flask-api
+lint *ARGS:
+  uv run ruff check {{ARGS}} --exclude ./apps/flask-api
 
 type-check:
   uv run mypy apps packages

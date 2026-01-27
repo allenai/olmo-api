@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     DATABASE_MAX_OVERFLOW_CONNECTIONS: int = 5
     AUTH_DOMAIN: str = Field(init=False)
     AUTH_AUDIENCE: str = Field(init=False)
+    HUBSPOT_TOKEN: str | None = None
 
     model_config = SettingsConfigDict(
         extra="ignore",

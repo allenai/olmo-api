@@ -24,7 +24,7 @@ class UserMigrationResponse(APIInterface):
 class UserMigrationService:
     def __init__(self, session: SessionDependency):
         self.session = session
-  
+
     async def migrate_user_from_anonymous_user(
         self,
         request: UserMigrationRequest,
@@ -108,16 +108,13 @@ class UserMigrationService:
         elif anon_user is None and auth_user is not None:
             updated_user = auth_user
 
-        # Migrate messages (not implemented here, placeholder count)
-        # msgs_to_be_migrated = await self.get_by_creator(request.anonymous_user_client)
-
-        # config = get_config()
-
-        messages_updated_count = 0  # This would be replaced with actual migration logic
+        updated_messages_count = await self.migrate_messages_to_new_user(
+            previous_user_id=request.anonymous_user_client, new_user_id=request.auth_user_client
+        )
 
         return UserMigrationResponse.model_validate({
             "updated_user": updated_user,
-            "messages_updated_count": messages_updated_count,
+            "messages_updated_count": updated_messages_count,
         })
 
     async def migrate_messages_to_new_user(self, previous_user_id: str, new_user_id: str):

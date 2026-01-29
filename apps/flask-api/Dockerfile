@@ -38,7 +38,7 @@ FROM python:3.11-slim-bookworm AS runner
 RUN groupadd --system --gid 999 nonroot \
     && useradd --system --gid 999 --uid 999 --create-home nonroot
 
-RUN apt-get update -qq && apt-get install ffmpeg -y
+COPY --from=mwader/static-ffmpeg:8.0.1 /ffmpeg /usr/local/bin/
 
 # Copy the application from the builder
 COPY --from=builder --chown=nonroot:nonroot /app /app

@@ -6,6 +6,7 @@ from pydantic import (
     ByteSize,
     Field,
     HttpUrl,
+    field_serializer,
     model_validator,
 )
 
@@ -66,6 +67,13 @@ class BaseModelConfigRequest(APIInterface):
     max_tokens_step: int | None = None
 
     stop_default: list[str] | None = None
+
+    @field_serializer("information_url")
+    @classmethod
+    def serialize_information_url(cls, value: HttpUrl | None) -> str | None:
+        if value is None:
+            return None
+        return str(value)
 
     @model_validator(mode="after")
     def check_inference_parameters_against_constraints(self) -> Self:

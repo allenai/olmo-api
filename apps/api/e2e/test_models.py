@@ -4,6 +4,7 @@ from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
+from pydantic import HttpUrl
 
 from api.model_config.admin.model_config_admin_create_service import (
     CreateMultiModalModelConfigRequest,
@@ -119,6 +120,7 @@ async def test_create_text_only_model(
         name="model made for testing",
         description="This model is made for testing",
         model_id_on_host="test-model-id",
+        information_url=HttpUrl("https://google.com"),
         model_type=ModelType.Chat,
         host=ModelHost.BeakerQueues,
         prompt_type=PromptType.TEXT_ONLY,

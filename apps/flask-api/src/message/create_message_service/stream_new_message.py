@@ -3,7 +3,7 @@ import os
 from collections.abc import Callable, Generator
 from dataclasses import asdict
 from time import time_ns
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from flask import current_app
 from opentelemetry import trace
@@ -17,18 +17,21 @@ from pydantic_ai.models import ModelRequestParameters
 
 import core.object_id as obj
 from core.auth.token import Token
+from core.message.message_chunk import (
+    Chunk,
+    ErrorChunk,
+    MessageChunk,
+    MessageStreamError,
+    StreamEndChunk,
+    StreamStartChunk,
+)
+from core.message.role import Role
+from core.tools.tool_source import ToolSource
 from db.models.message import Message
 from db.models.model_config import ModelConfig
 from db.models.tool_call import ToolCall
-from db.models.tool_definitions import ToolSource
 from src import db, parse
 from src.dao.completion import CompletionOutput
-from src.dao.message.message_models import (
-    MessageChunk,
-    MessageStreamError,
-    Role,
-    TokenLogProbs,
-)
 from src.dao.message.message_repository import BaseMessageRepository
 from src.inference.InferenceEngine import (
     FinishReason,
@@ -42,12 +45,6 @@ from src.message.create_message_service.files import (
 )
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.inference_logging import log_inference_timing
-from src.message.message_chunk import (
-    Chunk,
-    ErrorChunk,
-    StreamEndChunk,
-    StreamStartChunk,
-)
 from src.message.SafetyChecker import (
     SafetyCheckerType,
 )
@@ -68,6 +65,9 @@ from .database import (
     create_user_message,
     setup_msg_thread,
 )
+
+if TYPE_CHECKING:
+    from core.message.token_log_probs import TokenLogProbs
 
 DEFAULT_MAX_STEPS = 10
 

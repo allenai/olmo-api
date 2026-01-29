@@ -4,7 +4,7 @@ from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
 import src.dao.message.message_models as message
-from src.inference.InferenceEngine import FinishReason
+from core.inference_engine.finish_reason import FinishReason
 
 
 @dataclasses.dataclass

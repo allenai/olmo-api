@@ -1,20 +1,13 @@
 from dataclasses import dataclass
 from datetime import datetime
-from enum import IntEnum
 
 from psycopg_pool import ConnectionPool
 from werkzeug import exceptions
 
+from core.label.rating import Rating
 from core.object_id import ID, NewID
 
 from . import paged
-
-
-class Rating(IntEnum):
-    FLAG = -1
-    NEGATIVE = 0
-    POSITIVE = 1
-
 
 LabelRow = tuple[str, str, int, str, str | None, datetime, datetime | None]
 

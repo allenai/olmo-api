@@ -14,7 +14,7 @@ from src import db
 from src.auth.auth_service import authn
 from src.config.get_config import cfg
 from src.config.get_models import get_model_by_id
-from src.dao.message.inference_opts_model import InferenceOpts
+from db.models.inference_opts import InferenceOpts
 from src.dao.message.message_repository import BaseMessageRepository
 from src.flask_pydantic_api.utils import UploadedFile
 from src.message.create_message_request import (

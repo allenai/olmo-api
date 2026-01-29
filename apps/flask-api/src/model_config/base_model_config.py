@@ -1,5 +1,6 @@
 from typing import Annotated, Literal, Self
 
+from db.models.inference_opts import InferenceOpts
 from pydantic import (
     AfterValidator,
     AwareDatetime,
@@ -20,7 +21,6 @@ from db.models.model_config import (
 from infini_gram_api_client.models.available_infini_gram_index_id import (
     AvailableInfiniGramIndexId,
 )
-from src.dao.message.inference_opts_model import InferenceOpts
 
 
 def empty_string_to_none(value: str | None) -> str | None:

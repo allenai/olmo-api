@@ -2,8 +2,8 @@ from typing import Any
 
 from pydantic_ai.models.openai import OpenAIChatModelSettings
 
+from db.models.inference_opts import InferenceOpts
 from db.models.model_config import ModelConfig
-from src.dao.message.message_models import InferenceOpts
 
 
 def pydantic_settings_map(

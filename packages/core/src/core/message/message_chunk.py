@@ -5,7 +5,14 @@ from pydantic import computed_field
 
 import core.object_id as obj
 from core.api_interface import APIInterface
-from db.models.tool_definitions import ToolSource
+from core.message.token_log_probs import TokenLogProbs
+from core.tools.tool_source import ToolSource
+
+
+class MessageChunk(APIInterface):
+    message: obj.ID
+    content: str
+    logprobs: list[list[TokenLogProbs]] | None = None
 
 
 class ChunkType(StrEnum):
@@ -25,6 +32,12 @@ class ErrorSeverity(StrEnum):
     ERROR = "error"
     WARNING = "warning"
     INFO = "info"
+
+
+class MessageStreamError(APIInterface):
+    message: obj.ID
+    error: str
+    reason: str
 
 
 class BaseChunk(APIInterface):

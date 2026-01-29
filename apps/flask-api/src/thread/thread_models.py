@@ -11,25 +11,18 @@ from pydantic import (
 )
 
 from core.api_interface import APIInterface
+from core.inference_engine.finish_reason import FinishReason
+from core.label.label import Label
+from core.message.message_chunk import ErrorCode, ErrorSeverity
+from core.message.role import Role
+from core.message.text_snippet import text_snippet
+from core.tools.tool_call import ToolCall
+from core.tools.tool_definition import ToolDefinition
+from db.models.inference_opts import InferenceOpts
 from db.models.input_parts import InputPart
 from db.models.message import Message as SQLAMessage
 from db.models.model_config import ModelType
-from db.models.tool_definitions import ToolSource
-from src.dao.label import Rating
-from src.dao.message.message_models import InferenceOpts, Message, Role
-from src.inference.InferenceEngine import FinishReason
-from src.message.map_text_snippet import text_snippet
-from src.message.message_chunk import ErrorCode, ErrorSeverity
-
-
-class LabelResponse(APIInterface):
-    id: str
-    message: str
-    rating: Rating
-    creator: str
-    comment: str | None = Field(default=None)
-    created: AwareDatetime
-    deleted: AwareDatetime | None = Field(default=None)
+from src.dao.message.message_models import Message
 
 
 class InferenceOptionsResponse(InferenceOpts, APIInterface): ...
@@ -40,19 +33,6 @@ class LogProbResponse(APIInterface):
     text: str
     logprob: float
 
-
-class ToolCall(APIInterface):
-    tool_name: str
-    args: str | dict[str, Any] | None = None
-    tool_call_id: str
-    tool_source: ToolSource
-
-
-class ToolDefinition(APIInterface):
-    name: str
-    description: str
-    parameters: dict[str, Any] | None = None
-    tool_source: ToolSource
 
 
 TOOL_NAMES_TO_TRUNCATE = {
@@ -86,7 +66,7 @@ class FlatMessage(APIInterface):
     finish_reason: FinishReason | None = None
     harmful: bool | None = None
     expiration_time: AwareDatetime | None = Field(default=None)
-    labels: list[LabelResponse] = Field(default_factory=list)
+    labels: list[Label] = Field(default_factory=list)
     file_urls: list[str] | None = Field(default=None)
     tool_calls: list[ToolCall] | None = Field(default=None)
     thinking: str | None = Field(default=None)

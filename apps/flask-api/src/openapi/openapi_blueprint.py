@@ -3,8 +3,8 @@ from typing import TYPE_CHECKING, Any
 from flask import Blueprint, render_template
 from pydantic.json_schema import GenerateJsonSchema, JsonSchemaMode, models_json_schema
 
+from core.message.message_chunk import BaseChunk
 from src.flask_pydantic_api.openapi import get_openapi_schema
-from src.message.message_chunk import BaseChunk
 
 if TYPE_CHECKING:
     from pydantic import BaseModel

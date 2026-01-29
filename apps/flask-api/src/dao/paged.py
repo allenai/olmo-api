@@ -1,22 +1,8 @@
-from enum import StrEnum
-
 from flask import Request
-from pydantic import BaseModel, Field
 from pydantic.dataclasses import dataclass
 from werkzeug import exceptions
 
-
-class SortDirection(StrEnum):
-    ASC = "ASC"
-    DESC = "DESC"
-
-
-class SortOptions(BaseModel):
-    offset: int | None = Field(default=0, ge=0)
-    # TODO: Implement a customizable max_limit if we use this everywhere
-    limit: int = Field(default=10, ge=0, le=100)
-    field: str | None = Field(default=None, validation_alias="sort")
-    order: SortDirection = Field(default=SortDirection.DESC)
+from core.sort_options import SortDirection, SortOptions
 
 
 @dataclass

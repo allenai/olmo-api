@@ -8,20 +8,13 @@ from sqlalchemy.orm import selectinload
 
 from api.db.sqlalchemy_engine import SessionDependency
 from core.api_interface import APIInterface
+from core.tools.tool_definition import ToolDefinition
 from db.models.inference_opts import InferenceOpts
 from db.models.model_config import ModelType
 from db.models.prompt_template import PromptTemplate
-from db.models.tool_definitions import ToolSource
 
 
 class InferenceOptionsResponse(InferenceOpts, APIInterface): ...
-
-
-class ToolDefinition(APIInterface):
-    name: str
-    description: str
-    parameters: dict[str, Any] | None = None
-    tool_source: ToolSource
 
 
 class PromptTemplateResponse(APIInterface):

@@ -45,6 +45,10 @@ module = ["google.cloud.storage"]
 ignore_missing_imports = true
 
 
+[[tool.mypy.overrides]]
+module = ["load-testing.*"]
+ignore_errors = true
+
 # taken from https://github.com/pypa/hatch/blob/master/ruff_defaults.toml
 [tool.ruff]
 line-length = 120

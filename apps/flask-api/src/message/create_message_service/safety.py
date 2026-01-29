@@ -26,7 +26,6 @@ from src.message.SafetyChecker import (
     SafetyCheckerType,
     SafetyCheckRequest,
 )
-from src.message.WildGuard import WildGuard
 from src.otel.default_tracer import get_default_tracer
 
 tracer = get_default_tracer()
@@ -40,9 +39,6 @@ def check_message_safety(
     trace.get_current_span().set_attribute("safety_checker_type", checker_type)
     safety_checker: SafetyChecker = GoogleModerateText()
     request = SafetyCheckRequest(content=text)
-
-    if checker_type == SafetyCheckerType.WildGuard:
-        safety_checker = WildGuard()
 
     try:
         result = safety_checker.check_request(request)

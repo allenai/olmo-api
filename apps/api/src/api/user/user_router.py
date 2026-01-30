@@ -52,10 +52,9 @@ async def migrate_user(
     user_migration_service: UserMigrationServiceDependency,
 ) -> UserMigrationResponse:
     """
-    Create or update a user record.
+    Migrates annonymous user data to the logged in user account.
 
-    Accepts user info and creates or updates the user in the database.
-    For authenticated (non-anonymous) users, also creates a HubSpot contact.
+    Accepts an anonymous user ID.
     """
     token = auth_service.require_auth()
 

@@ -1,13 +1,21 @@
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-import pytest
 from httpx import AsyncClient
 
 from e2e.conftest import AuthenticatedClient, auth_headers_for_user
 
 USER_ENDPOINT = "/v5/user/"
 WHOAMI_ENDPOINT = "/v5/user/whoami"
+
+
+def iso_datetimes_equal(actual_iso: str, expected_datetime: datetime) -> bool:
+    """Helper to compare ISO datetime strings with datetime objects, accounting for timezone differences."""
+    actual_dt = datetime.fromisoformat(actual_iso)
+    expected_utc = expected_datetime.astimezone(UTC)
+    actual_utc = actual_dt.astimezone(UTC)
+
+    return actual_utc == expected_utc
 
 
 async def test_upsert_user_fails_without_auth(client: AsyncClient):
@@ -38,7 +46,6 @@ async def test_anonymous_user_can_create_anonymous_user_record(client: AsyncClie
     assert payload["client"] == anon_user.client, "Client ID should match anonymous user"
 
 
-@pytest.mark.skip(reason="Timezone assertion issue in test infrastructure")
 async def test_terms_acceptance_fields(client: AsyncClient, auth_user: AuthenticatedClient):
     terms_accepted_date = datetime.now(ZoneInfo("America/New_York"))
     acceptance_revoked_date = terms_accepted_date + timedelta(days=1)
@@ -55,12 +62,12 @@ async def test_terms_acceptance_fields(client: AsyncClient, auth_user: Authentic
 
     payload = response.json()
     assert payload["client"] == auth_user.client, "Client ID should match authenticated user"
-    assert payload["termsAcceptedDate"] == terms_accepted_date.astimezone(UTC).isoformat(), (
-        "Terms accepted date should be in UTC"
+    assert iso_datetimes_equal(payload["termsAcceptedDate"], terms_accepted_date), (
+        "Terms accepted date should be same as provided date"
     )
 
     # Revoke acceptance
-    await client.put(
+    revoke_response = await client.put(
         USER_ENDPOINT,
         headers=auth_headers_for_user(auth_user),
         json={
@@ -68,13 +75,13 @@ async def test_terms_acceptance_fields(client: AsyncClient, auth_user: Authentic
         },
     )
 
-    payload = response.json()
+    payload = revoke_response.json()
     assert payload["client"] == auth_user.client, "Client ID should match authenticated user"
-    assert payload["termsAcceptedDate"] == terms_accepted_date.astimezone(UTC).isoformat(), (
-        "Terms accepted date should be in UTC"
+    assert iso_datetimes_equal(payload["termsAcceptedDate"], terms_accepted_date), (
+        "Terms accepted date should be same as provided revoked date"
     )
-    assert payload["acceptanceRevokedDate"] == acceptance_revoked_date.astimezone(UTC).isoformat(), (
-        "Acceptance revoked date should be in UTC"
+    assert iso_datetimes_equal(payload["acceptanceRevokedDate"], acceptance_revoked_date), (
+        "Acceptance revoked date should be same as provided revokeddate"
     )
 
 
@@ -135,7 +142,6 @@ async def test_terms_acceptance_status_in_whoami(client: AsyncClient, auth_user:
     )
 
 
-@pytest.mark.skip(reason="Timezone assertion issue in test infrastructure")
 async def test_data_collection_consent_fields(client: AsyncClient, auth_user: AuthenticatedClient):
     data_collection_accepted_date = datetime.now(ZoneInfo("America/New_York"))
 
@@ -152,8 +158,8 @@ async def test_data_collection_consent_fields(client: AsyncClient, auth_user: Au
 
     payload = response.json()
     assert payload["client"] == auth_user.client, "Client ID should match authenticated user"
-    assert payload["dataCollectionAcceptedDate"] == data_collection_accepted_date.astimezone(UTC).isoformat(), (
-        "Data collection accepted date should be in UTC"
+    assert iso_datetimes_equal(payload["dataCollectionAcceptedDate"], data_collection_accepted_date), (
+        "Data collection accepted date should be same as provided date"
     )
 
 
@@ -196,7 +202,6 @@ async def test_data_collection_consent_status_in_whoami(client: AsyncClient, aut
     assert payload["hasAcceptedDataCollection"] is False, "User should have revoked data collection"
 
 
-@pytest.mark.skip(reason="Timezone assertion issue in test infrastructure")
 async def test_media_collection_consent_fields(client: AsyncClient, auth_user: AuthenticatedClient):
     media_collection_accepted_date = datetime.now(ZoneInfo("America/New_York"))
 
@@ -213,8 +218,8 @@ async def test_media_collection_consent_fields(client: AsyncClient, auth_user: A
 
     payload = response.json()
     assert payload["client"] == auth_user.client, "Client ID should match authenticated user"
-    assert payload["mediaCollectionAcceptedDate"] == media_collection_accepted_date.astimezone(UTC).isoformat(), (
-        "Media collection accepted date should be in UTC"
+    assert iso_datetimes_equal(payload["mediaCollectionAcceptedDate"], media_collection_accepted_date), (
+        "Media collection accepted date should be same as provided date"
     )
 
 

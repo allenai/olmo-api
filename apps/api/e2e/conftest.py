@@ -71,23 +71,17 @@ async def db_session(postgresql: AsyncConnection):
     db_url = f"postgresql+psycopg://{postgresql.info.user}:@{postgresql.info.host}:{postgresql.info.port}/{postgresql.info.dbname}"
     engine = create_async_engine(make_url(db_url))
 
-    async with engine.connect() as connection:
-        transaction = await connection.begin()
+    Session = async_sessionmaker(engine, expire_on_commit=False)  # noqa: N806
 
-        Session = async_sessionmaker(bind=connection, expire_on_commit=False, join_transaction_mode="create_savepoint")  # noqa: N806
+    async def override_get_session():
+        async with Session() as session:
+            yield session
 
-        async def override_get_session():
-            async with Session() as session:
-                yield session
+    app.dependency_overrides[get_session] = override_get_session
 
-        # Override `get_session` dependency for tests
-        app.dependency_overrides[get_session] = override_get_session
+    yield
 
-        yield
-
-        await transaction.rollback()
-        app.dependency_overrides.clear()
-
+    app.dependency_overrides.clear()
     await engine.dispose()
 
 

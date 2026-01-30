@@ -162,10 +162,5 @@ class UserMigrationService:
 
         return count
 
-    async def get_by_creator(self, creator_id: str):
-        stmt = select(Message).where(Message.creator == creator_id)
-        result = await self.session.scalars(stmt)
-        return result.unique().all()
-
 
 UserMigrationServiceDependency = Annotated[UserMigrationService, Depends()]

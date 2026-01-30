@@ -1,5 +1,6 @@
 import uuid
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -7,10 +8,12 @@ from httpx import ASGITransport, AsyncClient, Client
 from psycopg import AsyncConnection
 from pydantic import Field
 from pytest_postgresql import factories
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from api.config import Settings
 from api.db.sqlalchemy_engine import get_session
+from db.models.user import User
 from db.url import make_url
 from main import app
 
@@ -39,6 +42,7 @@ postgresql_proc = factories.postgresql_proc(
         Path("./schema/02-schema.sql"),
         Path("./schema/03-add_models.sql"),
         Path("./schema/04-add_prompt_templates.sql"),
+        Path("./schema/05-add_test_migration_users.sql"),
     ],
 )
 
@@ -64,6 +68,45 @@ def auth_headers_for_user(user: AuthenticatedClient) -> dict[str, str]:
     if user.is_anonymous:
         return {ANONYMOUS_USER_ID_HEADER: str(user.client)}
     return {"Authorization": f"Bearer {user.token}"}
+
+
+async def add_user_to_database(auth_client: AuthenticatedClient) -> User:
+    """Add a user directly to the database.
+
+    Args:
+        auth_client: The authenticated client object
+
+    Returns:
+        The created or existing User object
+    """
+
+    async for session in get_session():
+        # Check if user already exists
+        stmt = select(User).where(User.client == auth_client.client)
+        result = await session.execute(stmt)
+        existing_user = result.scalar_one_or_none()
+
+        if existing_user:
+            return existing_user
+
+        # Create new user with provided fields
+        new_user = User(
+            client=auth_client.client,
+            terms_accepted_date=datetime.now(UTC),
+            acceptance_revoked_date=None,
+            data_collection_accepted_date=None,
+            data_collection_acceptance_revoked_date=None,
+            media_collection_accepted_date=None,
+            media_collection_acceptance_revoked_date=None,
+        )
+        session.add(new_user)
+        await session.commit()
+        await session.refresh(new_user)
+        return new_user
+
+    # Explicit return if session iteration completes without returning
+    msg = "Failed to create user in database."
+    raise RuntimeError(msg)
 
 
 @pytest.fixture(autouse=True)

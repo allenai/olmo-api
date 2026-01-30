@@ -20,8 +20,7 @@ async def test_upsert_user_fails_without_auth(client: AsyncClient):
     assert response.status_code == 401, "Expected 401 when accessing user endpoint without auth"
 
 
-async def test_anonymous_user_cannot_create_user_record(client: AsyncClient, anon_user: AuthenticatedClient):
-    # Anonymous users get 401 because require_auth() is used
+async def test_anonymous_user_can_create_anonymous_user_record(client: AsyncClient, anon_user: AuthenticatedClient):
     terms_accepted_date = datetime.now(ZoneInfo("America/New_York"))
 
     response = await client.put(
@@ -31,8 +30,12 @@ async def test_anonymous_user_cannot_create_user_record(client: AsyncClient, ano
             "termsAcceptedDate": terms_accepted_date.isoformat(),
         },
     )
-    # The endpoint uses require_auth() which rejects anonymous users
-    assert response.status_code == 401, "Anonymous users should get 401 from user endpoint"
+    assert response.status_code == 200, (
+        f"Anonymous users should be able to create anonymous user records, got {response.status_code}"
+    )
+
+    payload = response.json()
+    assert payload["client"] == anon_user.client, "Client ID should match anonymous user"
 
 
 @pytest.mark.skip(reason="Timezone assertion issue in test infrastructure")

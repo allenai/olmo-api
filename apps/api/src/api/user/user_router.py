@@ -38,11 +38,12 @@ async def upsert_user(
     Accepts user info and creates or updates the user in the database.
     For authenticated (non-anonymous) users, also creates a HubSpot contact.
     """
-    token = auth_service.require_auth()
+    token = auth_service.optional_auth()
 
     user = await user_service.upsert_user(request, token)
 
     return user
+
 
 @user_router.put("/migration")
 async def migrate_user(

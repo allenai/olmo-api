@@ -20,7 +20,9 @@ class ThreadReadService:
 
     async def get_one_with_user(self, thread_id: str, user_id: str) -> Thread | None:
         async with self.session.begin():
-            messages_seq = await self.message_repository.get_message_with_children(message_id=thread_id, user_id=user_id)
+            messages_seq = await self.message_repository.get_message_with_children(
+                message_id=thread_id, user_id=user_id
+            )
 
             if messages_seq is None:
                 return None

@@ -114,8 +114,7 @@ async def db_session(postgresql: AsyncConnection):
 
     app.dependency_overrides[get_session] = override_get_session
 
-    async with Session() as session:
-        yield session
+    yield
 
     app.dependency_overrides.clear()
     await engine.dispose()

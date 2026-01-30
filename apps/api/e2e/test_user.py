@@ -100,7 +100,7 @@ async def test_terms_acceptance_status_in_whoami(client: AsyncClient, auth_user:
     assert payload["hasAcceptedTermsAndConditions"] is True, "User should have accepted T&Cs"
 
     # Revoke acceptance
-    await client.put(
+    revoke_response = await client.put(
         USER_ENDPOINT,
         headers=auth_headers_for_user(auth_user),
         json={
@@ -108,13 +108,21 @@ async def test_terms_acceptance_status_in_whoami(client: AsyncClient, auth_user:
         },
     )
 
+    assert revoke_response.status_code == 200, (
+        f"Expected 200 when revoking acceptance, got {revoke_response.status_code}"
+    )
+
     # Re-accept with new date
-    await client.put(
+    re_accept_response = await client.put(
         USER_ENDPOINT,
         headers=auth_headers_for_user(auth_user),
         json={
             "termsAcceptedDate": terms_reaccepted_date.isoformat(),
         },
+    )
+
+    assert re_accept_response.status_code == 200, (
+        f"Expected 200 when re-accepting terms, got {re_accept_response.status_code}"
     )
 
     # Check whoami endpoint shows user has accepted again

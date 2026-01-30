@@ -47,8 +47,8 @@ async def delete_thread(
 ):
     token = auth_service.optional_auth()
     try:
-        await thread_delete_service.delete(thread_id=thread_id, user_id=token.client)
+        await thread_delete_service.delete(thread_id=thread_id, user=token)
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except ForbiddenError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e)) from e
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e

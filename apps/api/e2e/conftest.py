@@ -79,7 +79,7 @@ async def db_session(postgresql: AsyncConnection):
 
     app.dependency_overrides[get_session] = override_get_session
 
-    yield
+    yield Session
 
     app.dependency_overrides.clear()
     await engine.dispose()

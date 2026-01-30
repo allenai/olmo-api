@@ -34,7 +34,6 @@ class LogProbResponse(APIInterface):
     logprob: float
 
 
-
 TOOL_NAMES_TO_TRUNCATE = {
     "tulu-deep-research_serper_google_webpage_search",
     "serper_google_webpage_search",

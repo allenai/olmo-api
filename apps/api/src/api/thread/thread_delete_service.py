@@ -7,6 +7,7 @@ from sqlalchemy import delete
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
 from api.db.sqlalchemy_engine import SessionDependency
 from api.service_errors import ForbiddenError, NotFoundError
+from core.auth.token import Token
 from db.models.completion import Completion
 
 
@@ -15,7 +16,7 @@ class ThreadDeleteService:
         self.session = session
         self.message_repository = message_repository
 
-    async def delete(self, thread_id: str, user_id: str) -> None:
+    async def delete(self, thread_id: str, user: Token) -> None:
         async with self.session.begin():
             messages = await self.message_repository.get_messages_by_root_for_delete(message_id=thread_id)
 
@@ -26,9 +27,13 @@ class ThreadDeleteService:
                 not_found_message = f"Thread with id {thread_id} was not found, unable to delete"
                 raise NotFoundError(not_found_message)
 
-            if root_message.creator != user_id:
-                forbidden_message = "The current thread was not created by the current user. You do not have permission to delete the current thread."
-                raise ForbiddenError(forbidden_message)
+            if user.is_anonymous_user:
+                anon_forbidden_message = "Anonymous user does not have permission to delete the current thread."
+                raise ForbiddenError(anon_forbidden_message)
+
+            if root_message.creator != user.client:
+                auth_forbidden_message = "The current thread was not created by the current user. You do not have permission to delete the current thread."
+                raise ForbiddenError(auth_forbidden_message)
 
             # prevent deletion if the current thread is out of the 30-day window
             if datetime.now(UTC) - root_message.created > timedelta(days=30):

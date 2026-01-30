@@ -21,7 +21,7 @@ from core.tools.tool_call import ToolCall
 from core.tools.tool_definition import ToolDefinition
 from db.models.inference_opts import InferenceOpts
 from db.models.input_parts import InputPart
-from db.models.message import Message as SQLAMessage  # TODO: Change SQLAMessage => Message
+from db.models.message import Message
 from db.models.model_config import ModelType
 
 
@@ -76,8 +76,8 @@ class FlatMessage(APIInterface):
             if len(value) == 0:
                 return value
 
-            if isinstance(value[0], (SQLAMessage)):
-                value = cast(list[SQLAMessage], value)
+            if isinstance(value[0], (Message)):
+                value = cast(list[Message], value)
                 return [child.id for child in value]
 
         return value
@@ -98,15 +98,13 @@ class FlatMessage(APIInterface):
         time_since_creation = datetime.now(tz=self.created.tzinfo) - self.created
         return time_since_creation.days > 30  # noqa: PLR2004
 
-    # TODO: Change SQLAMessage => Message
     @staticmethod
-    def from_message(message: SQLAMessage) -> "FlatMessage":
+    def from_message(message: Message) -> "FlatMessage":
         return FlatMessage.model_validate(message)
 
-    # TODO: Change SQLAMessage => Message
     @staticmethod
     def from_message_with_children(
-        message: SQLAMessage,
+        message: Message,
     ) -> list["FlatMessage"]:
         return _map_messages(message)
 
@@ -126,18 +124,8 @@ class FlatMessage(APIInterface):
 
         return v
 
-    # hmm - if relations aren't used
-    #
-    # @classmethod
-    # def model_validate_with_exclude(cls, message: SQLAMessage, *, exclude: set[str] | None = None) -> "FlatMessage":
-    #     exclude = exclude or set()
-    #     data = {
-    #         field_name: getattr(message, field_name) for field_name in cls.model_fields if field_name not in exclude
-    #     }
-    #     return cls.model_validate(data)
-
     @staticmethod
-    def from_message_seq(messages: Sequence[SQLAMessage]) -> list["FlatMessage"]:
+    def from_message_seq(messages: Sequence[Message]) -> list["FlatMessage"]:
         for message in messages:
             children = [msg for msg in messages if msg.parent == message.id]
             orm.attributes.set_committed_value(message, "children", children)
@@ -146,8 +134,7 @@ class FlatMessage(APIInterface):
         return message_list
 
 
-# TODO: Change SQLAMessage => Message
-def _map_messages(message: SQLAMessage) -> list[FlatMessage]:
+def _map_messages(message: Message) -> list[FlatMessage]:
     messages = [FlatMessage.from_message(message)]
 
     if message.children is None or len(message.children) == 0:

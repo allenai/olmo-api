@@ -188,7 +188,7 @@ async def test_cant_delete_another_users_thread(client: AsyncClient, db_session,
     response.raise_for_status()
 
 async def test_cannot_delete_old_thread(client: AsyncClient, db_session, auth_user: AuthenticatedClient):
-    async with db_session() as session:
+    async with db_session() as session, session.begin():
         model_result = await session.scalars(select(ModelConfig).limit(1))
         model = model_result.first()
         if model is None:
@@ -214,7 +214,6 @@ async def test_cannot_delete_old_thread(client: AsyncClient, db_session, auth_us
             .where(Message.id == message.id)
             .values(created=datetime.now(UTC) - timedelta(days=31))
         )
-        await session.commit()
 
     # Try to delete
     response = await client.delete(f"{THREADS_ENDPOINT}{message.id}", headers=auth_headers_for_user(auth_user))

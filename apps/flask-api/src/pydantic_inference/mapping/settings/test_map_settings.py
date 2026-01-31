@@ -1,5 +1,5 @@
+from db.models.inference_opts import InferenceOpts
 from db.models.model_config import ModelConfig, ModelHost, ModelType, PromptType
-from src.dao.message.message_models import InferenceOpts
 from src.pydantic_inference.mapping.settings.map_settings import pydantic_settings_map
 
 default_inference_constraints = {

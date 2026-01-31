@@ -3,6 +3,7 @@ from typing import Any, Optional
 
 from sqlalchemy import DateTime, Dialect, MetaData, TypeDecorator
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, MappedAsDataclass
 
 
@@ -36,7 +37,7 @@ class DateTimeUTC(TypeDecorator[datetime.datetime]):
         return value
 
 
-class Base(MappedAsDataclass, DeclarativeBase):
+class Base(AsyncAttrs, MappedAsDataclass, DeclarativeBase):
     type_annotation_map = {
         datetime.datetime: DateTimeUTC,
         dict: JSONB,

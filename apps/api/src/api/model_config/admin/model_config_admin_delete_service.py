@@ -4,7 +4,7 @@ from fastapi import Depends
 from sqlalchemy.sql import select
 
 from api.db.sqlalchemy_engine import SessionDependency
-from api.errors.not_found_error import NotFoundError
+from api.service_errors import NotFoundError
 from db.models.model_config import ModelConfig
 
 

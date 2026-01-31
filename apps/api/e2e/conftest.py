@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from httpx import ASGITransport, AsyncClient, Client
+from main import app
 from psycopg import AsyncConnection
 from pydantic import Field
 from pytest_postgresql import factories
@@ -12,7 +13,6 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from api.config import Settings
 from api.db.sqlalchemy_engine import get_session
 from db.url import make_url
-from main import app
 
 ANONYMOUS_USER_ID_HEADER = "X-Anonymous-User-ID"
 
@@ -71,23 +71,17 @@ async def db_session(postgresql: AsyncConnection):
     db_url = f"postgresql+psycopg://{postgresql.info.user}:@{postgresql.info.host}:{postgresql.info.port}/{postgresql.info.dbname}"
     engine = create_async_engine(make_url(db_url))
 
-    async with engine.connect() as connection:
-        transaction = await connection.begin()
+    Session = async_sessionmaker(engine, expire_on_commit=False)  # noqa: N806
 
-        Session = async_sessionmaker(bind=connection, expire_on_commit=False, join_transaction_mode="create_savepoint")  # noqa: N806
+    async def override_get_session():
+        async with Session() as session:
+            yield session
 
-        async def override_get_session():
-            async with Session() as session:
-                yield session
+    app.dependency_overrides[get_session] = override_get_session
 
-        # Override `get_session` dependency for tests
-        app.dependency_overrides[get_session] = override_get_session
+    yield Session
 
-        yield
-
-        await transaction.rollback()
-        app.dependency_overrides.clear()
-
+    app.dependency_overrides.clear()
     await engine.dispose()
 
 

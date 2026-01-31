@@ -12,17 +12,15 @@ from pydantic import (
 from werkzeug import exceptions
 
 from core.api_interface import APIInterface
+from db.models.inference_opts import InferenceOpts
 from db.models.input_parts import InputPart, PointPartType
 from db.models.message import Message
 
 # We import PromptTemplate and ToolDefinition so Pydantic knows how to resolve them, preventing some model definition errors
 from db.models.prompt_template import PromptTemplate  # noqa: F401
 from db.models.tool_definitions import ToolDefinition  # noqa: F401
+from core.message.role import Role
 from src.config.get_config import get_config
-from src.dao.message.inference_opts_model import (
-    InferenceOpts,
-)
-from src.dao.message.message_models import Role
 from src.flask_pydantic_api.utils import UploadedFile
 
 

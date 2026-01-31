@@ -616,6 +616,12 @@ wheels = [
 name = "core"
 version = "0.1.0"
 source = { editable = "packages/core" }
+dependencies = [
+    { name = "beautifulsoup4" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "beautifulsoup4", specifier = ">=4.12.2" }]
 
 [[package]]
 name = "cryptography"

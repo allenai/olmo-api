@@ -11,6 +11,7 @@ jobs:
       DATABASE_URL: ${{ vars.DATABASE_URL }}
       AUTH_DOMAIN: ${{ vars.AUTH_DOMAIN }}
       AUTH_AUDIENCE: ${{ vars.AUTH_AUDIENCE }}
+      HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
       ENV: test
     steps:
       - uses: actions/checkout@v6

@@ -164,7 +164,9 @@ class GoogleCloudStorage:
                 raise
 
     # Helper function for migration
-    async def migrate_anonymous_file(self, filename: str, bucket_name: str, *, raise_exception_on_failure=False) -> None:
+    async def migrate_anonymous_file(
+        self, filename: str, bucket_name: str, *, raise_exception_on_failure=False
+    ) -> None:
         logger.info(
             "GoogleCloudStorage Migrate User",
             bucket=bucket_name,

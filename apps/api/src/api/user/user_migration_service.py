@@ -4,6 +4,7 @@ from fastapi import Depends
 from sqlalchemy import CursorResult, select, update
 
 from api.db.sqlalchemy_engine import SessionDependency
+from api.user.hubspot_service import HubSpotServiceDependency
 from core.api_interface import APIInterface
 from core.auth.token import Token
 from db.models.label import Label
@@ -21,8 +22,13 @@ class UserMigrationResponse(APIInterface):
 
 
 class UserMigrationService:
-    def __init__(self, session: SessionDependency):
+    def __init__(
+        self,
+        session: SessionDependency,
+        hubspot_service: HubSpotServiceDependency,
+    ):
         self.session = session
+        self.hubspot_service = hubspot_service
 
     async def migrate_user_from_anonymous_user(
         self,
@@ -124,6 +130,9 @@ class UserMigrationService:
 
             self.session.add(created_user)
             await self.session.flush()
+
+            # Create HubSpot contact for new authenticated users
+            await self.hubspot_service.create_contact()
 
             updated_user = created_user
 

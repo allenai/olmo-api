@@ -4,11 +4,9 @@ import httpx
 from fastapi import Depends, status
 
 from api.auth.auth_service import AuthServiceDependency
-from api.config import settings
+from api.config import Environment, settings
 from api.logging.fastapi_logger import FastAPIStructLogger
 from core.auth.user_info import UserInfo
-
-HUBSPOT_URL = "https://api.hubapi.com"
 
 logger = FastAPIStructLogger()
 
@@ -17,9 +15,10 @@ class HubSpotService:
     """Service for creating HubSpot contacts."""
 
     def __init__(self, auth_service: AuthServiceDependency):
-        self.hubspot_url = HUBSPOT_URL
+        self.hubspot_url = settings.HUBSPOT_URL
         self.hubspot_token = settings.HUBSPOT_TOKEN
         self.auth_service = auth_service
+        self.environment = settings.ENV
 
     async def check_contact_exists(self, user_info: UserInfo | None) -> bool:
         """
@@ -32,10 +31,6 @@ class HubSpotService:
             True if contact exists, False otherwise
         """
         if user_info is None:
-            return False
-
-        if not self.hubspot_token:
-            logger.warning("HubSpot token not configured, skipping contact check")
             return False
 
         url = f"{self.hubspot_url}/crm/v3/objects/contacts/search"
@@ -78,10 +73,8 @@ class HubSpotService:
         Returns:
             None
         """
-        if not self.hubspot_token:
-            logger.warning("HubSpot token not configured, skipping contact creation")
+        if self.environment != Environment.PRODUCTION:
             return
-
         user_info = await self.auth_service.get_user_info()
 
         if user_info is None:

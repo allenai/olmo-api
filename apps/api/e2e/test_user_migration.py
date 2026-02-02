@@ -25,8 +25,7 @@ async def test_migration_requires_authenticated_user_authentication(
 
 
 async def test_migrate_when_both_anonymous_user_and_authenticated_user_exist(
-    db_session,
-    client: AsyncClient, auth_user: AuthenticatedClient
+    db_session, client: AsyncClient, auth_user: AuthenticatedClient
 ):
     await add_user_to_database(
         session=db_session,
@@ -85,7 +84,9 @@ async def test_migrate_when_only_anonymous_user_exists(client: AsyncClient, auth
     assert result["messagesUpdatedCount"] == 2, "Should migrate 2 messages from anonymous user"
 
 
-async def test_migrate_when_only_authenticated_user_exists(db_session, client: AsyncClient, auth_user: AuthenticatedClient):
+async def test_migrate_when_only_authenticated_user_exists(
+    db_session, client: AsyncClient, auth_user: AuthenticatedClient
+):
     await add_user_to_database(
         session=db_session,
         auth_client=auth_user,

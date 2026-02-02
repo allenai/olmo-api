@@ -5,7 +5,6 @@ from datetime import UTC, datetime
 from time import time_ns
 from typing import BinaryIO
 
-from aiohttp import ClientSession as Session
 from gcloud.aio.storage import Storage
 
 from core.logger import CoreLogger
@@ -24,13 +23,16 @@ class UploadResponse:
 
 
 class GoogleCloudStorage:
-    session: Session | None
-
-    def __init__(self, session: Session | None = None):
+    def __init__(self, session=None):
         """
         session: aiohttp.ClientSession
                     supply if you want to manage the session yourself
                     None (the default) uses default gcloud.aio.Storage session management
+
+            ex:
+                with aiohttp.ClientSession() as session:
+                    cloud_storage = GoogleCloudStorage(session=session)
+                    ...
         """
         self.session = session
 

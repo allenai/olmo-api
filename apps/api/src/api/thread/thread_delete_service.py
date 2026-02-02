@@ -7,11 +7,13 @@ from sqlalchemy import delete
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
 from api.config import settings
 from api.db.sqlalchemy_engine import SessionDependency
+from api.logging.fastapi_logger import FastAPIStructLogger
 from api.service_errors import ForbiddenError, NotFoundError
 from core.auth.token import Token
 from core.google_cloud_storage import GoogleCloudStorage
 from db.models.completion import Completion
 
+logger = FastAPIStructLogger()
 
 class ThreadDeleteService:
     def __init__(self, session: SessionDependency, message_repository: AsyncMessageRepositoryDependency):
@@ -60,6 +62,13 @@ class ThreadDeleteService:
             # no cascade here =/
             related_cpl_ids = [id for id in [m.completion for m in messages] if id is not None]
             await self.session.execute(delete(Completion).where(Completion.id.in_(related_cpl_ids)))
+
+            logger.info(
+                "thread.delete",
+                user=user.client,
+                thread_id=thread_id,
+                date=datetime.now(UTC),
+            )
 
 
 ThreadDeleteServiceDependency = Annotated[ThreadDeleteService, Depends()]

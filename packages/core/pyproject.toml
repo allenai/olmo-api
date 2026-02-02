@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "beautifulsoup4>=4.12.2",
+    "gcloud-aio-storage>=9.6.1",
 ]
 
 [build-system]

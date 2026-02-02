@@ -5,9 +5,11 @@ from fastapi import Depends
 from sqlalchemy import delete
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
+from api.config import settings
 from api.db.sqlalchemy_engine import SessionDependency
 from api.service_errors import ForbiddenError, NotFoundError
 from core.auth.token import Token
+from core.google_cloud_storage import GoogleCloudStorage
 from db.models.completion import Completion
 
 
@@ -40,16 +42,15 @@ class ThreadDeleteService:
                 msg = "The current thread is over 30 days."
                 raise ForbiddenError(msg)
 
-            # TODO: Fix GCS
-            #
-            # files_to_delete = [
-            #     file_url for message in messages if message.file_urls is not None for file_url in message.file_urls
-            # ]
-            #
-            #
-            # storage_client.delete_multiple_files_by_url(
-            #     files_to_delete, bucket_name=config.google_cloud_services.storage_bucket
-            # )
+            storage_client = GoogleCloudStorage()
+
+            files_to_delete = [
+                file_url for message in messages if message.file_urls is not None for file_url in message.file_urls
+            ]
+
+            await storage_client.delete_multiple_files_by_url(
+                files_to_delete, bucket_name=settings.GCS_PUBLIC_UPLOAD_BUCKET
+            )
 
             message_ids = [msg.id for msg in messages]
             await self.message_repository.delete_many(message_ids)

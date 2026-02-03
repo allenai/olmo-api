@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     AUTH_DOMAIN: str = Field(init=False)
     AUTH_AUDIENCE: str = Field(init=False)
 
+    OTEL_COLLECTOR_TYPE: str = "cloud"
+    OTEL_SERVICE_NAME: str = "olmo-api"
+    OTEL_GCP_PROJECT_ID: str = "ai2-reviz"
+
     model_config = SettingsConfigDict(
         extra="ignore",
         env_file=(".env", f".env.{environment}", ".env.local", f".env.{environment}.local"),

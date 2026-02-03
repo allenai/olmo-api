@@ -4,6 +4,7 @@ from typing import TypedDict
 
 import structlog
 from asgi_correlation_id import correlation_id
+from opentelemetry import trace
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 from uvicorn.protocols.utils import get_path_with_query_string
@@ -31,6 +32,16 @@ class StructLogMiddleware:
 
         structlog.contextvars.clear_contextvars()
         structlog.contextvars.bind_contextvars(request_id=correlation_id.get())
+
+        # Add trace log context
+        span = trace.get_current_span()
+        if span.is_recording():
+            ctx = span.get_span_context()
+            structlog.contextvars.bind_contextvars(
+                trace_id=format(ctx.trace_id, "032x"),
+                span_id=format(ctx.span_id, "016x"),
+                trace_flags=ctx.trace_flags,
+            )
 
         info = AccessInfo()
 

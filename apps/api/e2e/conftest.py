@@ -23,6 +23,7 @@ ANONYMOUS_USER_ID_HEADER = "X-Anonymous-User-ID"
 
 DatabaseSession = async_sessionmaker[AsyncSession]
 
+
 @dataclass(kw_only=True)
 class AuthenticatedClient:
     client: str

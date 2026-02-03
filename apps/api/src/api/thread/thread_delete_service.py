@@ -15,6 +15,7 @@ from db.models.completion import Completion
 
 logger = FastAPIStructLogger()
 
+
 class ThreadDeleteService:
     def __init__(self, session: SessionDependency, message_repository: AsyncMessageRepositoryDependency):
         self.session = session

@@ -11,6 +11,7 @@ from pydantic import Field
 from pytest_postgresql import factories
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from api.config import Settings
 from api.db.sqlalchemy_engine import get_session
@@ -19,6 +20,8 @@ from db.url import make_url
 
 ANONYMOUS_USER_ID_HEADER = "X-Anonymous-User-ID"
 
+
+DatabaseSession = async_sessionmaker[AsyncSession]
 
 @dataclass(kw_only=True)
 class AuthenticatedClient:

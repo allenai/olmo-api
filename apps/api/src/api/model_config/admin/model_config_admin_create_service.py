@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from psycopg.errors import UniqueViolation
 from pydantic import Field, RootModel
 from sqlalchemy.exc import IntegrityError
@@ -12,6 +12,7 @@ from api.model_config.model_config_request import (
 )
 from api.model_config.model_config_response import ModelConfigResponse
 from api.model_config.model_config_utils import get_model_config_class
+from api.service_errors import ResourceExistsError
 from core.api_interface import APIInterface
 
 
@@ -66,10 +67,8 @@ class ModelConfigAdminCreateService:
             except IntegrityError as e:
                 # Duplicate ID causes 409 confict error
                 if isinstance(e.orig, UniqueViolation):
-                    raise HTTPException(
-                        status_code=status.HTTP_409_CONFLICT,
-                        detail=f"Model config with id '{request.root.id}' already exists",
-                    ) from e
+                    existing_model_msg = f"Model config with id '{request.root.id}' already exists"
+                    raise ResourceExistsError(existing_model_msg) from e
                 raise
 
 

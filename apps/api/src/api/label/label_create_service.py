@@ -54,30 +54,3 @@ class LabelCreateService:
 
 
 LabelCreateServiceDependency = Annotated[LabelCreateService, Depends()]
-
-# agent = authn()
-# if request.json is None:
-#     msg = "missing JSON body"
-#     raise exceptions.BadRequest(msg)
-
-# message_repository = MessageRepository(current_session)
-# mid = request.json.get("message")
-# msg = message_repository.get_message_by_id(mid)
-# if msg is None:
-#     msg = f"message {mid} not found"
-#     raise exceptions.BadRequest(msg)
-
-# try:
-#     rating = label.Rating(request.json.get("rating"))
-# except ValueError as e:
-#     raise exceptions.BadRequest(str(e))
-
-# existing = self.dbc.label.get_list(
-#     message=mid,
-#     creator=agent.client,
-# )
-# if existing.meta.total != 0:
-#     msg = f"message {mid} already has label {existing.labels[0].id}"
-#     raise exceptions.UnprocessableEntity(msg)
-# lbl = self.dbc.label.create(msg.id, rating, agent.client, request.json.get("comment"))
-# return jsonify(lbl)

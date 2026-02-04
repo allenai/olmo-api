@@ -33,7 +33,7 @@ class LabelCreateService:
                 not_found_msg = f"Message with id `{request.message}` not found"
                 raise NotFoundError(not_found_msg)
 
-            existing_labels = [label for label in message.labels if not label.deleted]
+            existing_labels = [label for label in message.labels if label.creator == user_id and not label.deleted]
 
             if len(existing_labels) != 0:
                 label_exists_msg = f"Label already exists for Message id ${request.message}"

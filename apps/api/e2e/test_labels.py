@@ -206,6 +206,7 @@ async def test_cannot_create_a_new_label_without_deleting(
     )
     assert response.status_code == status.HTTP_409_CONFLICT
 
+
 async def test_two_users_creating_deleting_labels(
     client: AsyncClient, db_session: DatabaseSession, auth_user: AuthenticatedClient, anon_user: AuthenticatedClient
 ):
@@ -230,7 +231,6 @@ async def test_two_users_creating_deleting_labels(
     )
     authed_user_resp.raise_for_status()
     auth_label_data = authed_user_resp.json()
-
 
     anon_user_label = LabelCreateRequest(
         message=message.id,
@@ -348,7 +348,6 @@ async def test_two_users_creating_deleting_labels(
         LABELS_ENDPOINT, json=auth_new_label.model_dump(by_alias=True), headers=auth_headers_for_user(auth_user)
     )
     auth_user_resp_second.raise_for_status()
-
 
     async with db_session() as session:
         message_repository = AsyncMessageRepository(session=session)

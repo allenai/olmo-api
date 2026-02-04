@@ -47,18 +47,18 @@ COPY --from=builder --chown=nonroot:nonroot /app /app
 ENV PATH="/app/.venv/bin:$PATH"
 
 FROM runner AS dev
-WORKDIR /app/apps/api/
+WORKDIR /app
 
 # Use the non-root user to run our application
 USER nonroot
 
-CMD ["/app/.venv/bin/fastapi", "dev", "main.py", "--host", "0.0.0.0", "--port", "8888"]
+CMD ["/app/.venv/bin/fastapi", "dev", "./apps/api/main.py", "--host", "0.0.0.0", "--port", "8888"]
 
 FROM runner AS prod
 # Use `/app` as the working directory
-WORKDIR /app/apps/api/
+WORKDIR /app
 
 # Use the non-root user to run our application
 USER nonroot
 
-CMD ["/app/.venv/bin/fastapi", "run", "main.py", "--port", "8888"]
+CMD ["/app/.venv/bin/fastapi", "run", "./apps/api/main.py", "--port", "8888"]

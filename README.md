@@ -32,6 +32,16 @@ To add a new package, cd to `packages` and run `uv init --lib --package package-
 
 To add a new app, cd to `apps` and run `uv init app-name`.
 
+### Configuration and secrets
+
+### FastAPI
+FastAPI app uses pydandantic settings to load settings, it has default values set in `./apps/api/src/api/config.py` and loads
+environment variables from `.env`, `.env.local`, `.env.${ENV}` and `.env.${ENV}.local`, with `.local` files being ignored
+
+Public configuration variables should be stored in non-`gitignore`d configs, with env agnostic configs in `.env`.
+
+Secrets should be stored in `.env.local` (or `.env.${ENV}.local`) file.
+
 ### Reset Schema
 
 The API uses a local database for persistence. If you'd like to delete all

@@ -357,14 +357,14 @@ async def test_two_users_creating_deleting_labels(
     assert message_with_four_labels is not None
     assert len(message_with_four_labels.labels) == 4
 
-    non_delted_labels = [lbl for lbl in message_with_four_labels.labels if not lbl.deleted]
+    non_deleted_labels = [lbl for lbl in message_with_four_labels.labels if not lbl.deleted]
 
     creators_with_comment = {
         auth_user.client: ("authed comment", Rating.NEGATIVE),
         anon_user.client: ("not a comment", Rating.FLAG),
     }
 
-    for label in non_delted_labels:
+    for label in non_deleted_labels:
         (comment, rating) = creators_with_comment[label.creator]
         assert label.comment == comment
         assert label.rating == rating

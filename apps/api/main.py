@@ -2,11 +2,15 @@ from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import FastAPI
 from fastapi_problem.handler import add_exception_handler, new_exception_handler
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 
 from api.auth.auth_service import get_bearer_token_validator
 from api.config import settings
+from api.db.sqlalchemy_engine import engine
 from api.health import health_router
 from api.logging import StructLogMiddleware, setup_logging
+from api.otel.setup import setup_otel
 from api.v5 import v5_router
 
 
@@ -26,7 +30,14 @@ def create_app() -> FastAPI:
 
     app.add_middleware(CorrelationIdMiddleware)
 
+    setup_otel()
+
     FastAPIInstrumentor.instrument_app(app)
+    HTTPXClientInstrumentor().instrument()
+    SQLAlchemyInstrumentor().instrument(
+        engine=engine.sync_engine,  # "sync-style" engine for async SQLAlchemy
+        enable_commenter=True,
+    )
 
     # get the token validator on startup, causing the app to fail fast if there are issues
     get_bearer_token_validator()

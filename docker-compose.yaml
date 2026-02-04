@@ -9,8 +9,6 @@ x-shared-env: &shared-env
   OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
   OTEL_SERVICE_NAME: olmo-api
   FLASK_CONFIG_PATH: /app/config.json
-  E2E_AUTH0_CLIENT_SECRET: ${E2E_AUTH0_CLIENT_SECRET}
-
 
 services:
   db:
@@ -79,10 +77,7 @@ services:
     environment:
       <<: *shared-env
       DATABASE_URL: "postgres://app:llmz@db:5432/llmx?sslmode=disable"
-      AUTH_DOMAIN: auth0.allenai.org
-      AUTH_AUDIENCE: https://olmo-api.allen.ai
       ENV: development
-      LOG_JSON_FORMAT: false
 
     ports:
       - 8888:8888

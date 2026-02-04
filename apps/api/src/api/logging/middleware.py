@@ -31,7 +31,6 @@ class StructLogMiddleware:
             return
 
         structlog.contextvars.clear_contextvars()
-        structlog.contextvars.bind_contextvars(request_id=correlation_id.get())
 
         # Add trace log context
         span = trace.get_current_span()

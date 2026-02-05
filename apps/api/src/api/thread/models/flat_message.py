@@ -7,6 +7,7 @@ from pydantic import (
     Field,
     computed_field,
     field_validator,
+    model_validator,
 )
 from sqlalchemy import orm
 
@@ -73,6 +74,11 @@ class FlatMessage(APIInterface):
                 return [child.id for child in value]
 
         return value
+
+    @field_validator("labels", mode="after")
+    @classmethod
+    def non_deleted_labels(cls, value):
+        return [label for label in value if label.deleted is None]
 
     @computed_field  # type:ignore
     @property

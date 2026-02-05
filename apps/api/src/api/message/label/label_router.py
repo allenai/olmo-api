@@ -4,6 +4,7 @@ from api.auth.auth_service import AuthServiceDependency
 from api.message.label.label_create_service import LabelCreateRequest, LabelCreateServiceDependency
 from api.message.label.label_delete_service import LabelDeleteServiceDependency
 from api.service_errors import ForbiddenError, NotFoundError, ResourceAssocationError, ResourceExistsError
+from api.thread.models.flat_message import FlatMessage
 from core.label.label import Label
 
 label_router = APIRouter(prefix="/label")
@@ -15,13 +16,15 @@ async def create_label(
     request: LabelCreateRequest,
     label_create_service: LabelCreateServiceDependency,
     auth_service: AuthServiceDependency,
-) -> Label:
+) -> FlatMessage:
     token = auth_service.optional_auth()
     try:
         return await label_create_service.create(message_id=message_id, request=request, user_id=token.client)
+    except ValueError as e:  # both up and down in the request
+        raise HTTPException(status_code=status.HTTP_417_EXPECTATION_FAILED, detail=repr(e)) from e
     except NotFoundError as e:
         # create returns NotFound for the message, so it becomes a 422
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=repr(e)) from e
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail=repr(e)) from e
     except ResourceExistsError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=repr(e)) from e
 
@@ -32,7 +35,7 @@ async def delete_label(
     label_id: str,
     label_delete_service: LabelDeleteServiceDependency,
     auth_service: AuthServiceDependency,
-) -> Label:
+) -> None:
     token = auth_service.optional_auth()
     try:
         return await label_delete_service.delete_one(message_id=message_id, label_id=label_id, user_id=token.client)

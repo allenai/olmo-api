@@ -7,7 +7,7 @@ from sqlalchemy import select
 import core.object_id as obj
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
 from api.db.sqlalchemy_engine import SessionDependency
-from api.service_errors import ForbiddenError, NotFoundError
+from api.service_errors import ForbiddenError, NotFoundError, ResourceAssocationError
 from db.models.label import Label
 
 
@@ -27,7 +27,7 @@ class LabelDeleteService:
 
             if label.message != message_id:
                 not_right_message = f"No label with id `{label_id}` found for message: {message_id}"
-                raise NotFoundError(not_right_message)
+                raise ResourceAssocationError(not_right_message)
 
             if user_id != label.creator:
                 forbidden_msg = "Label can only be deleted by its creator"
@@ -36,8 +36,6 @@ class LabelDeleteService:
             label.deleted = datetime.now(tz=UTC)
 
             await self.session.flush()
-
-            # return LabelInterface.model_validate(label)
 
 
 LabelDeleteServiceDependency = Annotated[LabelDeleteService, Depends()]

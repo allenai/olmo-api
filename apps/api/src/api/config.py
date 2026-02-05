@@ -42,6 +42,9 @@ class Settings(BaseSettings):
 
     AUTH_DOMAIN: str = Field(init=False)
     AUTH_AUDIENCE: str = Field(init=False)
+
+    GCS_PUBLIC_UPLOAD_BUCKET: str = Field(init=False)
+
     HUBSPOT_URL: str = "https://api.hubapi.com"
     HUBSPOT_TOKEN: str = Field(init=False)
 

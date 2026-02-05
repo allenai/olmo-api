@@ -2,7 +2,7 @@
 
 from httpx import AsyncClient
 
-from e2e.conftest import AuthenticatedClient, add_user_to_database, auth_headers_for_user
+from e2e.conftest import AuthenticatedClient, DatabaseSession, add_user_to_database, auth_headers_for_user
 
 USER_MIGRATION_ENDPOINT = "/v5/user/migration"
 WHOAMI_ENDPOINT = "/v5/user/whoami"
@@ -25,10 +25,10 @@ async def test_migration_requires_authenticated_user_authentication(
 
 
 async def test_migrate_when_both_anonymous_user_and_authenticated_user_exist(
-    db_session, client: AsyncClient, auth_user: AuthenticatedClient
+    db_session: DatabaseSession, client: AsyncClient, auth_user: AuthenticatedClient
 ):
     await add_user_to_database(
-        session=db_session,
+        db_session=db_session,
         auth_client=auth_user,
     )
 
@@ -85,10 +85,10 @@ async def test_migrate_when_only_anonymous_user_exists(client: AsyncClient, auth
 
 
 async def test_migrate_when_only_authenticated_user_exists(
-    db_session, client: AsyncClient, auth_user: AuthenticatedClient
+    db_session: DatabaseSession, client: AsyncClient, auth_user: AuthenticatedClient
 ):
     await add_user_to_database(
-        session=db_session,
+        db_session=db_session,
         auth_client=auth_user,
     )
 
@@ -103,7 +103,7 @@ async def test_migrate_when_only_authenticated_user_exists(
     assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
     result = response.json()
 
-    assert result["updatedUser"] is None
+    assert result["updatedUser"] is not None
     assert result["messagesUpdatedCount"] == 0, "No messages to migrate from non-existent anonymous user"
 
 

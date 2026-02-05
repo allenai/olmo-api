@@ -11,7 +11,6 @@ from pydantic import Field
 from pytest_postgresql import factories
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from api.config import Settings
 from api.db.sqlalchemy_engine import get_session
@@ -74,7 +73,7 @@ def auth_headers_for_user(user: AuthenticatedClient) -> dict[str, str]:
     return {"Authorization": f"Bearer {user.token}"}
 
 
-async def add_user_to_database(session: AsyncSession, auth_client: AuthenticatedClient) -> User:
+async def add_user_to_database(db_session: DatabaseSession, auth_client: AuthenticatedClient) -> User:
     """Add a user directly to the database.
 
     Args:
@@ -84,24 +83,25 @@ async def add_user_to_database(session: AsyncSession, auth_client: Authenticated
         The created or existing User object
     """
     # Check if user already exists
-    stmt = select(User).where(User.client == auth_client.client)
-    result = await session.execute(stmt)
-    existing_user = result.scalar_one_or_none()
+    async with db_session() as session, session.begin():
+        stmt = select(User).where(User.client == auth_client.client)
+        result = await session.execute(stmt)
+        existing_user = result.scalar_one_or_none()
 
-    if existing_user:
-        return existing_user
+        if existing_user:
+            return existing_user
 
-    new_user = User(
-        client=auth_client.client,
-        terms_accepted_date=datetime.now(UTC),
-        acceptance_revoked_date=None,
-        data_collection_accepted_date=None,
-        data_collection_acceptance_revoked_date=None,
-        media_collection_accepted_date=None,
-        media_collection_acceptance_revoked_date=None,
-    )
-    session.add(new_user)
-    await session.flush()
+        new_user = User(
+            client=auth_client.client,
+            terms_accepted_date=datetime.now(UTC),
+            acceptance_revoked_date=None,
+            data_collection_accepted_date=None,
+            data_collection_acceptance_revoked_date=None,
+            media_collection_accepted_date=None,
+            media_collection_acceptance_revoked_date=None,
+        )
+        session.add(new_user)
+        await session.flush()
     return new_user
 
 

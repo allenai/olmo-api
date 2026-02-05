@@ -11,11 +11,9 @@ WHOAMI_ENDPOINT = "/v5/user/whoami"
 
 def iso_datetimes_equal(actual_iso: str, expected_datetime: datetime) -> bool:
     """Helper to compare ISO datetime strings with datetime objects, accounting for timezone differences."""
-    actual_dt = datetime.fromisoformat(actual_iso)
-    expected_utc = expected_datetime.astimezone(UTC)
-    actual_utc = actual_dt.astimezone(UTC)
+    actual_datetime = datetime.fromisoformat(actual_iso)
 
-    return actual_utc == expected_utc
+    return actual_datetime == expected_datetime
 
 
 async def test_upsert_user_fails_without_auth(client: AsyncClient):

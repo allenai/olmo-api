@@ -47,6 +47,7 @@ class Settings(BaseSettings):
 
     HUBSPOT_URL: str = "https://api.hubapi.com"
     HUBSPOT_TOKEN: str = Field(init=False)
+    ASTA_MCP_API_KEY: str = Field(init=False)
 
     OTEL_COLLECTOR_TYPE: str = "cloud"
     OTEL_SERVICE_NAME: str = "olmo-api"

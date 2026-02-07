@@ -635,7 +635,6 @@ select = [
     "TRY004",
     "TRY201",
     "TRY203",
-    "TRY300",
     "TRY301",
     "TRY400",
     "TRY401",

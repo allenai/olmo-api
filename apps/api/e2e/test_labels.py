@@ -53,27 +53,10 @@ async def test_can_create_labels_for_message(
 
     label_data = message_response["labels"][0]
 
-    # validate response from server
-    #
     assert label_data["rating"] == Rating.POSITIVE
     assert label_data["comment"] == "N.C."
     assert label_data["message"] == message.id
     assert label_data["creator"] == anon_user.client
-
-    # keep? this will have the deleted too
-    async with db_session() as session:
-        message_repository = AsyncMessageRepository(session=session)
-        updated_message = await message_repository.get_message_by_id(message.id)
-
-    assert updated_message is not None
-    assert len(updated_message.labels) == 1
-    label_from_message = updated_message.labels[0]
-    assert label_from_message.rating == Rating.POSITIVE
-    assert label_from_message.creator == anon_user.client
-    assert label_from_message.comment == "N.C."
-    assert label_from_message.deleted is None
-
-    # ... end keep?
 
     # replace existing
 

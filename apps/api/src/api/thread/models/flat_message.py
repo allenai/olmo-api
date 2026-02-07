@@ -76,8 +76,8 @@ class FlatMessage(APIInterface):
 
     @field_validator("labels", mode="after")
     @classmethod
-    def non_deleted_labels(cls, value):
-        return [label for label in value if label.deleted is None]
+    def remove_deleted(cls, labels: list[Label]):
+        return [label for label in labels if label.deleted is None]
 
     @computed_field  # type:ignore
     @property

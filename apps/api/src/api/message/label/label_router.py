@@ -5,7 +5,6 @@ from api.message.label.label_create_service import LabelCreateRequest, LabelCrea
 from api.message.label.label_delete_service import LabelDeleteServiceDependency
 from api.service_errors import ForbiddenError, NotFoundError, ResourceAssocationError, ResourceExistsError
 from api.thread.models.flat_message import FlatMessage
-from core.label.label import Label
 
 label_router = APIRouter(prefix="/label")
 

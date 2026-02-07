@@ -170,12 +170,16 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
 
         return messages
 
-    async def get_message_by_id(self, message_id: obj.ID, *, label_creator: obj.ID | None = None, include_children=False) -> Message | None:
+    async def get_message_by_id(
+        self, message_id: obj.ID, *, label_creator: obj.ID | None = None, include_children=False
+    ) -> Message | None:
         # build our eager loading
         options = [
             selectinload(Message.tool_calls),
             selectinload(Message.tool_definitions),
-            selectinload(Message.labels) if label_creator is None else selectinload(Message.labels.and_(Label.creator == label_creator))
+            selectinload(Message.labels)
+            if label_creator is None
+            else selectinload(Message.labels.and_(Label.creator == label_creator)),
         ]
 
         if include_children:

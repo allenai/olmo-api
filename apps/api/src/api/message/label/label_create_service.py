@@ -3,7 +3,6 @@ from typing import Annotated
 
 from fastapi import Depends
 from pydantic import model_validator
-from sqlalchemy import orm
 
 import core.object_id as obj
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
@@ -20,7 +19,9 @@ class LabelRequest(APIInterface):
     rating: Rating
     comment: str | None = None
 
+
 LabelComparable = Label | LabelInterface | LabelRequest
+
 
 class LabelCreateRequest(APIInterface):
     labels: list[LabelRequest]
@@ -56,9 +57,7 @@ class LabelCreateService:
 
             # add labels from the request if they are different from existing labels
             for request_label in request.labels:
-                if not any(
-                    self.equal_value(request_label, existing_label) for existing_label in message.labels
-                ):
+                if not any(self.equal_value(request_label, existing_label) for existing_label in message.labels):
                     new_label = Label(
                         message=message.id,
                         rating=request_label.rating,
@@ -74,7 +73,9 @@ class LabelCreateService:
 
             # fetch message with tools filtered
             # children joined for validation (children => child_id)
-            message = await self.message_repository.get_message_by_id(message_id, include_children=True, label_creator=user_id)
+            message = await self.message_repository.get_message_by_id(
+                message_id, include_children=True, label_creator=user_id
+            )
 
             valid_message = FlatMessage.model_validate(message)
 
@@ -83,5 +84,6 @@ class LabelCreateService:
     @classmethod
     def equal_value(cls, a: LabelComparable, b: LabelComparable) -> bool:
         return a.rating == b.rating and a.comment == b.comment
+
 
 LabelCreateServiceDependency = Annotated[LabelCreateService, Depends()]

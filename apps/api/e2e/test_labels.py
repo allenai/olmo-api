@@ -86,7 +86,7 @@ async def test_can_create_labels_for_message(
             LabelRequest(
                 rating=Rating.FLAG,
                 comment="inapprops",
-            )
+            ),
         ]
     )
 
@@ -133,7 +133,6 @@ async def test_can_create_labels_for_message(
     assert response_label["rating"] == Rating.POSITIVE
     assert response_label["comment"] == "actually."
 
-
     # validate internal state
     async with db_session() as session:
         message_repository = AsyncMessageRepository(session=session)
@@ -144,7 +143,6 @@ async def test_can_create_labels_for_message(
 
     assert len([label for label in updated_message.labels if label.deleted is None]) == 1
     assert len([label for label in updated_message.labels if label.deleted is not None]) == 3
-
 
 
 async def test_can_create_labels_for_someone_elses_message(
@@ -179,7 +177,9 @@ async def test_can_create_labels_for_someone_elses_message(
     )
 
     response = await client.put(
-        label_request_url(message.id), json=auth_user_labels.model_dump(by_alias=True), headers=auth_headers_for_user(auth_user)
+        label_request_url(message.id),
+        json=auth_user_labels.model_dump(by_alias=True),
+        headers=auth_headers_for_user(auth_user),
     )
     response.raise_for_status()
 
@@ -198,7 +198,6 @@ async def test_can_create_labels_for_someone_elses_message(
         message_repository = AsyncMessageRepository(session=session)
         updated_message = await message_repository.get_message_by_id(message.id)
 
-
     assert updated_message is not None
     assert len(updated_message.labels) == 2
 
@@ -212,12 +211,14 @@ async def test_can_create_labels_for_someone_elses_message(
             LabelRequest(
                 rating=Rating.FLAG,
                 comment="flagging this",
-            )
+            ),
         ],
     )
 
     response = await client.put(
-        label_request_url(message.id), json=auth_user_labels.model_dump(by_alias=True), headers=auth_headers_for_user(auth_user)
+        label_request_url(message.id),
+        json=auth_user_labels.model_dump(by_alias=True),
+        headers=auth_headers_for_user(auth_user),
     )
     response.raise_for_status()
 

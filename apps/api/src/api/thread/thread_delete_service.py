@@ -15,11 +15,14 @@ from db.models.completion import Completion
 
 logger = FastAPIStructLogger()
 
+# GCS is defined in core, which doesn't have fastapi -- move this if/when its used elsewhere
+GoogleCloudStorageDependency = Annotated[GoogleCloudStorage, Depends()]
 
 class ThreadDeleteService:
-    def __init__(self, session: SessionDependency, message_repository: AsyncMessageRepositoryDependency):
+    def __init__(self, session: SessionDependency, message_repository: AsyncMessageRepositoryDependency, storage_client: GoogleCloudStorageDependency):
         self.session = session
         self.message_repository = message_repository
+        self.storage_client = storage_client
 
     async def delete(self, thread_id: str, user: Token) -> None:
         async with self.session.begin():
@@ -32,10 +35,6 @@ class ThreadDeleteService:
                 not_found_message = f"Thread with id {thread_id} was not found, unable to delete"
                 raise NotFoundError(not_found_message)
 
-            if user.is_anonymous_user:
-                anon_forbidden_message = "Anonymous user does not have permission to delete the current thread."
-                raise ForbiddenError(anon_forbidden_message)
-
             if root_message.creator != user.client:
                 auth_forbidden_message = "The current thread was not created by the current user. You do not have permission to delete the current thread."
                 raise ForbiddenError(auth_forbidden_message)
@@ -45,13 +44,12 @@ class ThreadDeleteService:
                 msg = "The current thread is over 30 days."
                 raise ForbiddenError(msg)
 
-            storage_client = GoogleCloudStorage()
 
             files_to_delete = [
                 file_url for message in messages if message.file_urls is not None for file_url in message.file_urls
             ]
 
-            await storage_client.delete_multiple_files_by_url(
+            await self.storage_client.delete_multiple_files_by_url(
                 files_to_delete, bucket_name=settings.GCS_PUBLIC_UPLOAD_BUCKET
             )
 

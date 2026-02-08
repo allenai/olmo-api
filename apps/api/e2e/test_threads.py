@@ -29,7 +29,6 @@ async def test_threads_lists_empty_for_auth_user(client: AsyncClient, auth_user:
     assert len(response_obj["threads"]) == 0
 
 
-@pytest.mark.skip("this works, but we don't show it in UI")
 async def test_threads_lists_empty_for_anon_user(client: AsyncClient, auth_user: AuthenticatedClient):
     response = await client.get(THREADS_ENDPOINT, headers=auth_headers_for_user(auth_user))
 
@@ -62,30 +61,12 @@ async def test_threads_list_for_authed_user(
     assert len(thread_data["threads"][0]["messages"]) == 3
 
 
-@pytest.mark.skip("this works, but we don't show it in UI")
-async def test_threads_lists_for_anon_user(
+async def test_threads_lists_for_user(
     client: AsyncClient, db_session: DatabaseSession, anon_user: AuthenticatedClient
 ):
     thread_id = await create_test_thread(db_session=db_session, user=anon_user)
 
     response = await client.get(THREADS_ENDPOINT, headers=auth_headers_for_user(anon_user))
-    response.raise_for_status()
-    thread_data = response.json()
-
-    assert thread_data["meta"]["total"] == 1
-    assert len(thread_data["threads"]) == 1
-    assert thread_data["threads"][0]["id"] == thread_id
-
-    # has messages
-    assert len(thread_data["threads"][0]["messages"]) == 3
-
-
-async def test_threads_lists_for_authed_user(
-    client: AsyncClient, db_session: DatabaseSession, auth_user: AuthenticatedClient
-):
-    thread_id = await create_test_thread(db_session=db_session, user=auth_user)
-
-    response = await client.get(THREADS_ENDPOINT, headers=auth_headers_for_user(auth_user))
     response.raise_for_status()
     thread_data = response.json()
 
@@ -161,38 +142,22 @@ async def test_get_valid_thread(client: AsyncClient, db_session: DatabaseSession
     assert all("role" in msg for msg in thread_data["messages"])
 
 
-async def test_auth_user_delete_own_thread(
-    client: AsyncClient, db_session: DatabaseSession, auth_user: AuthenticatedClient
-):
-    thread_id = await create_test_thread(db_session=db_session, user=auth_user)
-
-    # verify it exists
-    response = await client.get(f"{THREADS_ENDPOINT}{thread_id}", headers=auth_headers_for_user(auth_user))
-    response.raise_for_status()
-
-    # delete the thread
-    delete_response = await client.delete(f"/v5/threads/{thread_id}", headers=auth_headers_for_user(auth_user))
-    delete_response.raise_for_status()
-
-    # verify it was deleted
-    get_response = await client.get(f"/v5/threads/{thread_id}", headers=auth_headers_for_user(auth_user))
-    assert get_response.status_code == status.HTTP_404_NOT_FOUND
-
-
-async def test_anon_user_cant_delete_their_thread(
+async def test_user_delete_own_thread(
     client: AsyncClient, db_session: DatabaseSession, anon_user: AuthenticatedClient
 ):
     thread_id = await create_test_thread(db_session=db_session, user=anon_user)
+
+    # verify it exists
     response = await client.get(f"{THREADS_ENDPOINT}{thread_id}", headers=auth_headers_for_user(anon_user))
     response.raise_for_status()
 
-    # try to delete the thread
+    # delete the thread
     delete_response = await client.delete(f"/v5/threads/{thread_id}", headers=auth_headers_for_user(anon_user))
-    assert delete_response.status_code == status.HTTP_403_FORBIDDEN
+    delete_response.raise_for_status()
 
-    # verify it still exists
-    response = await client.get(f"{THREADS_ENDPOINT}{thread_id}", headers=auth_headers_for_user(anon_user))
-    response.raise_for_status()
+    # verify it was deleted
+    get_response = await client.get(f"/v5/threads/{thread_id}", headers=auth_headers_for_user(anon_user))
+    assert get_response.status_code == status.HTTP_404_NOT_FOUND
 
 
 async def test_cant_delete_another_users_thread(

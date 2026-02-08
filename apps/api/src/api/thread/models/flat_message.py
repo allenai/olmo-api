@@ -28,13 +28,6 @@ from db.models.model_config import ModelType
 class InferenceOptionsResponse(InferenceOpts, APIInterface): ...
 
 
-TOOL_NAMES_TO_TRUNCATE = {
-    "tulu-deep-research_serper_google_webpage_search",
-    "serper_google_webpage_search",
-}
-CONTENT_TRUNCATION_LIMIT = 150
-
-
 class FlatMessage(APIInterface):
     id: str
     content: str
@@ -107,22 +100,6 @@ class FlatMessage(APIInterface):
         message: Message,
     ) -> list["FlatMessage"]:
         return _map_messages(message)
-
-    @field_serializer("content")
-    def truncate_legally_required_tool_responses(self, v: str) -> str:
-        if self.role == Role.ToolResponse and any(
-            tool_call.tool_name in TOOL_NAMES_TO_TRUNCATE for tool_call in self.tool_calls or []
-        ):
-            words = v.split(" ")
-            truncated_text = " ".join(words[: CONTENT_TRUNCATION_LIMIT - 1])
-
-            if v != truncated_text:
-                # We only want to add the … if the text has been shortened
-                truncated_text += "…"
-
-            return truncated_text
-
-        return v
 
     @staticmethod
     def from_message_seq(messages: Sequence[Message]) -> list["FlatMessage"]:

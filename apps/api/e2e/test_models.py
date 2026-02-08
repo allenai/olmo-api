@@ -28,7 +28,6 @@ async def test_get_public_models(client: AsyncClient, anon_user: AuthenticatedCl
     public_models_count = len(response)
     assert public_models_count > 0
 
-    # all entities should be public models with specific properties
     for entity in response:
         # should have the following fields that match the model response
         assert "host" in entity
@@ -54,7 +53,6 @@ async def test_get_internal_models(client: AsyncClient, auth_user: Authenticated
         f"Got internal_models_count={internal_models_count}, public_models_count={public_models_count}"
     )
 
-    # all entities should be public models with specific properties
     for entity in response:
         # should have the following fields that match the model response
         assert "host" in entity

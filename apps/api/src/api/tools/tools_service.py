@@ -8,7 +8,7 @@ from db.models.tool_call import ToolCall
 from db.models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 from db.models.tool_definitions import ToolSource
 
-from .internal_tools_service import call_internal_tool
+from .internal_tools_service import call_internal_tool, get_internal_tools
 from .mcp_service import call_mcp_tool, get_general_mcp_tools
 
 if TYPE_CHECKING:
@@ -41,9 +41,10 @@ async def get_available_tools(model: "ModelConfig | BaseModelResponse") -> list[
     if model.can_call_tools is False:
         return []
 
+    internal_tools = get_internal_tools()
     mcp_tools = await get_general_mcp_tools()
 
-    return mcp_tools
+    return internal_tools + mcp_tools
 
 
 def call_tool(tool_call: ToolCall, tool_definition: Ai2ToolDefinition) -> ToolReturnPart:

@@ -8,9 +8,7 @@ from db.models.tool_call import ToolCall
 from db.models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 from db.models.tool_definitions import ToolSource
 
-from .internal_tools import CreateRandomNumber
-
-TOOL_REGISTRY: list[Tool[Any]] = [CreateRandomNumber]
+TOOL_REGISTRY: list[Tool[Any]] = []
 
 
 def get_internal_tools():

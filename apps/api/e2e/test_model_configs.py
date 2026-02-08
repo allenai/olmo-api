@@ -13,13 +13,13 @@ from api.model_config.admin.model_config_admin_update_service import (
     UpdateTextOnlyModelConfigRequest,
 )
 from api.model_config.model_config_response import (
-    AvailableInfiniGramIndexId,
     ModelConfigListResponse,
     ModelConfigResponse,
     MultiModalModelConfigResponse,
 )
 from db.models.model_config import ModelHost, ModelType, PromptType
 from e2e.conftest import AuthenticatedClient, auth_headers_for_user
+from infini_gram_api_client.models.available_infini_gram_index_id import AvailableInfiniGramIndexId
 
 PUBLIC_MODEL_ENDPOINT = "/v5/models/"
 ADMIN_MODEL_CONFIG_ENDPOINT = "/v5/admin/models/"

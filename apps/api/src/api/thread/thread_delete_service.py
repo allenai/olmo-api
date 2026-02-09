@@ -18,8 +18,14 @@ logger = FastAPIStructLogger()
 # GCS is defined in core, which doesn't have fastapi -- move this if/when its used elsewhere
 GoogleCloudStorageDependency = Annotated[GoogleCloudStorage, Depends()]
 
+
 class ThreadDeleteService:
-    def __init__(self, session: SessionDependency, message_repository: AsyncMessageRepositoryDependency, storage_client: GoogleCloudStorageDependency):
+    def __init__(
+        self,
+        session: SessionDependency,
+        message_repository: AsyncMessageRepositoryDependency,
+        storage_client: GoogleCloudStorageDependency,
+    ):
         self.session = session
         self.message_repository = message_repository
         self.storage_client = storage_client
@@ -43,7 +49,6 @@ class ThreadDeleteService:
             if datetime.now(UTC) - root_message.created > timedelta(days=30):
                 msg = "The current thread is over 30 days."
                 raise ForbiddenError(msg)
-
 
             files_to_delete = [
                 file_url for message in messages if message.file_urls is not None for file_url in message.file_urls

@@ -6,7 +6,6 @@ from pydantic import (
     AwareDatetime,
     Field,
     computed_field,
-    field_serializer,
     field_validator,
 )
 from sqlalchemy import orm

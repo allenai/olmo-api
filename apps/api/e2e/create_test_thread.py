@@ -25,7 +25,6 @@ def create_test_message(**msg_fields) -> Message:
 
 async def create_test_thread(db_session: DatabaseSession, user: AuthenticatedClient) -> obj.ID:
     async with db_session() as session, session.begin():
-
         root_msg = create_test_message(
             content="[Test] root message",
             creator=user.client,

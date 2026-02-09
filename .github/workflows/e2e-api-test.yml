@@ -13,6 +13,7 @@ jobs:
       AUTH_AUDIENCE: ${{ vars.AUTH_AUDIENCE }}
       GCS_PUBLIC_UPLOAD_BUCKET: ${{ vars.GCS_PUBLIC_UPLOAD_BUCKET }}
       HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+      ASTA_MCP_API_KEY: ${{ secrets.ASTA_MCP_API_KEY }}
       ENV: test
     steps:
       - uses: actions/checkout@v6

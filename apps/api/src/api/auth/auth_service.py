@@ -141,7 +141,7 @@ class AuthService:
                     status_code=response.status_code,
                     response_text=response.text,
                 )
-                return None  # noqa: TRY300
+                return None
 
             except Exception as e:
                 logger.exception("Exception while fetching user info", error=str(e))

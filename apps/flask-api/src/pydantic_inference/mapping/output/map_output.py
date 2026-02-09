@@ -13,8 +13,7 @@ from pydantic_ai.messages import (
     ToolCallPartDelta,
 )
 
-from db.models.message import Message
-from src.message.message_chunk import (
+from core.message.message_chunk import (
     Chunk,
     ErrorChunk,
     ErrorCode,
@@ -23,6 +22,7 @@ from src.message.message_chunk import (
     ThinkingChunk,
     ToolCallChunk,
 )
+from db.models.message import Message
 from src.pydantic_inference.pydantic_ai_helpers import find_tool_def_by_name
 
 

@@ -6,14 +6,15 @@ from sqlalchemy import CursorResult, func, or_, select, update
 from sqlalchemy.orm import Session, joinedload
 
 import core.object_id as obj
+from core.message.role import Role
+from db.models.inference_opts import InferenceOpts
 from db.models.label import Label
 from db.models.message import Message
 from db.models.model_config import ModelType
 from src.dao import label as old_label
 from src.dao import paged
-from src.dao.message.inference_opts_model import InferenceOpts
 from src.dao.message.message_models import Message as OldMessage
-from src.dao.message.message_models import Role, ThreadList
+from src.dao.message.message_models import ThreadList
 from src.dao.paged import Opts
 from src.message.map_text_snippet import text_snippet
 

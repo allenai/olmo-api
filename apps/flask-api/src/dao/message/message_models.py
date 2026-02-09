@@ -1,49 +1,17 @@
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import StrEnum
-from typing import Any
 
 import core.object_id as obj
-from core.api_interface import APIInterface
+from core.message.role import Role
+from core.message.token_log_probs import TokenLogProbs
+from db.models.inference_opts import InferenceOpts
 from db.models.message import Message as SQLAMessage
 from db.models.model_config import ModelType
 from src.dao import label, paged
-from src.dao.message.inference_opts_model import InferenceOpts
 
 
-class ToolCall(APIInterface):
-    tool_name: str
-    args: str | dict[str, Any] | None = None
-    tool_call_id: str
-
-
-class Role(StrEnum):
-    User = "user"
-    Assistant = "assistant"
-    System = "system"
-    ToolResponse = "tool_call_result"
-
-
-@dataclass
-class TokenLogProbs:
-    token_id: int
-    text: str
-    logprob: float
-
-
-class MessageChunk(APIInterface):
-    message: obj.ID
-    content: str
-    logprobs: list[list[TokenLogProbs]] | None = None
-
-
-class MessageStreamError(APIInterface):
-    message: obj.ID
-    error: str
-    reason: str
-
-
+# OldMessage:
 @dataclass
 class Message:
     id: obj.ID

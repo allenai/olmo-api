@@ -5,9 +5,9 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core import new_id_generator
+from core.tools.tool_source import ToolSource
 
 from .base import Base
-from .tool_definitions import ToolSource
 
 if TYPE_CHECKING:
     from .message import Message

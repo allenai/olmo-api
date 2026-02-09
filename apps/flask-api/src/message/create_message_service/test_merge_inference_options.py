@@ -1,7 +1,7 @@
+from core.message.role import Role
+from db.models.inference_opts import InferenceOpts
 from db.models.message import Message
 from db.models.model_config import ModelConfig, ModelHost, ModelType, PromptType
-from src.dao.message.inference_opts_model import InferenceOpts
-from src.dao.message.message_models import Role
 from src.message.create_message_service.merge_inference_options import (
     merge_inference_options,
 )
@@ -62,7 +62,7 @@ def test_get_inference_options_uses_options_from_parent():
         content="test message",
         creator="test-user",
         role=Role.Assistant,
-        opts=parent_inference_options.model_dump(),
+        opts=parent_inference_options.model_dump(by_alias=False),
         root="test-message",
         model_id="test-model",
         model_host="test_backend",
@@ -92,7 +92,7 @@ def test_get_inference_options_uses_options_from_request_when_parent_present():
         content="test message",
         creator="test-user",
         role=Role.Assistant,
-        opts=parent_inference_options.model_dump(),
+        opts=parent_inference_options.model_dump(by_alias=False),
         root="test-message",
         model_id="test-model",
         model_host="test_backend",

@@ -63,11 +63,9 @@ class McpService:
 
         return mapped_tools
 
-
     @staticmethod
     def _is_mcp_server_for_general_use(mcp_server: McpServer) -> bool:
         return mcp_server.enabled and mcp_server.available_for_all_models
-
 
     @staticmethod
     def find_mcp_config_by_id(mcp_id: str | None) -> McpServer | None:
@@ -75,7 +73,6 @@ class McpService:
             return None
 
         return next((config for config in MCP_SERVERS if config.id == mcp_id), None)
-
 
     async def get_general_mcp_tools(self) -> list[Ai2ToolDefinition]:
         # TODO: There's probably a way to share this logic with get_tools_from_mcp_servers
@@ -98,7 +95,6 @@ class McpService:
 
         return mcp_tools
 
-
     async def get_tools_from_mcp_servers(self, mcp_server_ids: set[str]) -> list[Ai2ToolDefinition]:
         matching_servers = [server for server in MCP_SERVERS if server.id in mcp_server_ids]
 
@@ -117,7 +113,6 @@ class McpService:
                 mcp_tools.extend(tools)
 
         return mcp_tools
-
 
     def call_mcp_tool(self, tool_call: ToolCall, tool_definition: Ai2ToolDefinition):
         mcp_config = self.find_mcp_config_by_id(tool_definition.mcp_server_id)
@@ -139,5 +134,6 @@ class McpService:
         except Exception as _e:
             getLogger().exception("Failed to call mcp tool.", extra={"tool_name": tool_call.tool_name})
             return f"Failed to call remote tool {tool_call.tool_name}"
+
 
 McpServerDependency = Annotated[McpService, Depends()]

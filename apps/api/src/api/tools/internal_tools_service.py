@@ -11,6 +11,7 @@ from db.models.tool_definitions import ToolSource
 
 TOOL_REGISTRY: list[Tool[Any]] = []
 
+
 class InternalToolService:
     @staticmethod
     def get_internal_tools():
@@ -24,7 +25,6 @@ class InternalToolService:
             for tool in TOOL_REGISTRY
         ]
 
-
     @staticmethod
     def arg_parse_helper(args: str | dict[str, Any] | None) -> str | dict[str, Any] | None:
         if isinstance(args, str):
@@ -34,7 +34,6 @@ class InternalToolService:
                 pass
 
         return args
-
 
     def call_internal_tool(self, tool_call: ToolCall) -> str:
         found_tool = next((tool for tool in TOOL_REGISTRY if tool_call.tool_name == tool.name), None)
@@ -56,5 +55,6 @@ class InternalToolService:
         except Exception as e:
             logging.exception("Tool call failed")
             return str(e)  # This returns the error to LLM
+
 
 InternalToolServiceDependency = Annotated[InternalToolService, Depends()]

@@ -18,6 +18,7 @@ async def list_public_models(
     response.raise_for_status()
     return response.json()
 
+
 public_models_count = 0
 internal_models_count = 0
 

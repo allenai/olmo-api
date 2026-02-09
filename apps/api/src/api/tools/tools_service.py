@@ -35,14 +35,12 @@ class ToolsService:
 
         return tool_definition
 
-
     def get_pydantic_tool_defs(self, *, message: Message) -> list[ToolDefinition]:
         return (
             [self.map_tool_def_to_pydantic(tool=tool_def) for tool_def in message.tool_definitions]
             if message.tool_definitions is not None
             else []
         )
-
 
     async def get_available_tools(self, *, model: "ModelConfig | BaseModelResponse") -> list[Ai2ToolDefinition]:
         if model.can_call_tools is False:
@@ -52,7 +50,6 @@ class ToolsService:
         mcp_tools = await self.mcp_service.get_general_mcp_tools()
 
         return internal_tools + mcp_tools
-
 
     def call_tool(self, *, tool_call: ToolCall, tool_definition: Ai2ToolDefinition) -> ToolReturnPart:
         tool_response: str
@@ -70,5 +67,6 @@ class ToolsService:
             content=tool_response,
             tool_call_id=tool_call.tool_call_id,
         )
+
 
 ToolsServiceDependency = Annotated[ToolsService, Depends()]

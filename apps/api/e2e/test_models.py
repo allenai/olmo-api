@@ -1,3 +1,4 @@
+import pytest
 from httpx import AsyncClient
 
 from e2e.conftest import AuthenticatedClient, auth_headers_for_user
@@ -21,6 +22,7 @@ public_models_count = 0
 internal_models_count = 0
 
 
+@pytest.mark.usefixtures("mock_mcp_service")
 async def test_get_public_models(client: AsyncClient, anon_user: AuthenticatedClient):
     response = await list_public_models(client, anon_user)
 
@@ -42,6 +44,7 @@ async def test_get_public_models(client: AsyncClient, anon_user: AuthenticatedCl
         assert entity["internal"] is False, f"Model {entity.get('id')} has internal={entity.get('internal')}"
 
 
+@pytest.mark.usefixtures("mock_mcp_service")
 async def test_get_internal_models(client: AsyncClient, auth_user: AuthenticatedClient):
     response = await list_public_models(client, auth_user)
 
@@ -64,3 +67,18 @@ async def test_get_internal_models(client: AsyncClient, auth_user: Authenticated
         assert entity["isDeprecated"] is False, (
             f"Model {entity.get('id')} has isDeprecated={entity.get('isDeprecated')}"
         )
+
+        model_id = entity.get("id")
+        can_call_tools = entity.get("canCallTools")
+        available_tools = entity.get("availableTools")
+        if can_call_tools is True:
+            # assert that available_tools list has entries from the mocked MCP tools
+            assert isinstance(available_tools, list)
+            assert len(available_tools) > 0, (
+                f"Model {model_id} has canCallTools=True but availableTools is empty: {available_tools}"
+            )
+
+        elif can_call_tools is False:
+            assert available_tools == [], (
+                f"Model {model_id} has canCallTools=False but availableTools is not empty: {available_tools}"
+            )

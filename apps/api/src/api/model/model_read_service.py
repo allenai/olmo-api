@@ -7,13 +7,14 @@ from sqlalchemy.orm import selectin_polymorphic
 
 from api.db.sqlalchemy_engine import SessionDependency
 from api.model.model_response import AvailableTool, ModelListResponse, ModelResponse, ModelValidationContext
-from api.tools.tools_service import get_available_tools
+from api.tools.tools_service import ToolsServiceDependency
 from db.models.model_config import FilesOnlyModelConfig, ModelConfig, MultiModalModelConfig
 
 
 class ModelReadService:
-    def __init__(self, session: SessionDependency):
+    def __init__(self, session: SessionDependency, tools_service: ToolsServiceDependency):
         self.session = session
+        self.tools_service = tools_service
 
     async def get_all(self, *, include_internal_models: bool = False) -> ModelListResponse:
         async with self.session.begin():
@@ -39,7 +40,7 @@ class ModelReadService:
             available_tool_list_type_adapter = TypeAdapter(list[AvailableTool])
             for mapped_model in mapped_models:
                 mapped_model.root.available_tools = available_tool_list_type_adapter.validate_python(
-                    await get_available_tools(mapped_model.root)
+                    await self.tools_service.get_available_tools(model=mapped_model.root)
                 )
 
             return ModelListResponse.model_validate(mapped_models)

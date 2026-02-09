@@ -1,4 +1,4 @@
-from src.util.pii_regex import does_contain_pii
+from .does_contain_pii import does_contain_pii
 
 
 def test_does_contain_pii_matches_phone_numbers():
@@ -11,8 +11,8 @@ def test_does_contain_pii_matches_phone_numbers():
         ("55.555.5555", False),
     ]
 
-    for input, expected in tests:
-        assert does_contain_pii(input) == expected
+    for input_val, expected in tests:
+        assert does_contain_pii(input_val) == expected
 
 
 def test_does_contain_pii_matches_email():
@@ -25,8 +25,8 @@ def test_does_contain_pii_matches_email():
         ("home@", False),
     ]
 
-    for input, expected in tests:
-        assert does_contain_pii(input) == expected
+    for input_val, expected in tests:
+        assert does_contain_pii(input_val) == expected
 
 
 def test_does_contain_pii_matches_ip_address():
@@ -41,5 +41,5 @@ def test_does_contain_pii_matches_ip_address():
         ("1: asdf\n2: asdf", False),
     ]
 
-    for input, expected in tests:
-        assert does_contain_pii(input) == expected
+    for input_val, expected in tests:
+        assert does_contain_pii(input_val) == expected

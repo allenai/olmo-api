@@ -57,7 +57,7 @@ class LabelCreateService:
 
             # add labels from the request if they are different from existing labels
             for request_label in request.labels:
-                if not any(self.equal_value(request_label, existing_label) for existing_label in message.labels):
+                if not any(self.equal_value(request_label, existing_label) for existing_label in existing_labels):
                     new_label = Label(
                         message=message.id,
                         rating=request_label.rating,

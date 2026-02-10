@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, status
 from api.auth.auth_service import AuthServiceDependency
 from api.message.label.label_create_service import LabelCreateRequest, LabelCreateServiceDependency
 from api.message.label.label_delete_service import LabelDeleteServiceDependency
-from api.service_errors import ForbiddenError, NotFoundError, ResourceAssocationError, ResourceExistsError
+from api.service_errors import ForbiddenError, NotFoundError, ResourceAssocationError
 from api.thread.models.flat_message import FlatMessage
 
 label_router = APIRouter(prefix="/label")
@@ -19,13 +19,8 @@ async def create_label(
     token = auth_service.optional_auth()
     try:
         return await label_create_service.create(message_id=message_id, request=request, user_id=token.client)
-    except ValueError as e:  # both up and down in the request
-        raise HTTPException(status_code=status.HTTP_417_EXPECTATION_FAILED, detail=repr(e)) from e
     except NotFoundError as e:
-        # create returns NotFound for the message, so it becomes a 422
-        raise HTTPException(status_code=status.HTTP_410_GONE, detail=repr(e)) from e
-    except ResourceExistsError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=repr(e)) from e
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=repr(e)) from e
 
 
 @label_router.delete("/{label_id}")

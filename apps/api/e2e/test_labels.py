@@ -292,3 +292,40 @@ async def test_cannot_delete_someone_elses_label(
     assert updated_message is not None
     assert len(updated_message.labels) == 1
     assert updated_message.labels[0].deleted is None
+
+
+async def test_error_responses(client: AsyncClient, db_session: DatabaseSession, anon_user: AuthenticatedClient):
+    async with db_session() as session:
+        message = create_test_message(
+            content="[Test] message",
+            creator=anon_user.client,
+            role=Role.Assistant.value,
+        )
+        session.add(message)
+        await session.commit()
+
+    response = await client.put(
+        label_request_url(message.id),
+        json={
+            "labels": [
+                {"rating": Rating.NEGATIVE, "comment": "changed my mind"},
+                {"rating": Rating.NEGATIVE, "comment": "two negative is not allowed"},
+            ]
+        },
+        headers=auth_headers_for_user(anon_user),
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    labels = LabelCreateRequest(
+        labels=[
+            LabelRequest(
+                rating=Rating.POSITIVE,
+                comment="actually.",
+            ),
+        ]
+    )
+
+    response = await client.put(
+        label_request_url("123"), json=labels.model_dump(by_alias=True), headers=auth_headers_for_user(anon_user)
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND

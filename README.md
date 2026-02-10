@@ -23,7 +23,7 @@ To start a local server, follow these steps:
 #### Running without Docker
 This project uses [uv](https://docs.astral.sh/uv). To run it locally, follow their [installation guide](https://docs.astral.sh/uv/#installation).
 
-After uv is installed, run `uv sync --all-packages` at the root of this project.
+After uv is installed, run `uv sync --all-packages --all-groups` at the root of this project.
 
 ### Adding a new package
 We use uv's workspaces to split code into larger chunks. 
@@ -31,6 +31,16 @@ We use uv's workspaces to split code into larger chunks.
 To add a new package, cd to `packages` and run `uv init --lib --package package-name`. Make sure you run `uv add package-name --package <DEPENDENT_PACKAGE>` for any packages that depend on it.
 
 To add a new app, cd to `apps` and run `uv init app-name`.
+
+### Configuration and secrets
+
+### FastAPI
+FastAPI app uses pydandantic settings to load settings, it has default values set in `./apps/api/src/api/config.py` and loads
+environment variables from `.env`, `.env.local`, `.env.${ENV}` and `.env.${ENV}.local`, with `.local` files being ignored
+
+Public configuration variables should be stored in non-`gitignore`d configs, with env agnostic configs in `.env`.
+
+Secrets should be stored in `.env.local` (or `.env.${ENV}.local`) file.
 
 ### Reset Schema
 
@@ -52,7 +62,7 @@ FLASK_CONFIG_PATH="./test.config.json" uv run --python 3.11 pytest apps/flask-ap
 To run the FastAPI tests, execute
 
 ```bash
-uv run pytest app/api
+uv run pytest apps/api
 ```
 
 ### Type check

@@ -2,12 +2,17 @@ from datetime import UTC, datetime
 from functools import lru_cache
 from typing import Annotated
 
+import httpx
 from authlib.oauth2 import OAuth2Error
 from fastapi import Depends, Header, HTTPException, status
 
 from api.config import settings
+from api.logging.fastapi_logger import FastAPIStructLogger
 from core.auth.token import Token
 from core.auth.token_validator import Auth0JWTBearerTokenValidator
+from core.auth.user_info import UserInfo
+
+logger = FastAPIStructLogger()
 
 
 @lru_cache
@@ -103,6 +108,44 @@ class AuthService:
                 detail="Authentication required",
             )
         return token
+
+    async def get_user_info(self) -> UserInfo | None:
+        """
+        Fetch user info from Auth0 using the authorization header.
+
+        Returns:
+            UserInfo object with email, first_name, and last_name, or None if request fails
+        """
+        if not self.authorization:
+            return None
+
+        headers = {"Authorization": self.authorization, "Content-Type": "application/json"}
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(
+                    f"https://{settings.AUTH_DOMAIN}/userinfo",
+                    headers=headers,
+                )
+
+                if response.status_code == status.HTTP_200_OK:
+                    user_info_data = response.json()
+                    email = user_info_data.get("email")
+                    first_name = user_info_data.get("given_name")
+                    last_name = user_info_data.get("family_name")
+
+                    return UserInfo(email=email, first_name=first_name, last_name=last_name)
+
+                logger.error(
+                    "Error fetching user info",
+                    status_code=response.status_code,
+                    response_text=response.text,
+                )
+                return None  # noqa: TRY300
+
+            except Exception as e:
+                logger.exception("Exception while fetching user info", error=str(e))
+                return None
 
 
 AuthServiceDependency = Annotated[AuthService, Depends()]

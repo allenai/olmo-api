@@ -24,24 +24,37 @@ class Environment(StrEnum):
         return self == self.PRODUCTION
 
 
-ENV = os.getenv("ENV", Environment.PRODUCTION.value)
+environment = os.getenv("ENV", Environment.PRODUCTION.value)
 
 
 class Settings(BaseSettings):
     ENV: Environment = Environment.PRODUCTION
+
     LOG_LEVEL: str = "INFO"
     LOG_JSON_FORMAT: bool = True
+
     LOG_NAME: str = "olmo-api.app_logs"
     LOG_ACCESS_NAME: str = "olmo-api.access_logs"
+
     DATABASE_URL: str = Field(init=False)
     DATABASE_MIN_POOL_SIZE: int = 3
     DATABASE_MAX_OVERFLOW_CONNECTIONS: int = 5
+
     AUTH_DOMAIN: str = Field(init=False)
     AUTH_AUDIENCE: str = Field(init=False)
 
+    GCS_PUBLIC_UPLOAD_BUCKET: str = Field(init=False)
+
+    HUBSPOT_URL: str = "https://api.hubapi.com"
+    HUBSPOT_TOKEN: str = Field(init=False)
+
+    OTEL_COLLECTOR_TYPE: str = "cloud"
+    OTEL_SERVICE_NAME: str = "olmo-api"
+    OTEL_GCP_PROJECT_ID: str = "ai2-reviz"
+
     model_config = SettingsConfigDict(
         extra="ignore",
-        env_file=(".env", f".env.{ENV}", ".env.local", f".env.{ENV}.local"),
+        env_file=(".env", f".env.{environment}", ".env.local", f".env.{environment}.local"),
         secrets_dir="/secret/env",
     )
 

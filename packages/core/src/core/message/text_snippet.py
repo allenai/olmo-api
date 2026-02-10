@@ -1,0 +1,23 @@
+import re
+import warnings
+
+import bs4
+from bs4 import MarkupResemblesLocatorWarning
+
+
+def first_n_words(s: str, n: int) -> str:
+    # We take the first n * 32 characters as to avoid processing the entire text, which might be
+    # large. This is for obvious reasons imperfect but probably good enough for manifesting a short,
+    # representative snippet.
+    words = re.split(r"\s+", s[: n * 32])
+    return " ".join(words[:n]) + ("…" if len(words) > n else "")
+
+
+# bs4 warns when markup resembles a URL or other locator. This isn't relevant to us so we're disabling the warning
+# This is recommended by a library maintainer https://bugs.launchpad.net/beautifulsoup/+bug/1955450/comments/5
+warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
+
+
+def text_snippet(s: str) -> str:
+    soup = bs4.BeautifulSoup(s, features="html.parser")
+    return first_n_words(soup.get_text(), 16)

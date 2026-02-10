@@ -1,5 +1,4 @@
 import datetime
-from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Text, text
@@ -7,19 +6,13 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.object_id import new_id_generator
+from core.tools.tool_source import ToolSource
 
 if TYPE_CHECKING:
     from .message import Message
     from .prompt_template import PromptTemplate
 
 from .base import Base
-
-
-class ToolSource(StrEnum):
-    # where did this tool come from
-    INTERNAL = "internal"
-    USER_DEFINED = "user_defined"
-    MCP = "model_context_protocol"
 
 
 # Association table for many-to-many relationship

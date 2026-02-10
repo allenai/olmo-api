@@ -3,7 +3,6 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, HTTPException, status
 
 from api.auth.permission_service import PermissionServiceDependency
-from api.errors.not_found_error import NotFoundError
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.model_config.admin.model_config_admin_create_service import (
     ModelConfigCreateServiceDependency,
@@ -24,6 +23,7 @@ from api.model_config.admin.model_config_admin_update_service import (
     RootUpdateModelConfigRequest,
 )
 from api.model_config.model_config_response import ModelConfigListResponse, ModelConfigResponse
+from api.service_errors import NotFoundError
 from core.auth import Permissions
 
 model_config_admin_router = APIRouter(prefix="/models")

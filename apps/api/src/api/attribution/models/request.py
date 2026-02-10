@@ -3,7 +3,7 @@ from pydantic import Field, field_validator
 from core.api_interface import APIInterface
 
 
-class GetAttributionRequest(APIInterface):
+class AttributionRequest(APIInterface):
     prompt: str
     model_response: str
     model_id: str

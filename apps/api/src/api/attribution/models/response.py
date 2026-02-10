@@ -3,7 +3,7 @@ from api.attribution.models.span import TopLevelAttributionSpan
 from core.api_interface import APIInterface
 
 
-class GetAttributionResponse(APIInterface):
+class AttributionResponse(APIInterface):
     index: str
     documents: list[ResponseAttributionDocument]
     spans: list[TopLevelAttributionSpan]

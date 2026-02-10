@@ -9,8 +9,8 @@ from api.attribution.models.document import (
     ResponseAttributionDocument,
 )
 from api.attribution.models.intermediate import FlattenedSpanDocument, IntermediateAttributionDocument
-from api.attribution.models.request import GetAttributionRequest
-from api.attribution.models.response import GetAttributionResponse
+from api.attribution.models.request import AttributionRequest
+from api.attribution.models.response import AttributionResponse
 from api.attribution.models.span import TopLevelAttributionSpan
 from core.pii.does_contain_pii import does_contain_pii
 from infini_gram_api_client.models import AttributionResponse as InfiniGramAttributionResponse
@@ -22,16 +22,16 @@ from infini_gram_api_client.models.available_infini_gram_index_id import (
 
 
 def process_attribution(
-    attribution_response: InfiniGramAttributionResponse,
-    request: GetAttributionRequest,
+    infini_gram_response: InfiniGramAttributionResponse,
+    request: AttributionRequest,
     index: AvailableInfiniGramIndexId,
-) -> GetAttributionResponse:
+) -> AttributionResponse:
     # This is mostly for type checking, as this should be checked calling this function
-    if attribution_response.input_tokens is None:
+    if infini_gram_response.input_tokens is None:
         no_attribution_input_tokens = "AttributionResponse input_tokens cannot be None"
         raise ValueError(no_attribution_input_tokens)
 
-    filtered_spans = filter_span_documents(spans=attribution_response.spans)
+    filtered_spans = filter_span_documents(spans=infini_gram_response.spans)
 
     # populate BM25 relevance scores; truncate excessive context
     docs = [doc.text for span in filtered_spans for doc in span.documents]
@@ -62,7 +62,7 @@ def process_attribution(
                 i += 1
 
     flattened_spans = flatten_spans(
-        input_tokens=attribution_response.input_tokens,
+        input_tokens=infini_gram_response.input_tokens,
         spans=cast(list[AttributionSpan], filtered_spans),
     )
 
@@ -93,7 +93,7 @@ def process_attribution(
                     span_index=span_index,
                 )
 
-    return GetAttributionResponse(
+    return AttributionResponse(
         index=index,
         documents=sorted(
             mapped_documents.values(),

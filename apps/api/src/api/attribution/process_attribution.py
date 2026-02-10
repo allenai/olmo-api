@@ -119,6 +119,7 @@ def filter_span_documents(spans: list[AttributionSpan]):
 
     return list(filter(lambda span: len(span.documents) > 0, copied_spans))
 
+
 def update_mapped_document(
     mapped_document: ResponseAttributionDocument,
     span_index: int,

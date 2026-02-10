@@ -1,5 +1,5 @@
 import asyncio
-from typing import Annotated, cast
+from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
 

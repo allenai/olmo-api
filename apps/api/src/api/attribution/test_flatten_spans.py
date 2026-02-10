@@ -11,6 +11,8 @@ from infini_gram_api_client.models.attribution_response import (
 # If we want, we can craft responses to test specific parts of the fn
 
 
+# this test has "ambiguous unicode characters" -- disable that rule check:
+# ruff: noqa: RUF001
 @pytest.mark.skip
 def test_collapse_spans_collapses_spans():
     parsed_response = AttributionResponse.from_dict(example_response)

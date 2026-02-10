@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from api.attribution.attribution_router import attribution_router
 from api.event import event_router
 from api.message.message_router import message_router
 from api.model_config.admin.model_config_admin_router import model_config_admin_router
@@ -16,6 +17,7 @@ v5_router.include_router(prompt_template_router)
 v5_router.include_router(user_router)
 v5_router.include_router(thread_router)
 v5_router.include_router(message_router)
+v5_router.include_router(attribution_router)
 
 # admin routes
 v5_router.include_router(model_config_admin_router, prefix="/admin")

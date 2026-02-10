@@ -4,6 +4,9 @@ from api.attribution.attribution_service import AttributionServiceDependency
 from api.attribution.models.request import AttributionRequest
 from api.attribution.models.response import AttributionResponse
 from api.auth.auth_service import AuthServiceDependency
+from api.logging.fastapi_logger import FastAPIStructLogger
+
+logger = FastAPIStructLogger()
 
 attribution_router = APIRouter(prefix="/attribution")
 
@@ -14,5 +17,6 @@ async def get_attribution(
     auth_service: AuthServiceDependency,
     attribution_service: AttributionServiceDependency,
 ) -> AttributionResponse:
-    auth_service.optional_auth()  # ensure auth
+    token = auth_service.optional_auth()  # ensure auth
+    logger.bind(user=token.client)
     return await attribution_service.get_attribution(request=request)

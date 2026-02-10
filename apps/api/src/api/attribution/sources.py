@@ -1,4 +1,4 @@
-from api.attribution.infini_gram_source import InfiGramSourceList, InfiniGramSource
+from api.attribution.models.source import InfiGramSourceList, InfiniGramSource
 
 # fmt: off
 INFINI_GRAM_SOURCES = InfiGramSourceList(

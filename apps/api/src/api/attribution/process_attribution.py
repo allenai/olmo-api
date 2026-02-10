@@ -3,13 +3,15 @@ from typing import cast
 
 from rank_bm25 import BM25Okapi  # type: ignore
 
-from api.attribution.attribution_request_models import AttributionResponse, GetAttributionRequest
-from api.attribution.flatten_spans import IntermediateAttributionDocument, flatten_spans
-from api.attribution.response_attribution_document import (
+from api.attribution.flatten_spans import flatten_spans
+from api.attribution.models.document import (
+    AttributionDocumentSnippet,
     ResponseAttributionDocument,
-    update_mapped_document,
 )
-from api.attribution.response_attribution_span import TopLevelAttributionSpan
+from api.attribution.models.intermediate import FlattenedSpanDocument, IntermediateAttributionDocument
+from api.attribution.models.request import GetAttributionRequest
+from api.attribution.models.response import GetAttributionResponse
+from api.attribution.models.span import TopLevelAttributionSpan
 from core.pii.does_contain_pii import does_contain_pii
 from infini_gram_api_client.models import AttributionResponse as InfiniGramAttributionResponse
 from infini_gram_api_client.models.attribution_document import AttributionDocument
@@ -19,11 +21,11 @@ from infini_gram_api_client.models.available_infini_gram_index_id import (
 )
 
 
-def process_attribution_response(
+def process_attribution(
     attribution_response: InfiniGramAttributionResponse,
     request: GetAttributionRequest,
     index: AvailableInfiniGramIndexId,
-) -> AttributionResponse:
+) -> GetAttributionResponse:
     # This is mostly for type checking, as this should be checked calling this function
     if attribution_response.input_tokens is None:
         no_attribution_input_tokens = "AttributionResponse input_tokens cannot be None"
@@ -91,7 +93,7 @@ def process_attribution_response(
                     span_index=span_index,
                 )
 
-    return AttributionResponse(
+    return GetAttributionResponse(
         index=index,
         documents=sorted(
             mapped_documents.values(),
@@ -116,3 +118,23 @@ def filter_span_documents(spans: list[AttributionSpan]):
         span.documents = filtered_documents
 
     return list(filter(lambda span: len(span.documents) > 0, copied_spans))
+
+def update_mapped_document(
+    mapped_document: ResponseAttributionDocument,
+    span_index: int,
+    span_text: str,
+    new_document: FlattenedSpanDocument,
+):
+    if span_index not in mapped_document.corresponding_spans:
+        mapped_document.corresponding_spans.append(span_index)
+
+    if span_text not in mapped_document.corresponding_span_texts:
+        mapped_document.corresponding_span_texts.append(span_text)
+
+    if not any(snippet.text == new_document.text_snippet for snippet in mapped_document.snippets):
+        mapped_document.snippets.append(
+            AttributionDocumentSnippet(
+                text=new_document.text_snippet,
+                corresponding_span_text=new_document.span_text,
+            )
+        )

@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from api.attribution.flatten_spans import FlattenedSpan
+from api.attribution.models.intermediate import FlattenedSpan
 from core import APIInterface
 
 

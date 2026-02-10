@@ -1,7 +1,5 @@
 from pydantic import Field, field_validator
 
-from api.attribution.response_attribution_document import ResponseAttributionDocument
-from api.attribution.response_attribution_span import TopLevelAttributionSpan
 from core.api_interface import APIInterface
 
 
@@ -19,9 +17,3 @@ class GetAttributionRequest(APIInterface):
             msg = "The prompt is blocked due to legal compliance."
             raise ValueError(msg)
         return prompt
-
-
-class AttributionResponse(APIInterface):
-    index: str
-    documents: list[ResponseAttributionDocument]
-    spans: list[TopLevelAttributionSpan]

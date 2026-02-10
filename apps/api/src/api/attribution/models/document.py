@@ -1,6 +1,6 @@
 from typing import Self
 
-from api.attribution.flatten_spans import FlattenedSpanDocument
+from api.attribution.models.intermediate import FlattenedSpanDocument
 from api.attribution.sources import INFINI_GRAM_SOURCES
 from core import APIInterface
 
@@ -68,25 +68,4 @@ class ResponseAttributionDocument(APIInterface):
             title=document.metadata.additional_properties.get("metadata", {}).get("metadata", {}).get("title", None),
             url=url,
             secondary_name=source_detail.secondary_name if source_detail is not None else None,
-        )
-
-
-def update_mapped_document(
-    mapped_document: ResponseAttributionDocument,
-    span_index: int,
-    span_text: str,
-    new_document: FlattenedSpanDocument,
-):
-    if span_index not in mapped_document.corresponding_spans:
-        mapped_document.corresponding_spans.append(span_index)
-
-    if span_text not in mapped_document.corresponding_span_texts:
-        mapped_document.corresponding_span_texts.append(span_text)
-
-    if not any(snippet.text == new_document.text_snippet for snippet in mapped_document.snippets):
-        mapped_document.snippets.append(
-            AttributionDocumentSnippet(
-                text=new_document.text_snippet,
-                corresponding_span_text=new_document.span_text,
-            )
         )

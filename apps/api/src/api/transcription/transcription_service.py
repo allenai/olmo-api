@@ -15,7 +15,7 @@ class TranscriptionService:
         self.model_config_read_service = model_config_read_service
         self.olmoasr_engine = olmoasr_engine
 
-    async def transcribe_single(self, audio: BinaryIO) -> str:
+    async def transcribe(self, audio: BinaryIO) -> str:
         olmo_asr_config = await self.model_config_read_service.get_one(OLMO_ASR_MODEL_CONFIG_ID)
 
         if olmo_asr_config is None:

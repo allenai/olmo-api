@@ -23,7 +23,7 @@ from api.model_config.admin.model_config_admin_update_service import (
     RootUpdateModelConfigRequest,
 )
 from api.model_config.model_config_response import ModelConfigListResponse, ModelConfigResponse
-from api.service_errors import NotFoundError
+from api.service_errors import NotFoundError, ResourceExistsError
 from core.auth import Permissions
 
 model_config_admin_router = APIRouter(prefix="/models")
@@ -49,7 +49,13 @@ async def create_admin_model(
 ) -> ModelConfigResponse:
     token = permission_service.require_permission(Permissions.WRITE_MODEL_CONFIG)
 
-    new_model = await model_config_admin_create_service.create(request)
+    try:
+        new_model = await model_config_admin_create_service.create(request)
+    except ResourceExistsError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=repr(e),
+        ) from e
 
     logger.info(
         "model_config.create",

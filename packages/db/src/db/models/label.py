@@ -11,25 +11,27 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from core.object_id import new_id_generator
+
 if TYPE_CHECKING:
     from .message import Message
 
 from .base import Base
 
 
-class Label(Base):
+class Label(Base, kw_only=True):
     __tablename__ = "label"
     __table_args__ = (
         ForeignKeyConstraint(["message"], ["message.id"], ondelete="CASCADE", name="label_message_fkey"),
         PrimaryKeyConstraint("id", name="label_pkey"),
     )
 
-    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    id: Mapped[str] = mapped_column(Text, primary_key=True, default_factory=new_id_generator("lbl"))
     message: Mapped[str] = mapped_column(Text, index=True)
     rating: Mapped[int] = mapped_column(Integer)
     creator: Mapped[str] = mapped_column(Text)
-    created: Mapped[datetime.datetime] = mapped_column(DateTime(True), server_default=text("now()"))
-    comment: Mapped[Optional[str]] = mapped_column(Text)
-    deleted: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    created: Mapped[datetime.datetime] = mapped_column(DateTime(True), server_default=text("now()"), init=False)
+    comment: Mapped[Optional[str]] = mapped_column(Text, default=None)
+    deleted: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True), default=None)
 
-    message_: Mapped["Message"] = relationship("Message", back_populates="labels")
+    message_: Mapped["Message"] = relationship("Message", back_populates="labels", init=False)

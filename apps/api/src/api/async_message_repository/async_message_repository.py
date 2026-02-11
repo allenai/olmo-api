@@ -170,7 +170,21 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
 
         return messages
 
-    async def get_message_by_id(self, message_id: obj.ID) -> Message | None:
+    async def get_message_by_id(
+        self, message_id: obj.ID, *, label_creator: obj.ID | None = None, include_children=False
+    ) -> Message | None:
+        # build our eager loading
+        options = [
+            selectinload(Message.tool_calls),
+            selectinload(Message.tool_definitions),
+            selectinload(Message.labels)
+            if label_creator is None
+            else selectinload(Message.labels.and_(Label.creator == label_creator)),
+        ]
+
+        if include_children:
+            options.append(selectinload(Message.children))
+
         query = (
             select(Message)
             .where(Message.id == message_id)
@@ -180,12 +194,9 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
                     Message.expiration_time > func.now(),
                 )
             )
-            .options(
-                selectinload(Message.labels),
-                selectinload(Message.tool_calls),
-                selectinload(Message.tool_definitions),
-            )
+            .options(*options)
         )
+
         result = await self.session.scalars(query)
         message = result.first()
 

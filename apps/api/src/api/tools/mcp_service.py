@@ -42,6 +42,10 @@ MCP_SERVERS: list[McpServer] = [
 
 
 class McpService:
+    def __init__(self) -> None:
+        # Per-request cache for MCP server tools (keyed by server id)
+        self._server_tools_cache: dict[str, list[Ai2ToolDefinition]] = {}
+
     @staticmethod
     async def list_mcp_server_tools(mcp_server_config: McpServer) -> list[Ai2ToolDefinition]:
         mcp_server = MCPServerStreamableHTTP(
@@ -74,26 +78,37 @@ class McpService:
 
         return next((config for config in MCP_SERVERS if config.id == mcp_id), None)
 
+    async def _get_tools_for_servers(self, servers: list[McpServer]) -> list[Ai2ToolDefinition]:
+        """Fetch tools from servers, using per-request cache to avoid duplicate calls."""
+        uncached_servers = [s for s in servers if s.id not in self._server_tools_cache]
+
+        # Fetch and cache tools for servers not in cache
+        if uncached_servers:
+            server_tool_lists = await asyncio.gather(
+                *[self.list_mcp_server_tools(server) for server in uncached_servers],
+                return_exceptions=True,
+            )
+
+            for server, tools in zip(uncached_servers, server_tool_lists, strict=True):
+                if isinstance(tools, BaseException):
+                    getLogger().warning("Failed to fetch tools from MCP server", exc_info=tools)
+                    self._server_tools_cache[server.id] = []
+                else:
+                    self._server_tools_cache[server.id] = tools
+
+        mcp_tools: list[Ai2ToolDefinition] = []
+        for server in servers:
+            mcp_tools.extend(self._server_tools_cache.get(server.id, []))
+
+        return mcp_tools
+
     async def get_general_mcp_tools(self) -> list[Ai2ToolDefinition]:
-        # TODO: There's probably a way to share this logic with get_tools_from_mcp_servers
-        # It may be nice to pass in a condition for the mcp servers?
         general_mcp_servers = [server for server in MCP_SERVERS if self._is_mcp_server_for_general_use(server)]
 
         if not general_mcp_servers:
             return []
 
-        server_tool_lists = await asyncio.gather(
-            *[self.list_mcp_server_tools(server) for server in general_mcp_servers], return_exceptions=True
-        )
-
-        mcp_tools: list[Ai2ToolDefinition] = []
-        for tools in server_tool_lists:
-            if isinstance(tools, BaseException):
-                getLogger().warning("Failed to fetch tools from MCP server", exc_info=tools)
-            else:
-                mcp_tools.extend(tools)
-
-        return mcp_tools
+        return await self._get_tools_for_servers(general_mcp_servers)
 
     async def get_tools_from_mcp_servers(self, mcp_server_ids: set[str]) -> list[Ai2ToolDefinition]:
         matching_servers = [server for server in MCP_SERVERS if server.id in mcp_server_ids]
@@ -101,18 +116,7 @@ class McpService:
         if not matching_servers:
             return []
 
-        server_tool_lists = await asyncio.gather(
-            *[self.list_mcp_server_tools(server) for server in matching_servers], return_exceptions=True
-        )
-
-        mcp_tools: list[Ai2ToolDefinition] = []
-        for tools in server_tool_lists:
-            if isinstance(tools, BaseException):
-                getLogger().warning("Failed to fetch tools from MCP server", exc_info=tools)
-            else:
-                mcp_tools.extend(tools)
-
-        return mcp_tools
+        return await self._get_tools_for_servers(matching_servers)
 
     def call_mcp_tool(self, tool_call: ToolCall, tool_definition: Ai2ToolDefinition):
         mcp_config = self.find_mcp_config_by_id(tool_definition.mcp_server_id)
@@ -135,5 +139,5 @@ class McpService:
             getLogger().exception("Failed to call mcp tool.", extra={"tool_name": tool_call.tool_name})
             return f"Failed to call remote tool {tool_call.tool_name}"
 
-
-McpServerDependency = Annotated[McpService, Depends()]
+# NOTE: Do not cache this dependency since it holds a per-request cache for MCP server tools
+McpServerDependency = Annotated[McpService, Depends(use_cache=False)]

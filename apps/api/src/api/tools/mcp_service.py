@@ -139,5 +139,6 @@ class McpService:
             getLogger().exception("Failed to call mcp tool.", extra={"tool_name": tool_call.tool_name})
             return f"Failed to call remote tool {tool_call.tool_name}"
 
+
 # NOTE: Do not cache this dependency since it holds a per-request cache for MCP server tools
 McpServerDependency = Annotated[McpService, Depends(use_cache=False)]

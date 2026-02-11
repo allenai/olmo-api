@@ -12,9 +12,9 @@ class TranscriptionSingleResponse(APIInterface):
     text: str
 
 
-@transcription_router.post("/single")
+@transcription_router.post("/")
 async def transcribe(
     audio: UploadFile, transcription_service: TranscriptionServiceDependency
 ) -> TranscriptionSingleResponse:
-    text = await transcription_service.transcribe_single(audio=audio.file)
+    text = await transcription_service.transcribe(audio=audio.file)
     return TranscriptionSingleResponse(text=text)

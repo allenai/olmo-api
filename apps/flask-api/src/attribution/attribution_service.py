@@ -8,6 +8,7 @@ from rank_bm25 import BM25Okapi  # type: ignore
 from werkzeug import exceptions
 
 from core.api_interface import APIInterface
+from core.pii import does_contain_pii
 from db.models.model_config import ModelConfig
 from infini_gram_api_client import Client
 from infini_gram_api_client.api.default import (
@@ -31,7 +32,6 @@ from infini_gram_api_client.models.request_validation_error import (
     RequestValidationError,
 )
 from src.config.get_config import cfg
-from src.util.pii_regex import does_contain_pii
 
 from .flatten_spans import (
     FlattenedSpan,

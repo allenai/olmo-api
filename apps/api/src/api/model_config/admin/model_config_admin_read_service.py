@@ -25,13 +25,18 @@ class ModelConfigAdminReadService:
 
             return ModelConfigListResponse.model_validate(processed_results)
 
-    async def get_one(self, model_id: str) -> ModelConfig | MultiModalModelConfig | None:
+    async def get_one(self, model_id: str) -> ModelConfigResponse | None:
         async with self.session.begin():
             polymorphic_loader_opt = selectin_polymorphic(ModelConfig, [ModelConfig, MultiModalModelConfig])
             stmt = select(ModelConfig).options(polymorphic_loader_opt).where(ModelConfig.id == model_id)
 
             result = await self.session.scalars(stmt)
-            return result.one_or_none()
+            model_config = result.one_or_none()
+
+            if model_config is None:
+                return None
+
+            return ModelConfigResponse.model_validate(model_config)
 
 
 ModelConfigAdminReadServiceDependency = Annotated[ModelConfigAdminReadService, Depends()]

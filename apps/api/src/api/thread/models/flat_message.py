@@ -10,6 +10,7 @@ from pydantic import (
 )
 from sqlalchemy import orm
 
+import core.object_id as obj
 from core.api_interface import APIInterface
 from core.inference_engine.finish_reason import FinishReason
 from core.label.label import Label
@@ -28,7 +29,7 @@ class InferenceOptionsResponse(InferenceOpts, APIInterface): ...
 
 
 class FlatMessage(APIInterface):
-    id: str
+    id: obj.ID
     content: str
     input_parts: list[InputPart] | None = Field(default=None)
     creator: str
@@ -73,6 +74,11 @@ class FlatMessage(APIInterface):
                 return [child.id for child in value]
 
         return value
+
+    @field_validator("labels", mode="after")
+    @classmethod
+    def remove_deleted(cls, labels: list[Label]):
+        return [label for label in labels if label.deleted is None]
 
     @computed_field  # type:ignore
     @property

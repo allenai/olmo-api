@@ -12,5 +12,5 @@ IP_ADDRESS_REGEX = r"((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(
 combined_pii_regex = re.compile(f"{EMAIL_REGEX}|{PHONE_NUMBER_REGEX}|{IP_ADDRESS_REGEX}")
 
 
-def does_contain_pii(string_to_check) -> bool:
+def does_contain_pii(string_to_check: str) -> bool:
     return combined_pii_regex.search(string_to_check) is not None

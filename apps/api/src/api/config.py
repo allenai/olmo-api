@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     OTEL_SERVICE_NAME: str = "olmo-api"
     OTEL_GCP_PROJECT_ID: str = "ai2-reviz"
 
+    INFINI_GRAM_API_URL: str = Field(init=False)
+
     model_config = SettingsConfigDict(
         extra="ignore",
         env_file=(".env", f".env.{environment}", ".env.local", f".env.{environment}.local"),

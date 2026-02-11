@@ -7,16 +7,13 @@ from sqlalchemy import delete
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
 from api.config import settings
 from api.db.sqlalchemy_engine import SessionDependency
+from api.gcs_dependency import GoogleCloudStorageDependency
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.service_errors import ForbiddenError, NotFoundError
 from core.auth.token import Token
-from core.google_cloud_storage import GoogleCloudStorage
 from db.models.completion import Completion
 
 logger = FastAPIStructLogger()
-
-# GCS is defined in core, which doesn't have fastapi -- move this if/when its used elsewhere
-GoogleCloudStorageDependency = Annotated[GoogleCloudStorage, Depends()]
 
 
 class ThreadDeleteService:

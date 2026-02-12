@@ -1,13 +1,15 @@
 import json
-import logging
 from typing import Annotated, Any
 
 from fastapi import Depends
 from pydantic_ai import Tool
 
+from api.logging.fastapi_logger import FastAPIStructLogger
 from db.models.tool_call import ToolCall
 from db.models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 from db.models.tool_definitions import ToolSource
+
+logger = FastAPIStructLogger()
 
 TOOL_REGISTRY: list[Tool[Any]] = []
 
@@ -53,7 +55,7 @@ class InternalToolService:
             return "Tool setup incorrect"
 
         except Exception as e:
-            logging.exception("Tool call failed")
+            logger.exception("Tool call failed", tool_name=tool_call.tool_name)
             return str(e)  # This returns the error to LLM
 
 

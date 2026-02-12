@@ -1,12 +1,12 @@
 import asyncio
 from dataclasses import dataclass
-from logging import getLogger
 from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 
 from api.config import settings
+from api.logging.fastapi_logger import FastAPIStructLogger
 from db.models.tool_call import ToolCall
 from db.models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 from db.models.tool_definitions import ToolSource
@@ -14,6 +14,7 @@ from db.models.tool_definitions import ToolSource
 if TYPE_CHECKING:
     from mcp import Tool as MCPTool
 
+logger = FastAPIStructLogger()
 
 @dataclass
 class McpServer:
@@ -91,7 +92,7 @@ class McpService:
 
             for server, tools in zip(uncached_servers, server_tool_lists, strict=True):
                 if isinstance(tools, BaseException):
-                    getLogger().warning("Failed to fetch tools from MCP server", exc_info=tools)
+                    logger.warning("Failed to fetch tools from MCP server", tools=tools)
                     self._server_tools_cache[server.id] = []
                 else:
                     self._server_tools_cache[server.id] = tools
@@ -136,7 +137,7 @@ class McpService:
             )
             return str(asyncio.run(server.direct_call_tool(name=tool_call.tool_name, args=tool_call.args or {})))
         except Exception as _e:
-            getLogger().exception("Failed to call mcp tool.", extra={"tool_name": tool_call.tool_name})
+            logger.exception("Failed to call mcp tool.", tool_name=tool_call.tool_name)
             return f"Failed to call remote tool {tool_call.tool_name}"
 
 

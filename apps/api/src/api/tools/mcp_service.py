@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 logger = FastAPIStructLogger()
 
+
 @dataclass
 class McpServer:
     """MCP Server configuration for FastAPI app."""

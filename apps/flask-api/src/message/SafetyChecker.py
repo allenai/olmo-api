@@ -6,7 +6,6 @@ from enum import StrEnum
 class SafetyCheckerType(StrEnum):
     GoogleLanguage = "google-moderate-text"
     GoogleVision = "google-vision-safe-search"
-    WildGuard = "wildguard"
 
 
 @dataclass

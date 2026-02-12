@@ -60,7 +60,7 @@ class HubSpotService:
                 if response.status_code == status.HTTP_200_OK:
                     response_data = response.json()
                     return len(cast(list, response_data.get("results", []))) > 0
-                return False  # noqa: TRY300
+                return False
 
             except Exception as e:
                 logger.exception("Exception while checking HubSpot contact", error=str(e))

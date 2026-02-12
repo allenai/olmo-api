@@ -14,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from api.config import Settings
 from api.db.sqlalchemy_engine import get_session
+from api.tools.mcp_service import McpService
+from db.models.tool_definitions import ToolDefinition, ToolSource
 from db.models.user import User
 from db.url import make_url
 
@@ -120,7 +122,7 @@ async def db_session(postgresql: AsyncConnection):
 
     yield Session
 
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_session, None)
     await engine.dispose()
 
 
@@ -158,3 +160,31 @@ async def auth_user(client: AsyncClient, auth0_token: str) -> AuthenticatedClien
 @pytest.fixture
 async def anon_user(client: AsyncClient) -> AuthenticatedClient:
     return await make_user(client=client, anonymous=True)
+
+
+@pytest.fixture
+def mock_mcp_service():
+    """Override McpService to avoid calling real MCP servers"""
+
+    mock_tool = ToolDefinition(
+        name="mock_tool",
+        tool_source=ToolSource.MCP,
+        mcp_server_id="mock-server",
+        description="A mock tool for testing",
+        parameters={"type": "object", "properties": {}},
+    )
+
+    class _MockMcpService:
+        @classmethod
+        async def get_general_mcp_tools(cls):
+            return [mock_tool]
+
+        @classmethod
+        async def get_tools_from_mcp_servers(cls, _mcp_server_ids: set[str]):
+            return [mock_tool]
+
+    app.dependency_overrides[McpService] = _MockMcpService
+
+    yield
+
+    app.dependency_overrides.pop(McpService, None)

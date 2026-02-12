@@ -104,6 +104,9 @@ async def test_migrate_when_only_authenticated_user_exists(
     result = response.json()
 
     assert result["updatedUser"] is not None
+    assert result["updatedUser"]["client"] == auth_user.client, (
+        "Authenticated user client ID should match after migration"
+    )
     assert result["messagesUpdatedCount"] == 0, "No messages to migrate from non-existent anonymous user"
 
 

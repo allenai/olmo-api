@@ -1,9 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Form, HTTPException, Query, status
 
 from api.auth.auth_service import AuthServiceDependency
 from api.service_errors import ForbiddenError, NotFoundError
+from api.thread.chat.chat_service import ChatServiceDependency, CreateMessageRequestWithFullMessages
 from api.thread.models.thread import Thread, ThreadList
 from api.thread.thread_delete_service import ThreadDeleteServiceDependency
 from api.thread.thread_read_service import ThreadReadServiceDependency
@@ -52,3 +53,14 @@ async def delete_thread(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except ForbiddenError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
+
+
+@thread_router.post("/chat")
+async def stream_chat_message(
+    chat_service: ChatServiceDependency,
+    auth_service: AuthServiceDependency,
+    request: CreateMessageRequestWithFullMessages = Form(),  # noqa: B008
+):
+    token = auth_service.optional_auth()
+
+    return chat_service.stream_chat_message(request, user=token)

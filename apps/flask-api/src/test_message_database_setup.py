@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from core.message.role import Role
 from core.object_id import NewID
 from core.tools.tool_source import ToolSource
+from db.models.inference_opts import InferenceOpts
 from db.models.message import Message
 from db.models.model_config import ModelHost
 from db.models.tool_definitions import ToolDefinition
@@ -16,7 +17,7 @@ def test_tool_def_does_not_delete_when_related_message_does(sql_alchemy: Session
         creator="me",
         role=Role.Assistant,
         root=message_id,
-        opts={},
+        opts=InferenceOpts(),
         final=True,
         private=False,
         model_id="test-model",

@@ -21,6 +21,7 @@ from core.message.message_chunk import (
 )
 from core.message.role import Role
 from core.tools.tool_source import ToolSource
+from db.models.inference_opts import InferenceOpts
 from db.models.message import Message
 from db.models.model_config import ModelConfig, ModelHost, ModelType, PromptType
 from db.models.tool_call import ToolCall
@@ -50,7 +51,7 @@ def test_map_final_output_should_map_when_there_is_an_empty_text_part_at_start()
         content="content",
         creator="creator",
         role="Assistant",
-        opts={},
+        opts=InferenceOpts(),
         root="root",
         final=True,
         private=False,
@@ -86,7 +87,7 @@ def test_map_final_output_should_map_tool_parts():
         content="content",
         creator="creator",
         role="Assistant",
-        opts={},
+        opts=InferenceOpts(),
         root="root",
         final=True,
         private=False,
@@ -131,7 +132,7 @@ def test_pydantic_map_part_should_return_error_chunk_when_tool_not_found():
         content="content",
         creator="creator",
         role="Assistant",
-        opts={},
+        opts=InferenceOpts(),
         root="root",
         final=False,
         private=False,
@@ -177,7 +178,7 @@ def test_pydantic_map_delta_should_return_error_chunk_when_tool_not_found():
         content="content",
         creator="creator",
         role="Assistant",
-        opts={},
+        opts=InferenceOpts(),
         root="root",
         final=False,
         private=False,
@@ -260,7 +261,7 @@ def test_yields_error_when_exceeded_max_steps(sql_alchemy: Session, dbc: db.Clie
         content="content",
         creator="creator",
         role=Role.User,
-        opts={},
+        opts=InferenceOpts(),
         root="fake_message",
         final=True,
         private=False,
@@ -388,7 +389,7 @@ def test_stream_finishes_if_max_steps_not_exceeded(sql_alchemy: Session, dbc: db
         content="content",
         creator="creator",
         role=Role.User,
-        opts={},
+        opts=InferenceOpts(),
         root="fake_message",
         final=True,
         private=False,

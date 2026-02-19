@@ -11,7 +11,9 @@ from pydantic import (
     model_validator,
 )
 
+from core import empty_string_to_none
 from core.api_interface import APIInterface
+from db.models.inference_opts import InferenceOpts
 from db.models.model_config import (
     FileRequiredToPromptOption,
     ModelConfig,
@@ -22,16 +24,6 @@ from db.models.model_config import (
 from infini_gram_api_client.models.available_infini_gram_index_id import (
     AvailableInfiniGramIndexId,
 )
-
-
-def empty_string_to_none(value: str | None) -> str | None:
-    if value is None:
-        return value
-
-    if value.strip() == "":
-        return None
-
-    return value
 
 
 class BaseModelConfigRequest(APIInterface):

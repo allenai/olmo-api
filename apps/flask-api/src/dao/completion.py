@@ -2,14 +2,12 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any
 
-from core.object_id import ID, NewID
 from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool
 
-from src.dao.message.message_models import (
-    InferenceOpts,
-    TokenLogProbs,
-)
+from core.message.token_log_probs import TokenLogProbs
+from core.object_id import ID, NewID
+from db.models.inference_opts import InferenceOpts
 
 CompletionRow = tuple[
     str,

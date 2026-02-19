@@ -1,171 +1,114 @@
-# Only allow new messages, editing can come with PUT
+from typing import Annotated
 
-# Get model from DB
-# Validate request against model config
-# Get parent/root messages
-# If some options aren't set, merge them with parent's options
-# Reject requests to OlmoASR
-# Safety check
-# Upload files
-# Save initial messages/thread to DB
-# If it's a tool response, go down a different path
-# Stream message
-
-from collections.abc import Sequence
-from typing import Annotated, Any, Self
-
-from fastapi import Depends, UploadFile
+from fastapi import Depends
 from opentelemetry import trace
-from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import GEN_AI_REQUEST_MODEL
-from pydantic import (
-    BaseModel,
-    Field,
-    model_validator,
-)
-from werkzeug import exceptions
+from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import GEN_AI_REQUEST_MODEL  # noqa: PLC2701
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
 from api.logging.fastapi_logger import FastAPIStructLogger
-from core.api_interface import APIInterface
+from api.model.model_repository import ModelRepositoryDependency
+from api.model_config.model_config_request import validate_inference_parameters_against_model_constraints
+from api.thread.chat.chat_request import ChatRequest
 from core.auth.token import Token
-from core.message.role import Role
 from db.models.inference_opts import InferenceOpts
-from db.models.input_parts import InputPart
-from db.models.message import Message
-
-# We import PromptTemplate and ToolDefinition so Pydantic knows how to resolve them, preventing some model definition errors
-from db.models.prompt_template import PromptTemplate  # noqa: F401
-from db.models.tool_definitions import ToolDefinition  # noqa: F401
-
-
-class ParameterDef(APIInterface):
-    type: str
-    properties: dict[str, "ParameterDef"] | None = Field(default=None)
-    description: str | None = Field(default=None)
-    required: list[str] | None = Field(default=[])
-    property_ordering: list[str] | None = Field(default=None)
-    default: dict[str, str] | None = Field(default=None)
-
-
-class CreateToolDefinition(APIInterface):
-    name: str
-    description: str
-    parameters: ParameterDef
-
-
-class CreateMessageRequestWithFullMessages(BaseModel):
-    parent_id: str | None = Field(default=None)
-    parent: Message | None = Field(default=None)
-    opts: InferenceOpts = Field(default_factory=InferenceOpts)
-    max_steps: int | None = Field(default=None)
-    extra_parameters: dict[str, Any] | None = Field(default=None)
-
-    content: str
-    input_parts: list[InputPart] | None = Field(default=None)
-
-    role: Role
-    original: str | None = Field(default=None)
-    private: bool = Field(default=False)
-    root: Message | None = Field(default=None)
-    template: str | None = Field(default=None)
-    model: str
-    agent: str | None
-    files: Sequence[UploadFile] | None = Field(default=None)
-    client: str
-    captcha_token: str | None = Field()
-    bypass_safety_check: bool = Field(default=False)
-
-    tool_call_id: str | None = Field(default=None)
-    create_tool_definitions: list[CreateToolDefinition] | None
-    selected_tools: list[str] | None
-    enable_tool_calling: bool
-
-    mcp_server_ids: set[str] | None
-    """Intended to be used by agent flows to pass MCP servers in"""
-
-    @model_validator(mode="after")
-    def parent_exists_if_parent_id_is_set(self) -> Self:
-        if self.parent_id is not None and self.parent is None:
-            msg = f"Parent message {self.parent_id} not found"
-            raise ValueError(msg)
-
-        return self
-
-    @model_validator(mode="after")
-    def root_exists_when_root_id_is_defined_with_no_parent(self) -> Self:
-        if self.parent is not None and self.root is None:
-            msg = f"Message has an invalid root {self.parent.root}"
-            raise ValueError(msg)
-
-        return self
-
-    @model_validator(mode="after")
-    def assistant_message_has_a_parent(self) -> Self:
-        if self.role == Role.Assistant and self.parent is None:
-            msg = "Assistant messages must have a parent"
-            raise ValueError(msg)
-
-        return self
-
-    @model_validator(mode="after")
-    def original_message_and_parent_are_different(self) -> Self:
-        if self.original is not None and self.parent_id is not None and self.original == self.parent_id:
-            msg = "Original and parent messages must be different"
-            raise ValueError(msg)
-
-        return self
-
-    @model_validator(mode="after")
-    def private_matches_root_private(self) -> Self:
-        if self.root is not None and self.root.private != self.private:
-            msg = "Visibility must be identical for all messages in a thread"
-            raise ValueError(msg)
-
-        return self
-
-    @model_validator(mode="after")
-    def current_user_created_thread(self) -> Self:
-        # Only the creator of a thread can create follow-up prompts
-        if self.root is not None and self.root.creator != self.client:
-            raise exceptions.Forbidden
-
-        return self
-
-    @model_validator(mode="after")
-    def tool_response_creation_can_not_be_root(self) -> Self:
-        if self.parent is None and self.role == Role.ToolResponse:
-            msg = "Tool response must have parent"
-            raise ValueError(msg)
-
-        return self
-
-    @model_validator(mode="after")
-    def tool_response_creation_must_have_tool_id(self) -> Self:
-        if self.role == Role.ToolResponse and self.tool_call_id is None:
-            msg = "Tool response must have tool call id"
-            raise ValueError(msg)
-
-        return self
-
-    @model_validator(mode="after")
-    def parent_and_child_have_different_roles(self) -> Self:
-        if self.parent is not None and self.parent.role != Role.ToolResponse and self.parent.role == self.role:
-            msg = "Parent and child must have different roles"
-            raise ValueError(msg)
-
-        return self
-
+from db.models.model_config import ModelConfig, PromptType
 
 logger = FastAPIStructLogger()
 
 
-class ChatService:
-    def __init__(self, message_repository: AsyncMessageRepositoryDependency):
-        self.message_repository = message_repository
+class ModelNotFoundError(Exception): ...
 
-    async def stream_chat_message(self, request: CreateMessageRequestWithFullMessages, user: Token):
+
+class ModelNotAvailableError(Exception): ...
+
+
+def merge_inference_options(
+    model: ModelConfig, parent_inference_options: InferenceOpts | None, request_inference_options: InferenceOpts
+) -> InferenceOpts:
+    """
+    Combines inference options from the model config, parent message, and request.
+
+    The options are applied in this order this priority, with lower options overwriting higher:
+    ```
+    model config
+    parent message
+    request
+    ```
+    """
+    # get the last inference options, either from the parent message or the model defaults if no parent
+    default_inference_options = InferenceOpts.from_model_config_defaults(model)
+
+    merged_inference_options = (
+        default_inference_options.model_dump()
+        # Excluding None from these lets us keep the options from the higher set of options
+        | (parent_inference_options.model_dump(exclude_none=True) if parent_inference_options is not None else {})
+        | request_inference_options.model_dump(exclude_none=True)
+    )
+
+    return InferenceOpts.model_validate(merged_inference_options)
+
+
+class ChatService:
+    def __init__(
+        self,
+        message_repository: AsyncMessageRepositoryDependency,
+        model_repository: ModelRepositoryDependency,
+    ):
+        self.message_repository = message_repository
+        self.model_repository = model_repository
+
+    async def _get_model(self, model_id: str):
+        model = await self.model_repository.get_one(model_id)
+
+        if model is None:
+            raise ModelNotFoundError
+
+        if model.prompt_type == PromptType.FILES_ONLY:
+            logger.error("Tried to use a files only model in a normal thread stream %s/%s", id, model)
+
+            # HACK: I want OLMoASR to be set up like a normal model but don't want people to stream to it yet
+            model_not_available_message = "This model isn't available yet"
+            raise ModelNotAvailableError(model_not_available_message)
+
+        return model
+
+    async def _get_parent_and_root_messages(self, parent_message_id: str | None):
+        if parent_message_id is None:
+            return None, None
+
+        parent_message = await self.message_repository.get_message_by_id(parent_message_id)
+        root_message = (
+            await self.message_repository.get_message_by_id(parent_message.root) if parent_message is not None else None
+        )
+
+        return parent_message, root_message
+
+    async def stream_chat_message(
+        self,
+        request: ChatRequest,
+        user: Token,
+    ):
         logger.bind(model=request.model, user=user.client)
         trace.get_current_span().set_attributes({GEN_AI_REQUEST_MODEL: request.model, "user": user.client})
+
+        model = await self._get_model(request.model)
+
+        parent, root = await self._get_parent_and_root_messages(request.parent)
+
+        merged_inference_options = merge_inference_options(
+            model, InferenceOpts.from_message(parent), request.inference_options
+        )
+
+        validate_inference_parameters_against_model_constraints(model, merged_inference_options)
+
+        # Only allow new messages, editing can come with PUT
+
+        # TODO:
+        # Safety check
+        # Upload files
+        # Save initial messages/thread to DB
+        # If it's a tool response, go down a different path
+        # Stream message
 
 
 ChatServiceDependency = Annotated[ChatService, Depends()]

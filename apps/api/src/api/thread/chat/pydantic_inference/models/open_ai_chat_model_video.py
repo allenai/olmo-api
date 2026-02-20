@@ -17,7 +17,7 @@ from openai.types.chat import (
 from openai.types.chat.chat_completion_content_part_image_param import ImageURL
 from openai.types.chat.chat_completion_content_part_input_audio_param import InputAudio
 from openai.types.chat.chat_completion_content_part_param import File, FileFile
-from pydantic_ai import ModelProfile, RunContext, UnexpectedModelBehavior, _utils, usage
+from pydantic_ai import ModelProfile, RunContext, UnexpectedModelBehavior, _utils, usage  # noqa: PLC2701
 from pydantic_ai.messages import (
     AudioUrl,
     BinaryContent,
@@ -233,7 +233,7 @@ class OpenAIChatModelVideo(OpenAIChatModel):
                             image_url["detail"] = metadata.get("detail", "auto")
                         content.append(ChatCompletionContentPartImageParam(image_url=image_url, type="image_url"))
                     elif item.is_audio:
-                        assert item.format in ("wav", "mp3")
+                        assert item.format in {"wav", "mp3"}  # noqa: S101
                         audio = InputAudio(data=base64.b64encode(item.data).decode("utf-8"), format=item.format)  # type:ignore
                         content.append(ChatCompletionContentPartInputAudioParam(input_audio=audio, type="input_audio"))
                     elif item.is_document:
@@ -251,13 +251,13 @@ class OpenAIChatModelVideo(OpenAIChatModel):
                         video_url = VideoURL(url=item.data_uri)
                         content.append(ChatCompletionContentPartVideoParam(video_url=video_url, type="video_url"))
                     else:  # pragma: no cover
-                        raise RuntimeError(f"Unsupported binary content type: {item.media_type}")
+                        raise RuntimeError(f"Unsupported binary content type: {item.media_type}")  # noqa: EM102, TRY003
                 elif isinstance(item, AudioUrl):
                     downloaded_item = await download_item(item, data_format="base64", type_format="extension")
-                    assert downloaded_item["data_type"] in (
+                    assert downloaded_item["data_type"] in {  # noqa: S101
                         "wav",
                         "mp3",
-                    ), f"Unsupported audio format: {downloaded_item['data_type']}"
+                    }, f"Unsupported audio format: {downloaded_item['data_type']}"
                     audio = InputAudio(data=downloaded_item["data"], format=downloaded_item["data_type"])  # type:ignore
                     content.append(ChatCompletionContentPartInputAudioParam(input_audio=audio, type="input_audio"))
                 elif isinstance(item, DocumentUrl):
@@ -319,7 +319,7 @@ class OpenAIChatModelVideo(OpenAIChatModel):
         messages: list[ModelMessage],
         model_settings: ModelSettings | None,
         model_request_parameters: ModelRequestParameters,
-        run_context: RunContext[Any] | None = None,
+        run_context: RunContext[Any] | None = None,  # noqa: ARG002
     ) -> AsyncIterator[StreamedResponse]:
         check_allow_model_requests()
         model_settings, model_request_parameters = self.prepare_request(

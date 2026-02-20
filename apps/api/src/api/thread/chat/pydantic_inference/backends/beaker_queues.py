@@ -92,7 +92,7 @@ class BeakerQueuesModel(Model):
         messages: list[ModelMessage],
         model_settings: ModelSettings | None,
         model_request_parameters: ModelRequestParameters,
-        run_context: RunContext[Any] | None = None,
+        run_context: RunContext[Any] | None = None,  # noqa: ARG002
     ) -> AsyncIterator[OpenAIStreamedResponse]:
         """Make a streaming request to the model."""
         check_allow_model_requests()  # Required for testing

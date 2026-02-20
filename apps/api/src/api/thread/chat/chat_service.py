@@ -137,8 +137,8 @@ class ChatService:
         request: ChatRequest,
         creator_id: str,
         system_prompt: str | None,
-        inference_options: InferenceOpts,
-        model: ModelConfig,
+        inference_options: InferenceOpts,  # noqa: ARG002
+        model: ModelConfig,  # noqa: ARG002
     ) -> list[ModelMessage]:
         user_message = ModelRequest(
             parts=[UserPromptPart(content=map_input_parts(request.input_parts, request.content or ""))]
@@ -190,11 +190,11 @@ class ChatService:
 
         async for event in agent.run_stream_events(message_history=messages):
             if isinstance(event, AgentRunResultEvent):
-                run_result = event
+                run_result = event  # noqa: F841
 
             yield event
 
-        # TODO:
+        # TODO: below
         # Safety check
         # Upload files
         # Save initial messages/thread to DB

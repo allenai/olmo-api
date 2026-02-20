@@ -25,12 +25,8 @@ def encode_value(x: typing.Any) -> typing.Any:
         case BaseModel():
             return x.model_dump()
 
-    # if dataclasses.is_dataclass(x):
-    #     return dataclasses.asdict(x)  # type: ignore
-
-    # if isinstance(x, BaseModel):
-
-    return x
+        case _:
+            return x
 
 
 @encode_value.register(datetime.datetime)

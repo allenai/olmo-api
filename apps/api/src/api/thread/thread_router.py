@@ -2,8 +2,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Form, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
+from opentelemetry import trace
+from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import GEN_AI_REQUEST_MODEL  # noqa: PLC2701
 
 from api.auth.auth_service import AuthServiceDependency
+from api.logging.fastapi_logger import FastAPIStructLogger
 from api.service_errors import ForbiddenError, NotFoundError
 from api.thread.chat.chat_service import ChatRequest, ChatServiceDependency
 from api.thread.chat.format_output import format_messages
@@ -11,6 +14,9 @@ from api.thread.models.thread import Thread, ThreadList
 from api.thread.thread_delete_service import ThreadDeleteServiceDependency
 from api.thread.thread_read_service import ThreadReadServiceDependency
 from core.sort_options import SortOptions
+
+logger = FastAPIStructLogger()
+
 
 SortOptionsParams = Annotated[SortOptions, Query()]
 
@@ -65,7 +71,16 @@ async def stream_chat_message(
 ):
     token = auth_service.optional_auth()
 
-    # TODO: Figure out why errors here don't return properly
+    logger.bind(model=request.model, user=token.client)
+    trace.get_current_span().set_attributes({GEN_AI_REQUEST_MODEL: request.model, "user": token.client})
+
+    # These are called here instead of inside stream_chat_message so we can get proper exception handling
+    # StreamingResponse returns a 200 immediately, if an exception happens inside the request is aborted without returning
+    model = await chat_service.get_model(request.model)
+    mapped_messages = await chat_service.validate_and_map_request(request, token, model)
+
+    # TODO: Handle errors inside the stream
     return StreamingResponse(
-        format_messages(chat_service.stream_chat_message(request, user=token)), media_type="application/jsonl"
+        format_messages(stream_generator=chat_service.stream_chat_message(mapped_messages, model)),
+        media_type="application/jsonl",
     )

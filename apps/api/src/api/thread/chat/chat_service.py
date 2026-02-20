@@ -2,9 +2,7 @@ from collections.abc import Sequence
 from typing import Annotated
 
 from fastapi import Depends
-from opentelemetry import trace
-from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import GEN_AI_REQUEST_MODEL
-from pydantic_ai import Agent, AgentRunResultEvent, ModelRequest, SystemPromptPart, UserPromptPart
+from pydantic_ai import Agent, AgentRunResultEvent, ModelMessage, ModelRequest, SystemPromptPart, UserPromptPart
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
 from api.db.sqlalchemy_engine import SessionDependency
@@ -99,7 +97,7 @@ class ChatService:
         self.session = session
         self.tools_service = tools_service
 
-    async def _get_model(self, model_id: str):
+    async def get_model(self, model_id: str):
         async with self.session.begin():
             stmt = base_model_config_select.where(ModelConfig.id == model_id)
             result = await self.session.scalars(stmt)
@@ -137,7 +135,7 @@ class ChatService:
         system_prompt: str | None,
         inference_options: InferenceOpts,
         model: ModelConfig,
-    ):
+    ) -> list[ModelMessage]:
         user_message = ModelRequest(
             parts=[UserPromptPart(content=map_input_parts(request.input_parts, request.content or ""))]
         )
@@ -153,18 +151,12 @@ class ChatService:
 
         return [user_message]
 
-    async def stream_chat_message(
+    async def validate_and_map_request(
         self,
         request: ChatRequest,
         user: Token,
-    ):
-        logger.bind(model=request.model, user=user.client)
-        trace.get_current_span().set_attributes({GEN_AI_REQUEST_MODEL: request.model, "user": user.client})
-
-        # Only allow new messages, editing can come with PUT
-
-        model = await self._get_model(request.model)
-
+        model: ModelConfig,
+    ) -> list[ModelMessage]:
         parent_message, root_message = await self._get_parent_and_root_messages(request.parent)
 
         merged_inference_options = merge_inference_options(
@@ -182,11 +174,17 @@ class ChatService:
             model=model,
         )
 
+        return agent_messages
+
+    @classmethod
+    async def stream_chat_message(cls, messages: Sequence[ModelMessage], model: ModelConfig):
+        # Only allow new messages, editing can come with PUT
+
         pydantic_model = get_pydantic_model(model)
 
         agent = Agent(model=pydantic_model)
 
-        async for event in agent.run_stream_events(message_history=agent_messages):
+        async for event in agent.run_stream_events(message_history=messages):
             if isinstance(event, AgentRunResultEvent):
                 run_result = event
 

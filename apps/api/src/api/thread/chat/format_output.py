@@ -4,13 +4,15 @@ import functools
 import json
 import typing
 from collections.abc import AsyncGenerator
-from logging import getLogger
 from typing import Any
 
 from pydantic import BaseModel
 
+from api.logging.fastapi_logger import FastAPIStructLogger
 from api.thread.models.thread import Thread
 from db.models.message import Message
+
+logger = FastAPIStructLogger()
 
 
 @functools.singledispatch
@@ -55,5 +57,5 @@ async def format_messages(
                 case _:
                     yield format_message(stream_message)
     except Exception:
-        getLogger().exception("Error when streaming")
+        logger.exception("Error when streaming")
         raise

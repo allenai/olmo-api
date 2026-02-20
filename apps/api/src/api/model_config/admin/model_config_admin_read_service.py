@@ -1,12 +1,11 @@
 from typing import Annotated
 
 from fastapi import Depends
-from sqlalchemy.orm import selectin_polymorphic
 
 from api.db.sqlalchemy_engine import SessionDependency
 from api.model.model_query import base_model_config_select
 from api.model_config.model_config_response import ModelConfigListResponse, ModelConfigResponse
-from db.models.model_config import ModelConfig, MultiModalModelConfig
+from db.models.model_config import ModelConfig
 
 
 class ModelConfigAdminReadService:
@@ -25,7 +24,6 @@ class ModelConfigAdminReadService:
 
     async def get_one(self, model_id: str) -> ModelConfigResponse | None:
         async with self.session.begin():
-            polymorphic_loader_opt = selectin_polymorphic(ModelConfig, [ModelConfig, MultiModalModelConfig])
             stmt = base_model_config_select.where(ModelConfig.id == model_id)
 
             result = await self.session.scalars(stmt)

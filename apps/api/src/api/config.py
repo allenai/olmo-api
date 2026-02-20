@@ -1,7 +1,7 @@
 import os
 from enum import StrEnum
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -54,6 +54,17 @@ class Settings(BaseSettings):
     OTEL_GCP_PROJECT_ID: str = "ai2-reviz"
 
     INFINI_GRAM_API_URL: str = Field(init=False)
+
+    AI2_MODEL_HUB_BASE_URL: str = "https://ai2-model-hub.allen.ai"
+    AI2_MODEL_HUB_API_KEY: SecretStr = Field(init=False)
+
+    BEAKER_ADDRESS: str = "beaker.org:443"
+    BEAKER_USER_TOKEN: SecretStr = Field(init=False)
+
+    CIRRASCALE_BASE_URL: str = "https://ai2endpoints.cirrascale.ai/api"
+    CIRRASCALE_API_KEY: SecretStr = Field(init=False)
+
+    MODAL_OPENAI_API_KEY: SecretStr = Field(init=False)
 
     model_config = SettingsConfigDict(
         extra="ignore",

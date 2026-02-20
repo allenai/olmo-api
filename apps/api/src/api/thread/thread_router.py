@@ -5,7 +5,7 @@ from fastapi.responses import StreamingResponse
 
 from api.auth.auth_service import AuthServiceDependency
 from api.service_errors import ForbiddenError, NotFoundError
-from api.thread.chat.chat_service import ChatServiceDependency, CreateMessageRequestWithFullMessages
+from api.thread.chat.chat_service import ChatRequest, ChatServiceDependency
 from api.thread.models.thread import Thread, ThreadList
 from api.thread.thread_delete_service import ThreadDeleteServiceDependency
 from api.thread.thread_read_service import ThreadReadServiceDependency
@@ -60,7 +60,7 @@ async def delete_thread(
 async def stream_chat_message(
     chat_service: ChatServiceDependency,
     auth_service: AuthServiceDependency,
-    request: CreateMessageRequestWithFullMessages = Form(),  # noqa: B008
+    request: ChatRequest = Form(),  # noqa: B008
 ):
     token = auth_service.optional_auth()
 

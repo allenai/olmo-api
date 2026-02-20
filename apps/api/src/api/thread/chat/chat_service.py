@@ -1,6 +1,6 @@
 import json
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from fastapi import Depends
 from opentelemetry import trace
@@ -19,10 +19,8 @@ from api.tools.tools_service import ToolsServiceDependency
 from core.auth.token import Token
 from core.object_id import ID, NewID
 from db.models.inference_opts import InferenceOpts
+from db.models.message import Message
 from db.models.model_config import ModelConfig, PromptType
-
-if TYPE_CHECKING:
-    from db.models.message import Message
 
 logger = FastAPIStructLogger()
 

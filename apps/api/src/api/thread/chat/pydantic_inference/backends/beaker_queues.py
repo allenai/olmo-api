@@ -36,8 +36,8 @@ from pydantic_ai.profiles import ModelProfile
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.tools import ToolDefinition
 
+from api.config import settings
 from db.models.model_config import ModelConfig
-from src.config.get_config import get_config
 
 EXPIRES_IN = 60 * 60 * 24 * 30  # 30 days
 
@@ -60,8 +60,9 @@ class BeakerQueuesModel(Model):
     def __init__(self, model_config: ModelConfig, beaker_config: BeakerConfig | None = None) -> None:
         """Initialize the model with a beaker client."""
         if not beaker_config:
-            cfg = get_config()
-            beaker_config = BeakerConfig(rpc_address=cfg.beaker.address, user_token=cfg.beaker.user_token)
+            beaker_config = BeakerConfig(
+                rpc_address=settings.BEAKER_ADDRESS, user_token=settings.BEAKER_USER_TOKEN.get_secret_value()
+            )
 
         self._model_name = model_config.model_id_on_host
         self._model_profile = ModelProfile(supports_tools=model_config.can_call_tools)

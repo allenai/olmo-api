@@ -1,8 +1,9 @@
 from collections.abc import Sequence
-from typing import Any, Self
+from typing import Annotated, Any, Self
 
 from fastapi import UploadFile
 from pydantic import (
+    AfterValidator,
     Field,
     Json,
     computed_field,
@@ -10,6 +11,7 @@ from pydantic import (
     model_validator,
 )
 
+from api.config import settings
 from core.api_interface import APIInterface
 from core.message.role import Role
 from db.models.inference_opts import InferenceOpts
@@ -31,6 +33,14 @@ class CreateToolDefinition(APIInterface):
     parameters: ParameterDef
 
 
+def captcha_token_required_on_prod(value: str | None):
+    if settings.ENV.is_production and value is None:
+        msg = "Failed to evaluate captcha. Please reload the page and try again."
+        raise ValueError(msg)
+
+    return value
+
+
 class ChatRequest(APIInterface):
     parent: str | None = Field(default=None)
     content: str | None = Field(default=None)
@@ -48,7 +58,7 @@ class ChatRequest(APIInterface):
 
     bypass_safety_check: bool = Field(default=False)
 
-    captcha_token: str
+    captcha_token: Annotated[str | None, AfterValidator(captcha_token_required_on_prod)] = Field(default=None)
 
     max_tokens: int | None = Field(default=None)
     temperature: float | None = Field(default=None)

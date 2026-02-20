@@ -1,9 +1,9 @@
 from pydantic_ai.models import Model
 from pydantic_ai.providers.openai import OpenAIProvider
 
+from api.config import settings
+from api.thread.chat.pydantic_inference.models.open_ai_chat_model_video import OpenAIChatModelVideo
 from db.models.model_config import ModelConfig
-from src.config.get_config import cfg
-from src.pydantic_inference.models.open_ai_chat_model_video import OpenAIChatModelVideo
 
 # Models hosted on vLLM always have this name
 VLLM_MODEL_NAME = "llm"
@@ -15,7 +15,7 @@ def get_modal_openai_model(model_config: ModelConfig) -> Model:
         provider=OpenAIProvider(
             # For Modal OpenAI APIs the "model_id" is the URL
             base_url=model_config.model_id_on_host,
-            api_key=cfg.modal_openai.api_key.get_secret_value(),
+            api_key=settings.MODAL_OPENAI_API_KEY.get_secret_value(),
         ),
     )
 

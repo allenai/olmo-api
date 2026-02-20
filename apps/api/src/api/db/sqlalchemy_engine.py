@@ -16,7 +16,7 @@ engine = create_async_engine(
     max_overflow=settings.DATABASE_MAX_OVERFLOW_CONNECTIONS,
 )
 
-Session = async_sessionmaker(engine)
+Session = async_sessionmaker(engine, expire_on_commit=False)
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, Any]:

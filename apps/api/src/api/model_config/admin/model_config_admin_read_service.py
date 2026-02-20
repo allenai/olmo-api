@@ -1,29 +1,40 @@
 from typing import Annotated
 
 from fastapi import Depends
+from sqlalchemy.orm import selectin_polymorphic
 
-from api.model.model_repository import ModelRepositoryDependency
+from api.db.sqlalchemy_engine import SessionDependency
+from api.model.model_query import base_model_config_select
 from api.model_config.model_config_response import ModelConfigListResponse, ModelConfigResponse
+from db.models.model_config import ModelConfig, MultiModalModelConfig
 
 
 class ModelConfigAdminReadService:
-    def __init__(self, model_repository: ModelRepositoryDependency):
-        self.model_repository = model_repository
+    def __init__(self, session: SessionDependency):
+        self.session = session
 
     async def get_all(self) -> ModelConfigListResponse:
-        result = await self.model_repository.get_all()
+        async with self.session.begin():
+            stmt = base_model_config_select.order_by(ModelConfig.order.asc())
 
-        processed_results = [ModelConfigResponse.model_validate(model) for model in result]
+            result = await self.session.scalars(stmt)
 
-        return ModelConfigListResponse.model_validate(processed_results)
+            processed_results = [ModelConfigResponse.model_validate(model) for model in result.all()]
+
+            return ModelConfigListResponse.model_validate(processed_results)
 
     async def get_one(self, model_id: str) -> ModelConfigResponse | None:
-        model_config = await self.model_repository.get_one(model_id)
+        async with self.session.begin():
+            polymorphic_loader_opt = selectin_polymorphic(ModelConfig, [ModelConfig, MultiModalModelConfig])
+            stmt = base_model_config_select.where(ModelConfig.id == model_id)
 
-        if model_config is None:
-            return None
+            result = await self.session.scalars(stmt)
+            model_config = result.one_or_none()
 
-        return ModelConfigResponse.model_validate(model_config)
+            if model_config is None:
+                return None
+
+            return ModelConfigResponse.model_validate(model_config)
 
 
 ModelConfigAdminReadServiceDependency = Annotated[ModelConfigAdminReadService, Depends()]

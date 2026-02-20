@@ -19,6 +19,7 @@ jobs:
       CIRRASCALE_API_KEY: ${{ secrets.CIRRASCALE_API_KEY }}
       MODAL_OPENAI_API_KEY: ${{ secrets.MODAL_OPENAI_API_KEY }}
       E2E_AUTH0_CLIENT_ID: ${{ secrets.E2E_AUTH0_CLIENT_ID }}
+      AI2_MODEL_HUB_API_KEY: ${{ secrets.AI2_MODEL_HUB_API_KEY }}
       ENV: test
     steps:
       - uses: actions/checkout@v6
@@ -72,6 +73,7 @@ jobs:
       CIRRASCALE_API_KEY: ${{ secrets.CIRRASCALE_API_KEY }}
       MODAL_OPENAI_API_KEY: ${{ secrets.MODAL_OPENAI_API_KEY }}
       E2E_AUTH0_CLIENT_ID: ${{ secrets.E2E_AUTH0_CLIENT_ID }}
+      AI2_MODEL_HUB_API_KEY: ${{ secrets.AI2_MODEL_HUB_API_KEY }}
       ENV: test
     steps:
       - uses: actions/checkout@v6

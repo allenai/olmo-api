@@ -2,13 +2,12 @@ from typing import Annotated
 
 from fastapi import Depends
 from pydantic import TypeAdapter
-from sqlalchemy import select
-from sqlalchemy.orm import selectin_polymorphic
 
 from api.db.sqlalchemy_engine import SessionDependency
+from api.model.model_query import base_model_config_select
 from api.model.model_response import AvailableTool, ModelListResponse, ModelResponse, ModelValidationContext
 from api.tools.tools_service import ToolsServiceDependency
-from db.models.model_config import FilesOnlyModelConfig, ModelConfig, MultiModalModelConfig
+from db.models.model_config import ModelConfig
 
 
 class ModelReadService:
@@ -18,11 +17,7 @@ class ModelReadService:
 
     async def get_all(self, *, include_internal_models: bool = False) -> ModelListResponse:
         async with self.session.begin():
-            polymorphic_loader_opt = selectin_polymorphic(
-                ModelConfig, [ModelConfig, MultiModalModelConfig, FilesOnlyModelConfig]
-            )
-
-            stmt = select(ModelConfig).options(polymorphic_loader_opt).order_by(ModelConfig.order.asc())
+            stmt = base_model_config_select.order_by(ModelConfig.order.asc())
 
             if not include_internal_models:
                 stmt = stmt.filter_by(internal=False)

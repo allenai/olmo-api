@@ -19,7 +19,7 @@ logger = FastAPIStructLogger()
 def encode_value(x: typing.Any) -> typing.Any:
     match x:
         case clazz if dataclasses.is_dataclass(clazz):
-            return dataclasses.asdict(x)
+            return dataclasses.asdict(x)  # type:ignore
 
         case BaseModel():
             return x.model_dump()

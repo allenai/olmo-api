@@ -27,6 +27,7 @@ pythonVersion = "3.11"
 
 [tool.mypy]
 plugins = ['pydantic.mypy']
+disable_error_code = ["prop-decorator"]
 
 [[tool.mypy.overrides]]
 module = ["authlib.*"]

@@ -10,7 +10,8 @@ from pydantic_ai.direct import model_request_sync
 from pydantic_ai.messages import BinaryContent, VideoUrl
 from pydantic_ai.providers.openai import OpenAIProvider
 from pytest_mock import MockerFixture
-from src.pydantic_inference.models.open_ai_chat_model_video import OpenAIChatModelVideo
+
+from .open_ai_chat_model_video import OpenAIChatModelVideo
 
 # Models hosted on vLLM always have this name
 VLLM_MODEL_NAME = "llm"

@@ -2,6 +2,7 @@ from collections.abc import Sequence
 from typing import Annotated
 
 from fastapi import Depends
+from fastapi_problem.error import UnprocessableProblem
 from pydantic_ai import Agent, AgentRunResultEvent, ModelMessage, ModelRequest, SystemPromptPart, UserPromptPart
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
@@ -23,10 +24,12 @@ from db.models.model_config import ModelConfig, PromptType
 logger = FastAPIStructLogger()
 
 
-class ModelNotFoundError(Exception): ...
+class ModelNotFoundError(UnprocessableProblem):
+    title = "Model not found"
 
 
-class ModelNotAvailableError(Exception): ...
+class ModelNotAvailableError(UnprocessableProblem):
+    title = "Model not available"
 
 
 def merge_inference_options(
@@ -55,7 +58,7 @@ def merge_inference_options(
     return InferenceOpts.model_validate(merged_inference_options)
 
 
-class InvalidParentError(Exception): ...
+class InvalidParentError(UnprocessableProblem): ...
 
 
 def build_message_list_from_parent(messages: Sequence[Message], parent_message_id: ID) -> list[Message]:
@@ -105,7 +108,8 @@ class ChatService:
             model = result.one_or_none()
 
             if model is None:
-                raise ModelNotFoundError
+                model_not_found_message = f"Model with ID '{model_id}' not found"
+                raise ModelNotFoundError(model_not_found_message)
 
             if model.prompt_type == PromptType.FILES_ONLY:
                 logger.error("Tried to use a files only model in a normal thread stream %s/%s", id, model)

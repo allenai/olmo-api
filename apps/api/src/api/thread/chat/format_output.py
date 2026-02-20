@@ -15,6 +15,7 @@ from db.models.message import Message
 logger = FastAPIStructLogger()
 
 
+# https://tomaugspurger.net/posts/serializing-dataclasses/
 @functools.singledispatch
 def encode_value(x: typing.Any) -> typing.Any:
     match x:

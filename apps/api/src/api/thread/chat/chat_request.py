@@ -35,7 +35,7 @@ class ChatRequest(APIInterface):
     parent: str | None = Field(default=None)
     content: str | None = Field(default=None)
     input_parts: list[Json[InputPart]] | None = Field(default=None)
-    role: Role | None = Field(default=Role.User)
+    role: Role = Field(default=Role.User)
     original: str | None = Field(default=None)
     private: bool = Field(default=False)
     template: str | None = Field(default=None)

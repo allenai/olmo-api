@@ -74,7 +74,7 @@ class Message(Base, kw_only=True):
     model_host: Mapped[str] = mapped_column(Text, nullable=False)
     agent_id: Mapped[str | None] = mapped_column(default=None)
     deleted: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True), default=None)
-    parent: Mapped[Optional[str]] = mapped_column(Text)
+    parent: Mapped[Optional[str]] = mapped_column(Text, default=None)
     template: Mapped[Optional[str]] = mapped_column(Text, default=None)
     logprobs: Mapped[Optional[list[list[dict]]]] = mapped_column(ARRAY(JSONB()), default=None)
     completion: Mapped[Optional[str]] = mapped_column(Text, default=None)
@@ -84,7 +84,7 @@ class Message(Base, kw_only=True):
     )
     finish_reason: Mapped[Optional[str]] = mapped_column(Text, default=None)
     harmful: Mapped[Optional[bool]] = mapped_column(Boolean, default=None)
-    expiration_time: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
+    expiration_time: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True), default=None)
     file_urls: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text()), nullable=True, default=None)
 
     thinking: Mapped[str | None] = mapped_column(default=None)

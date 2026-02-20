@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Form, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 
 from api.auth.auth_service import AuthServiceDependency
 from api.service_errors import ForbiddenError, NotFoundError
@@ -63,4 +64,4 @@ async def stream_chat_message(
 ):
     token = auth_service.optional_auth()
 
-    return chat_service.stream_chat_message(request, user=token)
+    return StreamingResponse(chat_service.stream_chat_message(request, user=token))

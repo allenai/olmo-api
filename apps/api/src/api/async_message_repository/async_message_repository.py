@@ -388,4 +388,4 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
         return result.all()
 
 
-AsyncMessageRepositoryDependency = Annotated[AsyncMessageRepository, Depends()]
+AsyncMessageRepositoryDependency = Annotated[BaseAsyncMessageRepository, Depends(AsyncMessageRepository)]

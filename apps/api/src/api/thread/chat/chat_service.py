@@ -1,4 +1,3 @@
-import json
 from collections.abc import Sequence
 from typing import Annotated
 
@@ -8,8 +7,9 @@ from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import GEN_A
 from pydantic_ai import Agent, AgentRunResultEvent, ModelRequest, SystemPromptPart, UserPromptPart
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
+from api.db.sqlalchemy_engine import SessionDependency
 from api.logging.fastapi_logger import FastAPIStructLogger
-from api.model.model_repository import ModelRepositoryDependency
+from api.model.model_query import base_model_config_select
 from api.model_config.model_config_request import validate_inference_parameters_against_model_constraints
 from api.thread.chat.chat_request import ChatRequest
 from api.thread.chat.input_parts import map_input_parts
@@ -92,27 +92,31 @@ class ChatService:
     def __init__(
         self,
         message_repository: AsyncMessageRepositoryDependency,
-        model_repository: ModelRepositoryDependency,
+        session: SessionDependency,
         tools_service: ToolsServiceDependency,
     ):
         self.message_repository = message_repository
-        self.model_repository = model_repository
+        self.session = session
         self.tools_service = tools_service
 
     async def _get_model(self, model_id: str):
-        model = await self.model_repository.get_one(model_id)
+        async with self.session.begin():
+            stmt = base_model_config_select.where(ModelConfig.id == model_id)
+            result = await self.session.scalars(stmt)
 
-        if model is None:
-            raise ModelNotFoundError
+            model = result.one_or_none()
 
-        if model.prompt_type == PromptType.FILES_ONLY:
-            logger.error("Tried to use a files only model in a normal thread stream %s/%s", id, model)
+            if model is None:
+                raise ModelNotFoundError
 
-            # HACK: I want OLMoASR to be set up like a normal model but don't want people to stream to it yet
-            model_not_available_message = "This model isn't available yet"
-            raise ModelNotAvailableError(model_not_available_message)
+            if model.prompt_type == PromptType.FILES_ONLY:
+                logger.error("Tried to use a files only model in a normal thread stream %s/%s", id, model)
 
-        return model
+                # HACK: I want OLMoASR to be set up like a normal model but don't want people to stream to it yet
+                model_not_available_message = "This model isn't available yet"
+                raise ModelNotAvailableError(model_not_available_message)
+
+            return model
 
     async def _get_parent_and_root_messages(self, parent_message_id: ID | None):
         if parent_message_id is None:
@@ -186,7 +190,7 @@ class ChatService:
             if isinstance(event, AgentRunResultEvent):
                 run_result = event
 
-            yield json.dumps(event)
+            yield event
 
         # TODO:
         # Safety check

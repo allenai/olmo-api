@@ -6,6 +6,7 @@ from fastapi.responses import StreamingResponse
 from api.auth.auth_service import AuthServiceDependency
 from api.service_errors import ForbiddenError, NotFoundError
 from api.thread.chat.chat_service import ChatRequest, ChatServiceDependency
+from api.thread.chat.format_output import format_messages
 from api.thread.models.thread import Thread, ThreadList
 from api.thread.thread_delete_service import ThreadDeleteServiceDependency
 from api.thread.thread_read_service import ThreadReadServiceDependency
@@ -64,4 +65,7 @@ async def stream_chat_message(
 ):
     token = auth_service.optional_auth()
 
-    return StreamingResponse(chat_service.stream_chat_message(request, user=token))
+    # TODO: Figure out why errors here don't return properly
+    return StreamingResponse(
+        format_messages(chat_service.stream_chat_message(request, user=token)), media_type="application/jsonl"
+    )

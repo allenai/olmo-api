@@ -1,30 +1,85 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import cached_property
+from mimetypes import guess_type
 
+from fastapi import UploadFile
+from fastapi_problem.error import ServerProblem, UnprocessableProblem
+from pydantic_ai import (
+    AudioUrl,
+    BinaryContent,
+    DocumentUrl,
+    FilePart,
+    ImageUrl,
+    MultiModalContent,
+    SystemPromptPart,
+    TextPart,
+    ThinkingPart,
+    ToolCallPart,
+    ToolReturnPart,
+    UserPromptPart,
+    VideoUrl,
+)
 from pydantic_ai.messages import (
     ModelMessage,
 )
 from pydantic_ai.output import OutputDataT
 from pydantic_ai.tools import AgentDepsT
-from pydantic_ai.ui import UIAdapter, UIEventStream
-from src.dao.engine_models.message import Message
-from src.pydantic_inference.pydantic_ai_helpers import pydantic_map_messages
+from pydantic_ai.ui import MessagesBuilder, UIAdapter, UIEventStream
+
+from api.thread.chat.input_parts import map_input_parts
+from core.message.role import Role
+from db.models.message import Message
 
 from ._event_stream import PlaygroundUIEventStream
-from ._util import StreamReturnType
+from ._util import MessageAndFiles, MessageAndFilesList, StreamReturnType
 
 __all__ = ["PlaygroundUIAdapter"]
 
 
+class UnsupportedMediaTypeError(UnprocessableProblem): ...
+
+
+def _map_part_from_file(file: str | UploadFile) -> MultiModalContent:
+    match file:
+        case UploadFile():
+            return BinaryContent(data=file.file.read(), media_type=file.content_type)  # pyright: ignore[reportCallIssue]
+
+    (mimetype, _encoding) = guess_type(file)
+
+    match mimetype:
+        case None:
+            # Defaulting to Image for now since most of our uploads are images
+            # We can error if we enforce file extensions on upload
+            return ImageUrl(file)  # pyright: ignore[reportCallIssue]
+
+        case mimetype if mimetype.startswith("video"):
+            return VideoUrl(file)  # pyright: ignore[reportCallIssue]
+
+        case mimetype if mimetype.startswith("image"):
+            return ImageUrl(file)  # pyright: ignore[reportCallIssue]
+
+        case mimetype if mimetype.startswith(("text", "application")):
+            return DocumentUrl(file)  # pyright: ignore[reportCallIssue]
+
+        case mimetype if mimetype.startswith("audio"):
+            return AudioUrl(file)  # pyright: ignore[reportCallIssue]
+
+    unsupported_media_type_msg = f"File URL {file} has unsupported MIME type {mimetype}"
+    raise UnsupportedMediaTypeError(unsupported_media_type_msg)
+
+
+class InvalidToolResponseError(ServerProblem): ...
+
+
 @dataclass
-class PlaygroundUIAdapter(UIAdapter[list[Message], Message, StreamReturnType, AgentDepsT, OutputDataT]):
+class PlaygroundUIAdapter(UIAdapter[MessageAndFilesList, MessageAndFiles, StreamReturnType, AgentDepsT, OutputDataT]):
     def build_run_input(cls, body: bytes) -> list[Message]:  # type: ignore # noqa: N805
         raise NotImplementedError
 
     def build_event_stream(
         self,
-    ) -> UIEventStream[list[Message], StreamReturnType, AgentDepsT, OutputDataT]:
+    ) -> UIEventStream[MessageAndFilesList, StreamReturnType, AgentDepsT, OutputDataT]:
         return PlaygroundUIEventStream(self.run_input, accept=self.accept)
 
     @cached_property
@@ -32,5 +87,55 @@ class PlaygroundUIAdapter(UIAdapter[list[Message], Message, StreamReturnType, Ag
         return self.load_messages(self.run_input)
 
     @classmethod
-    def load_messages(cls, messages: Sequence[Message]) -> list[ModelMessage]:
-        return pydantic_map_messages(messages, None)
+    def load_messages(cls, messages: Sequence[MessageAndFiles]) -> list[ModelMessage]:
+        builder = MessagesBuilder()
+
+        for message, uploaded_files in messages:
+            # Casting this give us static analysis that we've covered all paths
+            match Role(message.role):
+                case Role.User:
+                    content = map_input_parts(message.input_parts, message.content)
+                    builder.add(UserPromptPart(content))
+
+                    if message.file_urls:
+                        for file in message.file_urls:
+                            part = _map_part_from_file(file)
+                            builder.add(FilePart(part))
+
+                    if uploaded_files:
+                        for file in uploaded_files:
+                            part = _map_part_from_file(file)
+                            builder.add(FilePart(part))
+
+                case Role.Assistant:
+                    if message.thinking is not None:
+                        builder.add(ThinkingPart(message.thinking))
+
+                    if message.tool_calls:
+                        for tool_call in message.tool_calls:
+                            builder.add(
+                                ToolCallPart(
+                                    tool_name=tool_call.tool_name,
+                                    tool_call_id=tool_call.tool_call_id,
+                                    args=tool_call.args,
+                                )
+                            )
+
+                    builder.add(TextPart(message.content))
+
+                case Role.System:
+                    builder.add(SystemPromptPart(message.content))
+
+                case Role.ToolResponse:
+                    if not message.tool_calls:
+                        # This deliberately removes the "only one tool call" check from the old code
+                        raise InvalidToolResponseError
+
+                    tool_call = message.tool_calls[0]
+                    builder.add(
+                        ToolReturnPart(
+                            tool_name=tool_call.tool_name, tool_call_id=tool_call.id, content=message.content
+                        )
+                    )
+
+        return builder.messages

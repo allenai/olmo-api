@@ -1,5 +1,5 @@
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from pydantic_ai.messages import (
     BuiltinToolCallPart,
@@ -30,7 +30,7 @@ from core.message.role import Role
 from core.object_id import new_id_generator
 from db.models.message import Message
 
-from ._util import StreamReturnType
+from ._util import MessageAndFilesList, StreamReturnType
 
 __all__ = ["PlaygroundUIEventStream"]
 
@@ -40,12 +40,13 @@ JSONL_CONTENT_TYPE = "application/jsonl"
 @dataclass
 class PlaygroundUIEventStream(
     UIEventStream[
-        list[Message],
+        MessageAndFilesList,
         StreamReturnType,
         AgentDepsT,
         OutputDataT,
     ]
 ):
+    message_id: str = field(default_factory=new_id_generator("msg"))
     _step_started: bool = False
 
     def new_message_id(self) -> str:

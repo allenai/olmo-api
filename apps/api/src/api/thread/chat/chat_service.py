@@ -3,7 +3,16 @@ from typing import Annotated
 
 from fastapi import Depends
 from fastapi_problem.error import UnprocessableProblem
-from pydantic_ai import Agent, AgentRunResultEvent, ModelMessage, ModelRequest, SystemPromptPart, UserPromptPart
+from pydantic_ai import (
+    Agent,
+    AgentRunResultEvent,
+    CallDeferred,
+    ModelMessage,
+    ModelRequest,
+    RunContext,
+    SystemPromptPart,
+    UserPromptPart,
+)
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
 from api.db.sqlalchemy_engine import SessionDependency
@@ -60,6 +69,10 @@ def merge_inference_options(
 
 
 class InvalidParentError(UnprocessableProblem): ...
+
+
+def user_defined_tool(ctx: RunContext):
+    raise CallDeferred({"tool_name": ctx.tool_name})
 
 
 def build_message_list_from_parent(messages: Sequence[Message], parent_message_id: ID) -> list[Message]:

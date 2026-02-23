@@ -11,7 +11,6 @@ from api.config import settings
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.service_errors import ForbiddenError, NotFoundError
 from api.thread.chat.chat_service import ChatRequest, ChatServiceDependency
-from api.thread.chat.format_output import format_messages
 from api.thread.models.thread import Thread, ThreadList
 from api.thread.thread_delete_service import ThreadDeleteServiceDependency
 from api.thread.thread_read_service import ThreadReadServiceDependency
@@ -79,13 +78,9 @@ async def stream_chat_message(
     logger.bind(model=request.model, user=token.client)
     trace.get_current_span().set_attributes({GEN_AI_REQUEST_MODEL: request.model, "user": token.client})
 
-    # These are called here instead of inside stream_chat_message so we can get proper exception handling
-    # StreamingResponse returns a 200 immediately, if an exception happens inside the request is aborted without returning
-    model = await chat_service.get_model(request.model)
-    mapped_messages = await chat_service.validate_and_map_request(request, token, model)
+    stream_generator = await chat_service.stream_chat_message(request, token)
 
-    # TODO: Handle errors inside the stream
     return StreamingResponse(
-        format_messages(stream_generator=chat_service.stream_chat_message(mapped_messages, model)),
+        stream_generator,
         media_type="application/jsonl",
     )

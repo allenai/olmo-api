@@ -1,9 +1,9 @@
 from collections.abc import Sequence
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, UploadFile
 from fastapi_problem.error import UnprocessableProblem
-from pydantic_ai import Agent, AgentRunResultEvent, ModelMessage, ModelRequest, SystemPromptPart, UserPromptPart
+from pydantic_ai import Agent, ModelRequest, SystemPromptPart, UserPromptPart
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
 from api.db.sqlalchemy_engine import SessionDependency
@@ -12,7 +12,8 @@ from api.model.model_query import base_model_config_select
 from api.model_config.model_config_request import validate_inference_parameters_against_model_constraints
 from api.thread.chat.chat_request import ChatRequest
 from api.thread.chat.input_parts import map_input_parts
-from api.thread.chat.mapping import map_messages_to_pydantic_ai_format
+from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
+from api.thread.chat.playground_ui_adapter._event_stream import PlaygroundUIEventStream
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
 from api.tools.tools_service import ToolsServiceDependency
 from core.auth.token import Token
@@ -139,7 +140,7 @@ class ChatService:
         system_prompt: str | None,
         inference_options: InferenceOpts,  # noqa: ARG002
         model: ModelConfig,  # noqa: ARG002
-    ) -> list[ModelMessage]:
+    ) -> list[Message]:
         user_message = ModelRequest(
             parts=[UserPromptPart(content=map_input_parts(request.input_parts, request.content or ""))]
         )
@@ -148,19 +149,21 @@ class ChatService:
             thread_messages = await self.message_repository.get_messages_by_root(root_message_id, creator_id)
             message_list = build_message_list_from_parent(thread_messages, request.parent)
 
-            return [*map_messages_to_pydantic_ai_format(message_list), user_message]
+            return message_list
+            # return [*map_messages_to_pydantic_ai_format(message_list), user_message]
 
         if system_prompt is not None:
             user_message.parts = [SystemPromptPart(system_prompt), *user_message.parts]
 
-        return [user_message]
+        # return [user_message]
+        return []
 
     async def validate_and_map_request(
         self,
         request: ChatRequest,
         user: Token,
         model: ModelConfig,
-    ) -> list[ModelMessage]:
+    ) -> list[Message]:
         parent_message, root_message = await self._get_parent_and_root_messages(request.parent)
 
         merged_inference_options = merge_inference_options(
@@ -181,18 +184,31 @@ class ChatService:
         return agent_messages
 
     @classmethod
-    async def stream_chat_message(cls, messages: Sequence[ModelMessage], model: ModelConfig):
+    def get_stream(cls, messages: Sequence[tuple[Message, Sequence[UploadFile]]], model: ModelConfig):
         # Only allow new messages, editing can come with PUT
 
         pydantic_model = get_pydantic_model(model)
 
         agent = Agent(model=pydantic_model)
 
-        async for event in agent.run_stream_events(message_history=messages):
-            if isinstance(event, AgentRunResultEvent):
-                run_result = event  # noqa: F841
+        adapter = PlaygroundUIAdapter(agent, run_input=messages)
+        event_adapter = PlaygroundUIEventStream()
 
-            yield event
+        event_stream = agent.run_stream_events()
+
+        return adapter.encode_stream(event_stream)
+
+        # async for event in adapter.run_stream():
+        #     if isinstance(event, AgentRunResultEvent):
+        #         run_result = event
+
+        #     yield event
+
+        # async for event in agent.run_stream_events(message_history=messages):
+        #     if isinstance(event, AgentRunResultEvent):
+        #         run_result = event
+
+        #     yield event
 
         # TODO: below
         # Safety check
@@ -202,6 +218,15 @@ class ChatService:
         # Support custom tool calls
         # Support multimedia
         # If it's a tool response, go down a different path
+
+    async def stream_chat_message(self, request: ChatRequest, user: Token):
+        model = await self.get_model(request.model)
+
+        mapped_messages = await self.validate_and_map_request(request, user, model)
+
+        stream_generator = self.get_stream([(message, []) for message in mapped_messages], model)
+
+        return stream_generator
 
 
 ChatServiceDependency = Annotated[ChatService, Depends()]

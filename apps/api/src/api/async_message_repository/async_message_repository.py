@@ -37,8 +37,7 @@ class BaseAsyncMessageRepository(abc.ABC):
 
     @abc.abstractmethod
     async def get_message_by_id(
-        self,
-        message_id: obj.ID,
+        self, message_id: obj.ID, *, label_creator: obj.ID | None = None, include_children: bool = False
     ) -> Message | None:
         raise NotImplementedError
 
@@ -388,4 +387,4 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
         return result.all()
 
 
-AsyncMessageRepositoryDependency = Annotated[AsyncMessageRepository, Depends()]
+AsyncMessageRepositoryDependency = Annotated[BaseAsyncMessageRepository, Depends(AsyncMessageRepository)]

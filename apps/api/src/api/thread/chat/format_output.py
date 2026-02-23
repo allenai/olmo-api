@@ -31,8 +31,8 @@ def format_datetime(x: datetime.date | datetime.datetime) -> str:
 
 
 @encode_value.register(BaseModel)
-def format_base_model(x: BaseModel) -> str:
-    return x.model_dump_json()
+def format_base_model(x: BaseModel) -> dict[str, Any]:
+    return x.model_dump()
 
 
 def format_message(obj) -> str:
@@ -46,8 +46,6 @@ async def format_messages(
     try:
         async for stream_message in stream_generator:
             match stream_message:
-                case BaseModel():
-                    yield stream_message.model_dump_json() + "\n"
                 case Message():
                     flat_messages = Thread.from_message(stream_message)
 

@@ -7,10 +7,13 @@ from pydantic_ai import (
     Agent,
     AgentRunResultEvent,
     CallDeferred,
+    DeferredToolRequests,
+    ExternalToolset,
     ModelMessage,
     ModelRequest,
     RunContext,
     SystemPromptPart,
+    ToolDefinition,
     UserPromptPart,
 )
 
@@ -19,13 +22,14 @@ from api.db.sqlalchemy_engine import SessionDependency
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.model.model_query import base_model_config_select
 from api.model_config.model_config_request import validate_inference_parameters_against_model_constraints
-from api.thread.chat.chat_request import ChatRequest
+from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
 from api.thread.chat.format_pydantic_output import map_pydantic_chunk
 from api.thread.chat.input_parts import map_input_parts
 from api.thread.chat.mapping import map_messages_to_pydantic_ai_format
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
 from api.tools.tools_service import ToolsServiceDependency
 from core.auth.token import Token
+from core.message.message_chunk import ErrorChunk, ErrorCode
 from core.object_id import ID, NewID
 from db.models.inference_opts import InferenceOpts
 from db.models.message import Message
@@ -101,6 +105,16 @@ def build_message_list_from_parent(messages: Sequence[Message], parent_message_i
 
 def create_message_id():
     return NewID("msg")
+
+
+def map_tool_def_to_pydantic(tool: CreateToolDefinition) -> ToolDefinition:
+    tool_definition = ToolDefinition(name=tool.name, description=tool.description, metadata={"source": "user"})
+
+    if tool.parameters is not None:
+        # Pydantic-AI applies its own empty default if we don't provide anything. This lets us use that default without recreating it
+        tool_definition.parameters_json_schema = tool.parameters.model_dump()
+
+    return tool_definition
 
 
 class ChatService:
@@ -198,6 +212,7 @@ class ChatService:
     async def stream_chat_message(
         cls,
         messages: Sequence[ModelMessage],
+        user_tools: Sequence[CreateToolDefinition] | None,
         model: ModelConfig,
         message_id: str,
     ):
@@ -205,14 +220,20 @@ class ChatService:
 
         pydantic_model = get_pydantic_model(model)
 
-        agent = Agent(model=pydantic_model)
+        user_tool_toolset = ExternalToolset([map_tool_def_to_pydantic(tool) for tool in user_tools or []])
 
-        async for event in agent.run_stream_events(message_history=messages):
-            if isinstance(event, AgentRunResultEvent):
-                run_result = event  # noqa: F841
-            else:
-                yield map_pydantic_chunk(event, message_id=message_id)
+        agent = Agent(model=pydantic_model, toolsets=[user_tool_toolset], output_type=[str, DeferredToolRequests])
 
+        try:
+            async for event in agent.run_stream_events(message_history=messages):
+                if isinstance(event, AgentRunResultEvent):
+                    run_result = event  # noqa: F841
+                else:
+                    yield map_pydantic_chunk(event, message_id=message_id)
+        except Exception as e:
+            logger.exception("Inference error")
+            yield ErrorChunk(message=message_id, error_code=ErrorCode.TOOL_CALL_ERROR, error_description=str(e))
+            return
         # TODO: below
         # Safety check
         # Upload files

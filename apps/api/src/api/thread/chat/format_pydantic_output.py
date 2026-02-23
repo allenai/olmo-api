@@ -1,4 +1,4 @@
-from pydantic_ai import AgentStreamEvent
+from pydantic_ai import AgentStreamEvent, ToolCallPart
 from pydantic_ai.messages import (
     ModelResponsePart,
     PartDeltaEvent,
@@ -14,6 +14,7 @@ from core.message.message_chunk import (
     Chunk,
     ModelResponseChunk,
     ThinkingChunk,
+    ToolCallChunk,
 )
 from db.models.message import Message
 
@@ -53,27 +54,28 @@ def _pydantic_map_part(part: ModelResponsePart, message_id: str) -> Chunk:
                 message=message_id,
                 content=part.content or "",
             )
-        # case ToolCallPart():
-        #     try:
-        #         tool_def = find_tool_def_by_name(message_id, part.tool_name)
-        #     except RuntimeError as e:
-        #         current_span = trace.get_current_span()
-        #         current_span.set_status(Status(StatusCode.ERROR))
-        #         current_span.record_exception(e)
-        #         return ErrorChunk(
-        #             message=message_id,
-        #             error_code=ErrorCode.TOOL_CALL_ERROR,
-        #             error_description=str(e),
-        #             error_severity=ErrorSeverity.ERROR,
-        #         )
+        case ToolCallPart():
+            # try:
+            #     tool_def = find_tool_def_by_name(message_id, part.tool_name)
+            # except RuntimeError as e:
+            #     current_span = trace.get_current_span()
+            #     current_span.set_status(Status(StatusCode.ERROR))
+            #     current_span.record_exception(e)
+            #     return ErrorChunk(
+            #         message=message_id,
+            #         error_code=ErrorCode.TOOL_CALL_ERROR,
+            #         error_description=str(e),
+            #         error_severity=ErrorSeverity.ERROR,
+            #     )
 
-        #     return ToolCallChunk(
-        #         message=message_id,
-        #         tool_call_id=part.tool_call_id,
-        #         tool_name=part.tool_name,
-        #         args=part.args,
-        #         tool_source=tool_def.tool_source,
-        #     )
+            return ToolCallChunk(
+                message=message_id,
+                tool_call_id=part.tool_call_id,
+                tool_name=part.tool_name,
+                args=part.args,
+                tool_source=None,
+                # tool_source=tool_def.tool_source,
+            )
         case _:
             # assert_never(part)
             msg = "unsupported response part"

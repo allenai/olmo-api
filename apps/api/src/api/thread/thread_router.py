@@ -85,10 +85,13 @@ async def stream_chat_message(
     mapped_messages = await chat_service.validate_and_map_request(request, token, model)
 
     stream = chat_service.stream_chat_message(
-        mapped_messages, user_tools=request.tool_definitions, model=model, message_id="foo"
+        mapped_messages,
+        user_tools=request.tool_definitions,
+        model=model,
+        message_id="foo",
+        mcp_tools=request.selected_tools,
     )
 
-    # TODO: Handle errors inside the stream
     return StreamingResponse(
         format_messages(stream_generator=stream),
         media_type="application/jsonl",

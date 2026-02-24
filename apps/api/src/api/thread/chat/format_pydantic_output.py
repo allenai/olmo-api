@@ -1,4 +1,6 @@
-from pydantic_ai import AgentStreamEvent, ToolCallPart
+from typing import assert_never
+
+from pydantic_ai import AgentStreamEvent, FunctionToolResultEvent, ToolCallPart
 from pydantic_ai.messages import (
     ModelResponsePart,
     PartDeltaEvent,
@@ -32,14 +34,20 @@ def find_tool_def_by_name(message: Message, tool_name: str):
     return tool_def
 
 
-def map_pydantic_chunk(chunk: AgentStreamEvent, message_id: str) -> Chunk | None:
+def map_pydantic_chunk(chunk: AgentStreamEvent, message_id: str) -> Chunk | Message | None:
     match chunk:
         case PartStartEvent():
             return _pydantic_map_part(chunk.part, message_id)
         case PartDeltaEvent():
             return _pydantic_map_delta(chunk.delta, message_id)
+        case FunctionToolResultEvent():
+            return _pydantic_map_tool_result(chunk)
         case _:
             return None
+
+
+def _pydantic_map_tool_result(part: FunctionToolResultEvent) -> Message:
+    return Message()
 
 
 def _pydantic_map_part(part: ModelResponsePart, message_id: str) -> Chunk:
@@ -77,7 +85,7 @@ def _pydantic_map_part(part: ModelResponsePart, message_id: str) -> Chunk:
                 # tool_source=tool_def.tool_source,
             )
         case _:
-            # assert_never(part)
+            assert_never(part)
             msg = "unsupported response part"
             raise NotImplementedError(msg)
 
@@ -88,29 +96,30 @@ def _pydantic_map_delta(part: TextPartDelta | ToolCallPartDelta | ThinkingPartDe
             return ModelResponseChunk(message=message_id, content=part.content_delta or "")
         case ThinkingPartDelta():
             return ThinkingChunk(message=message_id, content=part.content_delta or "")
-        # case ToolCallPartDelta():
-        #     try:
-        #         tool_def = find_tool_def_by_name(message_id, part.tool_name_delta) if part.tool_name_delta else None
-        #     except RuntimeError as e:
-        #         current_span = trace.get_current_span()
-        #         current_span.set_status(Status(StatusCode.ERROR))
-        #         current_span.record_exception(e)
-        #         return ErrorChunk(
-        #             message=message_id,
-        #             error_code=ErrorCode.TOOL_CALL_ERROR,
-        #             error_description=str(e),
-        #             error_severity=ErrorSeverity.ERROR,
-        #         )
+        case ToolCallPartDelta():
+            # try:
+            #     tool_def = find_tool_def_by_name(message_id, part.tool_name_delta) if part.tool_name_delta else None
+            # except RuntimeError as e:
+            #     current_span = trace.get_current_span()
+            #     current_span.set_status(Status(StatusCode.ERROR))
+            #     current_span.record_exception(e)
+            #     return ErrorChunk(
+            #         message=message_id,
+            #         error_code=ErrorCode.TOOL_CALL_ERROR,
+            #         error_description=str(e),
+            #         error_severity=ErrorSeverity.ERROR,
+            #     )
 
-        #     return ToolCallChunk(
-        #         message=message_id,
-        #         tool_call_id=part.tool_call_id or "",
-        #         tool_name=part.tool_name_delta or "",
-        #         args=part.args_delta,
-        #         tool_source=tool_def.tool_source if tool_def else None,
-        #     )
+            return ToolCallChunk(
+                message=message_id,
+                tool_call_id=part.tool_call_id or "",
+                tool_name=part.tool_name_delta or "",
+                args=part.args_delta,
+                tool_source=None,
+                # tool_source=tool_def.tool_source if tool_def else None,
+            )
         case _:
-            # assert_never(part)
+            assert_never(part)
             msg = "unsupported response part"
             raise NotImplementedError(msg)
 

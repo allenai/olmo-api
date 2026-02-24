@@ -1,6 +1,7 @@
 from collections.abc import AsyncGenerator, Sequence
-from typing import Annotated
+from typing import Annotated, cast
 
+from attr import dataclass
 from fastapi import Depends
 from fastapi_problem.error import UnprocessableProblem
 from opentelemetry import trace
@@ -12,6 +13,7 @@ from pydantic_ai import (
     CallDeferred,
     CombinedToolset,
     DeferredToolRequests,
+    DeferredToolResults,
     ExternalToolset,
     FunctionToolResultEvent,
     ModelMessage,
@@ -133,6 +135,11 @@ def map_tool_def_to_pydantic(tool: CreateToolDefinition) -> ToolDefinition:
     return tool_definition
 
 
+@dataclass
+class ExtraMapOutput:
+    deferred_tool_results: DeferredToolResults | None = None
+
+
 class ChatService:
     def __init__(
         self,
@@ -183,28 +190,37 @@ class ChatService:
         system_prompt: str | None,
         inference_options: InferenceOpts,  # noqa: ARG002
         model: ModelConfig,  # noqa: ARG002
-    ) -> list[ModelMessage]:
-        user_message = ModelRequest(
-            parts=[UserPromptPart(content=map_input_parts(request.input_parts, request.content or ""))]
-        )
+    ) -> tuple[list[ModelMessage], ExtraMapOutput]:
+        new_messages: list[ModelMessage] = []
+        extra_output: ExtraMapOutput = ExtraMapOutput()
+
+        if request.role is Role.User:
+            user_message = ModelRequest(
+                parts=[UserPromptPart(content=map_input_parts(request.input_parts, request.content or ""))]
+            )
+
+            if system_prompt is not None:
+                user_message.parts = [SystemPromptPart(system_prompt), *user_message.parts]
+
+        elif request.role is Role.ToolResponse:
+            user_tool_results = DeferredToolResults()
+            user_tool_results.calls = {cast(str, request.tool_call_id): request.content}
+            extra_output.deferred_tool_results = user_tool_results
 
         if root_message_id is not None and request.parent is not None:
             thread_messages = await self.message_repository.get_messages_by_root(root_message_id, creator_id)
             message_list = build_message_list_from_parent(thread_messages, request.parent)
 
-            return [*map_messages_to_pydantic_ai_format(message_list), user_message]
+            return [*map_messages_to_pydantic_ai_format(message_list), *new_messages], extra_output
 
-        if system_prompt is not None:
-            user_message.parts = [SystemPromptPart(system_prompt), *user_message.parts]
-
-        return [user_message]
+        return new_messages, extra_output
 
     async def validate_and_map_request(
         self,
         request: ChatRequest,
         user: Token,
         model: ModelConfig,
-    ) -> tuple[list[ModelMessage], ID | None]:
+    ) -> tuple[list[ModelMessage], ExtraMapOutput, ID | None]:
         parent_message, root_message = await self._get_parent_and_root_messages(request.parent)
 
         merged_inference_options = merge_inference_options(
@@ -215,7 +231,7 @@ class ChatService:
 
         root_message_id = root_message.id if root_message is not None else None
 
-        agent_messages = await self._map_to_agent_input(
+        agent_messages, extra_output = await self._map_to_agent_input(
             root_message_id=root_message_id,
             request=request,
             creator_id=user.client,
@@ -224,7 +240,7 @@ class ChatService:
             model=model,
         )
 
-        return agent_messages, root_message_id
+        return agent_messages, extra_output, root_message_id
 
     @classmethod
     async def _get_chat_stream(
@@ -233,6 +249,7 @@ class ChatService:
         user_tools: Sequence[CreateToolDefinition] | None,
         mcp_tools: Sequence[str] | None,
         model: ModelConfig,
+        deferred_tool_results: DeferredToolResults | None,
     ):
         pydantic_model = get_pydantic_model(model)
 
@@ -253,6 +270,7 @@ class ChatService:
         async for event in agent.run_stream_events(
             message_history=messages,
             usage_limits=UsageLimits(request_limit=10),
+            deferred_tool_results=deferred_tool_results,
         ):
             yield event
 
@@ -265,10 +283,17 @@ class ChatService:
         message_id: ID,
         user: Token,
         root_message_id: ID,
+        extra_output: ExtraMapOutput,
     ) -> AsyncGenerator[FlatMessage | MessageChunk | MessageStreamError | Chunk | None]:
         # Only allow new messages, editing can come with PUT
 
-        event_stream = self._get_chat_stream(messages=messages, user_tools=user_tools, mcp_tools=mcp_tools, model=model)
+        event_stream = self._get_chat_stream(
+            messages=messages,
+            user_tools=user_tools,
+            mcp_tools=mcp_tools,
+            model=model,
+            deferred_tool_results=extra_output.deferred_tool_results,
+        )
 
         user_defined_tool_names = [user_tool.name for user_tool in user_tools or []]
         mcp_tool_names = mcp_tools or []

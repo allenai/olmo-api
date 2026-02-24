@@ -9,8 +9,6 @@ from typing import Any
 from pydantic import BaseModel
 
 from api.logging.fastapi_logger import FastAPIStructLogger
-from api.thread.models.thread import Thread
-from db.models.message import Message
 
 logger = FastAPIStructLogger()
 
@@ -46,11 +44,6 @@ async def format_messages(
     try:
         async for stream_message in stream_generator:
             match stream_message:
-                case Message():
-                    flat_messages = Thread.from_message(stream_message)
-
-                    yield format_message(flat_messages)
-
                 case stream_message if stream_message is None:
                     ...
 

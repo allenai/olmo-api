@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import AsyncGenerator, Sequence
 from typing import Annotated
 
 from fastapi import Depends
@@ -8,10 +8,12 @@ from opentelemetry.trace import StatusCode
 from pydantic_ai import (
     Agent,
     AgentRunResultEvent,
+    BuiltinToolReturnPart,
     CallDeferred,
     CombinedToolset,
     DeferredToolRequests,
     ExternalToolset,
+    FunctionToolResultEvent,
     ModelMessage,
     ModelRequest,
     RunContext,
@@ -32,11 +34,19 @@ from api.thread.chat.format_pydantic_output import map_pydantic_chunk
 from api.thread.chat.input_parts import map_input_parts
 from api.thread.chat.mapping import map_messages_to_pydantic_ai_format
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
+from api.thread.models.flat_message import FlatMessage
 from api.tools.mcp_service import MCP_SERVERS
 from api.tools.tools_service import ToolsServiceDependency
 from core.auth.token import Token
-from core.message.message_chunk import ErrorChunk, ErrorCode
-from core.object_id import ID, NewID
+from core.message.message_chunk import (
+    Chunk,
+    ErrorChunk,
+    ErrorCode,
+    MessageChunk,
+    MessageStreamError,
+)
+from core.message.role import Role
+from core.object_id import ID, NewID, new_id_generator
 from db.models.inference_opts import InferenceOpts
 from db.models.message import Message
 from db.models.model_config import ModelConfig, PromptType
@@ -194,7 +204,7 @@ class ChatService:
         request: ChatRequest,
         user: Token,
         model: ModelConfig,
-    ) -> list[ModelMessage]:
+    ) -> tuple[list[ModelMessage], ID | None]:
         parent_message, root_message = await self._get_parent_and_root_messages(request.parent)
 
         merged_inference_options = merge_inference_options(
@@ -203,8 +213,10 @@ class ChatService:
 
         validate_inference_parameters_against_model_constraints(model, merged_inference_options)
 
+        root_message_id = root_message.id if root_message is not None else None
+
         agent_messages = await self._map_to_agent_input(
-            root_message_id=root_message.id if root_message is not None else None,
+            root_message_id=root_message_id,
             request=request,
             creator_id=user.client,
             system_prompt=root_message.content if root_message is not None else model.default_system_prompt,
@@ -212,17 +224,18 @@ class ChatService:
             model=model,
         )
 
-        return agent_messages
+        return agent_messages, root_message_id
 
-    @classmethod
     async def stream_chat_message(
-        cls,
+        self,
         messages: Sequence[ModelMessage],
         user_tools: Sequence[CreateToolDefinition] | None,
         mcp_tools: Sequence[str] | None,
         model: ModelConfig,
-        message_id: str,
-    ):
+        message_id: ID,
+        user: Token,
+        root_message_id: ID | None,
+    ) -> AsyncGenerator[FlatMessage | MessageChunk | MessageStreamError | Chunk | None]:
         # Only allow new messages, editing can come with PUT
 
         pydantic_model = get_pydantic_model(model)
@@ -241,21 +254,42 @@ class ChatService:
             end_strategy="exhaustive",
         )
 
+        last_message_id = message_id
+        tool_messages = []
+
         try:
             async for event in agent.run_stream_events(
                 message_history=messages,
                 usage_limits=UsageLimits(request_limit=10),
             ):
-                if isinstance(event, AgentRunResultEvent):
-                    run_result = event  # noqa: F841
-                else:
-                    # TODO: How do i make tool results separate messages when returning to the UI?
-                    yield map_pydantic_chunk(event, message_id=message_id)
+                match event:
+                    case AgentRunResultEvent():
+                        run_result = event  # noqa: F841
+                    case FunctionToolResultEvent() | BuiltinToolReturnPart():
+                        tool_message = Message(
+                            content=str(event.result.content),
+                            creator=user.client,
+                            role=Role.ToolResponse,
+                            # TODO: inherit inference options
+                            opts=InferenceOpts(),
+                            # TODO: get the proper root message with DB saving
+                            root=root_message_id or new_id_generator("msg")(),
+                            model_id=model.id,
+                            model_host=model.host,
+                            parent=last_message_id,
+                        )
+
+                        tool_messages.append(tool_message)
+                        last_message_id = tool_message.id
+                        yield FlatMessage.from_message(tool_message)
+                    case _:
+                        yield map_pydantic_chunk(event, message_id=message_id)
+
         except Exception as e:
             logger.exception("Inference error")
             current_span = trace.get_current_span()
             current_span.set_status(StatusCode.ERROR, description="Inference error")
-            yield ErrorChunk(message=message_id, error_code=ErrorCode.TOOL_CALL_ERROR, error_description=str(e))
+            yield ErrorChunk(message=message_id, error_code=ErrorCode.OTHER_ERROR, error_description=str(e))
             return
 
         # TODO: below

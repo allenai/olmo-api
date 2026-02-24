@@ -82,7 +82,7 @@ async def stream_chat_message(
     # These are called here instead of inside stream_chat_message so we can get proper exception handling
     # StreamingResponse returns a 200 immediately, if an exception happens inside the request is aborted without returning
     model = await chat_service.get_model(request.model)
-    mapped_messages = await chat_service.validate_and_map_request(request, token, model)
+    mapped_messages, root_message_id = await chat_service.validate_and_map_request(request, token, model)
 
     stream = chat_service.stream_chat_message(
         mapped_messages,
@@ -90,6 +90,8 @@ async def stream_chat_message(
         model=model,
         message_id="foo",
         mcp_tools=request.selected_tools,
+        user=token,
+        root_message_id=root_message_id,
     )
 
     return StreamingResponse(

@@ -1,6 +1,10 @@
 from typing import assert_never
 
-from pydantic_ai import AgentStreamEvent, FunctionToolResultEvent, ToolCallPart
+from pydantic_ai import (
+    AgentStreamEvent,
+    BuiltinToolCallPart,
+    ToolCallPart,
+)
 from pydantic_ai.messages import (
     ModelResponsePart,
     PartDeltaEvent,
@@ -12,6 +16,7 @@ from pydantic_ai.messages import (
     ToolCallPartDelta,
 )
 
+from api.thread.models.flat_message import FlatMessage
 from core.message.message_chunk import (
     Chunk,
     ModelResponseChunk,
@@ -34,20 +39,14 @@ def find_tool_def_by_name(message: Message, tool_name: str):
     return tool_def
 
 
-def map_pydantic_chunk(chunk: AgentStreamEvent, message_id: str) -> Chunk | Message | None:
+def map_pydantic_chunk(chunk: AgentStreamEvent, message_id: str) -> Chunk | FlatMessage | None:
     match chunk:
         case PartStartEvent():
             return _pydantic_map_part(chunk.part, message_id)
         case PartDeltaEvent():
             return _pydantic_map_delta(chunk.delta, message_id)
-        case FunctionToolResultEvent():
-            return _pydantic_map_tool_result(chunk)
         case _:
             return None
-
-
-def _pydantic_map_tool_result(part: FunctionToolResultEvent) -> Message:
-    return Message()
 
 
 def _pydantic_map_part(part: ModelResponsePart, message_id: str) -> Chunk:
@@ -62,7 +61,7 @@ def _pydantic_map_part(part: ModelResponsePart, message_id: str) -> Chunk:
                 message=message_id,
                 content=part.content or "",
             )
-        case ToolCallPart():
+        case ToolCallPart() | BuiltinToolCallPart():
             # try:
             #     tool_def = find_tool_def_by_name(message_id, part.tool_name)
             # except RuntimeError as e:
@@ -85,7 +84,7 @@ def _pydantic_map_part(part: ModelResponsePart, message_id: str) -> Chunk:
                 # tool_source=tool_def.tool_source,
             )
         case _:
-            assert_never(part)
+            # assert_never(part)
             msg = "unsupported response part"
             raise NotImplementedError(msg)
 

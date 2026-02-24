@@ -46,7 +46,7 @@ from core.message.message_chunk import (
     MessageStreamError,
 )
 from core.message.role import Role
-from core.object_id import ID, NewID, new_id_generator
+from core.object_id import ID, NewID
 from db.models.inference_opts import InferenceOpts
 from db.models.message import Message
 from db.models.model_config import ModelConfig, PromptType
@@ -226,18 +226,14 @@ class ChatService:
 
         return agent_messages, root_message_id
 
-    async def stream_chat_message(
-        self,
+    @classmethod
+    async def _get_chat_stream(
+        cls,
         messages: Sequence[ModelMessage],
         user_tools: Sequence[CreateToolDefinition] | None,
         mcp_tools: Sequence[str] | None,
         model: ModelConfig,
-        message_id: ID,
-        user: Token,
-        root_message_id: ID | None,
-    ) -> AsyncGenerator[FlatMessage | MessageChunk | MessageStreamError | Chunk | None]:
-        # Only allow new messages, editing can come with PUT
-
+    ):
         pydantic_model = get_pydantic_model(model)
 
         user_tool_toolset = ExternalToolset([map_tool_def_to_pydantic(tool) for tool in user_tools or []])
@@ -254,14 +250,34 @@ class ChatService:
             end_strategy="exhaustive",
         )
 
+        async for event in agent.run_stream_events(
+            message_history=messages,
+            usage_limits=UsageLimits(request_limit=10),
+        ):
+            yield event
+
+    async def stream_chat_message(
+        self,
+        messages: Sequence[ModelMessage],
+        user_tools: Sequence[CreateToolDefinition] | None,
+        mcp_tools: Sequence[str] | None,
+        model: ModelConfig,
+        message_id: ID,
+        user: Token,
+        root_message_id: ID,
+    ) -> AsyncGenerator[FlatMessage | MessageChunk | MessageStreamError | Chunk | None]:
+        # Only allow new messages, editing can come with PUT
+
+        event_stream = self._get_chat_stream(messages=messages, user_tools=user_tools, mcp_tools=mcp_tools, model=model)
+
+        user_defined_tool_names = [user_tool.name for user_tool in user_tools or []]
+        mcp_tool_names = mcp_tools or []
+
         last_message_id = message_id
         tool_messages = []
 
         try:
-            async for event in agent.run_stream_events(
-                message_history=messages,
-                usage_limits=UsageLimits(request_limit=10),
-            ):
+            async for event in event_stream:
                 match event:
                     case AgentRunResultEvent():
                         run_result = event  # noqa: F841
@@ -273,7 +289,7 @@ class ChatService:
                             # TODO: inherit inference options
                             opts=InferenceOpts(),
                             # TODO: get the proper root message with DB saving
-                            root=root_message_id or new_id_generator("msg")(),
+                            root=root_message_id or message_id,
                             model_id=model.id,
                             model_host=model.host,
                             parent=last_message_id,
@@ -283,7 +299,12 @@ class ChatService:
                         last_message_id = tool_message.id
                         yield FlatMessage.from_message(tool_message)
                     case _:
-                        yield map_pydantic_chunk(event, message_id=message_id)
+                        yield map_pydantic_chunk(
+                            event,
+                            message_id=message_id,
+                            user_defined_tool_names=user_defined_tool_names,
+                            mcp_tool_names=mcp_tool_names,
+                        )
 
         except Exception as e:
             logger.exception("Inference error")

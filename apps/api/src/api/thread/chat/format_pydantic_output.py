@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import assert_never
 
 from pydantic_ai import (
@@ -23,6 +24,7 @@ from core.message.message_chunk import (
     ThinkingChunk,
     ToolCallChunk,
 )
+from core.tools.tool_source import ToolSource
 from db.models.message import Message
 
 
@@ -39,17 +41,23 @@ def find_tool_def_by_name(message: Message, tool_name: str):
     return tool_def
 
 
-def map_pydantic_chunk(chunk: AgentStreamEvent, message_id: str) -> Chunk | FlatMessage | None:
+def map_pydantic_chunk(
+    chunk: AgentStreamEvent, message_id: str, user_defined_tool_names: Sequence[str], mcp_tool_names: Sequence[str]
+) -> Chunk | FlatMessage | None:
     match chunk:
         case PartStartEvent():
-            return _pydantic_map_part(chunk.part, message_id)
+            return _pydantic_map_part(
+                chunk.part, message_id, user_defined_tool_names=user_defined_tool_names, mcp_tool_names=mcp_tool_names
+            )
         case PartDeltaEvent():
             return _pydantic_map_delta(chunk.delta, message_id)
         case _:
             return None
 
 
-def _pydantic_map_part(part: ModelResponsePart, message_id: str) -> Chunk:
+def _pydantic_map_part(
+    part: ModelResponsePart, message_id: str, user_defined_tool_names: Sequence[str], mcp_tool_names: Sequence[str]
+) -> Chunk:
     match part:
         case TextPart():
             return ModelResponseChunk(
@@ -62,26 +70,19 @@ def _pydantic_map_part(part: ModelResponsePart, message_id: str) -> Chunk:
                 content=part.content or "",
             )
         case ToolCallPart() | BuiltinToolCallPart():
-            # try:
-            #     tool_def = find_tool_def_by_name(message_id, part.tool_name)
-            # except RuntimeError as e:
-            #     current_span = trace.get_current_span()
-            #     current_span.set_status(Status(StatusCode.ERROR))
-            #     current_span.record_exception(e)
-            #     return ErrorChunk(
-            #         message=message_id,
-            #         error_code=ErrorCode.TOOL_CALL_ERROR,
-            #         error_description=str(e),
-            #         error_severity=ErrorSeverity.ERROR,
-            #     )
+            is_user_tool = part.tool_name in user_defined_tool_names
+            is_mcp_tool = not is_user_tool and part.tool_name in mcp_tool_names
+
+            tool_source = (
+                ToolSource.USER_DEFINED if is_user_tool else ToolSource.MCP if is_mcp_tool else ToolSource.INTERNAL
+            )
 
             return ToolCallChunk(
                 message=message_id,
                 tool_call_id=part.tool_call_id,
                 tool_name=part.tool_name,
                 args=part.args,
-                tool_source=None,
-                # tool_source=tool_def.tool_source,
+                tool_source=tool_source,
             )
         case _:
             # assert_never(part)

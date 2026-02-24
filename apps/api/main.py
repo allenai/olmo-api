@@ -7,7 +7,7 @@ from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 
 from api.auth.auth_service import get_bearer_token_validator
 from api.config import settings
-from api.db.sqlalchemy_engine import engine
+from api.db.sqlalchemy_engine import get_sqlalchemy_engine
 from api.health import health_router
 from api.logging import StructLogMiddleware, setup_logging
 from api.otel.setup import setup_otel
@@ -35,7 +35,7 @@ def create_app() -> FastAPI:
     FastAPIInstrumentor.instrument_app(app)
     HTTPXClientInstrumentor().instrument()
     SQLAlchemyInstrumentor().instrument(
-        engine=engine.sync_engine,  # "sync-style" engine for async SQLAlchemy
+        engine=get_sqlalchemy_engine().sync_engine,  # "sync-style" engine for async SQLAlchemy
         enable_commenter=True,
     )
 

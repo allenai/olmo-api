@@ -7,10 +7,10 @@ from fastapi_problem.error import UnprocessableProblem
 from opentelemetry import trace
 from opentelemetry.trace import StatusCode
 from pydantic_ai import (
+    AbstractToolset,
     Agent,
     AgentRunResultEvent,
     BuiltinToolReturnPart,
-    CallDeferred,
     CombinedToolset,
     DeferredToolRequests,
     DeferredToolResults,
@@ -18,7 +18,6 @@ from pydantic_ai import (
     FunctionToolResultEvent,
     ModelMessage,
     ModelRequest,
-    RunContext,
     SystemPromptPart,
     ToolDefinition,
     UsageLimits,
@@ -48,7 +47,7 @@ from core.message.message_chunk import (
     MessageStreamError,
 )
 from core.message.role import Role
-from core.object_id import ID, NewID
+from core.object_id import ID
 from db.models.inference_opts import InferenceOpts
 from db.models.message import Message
 from db.models.model_config import ModelConfig, PromptType
@@ -93,10 +92,6 @@ def merge_inference_options(
 class InvalidParentError(UnprocessableProblem): ...
 
 
-def user_defined_tool(ctx: RunContext):
-    raise CallDeferred({"tool_name": ctx.tool_name})
-
-
 def build_message_list_from_parent(messages: Sequence[Message], parent_message_id: ID) -> list[Message]:
     messages_dict = {message.id: message for message in messages}
     intermediate_parent_message = messages_dict.get(parent_message_id)
@@ -119,10 +114,6 @@ def build_message_list_from_parent(messages: Sequence[Message], parent_message_i
         message_list.insert(0, intermediate_parent_message)
 
     return message_list
-
-
-def create_message_id():
-    return NewID("msg")
 
 
 def map_tool_def_to_pydantic(tool: CreateToolDefinition) -> ToolDefinition:
@@ -245,6 +236,25 @@ class ChatService:
         return agent_messages, extra_output, root_message_id
 
     @classmethod
+    def _get_toolsets(
+        cls,
+        model: ModelConfig,
+        user_tools: Sequence[CreateToolDefinition] | None,
+        mcp_tools: Sequence[str] | None,
+    ) -> list[AbstractToolset]:
+        if not model.can_call_tools:
+            return []
+
+        user_tool_toolset = ExternalToolset([map_tool_def_to_pydantic(tool) for tool in user_tools or []])
+
+        mcp_toolset = CombinedToolset([
+            MCPServerStreamableHTTP(url=server.url, headers=server.headers) for server in MCP_SERVERS
+        ])
+        filtered_mcp_toolset = mcp_toolset.filtered(lambda _ctx, tool_def: tool_def.name in (mcp_tools or []))
+
+        return [user_tool_toolset, filtered_mcp_toolset]
+
+    @classmethod
     async def _get_chat_stream(
         cls,
         messages: Sequence[ModelMessage],
@@ -255,16 +265,11 @@ class ChatService:
     ):
         pydantic_model = get_pydantic_model(model)
 
-        user_tool_toolset = ExternalToolset([map_tool_def_to_pydantic(tool) for tool in user_tools or []])
-
-        mcp_toolset = CombinedToolset([
-            MCPServerStreamableHTTP(url=server.url, headers=server.headers) for server in MCP_SERVERS
-        ])
-        filtered_mcp_toolset = mcp_toolset.filtered(lambda _ctx, tool_def: tool_def.name in (mcp_tools or []))
+        toolsets = cls._get_toolsets(model, user_tools, mcp_tools)
 
         agent = Agent(
             model=pydantic_model,
-            toolsets=[user_tool_toolset, filtered_mcp_toolset],
+            toolsets=toolsets,
             output_type=[str, DeferredToolRequests],
             end_strategy="exhaustive",
         )

@@ -141,7 +141,7 @@ class ChatService:
         self.session = session
         self.tools_service = tools_service
 
-    async def get_model(self, model_id: str):
+    async def _get_model(self, model_id: str):
         async with self.session.begin():
             stmt = base_model_config_select.where(ModelConfig.id == model_id)
             result = await self.session.scalars(stmt)
@@ -207,7 +207,7 @@ class ChatService:
 
         return new_messages, extra_output
 
-    async def validate_and_map_request(
+    async def _validate_and_map_request(
         self,
         request: ChatRequest,
         user: Token,
@@ -277,7 +277,7 @@ class ChatService:
         ):
             yield event
 
-    async def stream_chat_message(
+    async def _handle_stream(
         self,
         messages: Sequence[ModelMessage],
         user_tools: Sequence[CreateToolDefinition] | None,
@@ -302,7 +302,7 @@ class ChatService:
         mcp_tool_names = mcp_tools or []
 
         last_message_id = message_id
-        tool_messages = []
+        new_messages = []
 
         try:
             async for event in event_stream:
@@ -323,7 +323,7 @@ class ChatService:
                             parent=last_message_id,
                         )
 
-                        tool_messages.append(tool_message)
+                        new_messages.append(tool_message)
                         last_message_id = tool_message.id
                         yield FlatMessage.from_message(tool_message)
                     case _:
@@ -350,6 +350,23 @@ class ChatService:
         # Support multimedia
         # If it's a tool response, go down a different path
         # Error handling
+
+    async def stream_chat_message(self, request: ChatRequest, user: Token):
+        model = await self._get_model(request.model)
+        mapped_messages, extra_output, root_message_id = await self._validate_and_map_request(request, user, model)
+
+        message_id = "foo"
+
+        return self._handle_stream(
+            mapped_messages,
+            user_tools=request.tool_definitions,
+            model=model,
+            message_id=message_id,
+            mcp_tools=request.selected_tools,
+            user=user,
+            root_message_id=root_message_id or message_id,
+            extra_output=extra_output,
+        )
 
 
 ChatServiceDependency = Annotated[ChatService, Depends()]

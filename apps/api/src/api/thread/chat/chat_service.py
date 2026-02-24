@@ -202,6 +202,8 @@ class ChatService:
             if system_prompt is not None:
                 user_message.parts = [SystemPromptPart(system_prompt), *user_message.parts]
 
+            new_messages.append(user_message)
+
         elif request.role is Role.ToolResponse:
             user_tool_results = DeferredToolResults()
             user_tool_results.calls = {cast(str, request.tool_call_id): request.content}

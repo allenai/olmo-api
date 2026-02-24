@@ -23,7 +23,6 @@ from pydantic_ai import (
     UsageLimits,
     UserPromptPart,
 )
-from pydantic_ai.mcp import MCPServerStreamableHTTP
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
 from api.db.sqlalchemy_engine import SessionDependency
@@ -36,7 +35,7 @@ from api.thread.chat.input_parts import map_input_parts
 from api.thread.chat.mapping import map_messages_to_pydantic_ai_format
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
 from api.thread.models.flat_message import FlatMessage
-from api.tools.mcp_service import MCP_SERVERS
+from api.tools.mcp_service import get_general_mcp_servers
 from api.tools.tools_service import ToolsServiceDependency
 from core.auth.token import Token
 from core.message.message_chunk import (
@@ -247,9 +246,7 @@ class ChatService:
 
         user_tool_toolset = ExternalToolset([map_tool_def_to_pydantic(tool) for tool in user_tools or []])
 
-        mcp_toolset = CombinedToolset([
-            MCPServerStreamableHTTP(url=server.url, headers=server.headers) for server in MCP_SERVERS
-        ])
+        mcp_toolset = CombinedToolset(get_general_mcp_servers())
         filtered_mcp_toolset = mcp_toolset.filtered(lambda _ctx, tool_def: tool_def.name in (mcp_tools or []))
 
         return [user_tool_toolset, filtered_mcp_toolset]

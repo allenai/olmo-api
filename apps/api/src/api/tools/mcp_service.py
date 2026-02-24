@@ -1,5 +1,6 @@
 import asyncio
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends
@@ -41,6 +42,15 @@ MCP_SERVERS: list[McpServer] = [
         available_for_all_models=True,
     ),
 ]
+
+
+def get_mcp_server(mcp_server_config: McpServer):
+    return MCPServerStreamableHTTP(url=mcp_server_config.url, headers=mcp_server_config.headers)
+
+
+@lru_cache
+def get_general_mcp_servers():
+    return [get_mcp_server(config) for config in MCP_SERVERS]
 
 
 class McpService:

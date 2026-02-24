@@ -17,7 +17,7 @@ logger = FastAPIStructLogger()
 @functools.singledispatch
 def encode_value(x: typing.Any) -> typing.Any:
     if dataclasses.is_dataclass(x):
-        return dataclasses.asdict(x)  # pyright: ignore[reportArgumentType]
+        return dataclasses.asdict(x)  # type: ignore
 
     return x
 

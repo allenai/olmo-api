@@ -10,7 +10,6 @@ from pydantic_ai import (
     AbstractToolset,
     Agent,
     AgentRunResultEvent,
-    BuiltinToolReturnPart,
     CombinedToolset,
     DeferredToolRequests,
     DeferredToolResults,
@@ -309,7 +308,7 @@ class ChatService:
                 match event:
                     case AgentRunResultEvent():
                         run_result = event  # noqa: F841
-                    case FunctionToolResultEvent() | BuiltinToolReturnPart():
+                    case FunctionToolResultEvent():
                         tool_message = Message(
                             content=str(event.result.content),
                             creator=user.client,

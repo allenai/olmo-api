@@ -1,7 +1,6 @@
 from collections.abc import AsyncGenerator, Sequence
-from typing import Annotated, cast
+from typing import Annotated
 
-from attr import dataclass
 from fastapi import Depends
 from fastapi_problem.error import UnprocessableProblem
 from opentelemetry import trace
@@ -12,15 +11,11 @@ from pydantic_ai import (
     AgentRunResultEvent,
     CombinedToolset,
     DeferredToolRequests,
-    DeferredToolResults,
     ExternalToolset,
     FunctionToolResultEvent,
     ModelMessage,
-    ModelRequest,
-    SystemPromptPart,
     ToolDefinition,
     UsageLimits,
-    UserPromptPart,
 )
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
@@ -29,8 +24,8 @@ from api.logging.fastapi_logger import FastAPIStructLogger
 from api.model.model_query import base_model_config_select
 from api.model_config.model_config_request import validate_inference_parameters_against_model_constraints
 from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
+from api.thread.chat.chat_types import ChatStreamOutput
 from api.thread.chat.format_pydantic_output import map_pydantic_chunk
-from api.thread.chat.input_parts import map_input_parts
 from api.thread.chat.mapping import map_messages_to_pydantic_ai_format
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
 from api.thread.models.flat_message import FlatMessage
@@ -47,7 +42,7 @@ from core.message.message_chunk import (
 from core.message.role import Role
 from core.object_id import ID
 from db.models.inference_opts import InferenceOpts
-from db.models.message import Message
+from db.models.message import Message, create_message_id
 from db.models.model_config import ModelConfig, PromptType
 
 logger = FastAPIStructLogger()
@@ -124,11 +119,6 @@ def map_tool_def_to_pydantic(tool: CreateToolDefinition) -> ToolDefinition:
     return tool_definition
 
 
-@dataclass
-class ExtraMapOutput:
-    deferred_tool_results: DeferredToolResults | None = None
-
-
 class ChatService:
     def __init__(
         self,
@@ -171,47 +161,100 @@ class ChatService:
 
         return parent_message, root_message
 
-    async def _map_to_agent_input(
+    async def _initialize_thread(
         self,
         root_message_id: ID | None,
+        parent_message_id: ID | None,
         request: ChatRequest,
         creator_id: str,
         system_prompt: str | None,
-        inference_options: InferenceOpts,  # noqa: ARG002
-        model: ModelConfig,  # noqa: ARG002
-    ) -> tuple[list[ModelMessage], ExtraMapOutput]:
-        new_messages: list[ModelMessage] = []
-        extra_output: ExtraMapOutput = ExtraMapOutput()
+        inference_options: InferenceOpts,
+        model: ModelConfig,
+    ) -> tuple[list[Message], list[Message]]:
+        messages = []
+        new_messages = []
+        new_root_message_id: ID | None = root_message_id
+
+        if root_message_id is not None and parent_message_id is not None:
+            thread_messages = await self.message_repository.get_messages_by_root(root_message_id, creator_id)
+            existing_thread_messages = build_message_list_from_parent(thread_messages, parent_message_id)
+
+            messages = [*messages, existing_thread_messages]
+            if len(messages) > 0:
+                new_root_message_id = messages[0].id
+
+        if parent_message_id is None and system_prompt is not None:
+            # if parent_message_id is not set we're working with a new thread so we make a new system prompt and make it the root message
+            system_message_id = create_message_id()
+
+            if new_root_message_id is None:
+                new_root_message_id = system_message_id
+
+            system_message = Message(
+                id=system_message_id,
+                root=new_root_message_id,
+                content=system_prompt,
+                creator=creator_id,
+                role=Role.System,
+                opts=inference_options,
+                model_id=model.id,
+                model_host=model.host,
+            )
+            messages.append(system_message)
+            new_messages.append(system_message)
 
         if request.role is Role.User:
-            user_message = ModelRequest(
-                parts=[UserPromptPart(content=map_input_parts(request.input_parts, request.content or ""))]
+            user_message_id = create_message_id()
+
+            if new_root_message_id is None:
+                new_root_message_id = user_message_id
+
+            user_message = Message(
+                id=user_message_id,
+                content=request.content or "",
+                input_parts=request.input_parts,
+                creator=creator_id,
+                role=request.role,
+                opts=inference_options,
+                root=new_root_message_id,
+                model_id=model.id,
+                model_host=model.host,
+                parent=parent_message_id,
             )
 
-            if system_prompt is not None:
-                user_message.parts = [SystemPromptPart(system_prompt), *user_message.parts]
-
+            messages.append(user_message)
             new_messages.append(user_message)
 
-        elif request.role is Role.ToolResponse:
-            user_tool_results = DeferredToolResults()
-            user_tool_results.calls = {cast(str, request.tool_call_id): request.content}
-            extra_output.deferred_tool_results = user_tool_results
+        if request.role is Role.ToolResponse:
+            if not request.content:
+                missing_content_message = "Tool response messages must have content"
+                raise UnprocessableProblem(missing_content_message)
 
-        if root_message_id is not None and request.parent is not None:
-            thread_messages = await self.message_repository.get_messages_by_root(root_message_id, creator_id)
-            message_list = build_message_list_from_parent(thread_messages, request.parent)
+            if not new_root_message_id:
+                tool_response_with_no_parent_message = "Tool response messages must have a parent"
+                raise UnprocessableProblem(tool_response_with_no_parent_message)
 
-            return [*map_messages_to_pydantic_ai_format(message_list), *new_messages], extra_output
+            tool_response_message = Message(
+                content=request.content,
+                creator=creator_id,
+                role=request.role,
+                opts=inference_options,
+                root=new_root_message_id,
+                model_id=model.id,
+                model_host=model.host,
+            )
 
-        return new_messages, extra_output
+            messages.append(tool_response_message)
+            new_messages.append(tool_response_message)
 
-    async def _validate_and_map_request(
+        return messages, new_messages
+
+    async def _validate_and_get_thread(
         self,
         request: ChatRequest,
         user: Token,
         model: ModelConfig,
-    ) -> tuple[list[ModelMessage], ExtraMapOutput, ID | None]:
+    ) -> tuple[list[Message], list[Message], ID, ID]:
         parent_message, root_message = await self._get_parent_and_root_messages(request.parent)
 
         merged_inference_options = merge_inference_options(
@@ -221,17 +264,19 @@ class ChatService:
         validate_inference_parameters_against_model_constraints(model, merged_inference_options)
 
         root_message_id = root_message.id if root_message is not None else None
+        parent_message_id = parent_message.id if parent_message is not None else None
 
-        agent_messages, extra_output = await self._map_to_agent_input(
-            root_message_id=root_message_id,
+        all_messages, new_messages = await self._initialize_thread(
+            root_message_id,
+            parent_message_id=parent_message_id,
             request=request,
             creator_id=user.client,
-            system_prompt=root_message.content if root_message is not None else model.default_system_prompt,
+            system_prompt=model.default_system_prompt,
             inference_options=merged_inference_options,
             model=model,
         )
 
-        return agent_messages, extra_output, root_message_id
+        return (all_messages, new_messages, all_messages[0].id, all_messages[-1].id)
 
     @staticmethod
     def _get_toolsets(
@@ -256,7 +301,6 @@ class ChatService:
         user_tools: Sequence[CreateToolDefinition] | None,
         mcp_tools: Sequence[str] | None,
         model: ModelConfig,
-        deferred_tool_results: DeferredToolResults | None,
     ):
         pydantic_model = get_pydantic_model(model)
 
@@ -272,7 +316,6 @@ class ChatService:
         async for event in agent.run_stream_events(
             message_history=messages,
             usage_limits=UsageLimits(request_limit=10),
-            deferred_tool_results=deferred_tool_results,
         ):
             yield event
 
@@ -282,10 +325,9 @@ class ChatService:
         user_tools: Sequence[CreateToolDefinition] | None,
         mcp_tools: Sequence[str] | None,
         model: ModelConfig,
-        message_id: ID,
         user: Token,
         root_message_id: ID,
-        extra_output: ExtraMapOutput,
+        parent_message_id: ID,
     ) -> AsyncGenerator[FlatMessage | MessageChunk | MessageStreamError | Chunk | None]:
         # Only allow new messages, editing can come with PUT
 
@@ -294,13 +336,12 @@ class ChatService:
             user_tools=user_tools,
             mcp_tools=mcp_tools,
             model=model,
-            deferred_tool_results=extra_output.deferred_tool_results,
         )
 
         user_defined_tool_names = [user_tool.name for user_tool in user_tools or []]
         mcp_tool_names = mcp_tools or []
 
-        last_message_id = message_id
+        last_message_id = parent_message_id
         new_messages = []
 
         try:
@@ -316,7 +357,7 @@ class ChatService:
                             # TODO: inherit inference options
                             opts=InferenceOpts(),
                             # TODO: get the proper root message with DB saving
-                            root=root_message_id or message_id,
+                            root=root_message_id,
                             model_id=model.id,
                             model_host=model.host,
                             parent=last_message_id,
@@ -325,10 +366,15 @@ class ChatService:
                         new_messages.append(tool_message)
                         last_message_id = tool_message.id
                         yield FlatMessage.from_message(tool_message)
+
                     case _:
+                        # TODO: Figure out how to make new message IDs for new responses properly
+                        # if isinstance(event, PartStartEvent) and (isinstance(event.part, (TextPart, ThinkingPart))):
+                        # last_message_id = create_message_id()
+
                         yield map_pydantic_chunk(
-                            event,
-                            message_id=message_id,
+                            chunk=event,
+                            message_id=last_message_id,
                             user_defined_tool_names=user_defined_tool_names,
                             mcp_tool_names=mcp_tool_names,
                         )
@@ -337,7 +383,7 @@ class ChatService:
             logger.exception("Inference error")
             current_span = trace.get_current_span()
             current_span.set_status(StatusCode.ERROR, description="Inference error")
-            yield ErrorChunk(message=message_id, error_code=ErrorCode.OTHER_ERROR, error_description=str(e))
+            yield ErrorChunk(message=last_message_id, error_code=ErrorCode.OTHER_ERROR, error_description=str(e))
             return
 
         # TODO: below
@@ -350,21 +396,24 @@ class ChatService:
         # If it's a tool response, go down a different path
         # Error handling
 
-    async def stream_chat_message(self, request: ChatRequest, user: Token):
+    async def stream_chat_message(self, request: ChatRequest, user: Token) -> AsyncGenerator[ChatStreamOutput]:
         model = await self._get_model(request.model)
-        mapped_messages, extra_output, root_message_id = await self._validate_and_map_request(request, user, model)
+        all_messages, new_messages, root_message_id, parent_message_id = await self._validate_and_get_thread(
+            request, user, model
+        )
 
-        message_id = "foo"
+        agent_messages = map_messages_to_pydantic_ai_format(all_messages)
+
+        # TODO: yield new messages
 
         return self._handle_stream(
-            mapped_messages,
+            agent_messages,
             user_tools=request.tool_definitions,
             model=model,
-            message_id=message_id,
             mcp_tools=request.selected_tools,
             user=user,
-            root_message_id=root_message_id or message_id,
-            extra_output=extra_output,
+            root_message_id=root_message_id,
+            parent_message_id=parent_message_id,
         )
 
 

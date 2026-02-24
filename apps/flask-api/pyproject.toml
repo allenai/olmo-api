@@ -37,7 +37,7 @@ dependencies = [
     "psycopg[binary,pool]==3.3.0",
     "puremagic==1.28.0",
     "pydantic==2.12.5",
-    "pydantic-ai>=1.63.0",
+    "pydantic-ai==1.0.18",
     "pydub==0.25.1",
     "python-dateutil>=2.8.0",
     "python-dotenv==1.2.1",

@@ -13,12 +13,8 @@ jobs:
     unit-test:
       runs-on: ubuntu-latest
       env:
-        DATABASE_URL: ${{ vars.DATABASE_URL }}
         AUTH_DOMAIN: ${{ vars.AUTH_DOMAIN }}
         AUTH_AUDIENCE: ${{ vars.AUTH_AUDIENCE }}
-        GCS_PUBLIC_UPLOAD_BUCKET: ${{ vars.GCS_PUBLIC_UPLOAD_BUCKET }}
-        HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
-        ASTA_MCP_API_KEY: ${{ secrets.ASTA_MCP_API_KEY }}
       steps:
         - uses: actions/checkout@v6
 

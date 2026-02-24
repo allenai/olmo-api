@@ -51,7 +51,6 @@ def test_get_toolsets_returns_empty_if_model_cannot_call_tools():
 
 
 async def test_get_toolsets_returns_user_and_mcp_tools():
-
     toolsets = ChatService._get_toolsets(  # noqa: SLF001
         create_fake_model(can_call_tools=True),
         user_tools=[

@@ -15,6 +15,7 @@ jobs:
       env:
         AUTH_DOMAIN: ${{ vars.AUTH_DOMAIN }}
         AUTH_AUDIENCE: ${{ vars.AUTH_AUDIENCE }}
+        ENV: test
       steps:
         - uses: actions/checkout@v6
 

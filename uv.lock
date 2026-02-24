@@ -293,6 +293,7 @@ test = [
     { name = "httpx" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
+    { name = "pytest-mock" },
     { name = "pytest-postgresql" },
 ]
 
@@ -334,6 +335,7 @@ test = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "pytest", specifier = ">=8.3.2" },
     { name = "pytest-asyncio", specifier = ">=0.25.2" },
+    { name = "pytest-mock", specifier = ">=3.15.1" },
     { name = "pytest-postgresql", specifier = ">=7.0.2" },
 ]
 

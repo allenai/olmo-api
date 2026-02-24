@@ -234,9 +234,8 @@ class ChatService:
 
         return agent_messages, extra_output, root_message_id
 
-    @classmethod
+    @staticmethod
     def _get_toolsets(
-        cls,
         model: ModelConfig,
         user_tools: Sequence[CreateToolDefinition] | None,
         mcp_tools: Sequence[str] | None,

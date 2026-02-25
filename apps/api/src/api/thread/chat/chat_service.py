@@ -156,7 +156,7 @@ class ChatService:
         inference_options: InferenceOpts,
         model: ModelConfig,
     ) -> tuple[list[Message], list[Message]]:
-        messages = []
+        messages: list[Message] = []
         new_messages = []
         new_root_message_id: ID | None = root_message_id
 

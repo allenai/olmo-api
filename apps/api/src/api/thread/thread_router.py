@@ -79,13 +79,11 @@ async def stream_chat_message(
     logger.bind(model=request.model, user=token.client)
     trace.get_current_span().set_attributes({GEN_AI_REQUEST_MODEL: request.model, "user": token.client})
 
-    # These are called here instead of inside stream_chat_message so we can get proper exception handling
-    # StreamingResponse returns a 200 immediately, if an exception happens inside the request is aborted without returning
-    model = await chat_service.get_model(request.model)
-    mapped_messages = await chat_service.validate_and_map_request(request, token, model)
+    # This needs to be assigned to a variable outside of StreamingResponse
+    # Once StreamingResponse is returned you can't raise errors normally
+    stream = await chat_service.stream_chat_message(request, token)
 
-    # TODO: Handle errors inside the stream
     return StreamingResponse(
-        format_messages(stream_generator=chat_service.stream_chat_message(mapped_messages, model)),
+        format_messages(stream_generator=stream),
         media_type="application/jsonl",
     )

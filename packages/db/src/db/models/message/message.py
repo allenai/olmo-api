@@ -66,7 +66,11 @@ class Message(Base, kw_only=True):
     opts: Mapped[InferenceOpts] = mapped_column(PydanticType(InferenceOpts), nullable=False)
     root: Mapped[str] = mapped_column(Text, nullable=False)
     created: Mapped[datetime.datetime] = mapped_column(
-        DateTime(True), nullable=False, server_default=text("now()"), init=False
+        DateTime(True),
+        nullable=False,
+        server_default=text("now()"),
+        init=False,
+        default_factory=lambda: datetime.datetime.now(datetime.UTC),
     )
     final: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"), default=False)
     private: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"), default=False)

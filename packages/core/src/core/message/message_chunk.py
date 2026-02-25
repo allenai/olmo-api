@@ -26,6 +26,7 @@ class ChunkType(StrEnum):
 
 class ErrorCode(StrEnum):
     TOOL_CALL_ERROR = "toolCallError"
+    OTHER_ERROR = "otherError"
 
 
 class ErrorSeverity(StrEnum):

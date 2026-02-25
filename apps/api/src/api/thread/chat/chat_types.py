@@ -1,6 +1,6 @@
 from typing import TypeAlias
 
-from api.thread.models.flat_message import FlatMessage
 from core.message.message_chunk import Chunk, MessageStreamError
+from db.models.message import Message
 
-ChatStreamOutput: TypeAlias = FlatMessage | Chunk | MessageStreamError | None
+ChatStreamOutput: TypeAlias = Message | Chunk | MessageStreamError

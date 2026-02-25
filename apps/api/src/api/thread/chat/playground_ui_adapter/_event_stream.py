@@ -17,9 +17,8 @@ from pydantic_ai.tools import AgentDepsT
 from pydantic_ai.ui import UIEventStream
 
 from api.thread.chat.chat_types import ChatStreamOutput
-from api.thread.chat.format_output import format_message
+from api.thread.chat.format_output import format_event
 from api.thread.chat.playground_ui_adapter._util import Event, RunInput
-from api.thread.models.flat_message import FlatMessage
 from core.inference_engine.finish_reason import FinishReason
 from core.message.message_chunk import (
     MessageStreamError,
@@ -58,14 +57,16 @@ class PlaygroundUIEventStream(
         return JSONL_CONTENT_TYPE
 
     def encode_event(self, event: ChatStreamOutput) -> str:
-        return format_message(event)
+        return format_event(event)
 
     async def before_stream(self) -> AsyncIterator[ChatStreamOutput]:
         yield StreamStartChunk(message=self.message_id)
         for message in self.run_input.new_messages:
-            yield FlatMessage.from_message(message)
+            yield message
 
     async def before_response(self) -> AsyncIterator[ChatStreamOutput]:
+        return
+        # we don't want to yield anything but still want the type to be right so we return then yield
         yield
 
     async def after_stream(self) -> AsyncIterator[ChatStreamOutput]:

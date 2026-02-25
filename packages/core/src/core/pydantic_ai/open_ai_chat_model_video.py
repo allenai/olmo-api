@@ -70,7 +70,7 @@ class OpenAIChatModelVideo(OpenAIChatModel):
                         content.append(ChatCompletionContentPartImageParam(image_url=image_url, type="image_url"))
                     elif item.is_audio:
                         assert item.format in ("wav", "mp3")
-                        audio = InputAudio(data=base64.b64encode(item.data).decode("utf-8"), format=item.format)
+                        audio = InputAudio(data=base64.b64encode(item.data).decode("utf-8"), format=item.format)  # type:ignore[typeddict-item]
                         content.append(ChatCompletionContentPartInputAudioParam(input_audio=audio, type="input_audio"))
                     elif item.is_document:
                         content.append(
@@ -94,7 +94,7 @@ class OpenAIChatModelVideo(OpenAIChatModel):
                         "wav",
                         "mp3",
                     ), f"Unsupported audio format: {downloaded_item['data_type']}"
-                    audio = InputAudio(data=downloaded_item["data"], format=downloaded_item["data_type"])
+                    audio = InputAudio(data=downloaded_item["data"], format=downloaded_item["data_type"])  # type:ignore[typeddict-item]
                     content.append(ChatCompletionContentPartInputAudioParam(input_audio=audio, type="input_audio"))
                 elif isinstance(item, DocumentUrl):
                     if self._is_text_like_media_type(item.media_type):

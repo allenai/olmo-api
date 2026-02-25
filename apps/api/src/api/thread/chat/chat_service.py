@@ -12,6 +12,7 @@ from pydantic_ai import (
     CombinedToolset,
     DeferredToolRequests,
     ExternalToolset,
+    FinalResultEvent,
     FunctionToolResultEvent,
     ModelMessage,
     ToolDefinition,
@@ -33,11 +34,10 @@ from api.tools.mcp_service import get_general_mcp_servers
 from api.tools.tools_service import ToolsServiceDependency
 from core.auth.token import Token
 from core.message.message_chunk import (
-    Chunk,
     ErrorChunk,
     ErrorCode,
-    MessageChunk,
-    MessageStreamError,
+    StreamEndChunk,
+    StreamStartChunk,
 )
 from core.message.role import Role
 from core.object_id import ID
@@ -328,8 +328,12 @@ class ChatService:
         user: Token,
         root_message_id: ID,
         parent_message_id: ID,
-    ) -> AsyncGenerator[FlatMessage | MessageChunk | MessageStreamError | Chunk | None]:
-        # Only allow new messages, editing can come with PUT
+        new_messages: Sequence[Message],
+    ) -> AsyncGenerator[ChatStreamOutput]:
+        yield StreamStartChunk(message=root_message_id)
+
+        for new_message in new_messages:
+            yield FlatMessage.from_message(new_message)
 
         event_stream = self._get_chat_stream(
             messages=messages,
@@ -342,6 +346,7 @@ class ChatService:
         mcp_tool_names = mcp_tools or []
 
         last_message_id = parent_message_id
+        current_message_id = create_message_id()
         new_messages = []
 
         try:
@@ -372,9 +377,12 @@ class ChatService:
                         # if isinstance(event, PartStartEvent) and (isinstance(event.part, (TextPart, ThinkingPart))):
                         # last_message_id = create_message_id()
 
+                        if isinstance(event, FinalResultEvent):
+                            current_message_id = create_message_id()
+
                         yield map_pydantic_chunk(
                             chunk=event,
-                            message_id=last_message_id,
+                            message_id=current_message_id,
                             user_defined_tool_names=user_defined_tool_names,
                             mcp_tool_names=mcp_tool_names,
                         )
@@ -384,7 +392,12 @@ class ChatService:
             current_span = trace.get_current_span()
             current_span.set_status(StatusCode.ERROR, description="Inference error")
             yield ErrorChunk(message=last_message_id, error_code=ErrorCode.OTHER_ERROR, error_description=str(e))
+            # TODO: Save error chunk on message
             return
+
+        # TODO: yield final thread
+
+        yield StreamEndChunk(message=root_message_id)
 
         # TODO: below
         # Safety check
@@ -404,8 +417,6 @@ class ChatService:
 
         agent_messages = map_messages_to_pydantic_ai_format(all_messages)
 
-        # TODO: yield new messages
-
         return self._handle_stream(
             agent_messages,
             user_tools=request.tool_definitions,
@@ -414,6 +425,7 @@ class ChatService:
             user=user,
             root_message_id=root_message_id,
             parent_message_id=parent_message_id,
+            new_messages=new_messages,
         )
 
 

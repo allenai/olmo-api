@@ -1,18 +1,13 @@
 name: Set up uv
 description: Install uv and packages
 
-inputs:
-  python-version:
-    required: false
-    default: "3.11"
-
 runs:
   using: "composite"
   steps:
   - name: Set up Python
     uses: actions/setup-python@v6
     with:
-      python-version: ${{ inputs.python-version }}
+      python-version: "3.11"
 
   - name: Install uv
     uses: astral-sh/setup-uv@v7

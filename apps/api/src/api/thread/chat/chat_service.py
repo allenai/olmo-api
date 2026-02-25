@@ -182,8 +182,7 @@ class ChatService:
             messages = [*messages, *existing_thread_messages]
             if len(messages) > 0:
                 new_root_message_id = messages[0].id
-
-        if parent_message_id is None and system_prompt is not None:
+        elif system_prompt is not None:
             # if parent_message_id is not set we're working with a new thread so we make a new system prompt and make it the root message
             system_message_id = create_message_id()
 

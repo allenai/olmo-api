@@ -305,7 +305,12 @@ class ChatService:
             end_strategy="exhaustive",
         )
 
-        run_input = RunInput(all_messages=all_messages, new_messages=new_messages)
+        run_input = RunInput(
+            all_messages=all_messages,
+            new_messages=new_messages,
+            root_message_id=root_message_id,
+            parent_message_id=parent_message_id,
+        )
 
         adapter = PlaygroundUIAdapter(agent, run_input=run_input)
 

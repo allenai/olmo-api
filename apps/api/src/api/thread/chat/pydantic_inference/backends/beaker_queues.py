@@ -109,6 +109,7 @@ class BeakerQueuesModel(Model):
             _response=response,
             _timestamp=datetime.now(UTC),
             _provider_name="beaker_queues",
+            _provider_url="beaker_queues",
         )
         yield result
 

@@ -171,7 +171,7 @@ class ChatService:
         inference_options: InferenceOpts,
         model: ModelConfig,
     ) -> tuple[list[Message], list[Message]]:
-        messages = []
+        messages: list[Message] = []
         new_messages = []
         new_root_message_id: ID | None = root_message_id
 
@@ -179,7 +179,7 @@ class ChatService:
             thread_messages = await self.message_repository.get_messages_by_root(root_message_id, creator_id)
             existing_thread_messages = build_message_list_from_parent(thread_messages, parent_message_id)
 
-            messages = [*messages, existing_thread_messages]
+            messages = [*messages, *existing_thread_messages]
             if len(messages) > 0:
                 new_root_message_id = messages[0].id
 

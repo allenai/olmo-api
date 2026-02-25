@@ -1,6 +1,11 @@
 name: Set up uv
 description: Install uv and packages
 
+inputs:
+  python-version:
+    required: false
+    default: "3.11"
+
 runs:
   using: "composite"
   steps:

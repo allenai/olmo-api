@@ -106,6 +106,8 @@ jobs:
           
       - name: Set up uv
         uses: ./.github/actions/set-up-uv
+        with:
+          python-version: "3.14"
 
       - name: Test flask api with pytest
         run: FLASK_CONFIG_PATH=./config.json E2E_AUTH0_CLIENT_SECRET=${{ secrets.E2E_AUTH0_CLIENT_SECRET }} uv run pytest ./apps/flask-api/e2e

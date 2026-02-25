@@ -282,11 +282,7 @@ class ChatService:
         # Safety check
         # Upload files
         # Save initial messages/thread to DB
-        # Stream message
-        # Support custom tool calls
         # Support multimedia
-        # If it's a tool response, go down a different path
-        # Error handling
 
     async def stream_chat_message(self, request: ChatRequest, user: Token) -> AsyncIterator[str]:
         model = await self._get_model(request.model)

@@ -56,6 +56,7 @@ class BeakerQueuesModel(Model):
     _model_profile: ModelProfile
     _model_name: str = field(init=False)
     _system: str = field(default="ai2", init=False)
+    _beaker_url: str
 
     def __init__(self, model_config: ModelConfig, beaker_config: BeakerConfig | None = None) -> None:
         """Initialize the model with a beaker client."""
@@ -67,6 +68,7 @@ class BeakerQueuesModel(Model):
         self._model_name = model_config.model_id_on_host
         self._model_profile = ModelProfile(supports_tools=model_config.can_call_tools)
         self.beaker_client = Beaker(beaker_config)
+        self._beaker_url = beaker_config.rpc_address
 
     @property
     def model_name(self) -> str:
@@ -109,7 +111,7 @@ class BeakerQueuesModel(Model):
             _response=response,
             _timestamp=datetime.now(UTC),
             _provider_name="beaker_queues",
-            _provider_url="beaker_queues",
+            _provider_url=self._beaker_url,
         )
         yield result
 

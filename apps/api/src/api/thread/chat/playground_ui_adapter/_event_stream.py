@@ -1,6 +1,5 @@
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from typing import override
 
 from pydantic_ai import AgentRunResultEvent, UnexpectedModelBehavior
 from pydantic_ai.messages import (
@@ -84,7 +83,9 @@ class PlaygroundUIEventStream(
             yield ModelResponseChunk(message=self.message_id, content=delta.content_delta)
 
     async def handle_thinking_start(
-        self, part: ThinkingPart, follows_thinking: bool = False
+        self,
+        part: ThinkingPart,
+        follows_thinking: bool = False,  # noqa: ARG002, FBT001, FBT002
     ) -> AsyncIterator[ChatStreamOutput]:
         message_id = self.new_message_id()
         if part.content:
@@ -114,7 +115,6 @@ class PlaygroundUIEventStream(
             args=delta.args_delta,
         )
 
-    @override
     async def handle_function_tool_result(self, event: FunctionToolResultEvent) -> AsyncIterator[ChatStreamOutput]:
         result = event.result
         if isinstance(result, RetryPromptPart):
@@ -125,7 +125,6 @@ class PlaygroundUIEventStream(
 
         # ToolCallResultEvent.content may hold user parts (e.g. text, images) that Vercel AI does not currently have events for
 
-    @override
     async def on_error(self, error: Exception) -> AsyncIterator[Event]:
         self._finish_reason = "error"
         if isinstance(error, UnexpectedModelBehavior):
@@ -136,7 +135,6 @@ class PlaygroundUIEventStream(
         else:
             yield ErrorChunk(error_description=str(error), message=self.message_id, error_code=ErrorCode.OTHER_ERROR)
 
-    @override
     async def handle_run_result(self, event: AgentRunResultEvent) -> AsyncIterator[Event]:
         pydantic_reason = event.result.response.finish_reason
         # if pydantic_reason:

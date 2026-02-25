@@ -57,7 +57,7 @@ class PlaygroundUIEventStream(
     def content_type(self) -> str:
         return JSONL_CONTENT_TYPE
 
-    def encode_event(self, event: ChatStreamOutput) -> str:
+    def encode_event(self, event: ChatStreamOutput) -> str:  # noqa: PLR6301
         return format_event(event)
 
     async def before_stream(self) -> AsyncIterator[ChatStreamOutput]:
@@ -65,7 +65,7 @@ class PlaygroundUIEventStream(
         for message in self.run_input.new_messages:
             yield message
 
-    async def before_response(self) -> AsyncIterator[ChatStreamOutput]:
+    async def before_response(self) -> AsyncIterator[ChatStreamOutput]:  # noqa: PLR6301
         return
         # we don't want to yield anything but still want the type to be right so we return then yield
         yield
@@ -115,7 +115,7 @@ class PlaygroundUIEventStream(
             args=delta.args_delta,
         )
 
-    async def handle_function_tool_result(self, event: FunctionToolResultEvent) -> AsyncIterator[ChatStreamOutput]:
+    async def handle_function_tool_result(self, event: FunctionToolResultEvent) -> AsyncIterator[ChatStreamOutput]:  # noqa: PLR6301
         result = event.result
         if isinstance(result, RetryPromptPart):
             pass
@@ -135,12 +135,12 @@ class PlaygroundUIEventStream(
         else:
             yield ErrorChunk(error_description=str(error), message=self.message_id, error_code=ErrorCode.OTHER_ERROR)
 
-    async def handle_run_result(self, event: AgentRunResultEvent) -> AsyncIterator[Event]:
-        pydantic_reason = event.result.response.finish_reason
+    async def handle_run_result(self, event: AgentRunResultEvent) -> AsyncIterator[Event]:  # noqa: PLR6301
+        pydantic_reason = event.result.response.finish_reason  # noqa: F841
         # if pydantic_reason:
         #     self._finish_reason = _FINISH_REASON_MAP.get(pydantic_reason, "other")
 
-        output = event.result.output
-        all_messages = event.result.all_messages()
+        output = event.result.output  # noqa: F841
+        all_messages = event.result.all_messages()  # noqa: F841
         return
         yield

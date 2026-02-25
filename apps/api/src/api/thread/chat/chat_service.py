@@ -158,25 +158,19 @@ class ChatService:
     ) -> tuple[list[Message], list[Message]]:
         messages: list[Message] = []
         new_messages = []
-        new_root_message_id: ID | None = root_message_id
 
         if root_message_id is not None and parent_message_id is not None:
             thread_messages = await self.message_repository.get_messages_by_root(root_message_id, creator_id)
             existing_thread_messages = build_message_list_from_parent(thread_messages, parent_message_id)
 
             messages = [*messages, *existing_thread_messages]
-            if len(messages) > 0:
-                new_root_message_id = messages[0].id
         elif system_prompt is not None:
             # if parent_message_id is not set we're working with a new thread so we make a new system prompt and make it the root message
             system_message_id = create_message_id()
 
-            if new_root_message_id is None:
-                new_root_message_id = system_message_id
-
             system_message = Message(
                 id=system_message_id,
-                root=new_root_message_id,
+                root=system_message_id,
                 content=system_prompt,
                 creator=creator_id,
                 role=Role.System,
@@ -189,9 +183,7 @@ class ChatService:
 
         if request.role is Role.User:
             user_message_id = create_message_id()
-
-            if new_root_message_id is None:
-                new_root_message_id = user_message_id
+            root_message_id = messages[0].id if messages else user_message_id
 
             user_message = Message(
                 id=user_message_id,
@@ -200,10 +192,10 @@ class ChatService:
                 creator=creator_id,
                 role=request.role,
                 opts=inference_options,
-                root=new_root_message_id,
+                root=root_message_id,
                 model_id=model.id,
                 model_host=model.host,
-                parent=parent_message_id,
+                parent=new_messages[-1].id if len(new_messages) > 0 else None,
             )
 
             messages.append(user_message)
@@ -214,7 +206,9 @@ class ChatService:
                 missing_content_message = "Tool response messages must have content"
                 raise UnprocessableProblem(missing_content_message)
 
-            if not new_root_message_id:
+            parent_message = new_messages[-1] if len(new_messages) > 0 else None
+
+            if not parent_message:
                 tool_response_with_no_parent_message = "Tool response messages must have a parent"
                 raise UnprocessableProblem(tool_response_with_no_parent_message)
 
@@ -223,9 +217,10 @@ class ChatService:
                 creator=creator_id,
                 role=request.role,
                 opts=inference_options,
-                root=new_root_message_id,
+                root=parent_message.root,
                 model_id=model.id,
                 model_host=model.host,
+                parent=parent_message.id,
             )
 
             messages.append(tool_response_message)
@@ -306,6 +301,10 @@ class ChatService:
             new_messages=new_messages,
             root_message_id=root_message_id,
             parent_message_id=parent_message_id,
+            creator=user.client,
+            model_id=model.id,
+            model_host=model.host,
+            inference_opts=all_messages[-1].opts,
         )
 
         adapter = PlaygroundUIAdapter(agent, run_input=run_input)

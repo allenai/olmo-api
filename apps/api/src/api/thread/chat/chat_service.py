@@ -306,6 +306,7 @@ class ChatService:
             new_messages=new_messages,
             root_message_id=root_message_id,
             parent_message_id=parent_message_id,
+            new_messages=new_messages,
         )
 
         adapter = PlaygroundUIAdapter(agent, run_input=run_input)

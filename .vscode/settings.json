@@ -3,7 +3,6 @@
     "python.analysis.extraPaths": ["apps/api/src"],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
-    "python.envFile": "${workspaceFolder}/.env.test",
     "cSpell.words": [
         "Cirrascale",
         "conninfo",

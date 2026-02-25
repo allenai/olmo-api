@@ -1,6 +1,8 @@
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
+from typing import override
 
+from pydantic_ai import AgentRunResultEvent, UnexpectedModelBehavior
 from pydantic_ai.messages import (
     BuiltinToolCallPart,
     FunctionToolResultEvent,
@@ -19,9 +21,9 @@ from pydantic_ai.ui import UIEventStream
 from api.thread.chat.chat_types import ChatStreamOutput
 from api.thread.chat.format_output import format_event
 from api.thread.chat.playground_ui_adapter._util import Event, RunInput
-from core.inference_engine.finish_reason import FinishReason
 from core.message.message_chunk import (
-    MessageStreamError,
+    ErrorChunk,
+    ErrorCode,
     ModelResponseChunk,
     StreamEndChunk,
     StreamStartChunk,
@@ -72,9 +74,6 @@ class PlaygroundUIEventStream(
     async def after_stream(self) -> AsyncIterator[ChatStreamOutput]:
         yield StreamEndChunk(message=self.message_id)
 
-    async def on_error(self, error: Exception) -> AsyncIterator[ChatStreamOutput]:
-        yield MessageStreamError(message=self.message_id, error=str(error), reason=FinishReason.Unknown)
-
     async def handle_text_start(self, part: TextPart, follows_text: bool = False) -> AsyncIterator[ChatStreamOutput]:
         message_id = self.message_id if follows_text else self.new_message_id()
 
@@ -106,7 +105,7 @@ class PlaygroundUIEventStream(
 
     async def handle_tool_call_delta(self, delta: ToolCallPartDelta) -> AsyncIterator[ChatStreamOutput]:
         tool_call_id = delta.tool_call_id or ""
-        assert tool_call_id, "`ToolCallPartDelta.tool_call_id` must be set"
+        assert tool_call_id, "`ToolCallPartDelta.tool_call_id` must be set"  # noqa: S101
         yield ToolCallChunk(
             message=self.message_id,
             tool_call_id=tool_call_id,
@@ -115,6 +114,7 @@ class PlaygroundUIEventStream(
             args=delta.args_delta,
         )
 
+    @override
     async def handle_function_tool_result(self, event: FunctionToolResultEvent) -> AsyncIterator[ChatStreamOutput]:
         result = event.result
         if isinstance(result, RetryPromptPart):
@@ -124,3 +124,25 @@ class PlaygroundUIEventStream(
             yield Message(content=event.content, role=Role.ToolResponse)  # type: ignore
 
         # ToolCallResultEvent.content may hold user parts (e.g. text, images) that Vercel AI does not currently have events for
+
+    @override
+    async def on_error(self, error: Exception) -> AsyncIterator[Event]:
+        self._finish_reason = "error"
+        if isinstance(error, UnexpectedModelBehavior):
+            yield ErrorChunk(
+                error_description=str(error), message=self.message_id, error_code=ErrorCode.TOOL_CALL_ERROR
+            )
+
+        else:
+            yield ErrorChunk(error_description=str(error), message=self.message_id, error_code=ErrorCode.OTHER_ERROR)
+
+    @override
+    async def handle_run_result(self, event: AgentRunResultEvent) -> AsyncIterator[Event]:
+        pydantic_reason = event.result.response.finish_reason
+        # if pydantic_reason:
+        #     self._finish_reason = _FINISH_REASON_MAP.get(pydantic_reason, "other")
+
+        output = event.result.output
+        all_messages = event.result.all_messages()
+        return
+        yield

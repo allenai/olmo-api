@@ -9,15 +9,8 @@ from pydantic_ai import (
     AudioUrl,
     BinaryContent,
     DocumentUrl,
-    FilePart,
     ImageUrl,
     MultiModalContent,
-    SystemPromptPart,
-    TextPart,
-    ThinkingPart,
-    ToolCallPart,
-    ToolReturnPart,
-    UserPromptPart,
     VideoUrl,
 )
 from pydantic_ai.messages import (
@@ -25,11 +18,9 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.output import OutputDataT
 from pydantic_ai.tools import AgentDepsT
-from pydantic_ai.ui import MessagesBuilder, UIAdapter, UIEventStream
+from pydantic_ai.ui import UIAdapter, UIEventStream
 
-from api.thread.chat.input_parts import map_input_parts
 from api.thread.chat.mapping import map_messages_to_pydantic_ai_format
-from core.message.role import Role
 from db.models.message import Message
 
 from ._event_stream import PlaygroundUIEventStream
@@ -89,58 +80,56 @@ class PlaygroundUIAdapter(UIAdapter[RunInput, UIMessage, Event, AgentDepsT, Outp
 
     @classmethod
     def load_messages(cls, messages: Sequence[UIMessage]) -> list[ModelMessage]:
-        builder = MessagesBuilder()
-
-        # agent_messages = map_messages_to_pydantic_ai_format([message for message, files in messages])
         agent_messages = map_messages_to_pydantic_ai_format(messages)
 
         return agent_messages
-        for message, uploaded_files in messages:
-            # Casting this give us static analysis that we've covered all paths
-            match Role(message.role):
-                case Role.User:
-                    content = map_input_parts(message.input_parts, message.content)
-                    builder.add(UserPromptPart(content))
+        # builder = MessagesBuilder()
+        # for message, uploaded_files in messages:
+        #     # Casting this give us static analysis that we've covered all paths
+        #     match Role(message.role):
+        #         case Role.User:
+        #             content = map_input_parts(message.input_parts, message.content)
+        #             builder.add(UserPromptPart(content))
 
-                    if message.file_urls:
-                        for file in message.file_urls:
-                            part = _map_part_from_file(file)
-                            builder.add(FilePart(part))
+        #             if message.file_urls:
+        #                 for file in message.file_urls:
+        #                     part = _map_part_from_file(file)
+        #                     builder.add(FilePart(part))
 
-                    if uploaded_files:
-                        for file in uploaded_files:
-                            part = _map_part_from_file(file)
-                            builder.add(FilePart(part))
+        #             if uploaded_files:
+        #                 for file in uploaded_files:
+        #                     part = _map_part_from_file(file)
+        #                     builder.add(FilePart(part))
 
-                case Role.Assistant:
-                    if message.thinking is not None:
-                        builder.add(ThinkingPart(message.thinking))
+        #         case Role.Assistant:
+        #             if message.thinking is not None:
+        #                 builder.add(ThinkingPart(message.thinking))
 
-                    if message.tool_calls:
-                        for tool_call in message.tool_calls:
-                            builder.add(
-                                ToolCallPart(
-                                    tool_name=tool_call.tool_name,
-                                    tool_call_id=tool_call.tool_call_id,
-                                    args=tool_call.args,
-                                )
-                            )
+        #             if message.tool_calls:
+        #                 for tool_call in message.tool_calls:
+        #                     builder.add(
+        #                         ToolCallPart(
+        #                             tool_name=tool_call.tool_name,
+        #                             tool_call_id=tool_call.tool_call_id,
+        #                             args=tool_call.args,
+        #                         )
+        #                     )
 
-                    builder.add(TextPart(message.content))
+        #             builder.add(TextPart(message.content))
 
-                case Role.System:
-                    builder.add(SystemPromptPart(message.content))
+        #         case Role.System:
+        #             builder.add(SystemPromptPart(message.content))
 
-                case Role.ToolResponse:
-                    if not message.tool_calls:
-                        # This deliberately removes the "only one tool call" check from the old code
-                        raise InvalidToolResponseError
+        #         case Role.ToolResponse:
+        #             if not message.tool_calls:
+        #                 # This deliberately removes the "only one tool call" check from the old code
+        #                 raise InvalidToolResponseError
 
-                    tool_call = message.tool_calls[0]
-                    builder.add(
-                        ToolReturnPart(
-                            tool_name=tool_call.tool_name, tool_call_id=tool_call.id, content=message.content
-                        )
-                    )
+        #             tool_call = message.tool_calls[0]
+        #             builder.add(
+        #                 ToolReturnPart(
+        #                     tool_name=tool_call.tool_name, tool_call_id=tool_call.id, content=message.content
+        #                 )
+        #             )
 
-        return builder.messages
+        # return builder.messages

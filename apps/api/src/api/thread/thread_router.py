@@ -11,7 +11,6 @@ from api.config import settings
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.service_errors import ForbiddenError, NotFoundError
 from api.thread.chat.chat_service import ChatRequest, ChatServiceDependency
-from api.thread.chat.format_output import format_messages
 from api.thread.models.thread import Thread, ThreadList
 from api.thread.thread_delete_service import ThreadDeleteServiceDependency
 from api.thread.thread_read_service import ThreadReadServiceDependency
@@ -84,6 +83,6 @@ async def stream_chat_message(
     stream = await chat_service.stream_chat_message(request, token)
 
     return StreamingResponse(
-        format_messages(stream_generator=stream),
+        stream,
         media_type="application/jsonl",
     )

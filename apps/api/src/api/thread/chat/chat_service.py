@@ -1,4 +1,4 @@
-from collections.abc import AsyncGenerator, Sequence
+from collections.abc import AsyncGenerator, AsyncIterator, Sequence
 from typing import Annotated
 
 from fastapi import Depends
@@ -28,6 +28,8 @@ from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
 from api.thread.chat.chat_types import ChatStreamOutput
 from api.thread.chat.format_pydantic_output import map_pydantic_chunk
 from api.thread.chat.mapping import map_messages_to_pydantic_ai_format
+from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
+from api.thread.chat.playground_ui_adapter._util import RunInput
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
 from api.thread.models.flat_message import FlatMessage
 from api.tools.mcp_service import get_general_mcp_servers
@@ -408,11 +410,30 @@ class ChatService:
         # If it's a tool response, go down a different path
         # Error handling
 
-    async def stream_chat_message(self, request: ChatRequest, user: Token) -> AsyncGenerator[ChatStreamOutput]:
+    async def stream_chat_message(self, request: ChatRequest, user: Token) -> AsyncIterator[str]:
         model = await self._get_model(request.model)
         all_messages, new_messages, root_message_id, parent_message_id = await self._validate_and_get_thread(
             request, user, model
         )
+
+        pydantic_model = get_pydantic_model(model)
+
+        toolsets = self._get_toolsets(model, request.tool_definitions, mcp_tools=request.selected_tools)
+
+        agent = Agent(
+            model=pydantic_model,
+            toolsets=toolsets,
+            output_type=[str, DeferredToolRequests],
+            end_strategy="exhaustive",
+        )
+
+        run_input = RunInput(all_messages=all_messages, new_messages=new_messages)
+
+        adapter = PlaygroundUIAdapter(agent, run_input=run_input)
+
+        event_stream = adapter.run_stream()  # pyright: ignore[reportArgumentType]
+
+        return adapter.encode_stream(event_stream)
 
         agent_messages = map_messages_to_pydantic_ai_format(all_messages)
 

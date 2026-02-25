@@ -5,10 +5,11 @@ from werkzeug import exceptions
 
 import core.object_id as obj
 from core.auth.token import Token
+from core.tools.tool_source import ToolSource
 from db.models.message import Message
 from db.models.model_config import ModelConfig
 from db.models.tool_call import ToolCall
-from db.models.tool_definitions import ToolDefinition, ToolSource
+from db.models.tool_definitions import ToolDefinition
 from src.dao.message.message_models import Role
 from src.dao.message.message_repository import BaseMessageRepository
 from src.message.create_message_request import (
@@ -105,7 +106,7 @@ def map_tools_for_user_message(
         ToolDefinition(
             name=tool_def.name,
             description=tool_def.description,
-            parameters=tool_def.parameters.model_dump(),
+            parameters=tool_def.parameters.model_dump(exclude_none=True),
             tool_source=ToolSource.USER_DEFINED,
         )
         for tool_def in request.create_tool_definitions or []

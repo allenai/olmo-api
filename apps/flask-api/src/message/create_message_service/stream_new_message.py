@@ -288,7 +288,9 @@ def stream_new_message(
                     tool_response = call_tool(tool, tool_definition)
                     tool_msg = create_tool_response_message(
                         message_repository,
-                        content=tool_response.content,
+                        content=str(
+                            tool_response.content
+                        ),  # HACK: the tool_response.content type changed. I'm casting it to a str for now since that has larger implications for us if we start handling more types
                         parent=last_msg,
                         source_tool=tool,
                         creator=client_token.client,

@@ -1,9 +1,9 @@
 from pydantic_ai.models import Model
 from pydantic_ai.providers.openai import OpenAIProvider
 
+from core.pydantic_ai.open_ai_chat_model_video import OpenAIChatModelVideo
 from db.models.model_config import ModelConfig
 from src.config.get_config import get_config
-from src.pydantic_inference.models.open_ai_chat_model_video import OpenAIChatModelVideo
 
 
 def get_cirrascale_backend_model(model_config: ModelConfig) -> Model:

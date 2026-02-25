@@ -69,7 +69,7 @@ class OpenAIChatModelVideo(OpenAIChatModel):
                             image_url["detail"] = metadata.get("detail", "auto")
                         content.append(ChatCompletionContentPartImageParam(image_url=image_url, type="image_url"))
                     elif item.is_audio:
-                        assert item.format in ("wav", "mp3")
+                        assert item.format in {"wav", "mp3"}  # noqa: S101
                         audio = InputAudio(data=base64.b64encode(item.data).decode("utf-8"), format=item.format)  # type:ignore[typeddict-item]
                         content.append(ChatCompletionContentPartInputAudioParam(input_audio=audio, type="input_audio"))
                     elif item.is_document:
@@ -87,13 +87,13 @@ class OpenAIChatModelVideo(OpenAIChatModel):
                         video_url = VideoURL(url=item.data_uri)
                         content.append(ChatCompletionContentPartVideoParam(video_url=video_url, type="video_url"))
                     else:  # pragma: no cover
-                        raise RuntimeError(f"Unsupported binary content type: {item.media_type}")
+                        raise RuntimeError(f"Unsupported binary content type: {item.media_type}")  # noqa: EM102, TRY003
                 elif isinstance(item, AudioUrl):
                     downloaded_item = await download_item(item, data_format="base64", type_format="extension")
-                    assert downloaded_item["data_type"] in (
+                    assert downloaded_item["data_type"] in {  # noqa: S101
                         "wav",
                         "mp3",
-                    ), f"Unsupported audio format: {downloaded_item['data_type']}"
+                    }, f"Unsupported audio format: {downloaded_item['data_type']}"
                     audio = InputAudio(data=downloaded_item["data"], format=downloaded_item["data_type"])  # type:ignore[typeddict-item]
                     content.append(ChatCompletionContentPartInputAudioParam(input_audio=audio, type="input_audio"))
                 elif isinstance(item, DocumentUrl):

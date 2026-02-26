@@ -102,7 +102,8 @@ def map_tool_def_to_pydantic(tool: CreateToolDefinition) -> ToolDefinition:
 
     if tool.parameters is not None:
         # Pydantic-AI applies its own empty default if we don't provide anything. This lets us use that default without recreating it
-        tool_definition.parameters_json_schema = tool.parameters.model_dump()
+        # exclude_none prevents some issues with calling OpenAI APIs that don't know how to parse null
+        tool_definition.parameters_json_schema = tool.parameters.model_dump(exclude_none=True)
 
     return tool_definition
 

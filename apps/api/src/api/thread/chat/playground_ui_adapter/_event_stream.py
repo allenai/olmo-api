@@ -50,17 +50,17 @@ class PlaygroundUIEventStream(
         OutputDataT,
     ]
 ):
+    _message_ids: list[ID] = field(default_factory=list)
     parent_message_id: ID = field(default_factory=create_message_id)
     message_id: ID = field(default_factory=create_message_id)
 
     tool_call_message_map: dict[str, Message] = field(default_factory=dict)
     new_messages: list[Message] = field(default_factory=list)
 
-    _step_started: bool = False
-
     def new_message_id(self) -> str:
         self.parent_message_id = self.message_id
         self.message_id = create_message_id()
+        self._message_ids.append(self.message_id)
         return self.message_id
 
     @property
@@ -75,7 +75,22 @@ class PlaygroundUIEventStream(
         message_with_children = attach_message_children(self.run_input.new_messages)
         yield message_with_children[0]
 
-    async def before_response(self) -> AsyncIterator[ChatStreamOutput]:  # noqa: PLR6301
+    async def before_request(self) -> AsyncIterator[ChatStreamOutput]:
+        self.new_message_id()
+        return
+        yield
+
+    async def after_request(self) -> AsyncIterator[ChatStreamOutput]:
+        return
+        yield
+
+    async def before_response(self) -> AsyncIterator[ChatStreamOutput]:
+        self.new_message_id()
+        return
+        # we don't want to yield anything but still want the type to be right so we return then yield
+        yield
+
+    async def after_response(self) -> AsyncIterator[ChatStreamOutput]:  # noqa: PLR6301
         return
         # we don't want to yield anything but still want the type to be right so we return then yield
         yield
@@ -83,10 +98,8 @@ class PlaygroundUIEventStream(
     async def after_stream(self) -> AsyncIterator[ChatStreamOutput]:
         yield StreamEndChunk(message=self.message_id)
 
-    async def handle_text_start(self, part: TextPart, follows_text: bool = False) -> AsyncIterator[ChatStreamOutput]:  # noqa: FBT001, FBT002
-        message_id = self.message_id if follows_text else self.new_message_id()
-
-        yield ModelResponseChunk(message=message_id, content=part.content)
+    async def handle_text_start(self, part: TextPart, follows_text: bool = False) -> AsyncIterator[ChatStreamOutput]:  # noqa: ARG002, FBT001, FBT002
+        yield ModelResponseChunk(message=self.message_id, content=part.content)
 
     async def handle_text_delta(self, delta: TextPartDelta) -> AsyncIterator[ChatStreamOutput]:
         if delta.content_delta:  # pragma: no branch
@@ -97,9 +110,8 @@ class PlaygroundUIEventStream(
         part: ThinkingPart,
         follows_thinking: bool = False,  # noqa: ARG002, FBT001, FBT002
     ) -> AsyncIterator[ChatStreamOutput]:
-        message_id = self.new_message_id()
         if part.content:
-            yield ThinkingChunk(message=message_id, content=part.content)
+            yield ThinkingChunk(message=self.message_id, content=part.content)
 
     async def handle_thinking_delta(self, delta: ThinkingPartDelta) -> AsyncIterator[ChatStreamOutput]:
         if delta.content_delta:
@@ -134,9 +146,8 @@ class PlaygroundUIEventStream(
                 error_description=result.model_response(),
             )
         else:
-            message_id = self.new_message_id()
             message = Message(
-                id=message_id,
+                id=self.message_id,
                 content=result.model_response_str(),
                 role=Role.ToolResponse,
                 creator=self.run_input.creator,
@@ -151,7 +162,7 @@ class PlaygroundUIEventStream(
                         tool_name=result.tool_name,
                         tool_source=ToolSource.MCP,
                         args=None,
-                        message_id=message_id,
+                        message_id=self.message_id,
                     )
                 ],
             )
@@ -177,7 +188,7 @@ class PlaygroundUIEventStream(
 
         output = event.result.output  # noqa: F841
         all_messages = event.result.all_messages()  # noqa: F841
-        event.result.new_messages()
+        new_messages = event.result.new_messages()
 
         # Yield user message and any new messages
         return

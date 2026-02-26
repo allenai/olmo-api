@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from api.attribution.attribution_router import attribution_router
 from api.event import event_router
+from api.fake_request_router import fake_request_router
 from api.message.message_router import message_router
 from api.model.model_router import model_router
 from api.model_config.admin.model_config_admin_router import model_config_admin_router
@@ -12,6 +13,8 @@ from api.user.user_router import user_router
 
 v5_router = APIRouter(prefix="/v5")
 
+# testing
+v5_router.include_router(fake_request_router)
 
 # public routes
 v5_router.include_router(event_router)

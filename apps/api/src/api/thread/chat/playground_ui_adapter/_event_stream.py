@@ -19,7 +19,8 @@ from pydantic_ai.ui import UIEventStream
 
 from api.thread.chat.chat_types import ChatStreamOutput
 from api.thread.chat.format_output import format_event
-from api.thread.chat.playground_ui_adapter._util import Event, RunInput, attach_message_children
+from api.thread.chat.playground_ui_adapter._util import Event, RunInput
+from api.thread.chat.util import attach_message_children
 from core.message.message_chunk import (
     ErrorChunk,
     ErrorCode,
@@ -177,5 +178,7 @@ class PlaygroundUIEventStream(
         output = event.result.output  # noqa: F841
         all_messages = event.result.all_messages()  # noqa: F841
         event.result.new_messages()
+
+        # Yield user message and any new messages
         return
         yield

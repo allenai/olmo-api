@@ -1,3 +1,4 @@
+import json
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TypeAlias, assert_never
@@ -49,7 +50,7 @@ def create_message_from_run_input(
     return Message(
         id=id,
         content=content,
-        role=Role.ToolResponse,
+        role=role,
         creator=run_input.creator,
         opts=run_input.inference_opts,
         root=run_input.root_message_id,
@@ -88,11 +89,15 @@ def map_tool_return_part_to_message(
 
 
 def map_tool_call_part_to_tool_call(part: BaseToolCallPart, message_id: ID, user_tool_names: Sequence[str]) -> ToolCall:
-    tool_source = (
+    tool_source = (  # TODO: Figure out how to tell if a tool is internal
         ToolSource.USER_DEFINED if part.tool_name in user_tool_names else ToolSource.MCP
-    )  # TODO: Figure out how to tell if a tool is internal
+    )
     return ToolCall(
-        tool_call_id=part.tool_call_id, tool_name=part.tool_name, tool_source=tool_source, message_id=message_id
+        tool_call_id=part.tool_call_id,
+        tool_name=part.tool_name,
+        tool_source=tool_source,
+        message_id=message_id,
+        args=part.args if isinstance(part.args, dict) else json.loads(part.args or "null"),
     )
 
 

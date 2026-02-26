@@ -5,14 +5,7 @@ from pydantic import computed_field
 
 import core.object_id as obj
 from core.api_interface import APIInterface
-from core.message.token_log_probs import TokenLogProbs
 from core.tools.tool_source import ToolSource
-
-
-class MessageChunk(APIInterface):
-    message: obj.ID
-    content: str
-    logprobs: list[list[TokenLogProbs]] | None = None
 
 
 class ChunkType(StrEnum):

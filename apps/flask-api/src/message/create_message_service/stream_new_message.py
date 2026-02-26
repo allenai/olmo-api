@@ -20,7 +20,6 @@ from core.auth.token import Token
 from core.message.message_chunk import (
     Chunk,
     ErrorChunk,
-    MessageChunk,
     MessageStreamError,
     StreamEndChunk,
     StreamStartChunk,
@@ -95,7 +94,7 @@ def create_new_message(
     message_repository: BaseMessageRepository,
     new_message_id: obj.ID,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
-) -> Message | Generator[Message | MessageChunk | MessageStreamError | Chunk]:
+) -> Message | Generator[Message | MessageStreamError | Chunk]:
     message_chain = setup_msg_thread(
         message_repository,
         model=model,
@@ -228,7 +227,7 @@ def stream_new_message(
     max_steps: int | None,
     checker_type: SafetyCheckerType = SafetyCheckerType.GoogleLanguage,
     blob_map: dict[str, FileUploadResult] | None = None,
-) -> Generator[Message | MessageChunk | MessageStreamError | Chunk]:
+) -> Generator[Message | MessageStreamError | Chunk]:
     yield StreamStartChunk(message=message_chain[0].id)
 
     if has_pending_tool_calls(message_chain):
@@ -412,7 +411,7 @@ def stream_assistant_response(
     input_message: Message,
     reply: Message,
     stream_metrics: StreamMetrics,
-) -> Generator[MessageChunk | MessageStreamError | Chunk, Any, ErrorChunk | None]:
+) -> Generator[MessageStreamError | Chunk, Any, ErrorChunk | None]:
     """
     Adds a new assistant message to the conversation, and streams the llm response to the api
     Returns the ErrorChunk if an error was encountered, otherwise None

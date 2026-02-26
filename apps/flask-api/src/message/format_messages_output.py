@@ -4,9 +4,8 @@ from typing import Any
 
 from flask import json
 
-import src.dao.message.message_models as message
 from core.api_interface import APIInterface
-from core.message.message_chunk import Chunk, MessageChunk, MessageStreamError
+from core.message.message_chunk import Chunk, MessageStreamError
 from db.models.message import Message
 from src.thread.thread_models import Thread
 from src.util import CustomEncoder
@@ -18,7 +17,7 @@ def format_message(obj) -> str:
 
 
 def format_messages(
-    stream_generator: Generator[Message | MessageChunk | MessageStreamError | Chunk],
+    stream_generator: Generator[Message | MessageStreamError | Chunk],
 ) -> Generator[str, Any, None]:
     try:
         for stream_message in stream_generator:

@@ -26,6 +26,8 @@ from db.models.pydantic_type import PydanticType
 from db.models.tool_call import ToolCall
 from db.models.tool_definitions import ToolDefinition
 
+create_message_id = new_id_generator("msg")
+
 
 # Generated using sqlacodegen
 class Message(Base, kw_only=True):
@@ -54,7 +56,7 @@ class Message(Base, kw_only=True):
         Index("message_root_fkey_ix", "root"),
     )
 
-    id: Mapped[str] = mapped_column(Text, primary_key=True, default_factory=new_id_generator("msg"))
+    id: Mapped[str] = mapped_column(Text, primary_key=True, default_factory=create_message_id)
     content: Mapped[str] = mapped_column(Text, nullable=False)
 
     input_parts: Mapped[list[InputPart] | None] = mapped_column(

@@ -305,9 +305,9 @@ class ChatService:
             root_message_id=root_message_id,
             parent_message_id=parent_message_id,
             creator=user.client,
-            model_id=model.id,
-            model_host=model.host,
+            model=model,
             inference_opts=all_messages[-1].opts,
+            user_tool_names=[definition.name for definition in request.tool_definitions or []],
         )
 
         adapter = PlaygroundUIAdapter(agent, run_input=run_input)

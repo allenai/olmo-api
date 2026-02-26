@@ -19,7 +19,7 @@ from pydantic_ai.ui import UIEventStream
 
 from api.thread.chat.chat_types import ChatStreamOutput
 from api.thread.chat.format_output import format_event
-from api.thread.chat.playground_ui_adapter._util import Event, RunInput
+from api.thread.chat.playground_ui_adapter._util import Event, RunInput, map_response_pydantic_messages_to_messages
 from api.thread.chat.util import attach_message_children
 from core.message.message_chunk import (
     ErrorChunk,
@@ -78,19 +78,11 @@ class PlaygroundUIEventStream(
     async def before_request(self) -> AsyncIterator[ChatStreamOutput]:
         self.new_message_id()
         return
-        yield
-
-    async def after_request(self) -> AsyncIterator[ChatStreamOutput]:
-        return
+        # we don't want to yield anything but still want the type to be right so we return then yield
         yield
 
     async def before_response(self) -> AsyncIterator[ChatStreamOutput]:
         self.new_message_id()
-        return
-        # we don't want to yield anything but still want the type to be right so we return then yield
-        yield
-
-    async def after_response(self) -> AsyncIterator[ChatStreamOutput]:  # noqa: PLR6301
         return
         # we don't want to yield anything but still want the type to be right so we return then yield
         yield
@@ -154,8 +146,9 @@ class PlaygroundUIEventStream(
                 opts=self.run_input.inference_opts,
                 root=self.run_input.root_message_id,
                 parent=self.parent_message_id,
-                model_id=self.run_input.model_id,
-                model_host=self.run_input.model_host,
+                model_id=self.run_input.model.id,
+                model_host=self.run_input.model.host,
+                model_type=self.run_input.model.model_type,
                 tool_calls=[
                     ToolCall(
                         tool_call_id=result.tool_call_id,
@@ -181,15 +174,19 @@ class PlaygroundUIEventStream(
         else:
             yield ErrorChunk(error_description=str(error), message=self.message_id, error_code=ErrorCode.OTHER_ERROR)
 
-    async def handle_run_result(self, event: AgentRunResultEvent) -> AsyncIterator[Event]:  # noqa: PLR6301
+    async def handle_run_result(self, event: AgentRunResultEvent) -> AsyncIterator[Event]:
         pydantic_reason = event.result.response.finish_reason  # noqa: F841
         # if pydantic_reason:
         #     self._finish_reason = _FINISH_REASON_MAP.get(pydantic_reason, "other")
 
         output = event.result.output  # noqa: F841
-        all_messages = event.result.all_messages()  # noqa: F841
+        all_messages = event.result.all_messages()
         new_messages = event.result.new_messages()
 
-        # Yield user message and any new messages
-        return
-        yield
+        mapped_new_messages = map_response_pydantic_messages_to_messages(
+            new_messages, message_ids=self._message_ids, run_input=self.run_input
+        )
+
+        all_messages = attach_message_children([*self.run_input.all_messages, *mapped_new_messages])
+
+        yield all_messages[0]

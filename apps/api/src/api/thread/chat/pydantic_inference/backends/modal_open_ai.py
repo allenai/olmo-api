@@ -2,7 +2,7 @@ from pydantic_ai.models import Model
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from api.config import settings
-from api.thread.chat.pydantic_inference.models.open_ai_chat_model_video import OpenAIChatModelVideo
+from core.pydantic_ai.open_ai_chat_model_video import OpenAIChatModelVideo
 from db.models.model_config import ModelConfig
 
 # Models hosted on vLLM always have this name

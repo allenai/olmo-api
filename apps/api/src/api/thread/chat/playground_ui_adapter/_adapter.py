@@ -35,7 +35,7 @@ class UnsupportedMediaTypeError(UnprocessableProblem): ...
 def _map_part_from_file(file: str | UploadFile) -> MultiModalContent:
     match file:
         case UploadFile():
-            return BinaryContent(data=file.file.read(), media_type=file.content_type)  # pyright: ignore[reportCallIssue]
+            return BinaryContent(data=file.file.read(), media_type=file.content_type or "")
 
     (mimetype, _encoding) = guess_type(file)
 

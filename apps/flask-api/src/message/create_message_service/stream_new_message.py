@@ -288,7 +288,7 @@ def stream_new_message(
                     tool_response = call_tool(tool, tool_definition)
                     tool_msg = create_tool_response_message(
                         message_repository,
-                        content=tool_response.content,
+                        content=tool_response.model_response_str(),
                         parent=last_msg,
                         source_tool=tool,
                         creator=client_token.client,

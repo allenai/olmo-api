@@ -820,12 +820,14 @@ source = { editable = "packages/core" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "gcloud-aio-storage" },
+    { name = "pydantic-ai" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.12.2" },
     { name = "gcloud-aio-storage", specifier = ">=9.6.1" },
+    { name = "pydantic-ai", specifier = "==1.63.0" },
 ]
 
 [[package]]

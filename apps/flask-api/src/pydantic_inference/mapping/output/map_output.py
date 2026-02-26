@@ -1,7 +1,7 @@
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
+from pydantic_ai import ModelResponseStreamEvent
 from pydantic_ai.messages import (
-    FinalResultEvent,
     ModelResponsePart,
     PartDeltaEvent,
     PartStartEvent,
@@ -26,7 +26,7 @@ from db.models.message import Message
 from src.pydantic_inference.pydantic_ai_helpers import find_tool_def_by_name
 
 
-def pydantic_map_chunk(chunk: PartStartEvent | PartDeltaEvent | FinalResultEvent, message: Message) -> Chunk | None:
+def pydantic_map_chunk(chunk: ModelResponseStreamEvent, message: Message) -> Chunk | None:
     match chunk:
         case PartStartEvent():
             return _pydantic_map_part(chunk.part, message)

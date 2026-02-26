@@ -73,7 +73,7 @@ class PlaygroundUIEventStream(
     async def after_stream(self) -> AsyncIterator[ChatStreamOutput]:
         yield StreamEndChunk(message=self.message_id)
 
-    async def handle_text_start(self, part: TextPart, follows_text: bool = False) -> AsyncIterator[ChatStreamOutput]:
+    async def handle_text_start(self, part: TextPart, follows_text: bool = False) -> AsyncIterator[ChatStreamOutput]:  # noqa: FBT001, FBT002
         message_id = self.message_id if follows_text else self.new_message_id()
 
         yield ModelResponseChunk(message=message_id, content=part.content)

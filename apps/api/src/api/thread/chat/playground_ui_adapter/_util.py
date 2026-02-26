@@ -21,6 +21,7 @@ from db.models.inference_opts import InferenceOpts
 from db.models.message import Message
 from db.models.model_config import ModelConfig
 from db.models.tool_call import ToolCall
+from db.models.tool_definitions import ToolDefinition
 
 __all__ = ["Event", "RunInput", "UIMessage"]
 
@@ -38,7 +39,8 @@ class RunInput:
     creator: str
     inference_opts: InferenceOpts
     model: ModelConfig
-    user_tool_names: list[str]
+    user_tool_names: Sequence[str]
+    tool_definitions: list[ToolDefinition] | None
 
 
 def map_tool_return_part_to_message(
@@ -64,12 +66,13 @@ def map_tool_return_part_to_message(
                 message_id=message_id,
             )
         ],
+        tool_definitions=run_input.tool_definitions,
     )
 
     return message
 
 
-def map_tool_call_part_to_tool_call(part: BaseToolCallPart, message_id: ID, user_tool_names: list[str]) -> ToolCall:
+def map_tool_call_part_to_tool_call(part: BaseToolCallPart, message_id: ID, user_tool_names: Sequence[str]) -> ToolCall:
     tool_source = (
         ToolSource.USER_DEFINED if part.tool_name in user_tool_names else ToolSource.MCP
     )  # TODO: Figure out how to tell if a tool is internal
@@ -138,6 +141,8 @@ def map_response_pydantic_messages_to_messages(
                     model_id=run_input.model.id,
                     model_host=run_input.model.host,
                     model_type=run_input.model.model_type,
+                    tool_calls=message_tool_calls,
+                    tool_definitions=run_input.tool_definitions,
                 )
                 mapped_messages.append(response_message)
 

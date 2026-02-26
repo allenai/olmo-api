@@ -158,6 +158,7 @@ class PlaygroundUIEventStream(
                         message_id=self.message_id,
                     )
                 ],
+                tool_definitions=self.run_input.tool_definitions,
             )
 
             self.tool_call_message_map.update({result.tool_call_id: message})

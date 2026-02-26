@@ -249,7 +249,7 @@ class ChatService:
         request: ChatRequest,
         user: Token,
         model: ModelConfig,
-    ) -> tuple[list[Message], list[Message], ID, ID]:
+    ) -> tuple[list[Message], list[Message], ID, ID, list[Ai2ToolDefinition] | None]:
         parent_message, root_message = await self._get_parent_and_root_messages(request.parent)
 
         merged_inference_options = merge_inference_options(
@@ -271,7 +271,11 @@ class ChatService:
             model=model,
         )
 
-        return (all_messages, new_messages, all_messages[0].id, all_messages[-1].id)
+        tool_definitions = next(
+            (message.tool_definitions for message in reversed(all_messages) if message.tool_definitions), None
+        )
+
+        return (all_messages, new_messages, all_messages[0].id, all_messages[-1].id, tool_definitions)
 
     @staticmethod
     def _get_toolsets(
@@ -297,9 +301,13 @@ class ChatService:
 
     async def stream_chat_message(self, request: ChatRequest, user: Token) -> AsyncIterator[str]:
         model = await self._get_model(request.model)
-        all_messages, new_messages, root_message_id, parent_message_id = await self._validate_and_get_thread(
-            request, user, model
-        )
+        (
+            all_messages,
+            new_messages,
+            root_message_id,
+            parent_message_id,
+            tool_definitions,
+        ) = await self._validate_and_get_thread(request, user, model)
 
         pydantic_model = get_pydantic_model(model)
 
@@ -321,6 +329,7 @@ class ChatService:
             model=model,
             inference_opts=all_messages[-1].opts,
             user_tool_names=[definition.name for definition in request.tool_definitions or []],
+            tool_definitions=tool_definitions,
         )
 
         adapter = PlaygroundUIAdapter(agent, run_input=run_input)

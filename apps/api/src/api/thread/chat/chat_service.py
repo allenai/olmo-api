@@ -1,22 +1,15 @@
-from collections.abc import AsyncGenerator, Sequence
+from collections.abc import AsyncIterator, Sequence
 from typing import Annotated
 
 from fastapi import Depends
 from fastapi_problem.error import UnprocessableProblem
-from opentelemetry import trace
-from opentelemetry.trace import StatusCode
 from pydantic_ai import (
     AbstractToolset,
     Agent,
-    AgentRunResultEvent,
     CombinedToolset,
     DeferredToolRequests,
     ExternalToolset,
-    FinalResultEvent,
-    FunctionToolResultEvent,
-    ModelMessage,
     ToolDefinition,
-    UsageLimits,
 )
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
@@ -25,20 +18,12 @@ from api.logging.fastapi_logger import FastAPIStructLogger
 from api.model.model_query import base_model_config_select
 from api.model_config.model_config_request import validate_inference_parameters_against_model_constraints
 from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
-from api.thread.chat.chat_types import ChatStreamOutput
-from api.thread.chat.format_pydantic_output import map_pydantic_chunk
-from api.thread.chat.mapping import map_messages_to_pydantic_ai_format
+from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
+from api.thread.chat.playground_ui_adapter._util import RunInput
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
-from api.thread.models.flat_message import FlatMessage
 from api.tools.mcp_service import get_general_mcp_servers
 from api.tools.tools_service import ToolsServiceDependency
 from core.auth.token import Token
-from core.message.message_chunk import (
-    ErrorChunk,
-    ErrorCode,
-    StreamEndChunk,
-    StreamStartChunk,
-)
 from core.message.role import Role
 from core.object_id import ID
 from db.models.inference_opts import InferenceOpts
@@ -293,17 +278,21 @@ class ChatService:
 
         return [user_tool_toolset, filtered_mcp_toolset]
 
-    @classmethod
-    async def _get_chat_stream(
-        cls,
-        messages: Sequence[ModelMessage],
-        user_tools: Sequence[CreateToolDefinition] | None,
-        mcp_tools: Sequence[str] | None,
-        model: ModelConfig,
-    ):
+        # TODO: below
+        # Safety check
+        # Upload files
+        # Save initial messages/thread to DB
+        # Support multimedia
+
+    async def stream_chat_message(self, request: ChatRequest, user: Token) -> AsyncIterator[str]:
+        model = await self._get_model(request.model)
+        all_messages, new_messages, root_message_id, parent_message_id = await self._validate_and_get_thread(
+            request, user, model
+        )
+
         pydantic_model = get_pydantic_model(model)
 
-        toolsets = cls._get_toolsets(model, user_tools, mcp_tools)
+        toolsets = self._get_toolsets(model, request.tool_definitions, mcp_tools=request.selected_tools)
 
         agent = Agent(
             model=pydantic_model,
@@ -312,120 +301,18 @@ class ChatService:
             end_strategy="exhaustive",
         )
 
-        async for event in agent.run_stream_events(
-            message_history=messages,
-            usage_limits=UsageLimits(request_limit=10),
-        ):
-            yield event
-
-    async def _handle_stream(
-        self,
-        messages: Sequence[ModelMessage],
-        user_tools: Sequence[CreateToolDefinition] | None,
-        mcp_tools: Sequence[str] | None,
-        model: ModelConfig,
-        user: Token,
-        root_message_id: ID,
-        parent_message_id: ID,
-        new_messages: Sequence[Message],
-    ) -> AsyncGenerator[ChatStreamOutput]:
-        yield StreamStartChunk(message=root_message_id)
-
-        for new_message in new_messages:
-            yield FlatMessage.from_message(new_message)
-
-        event_stream = self._get_chat_stream(
-            messages=messages,
-            user_tools=user_tools,
-            mcp_tools=mcp_tools,
-            model=model,
-        )
-
-        user_defined_tool_names = [user_tool.name for user_tool in user_tools or []]
-        mcp_tool_names = mcp_tools or []
-
-        last_message_id = parent_message_id
-        current_message_id = create_message_id()
-        new_messages = []
-
-        try:
-            async for event in event_stream:
-                match event:
-                    case AgentRunResultEvent():
-                        run_result = event  # noqa: F841
-                    case FunctionToolResultEvent():
-                        tool_message = Message(
-                            content=str(event.result.content),
-                            creator=user.client,
-                            role=Role.ToolResponse,
-                            # TODO: inherit inference options
-                            opts=InferenceOpts(),
-                            # TODO: get the proper root message with DB saving
-                            root=root_message_id,
-                            model_id=model.id,
-                            model_host=model.host,
-                            parent=last_message_id,
-                        )
-
-                        new_messages.append(tool_message)
-                        last_message_id = tool_message.id
-                        yield FlatMessage.from_message(tool_message)
-
-                    case _:
-                        # TODO: Figure out how to make new message IDs for new responses properly
-                        # if isinstance(event, PartStartEvent) and (isinstance(event.part, (TextPart, ThinkingPart))):
-                        # last_message_id = create_message_id()
-
-                        if isinstance(event, FinalResultEvent):
-                            current_message_id = create_message_id()
-
-                        yield map_pydantic_chunk(
-                            chunk=event,
-                            message_id=current_message_id,
-                            user_defined_tool_names=user_defined_tool_names,
-                            mcp_tool_names=mcp_tool_names,
-                        )
-
-        except Exception as e:
-            logger.exception("Inference error")
-            current_span = trace.get_current_span()
-            current_span.set_status(StatusCode.ERROR, description="Inference error")
-            yield ErrorChunk(message=last_message_id, error_code=ErrorCode.OTHER_ERROR, error_description=str(e))
-            # TODO: Save error chunk on message
-            return
-
-        # TODO: yield final thread
-
-        yield StreamEndChunk(message=root_message_id)
-
-        # TODO: below
-        # Safety check
-        # Upload files
-        # Save initial messages/thread to DB
-        # Stream message
-        # Support custom tool calls
-        # Support multimedia
-        # If it's a tool response, go down a different path
-        # Error handling
-
-    async def stream_chat_message(self, request: ChatRequest, user: Token) -> AsyncGenerator[ChatStreamOutput]:
-        model = await self._get_model(request.model)
-        all_messages, new_messages, root_message_id, parent_message_id = await self._validate_and_get_thread(
-            request, user, model
-        )
-
-        agent_messages = map_messages_to_pydantic_ai_format(all_messages)
-
-        return self._handle_stream(
-            agent_messages,
-            user_tools=request.tool_definitions,
-            model=model,
-            mcp_tools=request.selected_tools,
-            user=user,
+        run_input = RunInput(
+            all_messages=all_messages,
+            new_messages=new_messages,
             root_message_id=root_message_id,
             parent_message_id=parent_message_id,
-            new_messages=new_messages,
         )
+
+        adapter = PlaygroundUIAdapter(agent, run_input=run_input)
+
+        event_stream = adapter.run_stream()
+
+        return adapter.encode_stream(event_stream)
 
 
 ChatServiceDependency = Annotated[ChatService, Depends()]

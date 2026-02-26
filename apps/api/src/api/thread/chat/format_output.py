@@ -9,6 +9,8 @@ from typing import Any
 from pydantic import BaseModel
 
 from api.logging.fastapi_logger import FastAPIStructLogger
+from api.thread.models.flat_message import FlatMessage
+from db.models.message import Message
 
 logger = FastAPIStructLogger()
 
@@ -33,7 +35,12 @@ def format_base_model(x: BaseModel) -> dict[str, Any]:
     return x.model_dump()
 
 
-def format_message(obj) -> str:
+@encode_value.register(Message)
+def format_message(x: Message) -> dict[str, Any]:
+    return FlatMessage.from_message(x).model_dump()
+
+
+def format_event(obj) -> str:
     # indent=None forces this to output without newlines which could cause issues when parsing the output
     return json.dumps(obj=obj, default=encode_value, indent=None) + "\n"
 
@@ -48,7 +55,7 @@ async def format_messages(
                     ...
 
                 case _:
-                    yield format_message(stream_message)
+                    yield format_event(stream_message)
     except Exception:
         logger.exception("Error when streaming")
         raise

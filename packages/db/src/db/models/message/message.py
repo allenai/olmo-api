@@ -89,7 +89,7 @@ class Message(Base, kw_only=True):
         Enum("base", "chat", "image_prompt", name="model_type"), default=None
     )
     finish_reason: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    harmful: Mapped[Optional[bool]] = mapped_column(Boolean, default=None)
+    harmful: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
     expiration_time: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True), default=None)
     file_urls: Mapped[Optional[list[str]]] = mapped_column(ARRAY(Text()), nullable=True, default=None)
 

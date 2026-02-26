@@ -27,9 +27,11 @@ from api.tools.tools_service import ToolsServiceDependency
 from core.auth.token import Token
 from core.message.role import Role
 from core.object_id import ID
+from core.tools.tool_source import ToolSource
 from db.models.inference_opts import InferenceOpts
 from db.models.message import Message, create_message_id
 from db.models.model_config import ModelConfig, PromptType
+from db.models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 
 logger = FastAPIStructLogger()
 
@@ -186,6 +188,16 @@ class ChatService:
             user_message_id = create_message_id()
             root_message_id = messages[0].id if messages else user_message_id
 
+            tool_definitions = [
+                Ai2ToolDefinition(
+                    name=definition.name,
+                    description=definition.description,
+                    parameters=definition.parameters.model_dump(),
+                    tool_source=ToolSource.USER_DEFINED,
+                )
+                for definition in request.tool_definitions or []
+            ]
+
             user_message = Message(
                 id=user_message_id,
                 content=request.content or "",
@@ -197,6 +209,7 @@ class ChatService:
                 model_id=model.id,
                 model_host=model.host,
                 parent=new_messages[-1].id if len(new_messages) > 0 else None,
+                tool_definitions=tool_definitions,
             )
 
             messages.append(user_message)

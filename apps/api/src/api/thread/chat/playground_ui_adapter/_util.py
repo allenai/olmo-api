@@ -60,7 +60,7 @@ def map_tool_return_part_to_message(
                 tool_call_id=part.tool_call_id,
                 tool_name=part.tool_name,
                 tool_source=ToolSource.MCP,  # TODO: Figure out how to differentiate between internal and MCP tools
-                args=None,
+                args=part.model_response_object(),
                 message_id=message_id,
             )
         ],
@@ -88,11 +88,14 @@ def map_response_pydantic_messages_to_messages(
         message_id = message_ids[i]
         match message:
             case ModelRequest():
-                for part in message.parts:
-                    match part:
+                for request_part in message.parts:
+                    match request_part:
                         case ToolReturnPart():
                             tool_return_message = map_tool_return_part_to_message(
-                                part, message_id=message_id, parent_message_id=parent_message_id, run_input=run_input
+                                request_part,
+                                message_id=message_id,
+                                parent_message_id=parent_message_id,
+                                run_input=run_input,
                             )
                             mapped_messages.append(tool_return_message)
                             parent_message_id = tool_return_message.id
@@ -105,18 +108,20 @@ def map_response_pydantic_messages_to_messages(
                 message_thinking: str | None = None
                 message_tool_calls: list[ToolCall] = []
 
-                for part in message.parts:
-                    match part:
+                for response_part in message.parts:
+                    match response_part:
                         case TextPart():
-                            message_content += part.content
+                            message_content += response_part.content
                         case BaseToolCallPart():
-                            tool_call = map_tool_call_part_to_tool_call(part, message_id, run_input.user_tool_names)
+                            tool_call = map_tool_call_part_to_tool_call(
+                                response_part, message_id, run_input.user_tool_names
+                            )
                             message_tool_calls.append(tool_call)
                         case ThinkingPart():
                             if message_thinking is None:
-                                message_thinking = part.content
+                                message_thinking = response_part.content
                             else:
-                                message_thinking += part.content
+                                message_thinking += response_part.content
                         case _:
                             # We don't expect to have any other parts in the the messages the Pydantic-AI Agent made
                             pass

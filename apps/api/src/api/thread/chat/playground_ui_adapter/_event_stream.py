@@ -154,7 +154,7 @@ class PlaygroundUIEventStream(
                         tool_call_id=result.tool_call_id,
                         tool_name=result.tool_name,
                         tool_source=ToolSource.MCP,
-                        args=None,
+                        args=result.model_response_object(),
                         message_id=self.message_id,
                     )
                 ],

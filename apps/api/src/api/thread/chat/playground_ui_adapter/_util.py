@@ -43,30 +43,45 @@ class RunInput:
     tool_definitions: list[ToolDefinition] | None
 
 
-def map_tool_return_part_to_message(
-    part: ToolReturnPart, message_id: ID, parent_message_id: ID, run_input: RunInput
-) -> UIMessage:
-    message = Message(
-        id=message_id,
-        content=part.model_response_str(),
+def create_message_from_run_input(
+    *, run_input: RunInput, id: ID, content: str, role: Role, parent: ID, tool_calls: list[ToolCall] | None
+):
+    return Message(
+        id=id,
+        content=content,
         role=Role.ToolResponse,
         creator=run_input.creator,
         opts=run_input.inference_opts,
         root=run_input.root_message_id,
-        parent=parent_message_id,
+        parent=parent,
         model_id=run_input.model.id,
         model_host=run_input.model.host,
         model_type=run_input.model.model_type,
-        tool_calls=[
-            ToolCall(
-                tool_call_id=part.tool_call_id,
-                tool_name=part.tool_name,
-                tool_source=ToolSource.MCP,  # TODO: Figure out how to differentiate between internal and MCP tools
-                args=part.model_response_object(),
-                message_id=message_id,
-            )
-        ],
+        tool_calls=tool_calls,
         tool_definitions=run_input.tool_definitions,
+    )
+
+
+def map_tool_return_part_to_message(
+    part: ToolReturnPart, message_id: ID, parent_message_id: ID, run_input: RunInput
+) -> UIMessage:
+    tool_calls = [
+        ToolCall(
+            tool_call_id=part.tool_call_id,
+            tool_name=part.tool_name,
+            tool_source=ToolSource.MCP,  # TODO: Figure out how to differentiate between internal and MCP tools
+            args=part.model_response_object(),
+            message_id=message_id,
+        )
+    ]
+
+    message = create_message_from_run_input(
+        run_input=run_input,
+        id=message_id,
+        content=part.model_response_str(),
+        role=Role.ToolResponse,
+        parent=parent_message_id,
+        tool_calls=tool_calls,
     )
 
     return message
@@ -129,21 +144,15 @@ def map_response_pydantic_messages_to_messages(
                             # We don't expect to have any other parts in the the messages the Pydantic-AI Agent made
                             pass
 
-                response_message = Message(
+                response_message = create_message_from_run_input(
+                    run_input=run_input,
                     id=message_id,
                     content=message_content,
-                    thinking=message_thinking,
-                    creator=run_input.creator,
                     role=Role.Assistant,
-                    opts=run_input.inference_opts,
-                    root=run_input.root_message_id,
                     parent=parent_message_id,
-                    model_id=run_input.model.id,
-                    model_host=run_input.model.host,
-                    model_type=run_input.model.model_type,
                     tool_calls=message_tool_calls,
-                    tool_definitions=run_input.tool_definitions,
                 )
+
                 mapped_messages.append(response_message)
 
             case _:

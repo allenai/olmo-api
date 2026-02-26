@@ -19,7 +19,12 @@ from pydantic_ai.ui import UIEventStream
 
 from api.thread.chat.chat_types import ChatStreamOutput
 from api.thread.chat.format_output import format_event
-from api.thread.chat.playground_ui_adapter._util import Event, RunInput, map_response_pydantic_messages_to_messages
+from api.thread.chat.playground_ui_adapter._util import (
+    Event,
+    RunInput,
+    create_message_from_run_input,
+    map_response_pydantic_messages_to_messages,
+)
 from api.thread.chat.util import attach_message_children
 from core.message.message_chunk import (
     ErrorChunk,
@@ -33,7 +38,7 @@ from core.message.message_chunk import (
 from core.message.role import Role
 from core.object_id import ID
 from core.tools.tool_source import ToolSource
-from db.models.message import Message, create_message_id
+from db.models.message import create_message_id
 from db.models.tool_call import ToolCall
 
 __all__ = ["PlaygroundUIEventStream"]
@@ -53,9 +58,6 @@ class PlaygroundUIEventStream(
     _message_ids: list[ID] = field(default_factory=list)
     parent_message_id: ID = field(default_factory=create_message_id)
     message_id: ID = field(default_factory=create_message_id)
-
-    tool_call_message_map: dict[str, Message] = field(default_factory=dict)
-    new_messages: list[Message] = field(default_factory=list)
 
     def new_message_id(self) -> str:
         self.parent_message_id = self.message_id
@@ -138,30 +140,24 @@ class PlaygroundUIEventStream(
                 error_description=result.model_response(),
             )
         else:
-            message = Message(
+            tool_calls = [
+                ToolCall(
+                    tool_call_id=result.tool_call_id,
+                    tool_name=result.tool_name,
+                    tool_source=ToolSource.MCP,
+                    args=result.model_response_object(),
+                    message_id=self.message_id,
+                )
+            ]
+
+            message = create_message_from_run_input(
+                run_input=self.run_input,
                 id=self.message_id,
                 content=result.model_response_str(),
                 role=Role.ToolResponse,
-                creator=self.run_input.creator,
-                opts=self.run_input.inference_opts,
-                root=self.run_input.root_message_id,
                 parent=self.parent_message_id,
-                model_id=self.run_input.model.id,
-                model_host=self.run_input.model.host,
-                model_type=self.run_input.model.model_type,
-                tool_calls=[
-                    ToolCall(
-                        tool_call_id=result.tool_call_id,
-                        tool_name=result.tool_name,
-                        tool_source=ToolSource.MCP,
-                        args=result.model_response_object(),
-                        message_id=self.message_id,
-                    )
-                ],
-                tool_definitions=self.run_input.tool_definitions,
+                tool_calls=tool_calls,
             )
-
-            self.tool_call_message_map.update({result.tool_call_id: message})
 
             yield message
 

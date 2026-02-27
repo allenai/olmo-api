@@ -14,17 +14,6 @@ from e2e.conftest import AuthenticatedClient, DatabaseSession, auth_headers_for_
 from ._util import assert_ok_response
 from .create_test_thread import create_test_thread
 
-default_model_options = {
-    "host": (None, "test_backend"),
-    "model": (None, "test-model-no-tools"),
-}
-
-tool_call_model_options = {
-    "host": (None, "test_backend"),
-    "model": (None, "test-model"),
-    "enableToolCalling": (None, "true"),
-}
-
 CHAT_ENDPOINT = "/v5/threads/chat"
 
 

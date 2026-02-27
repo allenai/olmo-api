@@ -185,7 +185,6 @@ async def test_cannot_delete_old_thread(
             content="[Test] old message message",
             creator=auth_user.client,
             role=Role.User.value,
-            opts={},
             parent=None,
             model_id=model.id,
             model_host=model.host.value,

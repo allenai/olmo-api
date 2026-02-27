@@ -145,7 +145,7 @@ services:
     command: --loglevel debug
 
   jaeger:
-    image: cr.jaegertracing.io/jaegertracing/jaeger:2.10.0
+    image: cr.jaegertracing.io/jaegertracing/jaeger:2.15.1
     ports:
       - 55679:55679
       - 4317:4317

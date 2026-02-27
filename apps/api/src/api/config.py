@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     OTEL_COLLECTOR_TYPE: str = "cloud"
     OTEL_SERVICE_NAME: str = "olmo-api"
     OTEL_GCP_PROJECT_ID: str = "ai2-reviz"
+    OTEL_EXPORTER_OTLP_ENDPOINT: str = "http://localhost:4318"
 
     INFINI_GRAM_API_URL: str = Field(init=False)
 

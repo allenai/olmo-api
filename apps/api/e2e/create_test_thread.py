@@ -17,7 +17,7 @@ def create_test_message(**msg_fields) -> Message:
         "model_host": "TestBackend",
         "final": True,
         "parent": None,
-        "opts": InferenceOpts(),
+        "opts": msg_fields.get("opts", InferenceOpts()),
         "expiration_time": None,
         **msg_fields,
     }

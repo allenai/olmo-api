@@ -120,7 +120,7 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
 
         result = await self.session.scalars(query)
 
-        return result.all()
+        return result.unique().all()
 
     async def get_messages_by_root_for_delete(self, message_id: obj.ID) -> Sequence[Message]:
         query = select(Message).where(Message.root == message_id)

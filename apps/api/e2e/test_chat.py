@@ -107,7 +107,6 @@ async def test_does_not_call_tools(client: AsyncClient, anon_user: Authenticated
             ToolCallChunk.model_validate_json(line)
 
 
-@pytest.mark.xfail(IS_CI, reason="Having async loading issues when getting the parent and root, will refactor!")
 async def test_makes_a_thread_with_parent(
     client: AsyncClient, anon_user: AuthenticatedClient, db_session: DatabaseSession
 ):

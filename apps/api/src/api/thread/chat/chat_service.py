@@ -314,6 +314,7 @@ class ChatService:
 
         toolsets = self._get_toolsets(model, request.tool_definitions, mcp_tools=request.selected_tools)
 
+        # TODO: make sure inference options are sent
         agent = Agent(
             model=pydantic_model,
             toolsets=toolsets,

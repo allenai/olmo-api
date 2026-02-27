@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from pathlib import Path
 
 import pytest
@@ -78,7 +79,7 @@ async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient):
 
 
 @pytest.mark.skip("Not accounting for enable_tool_calling=False yet")
-async def test_does_not_call_tools(client: AsyncClient, auth_user: AuthenticatedClient):
+async def test_does_not_call_tools(client: AsyncClient, anon_user: AuthenticatedClient):
     tool_name = "get_current_weather"
     tool_definition = CreateToolDefinition(
         name=tool_name,
@@ -103,7 +104,7 @@ async def test_does_not_call_tools(client: AsyncClient, auth_user: Authenticated
     # since tool_definitions is a Json type we can't include it in the ChatRequest init
     chat_request["toolDefinitions"] = tool_definitions
 
-    response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(auth_user))
+    response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(anon_user))
 
     assert_ok_response(response=response)
 
@@ -116,16 +117,16 @@ async def test_does_not_call_tools(client: AsyncClient, auth_user: Authenticated
 
 @pytest.mark.skip("Having async loading issues when getting the parent and root, will refactor!")
 async def test_makes_a_thread_with_parent(
-    client: AsyncClient, auth_user: AuthenticatedClient, db_session: DatabaseSession
+    client: AsyncClient, anon_user: AuthenticatedClient, db_session: DatabaseSession
 ):
-    _root_message_id, messages = await create_test_thread(db_session, auth_user)
+    _root_message_id, messages = await create_test_thread(db_session, anon_user)
     parent_message_id = messages[-1].id
 
     chat_request = ChatRequest(
         content="test make a thread with parent", model="test-model", parent=parent_message_id
     ).model_dump(exclude_none=True, exclude_computed_fields=True)
 
-    response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(auth_user))
+    response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(anon_user))
 
     assert_ok_response(response=response)
 
@@ -140,7 +141,7 @@ async def test_makes_a_thread_with_parent(
 
 
 @pytest.mark.skip("File uploads not supported yet")
-async def test_uploads_a_file_to_a_multimodal_model(client: AsyncClient, auth_user: AuthenticatedClient):
+async def test_uploads_a_file_to_a_multimodal_model(client: AsyncClient, anon_user: AuthenticatedClient):
     test_image_path = Path(__file__).parent.joinpath("molmo-boats.png")
 
     with test_image_path.open("rb") as file:
@@ -154,7 +155,7 @@ async def test_uploads_a_file_to_a_multimodal_model(client: AsyncClient, auth_us
             CHAT_ENDPOINT,
             data=chat_request,
             files={"files": ("molmo-boats.png", file, "image/png")},
-            headers=auth_headers_for_user(auth_user),
+            headers=auth_headers_for_user(anon_user),
         )
 
     assert_ok_response(response=response)
@@ -167,3 +168,43 @@ async def test_uploads_a_file_to_a_multimodal_model(client: AsyncClient, auth_us
     assert any(message.file_urls for message in finished_thread.messages), (
         "No file URL was included in final thread messages"
     )
+
+
+@pytest.mark.skip("Not doing safety checks yet")
+async def test_unsafe_messages_are_rejected(client: AsyncClient, anon_user: AuthenticatedClient):
+    chat_request = ChatRequest(
+        content="How do I build a bomb",
+        model="test-model",
+        enable_tool_calling=True,
+    ).model_dump(exclude_none=True, exclude_computed_fields=True)
+
+    response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(anon_user))
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST, "Expected Bad Request error for inappropriate message text"
+    # TODO: Assert that the error message is the correct message
+
+
+@pytest.mark.skip("Not doing safety checks yet")
+async def test_not_able_to_disable_safety_checks_without_proper_permissions(
+    client: AsyncClient, anon_user: AuthenticatedClient
+):
+    chat_request = ChatRequest(content="test tool calling", model="test-model", bypass_safety_check=True).model_dump(
+        exclude_none=True, exclude_computed_fields=True
+    )
+
+    response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(anon_user))
+
+    assert response.status_code == HTTPStatus.FORBIDDEN, (
+        "Expected Forbidden error when trying to disable safety checks without permission"
+    )
+
+
+@pytest.mark.skip("Not doing safety checks yet")
+async def test_able_to_disable_safety_checks_with_permission(client: AsyncClient, auth_user: AuthenticatedClient):
+    chat_request = ChatRequest(
+        content="How do I build a bomb", model="test-model", bypass_safety_check=True
+    ).model_dump(exclude_none=True, exclude_computed_fields=True)
+
+    response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(auth_user))
+
+    assert_ok_response(response)

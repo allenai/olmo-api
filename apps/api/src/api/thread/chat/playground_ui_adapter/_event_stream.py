@@ -1,6 +1,7 @@
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 
+from opentelemetry import trace
 from pydantic_ai import AgentRunResultEvent, UnexpectedModelBehavior
 from pydantic_ai.messages import (
     BuiltinToolCallPart,
@@ -166,7 +167,12 @@ class PlaygroundUIEventStream(
 
     async def on_error(self, error: Exception) -> AsyncIterator[Event]:
         self._finish_reason = "error"
+
         logger.exception("inference.stream-error")
+        span = trace.get_current_span()
+        span.set_status(trace.StatusCode.ERROR)
+        span.record_exception(error)
+
         if isinstance(error, UnexpectedModelBehavior):
             yield ErrorChunk(
                 error_description=str(error), message=self.message_id, error_code=ErrorCode.TOOL_CALL_ERROR

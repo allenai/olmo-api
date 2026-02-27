@@ -1,8 +1,6 @@
 from pathlib import Path
 
 import pytest
-from apps.api.e2e._util import assert_ok_response
-from apps.api.e2e.create_test_thread import create_test_thread
 from httpx import AsyncClient
 from pydantic import ValidationError
 
@@ -11,6 +9,9 @@ from api.thread.models.thread import Thread
 from core.message.message_chunk import StreamEndChunk, StreamStartChunk, ToolCallChunk
 from core.message.role import Role
 from e2e.conftest import AuthenticatedClient, DatabaseSession, auth_headers_for_user
+
+from ._util import assert_ok_response
+from .create_test_thread import create_test_thread
 
 default_model_options = {
     "host": (None, "test_backend"),

@@ -1,6 +1,8 @@
+from abc import abstractmethod
 import json
 import os
 import time
+from typing import Any
 from uuid import uuid4
 
 import requests
@@ -10,7 +12,8 @@ from locust import HttpUser, task
 FASTAPI_BASE_URL = os.environ.get("FASTAPI_BASE_URL", "http://localhost:8888")
 FLASK_BASE_URL = os.environ.get("FLASK_BASE_URL", "http://localhost:8000")
 
-MODEL = os.environ.get("MODEL", "Olmo-3.1-32B-Instruct")
+# Olmo-3.1-32B-Instruct
+MODEL = os.environ.get("MODEL", "sleep")
 NUM_THREADS_TO_CREATE = int(os.environ.get("NUM_THREADS", "3"))
 
 # Helpers
@@ -20,11 +23,12 @@ def auth_headers(user_id: str) -> dict[str, str]:
 
 
 # both use the same database -- so we can create and delete on either
-def create_thread(*, user_id: str, model: str = MODEL, content: str = "hello", bypass_safety_check=True) -> str | None:
+# only using this because it saves -- v5 is WIP (doesnt save)
+def make_thread(*, user_id: str, model: str = MODEL, content: str = "hello") -> str | None:
     # prefer v4 for create
     with requests.post(
         f"{FLASK_BASE_URL}/v4/threads/",
-        json={"model": model, "content": content, "bypass_safety_check": bypass_safety_check},
+        json={"model": model, "content": content},
         headers=auth_headers(user_id=user_id),
         stream=True,
         timeout=None  # noqa: S113
@@ -33,26 +37,83 @@ def create_thread(*, user_id: str, model: str = MODEL, content: str = "hello", b
         for line in resp.iter_lines():
             if line:
                 data = json.loads(line)
-                thread_id = data.get("message")
-                break
+                if thread_id is None:
+                    thread_id = data.get("message")
+            # no break -- we consume the response
 
     return thread_id
 
-def delete_thread(*, user_id: str, thread_id: str) -> None:
-    # prefer v5 for delete
-    requests.delete(f"{FASTAPI_BASE_URL}/v5/threads/{thread_id}", headers=auth_headers(user_id=user_id), timeout=None)  # noqa: S113
 
 
 # Abstract classes
 #
-class FastAPIUser(HttpUser):
+class BaseUser(HttpUser):
+    abstract = True
+
+    thread_ids: list[str]
+    user_id: str
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user_id = str(uuid4())
+        self.thread_ids = []
+
+    def create_thread(self, url: str, data: dict[str, Any]):
+        raise NotImplementedError
+
+    def measure_create_thread(self, url):
+        thread_id: str | None = None
+
+        with self.environment.events.request.measure("POST", url):
+            resp = self.create_thread(url=url, data={"model": MODEL, "content": "hello"})
+            with self.environment.events.request.measure("POST", f"{url} (TTFT)"):
+                for line in resp.iter_lines():
+                    if line:
+                        data = json.loads(line)
+                        if thread_id is None:
+                            thread_id = data.get("message")
+                        if data.get("type") in {"modelResponse", "thinking", "toolCall"}:  # these are the first LLM tokens
+                            break  # break to end measurement of TTFT
+
+            # consume full response for measuring full response time
+            for _ in resp.iter_lines():
+                pass
+
+        if thread_id:
+            self.thread_ids.append(thread_id)
+
+    def cleanup_threads(self):
+        for thread_id in self.thread_ids:
+            # doesnt matter which API we delete on
+            requests.delete(f"{FASTAPI_BASE_URL}/v5/threads/{thread_id}", headers=auth_headers(user_id=self.user_id), timeout=None)  # noqa: S113
+
+
+class FastAPIUser(BaseUser):
+    abstract = True
     host = FASTAPI_BASE_URL
+
+    def create_thread(self, url: str, data: dict[str, Any]):
+        return self.client.post(
+            url,
+            data=data,  # form data
+            headers=auth_headers(user_id=self.user_id),
+            stream=True,
+            catch_response=True,
+        )
+
+
+class FlaskUser(BaseUser):
     abstract = True
-
-
-class FlaskUser(HttpUser):
     host = FLASK_BASE_URL
-    abstract = True
+
+    def create_thread(self, url: str, data: dict[str, Any]):
+        return self.client.post(
+            url,
+            json=data,
+            headers=auth_headers(user_id=self.user_id),
+            stream=True,
+            catch_response=True,
+        )
 
 
 # Fake requests
@@ -72,20 +133,14 @@ class FlaskFakeRequestUser(FlaskUser):
 # Get threads requests
 #
 class FastAPIGetThreadListUser(FastAPIUser):
-    thread_ids: list[str]
-    user_id: str
-
     def on_start(self) -> None:
-        self.user_id = str(uuid4())
-        self.thread_ids = []
         for _ in range(NUM_THREADS_TO_CREATE):
-            thread_id = create_thread(user_id=self.user_id)
+            thread_id = make_thread(user_id=self.user_id)
             if thread_id:
                 self.thread_ids.append(thread_id)
 
     def on_stop(self) -> None:
-        for thread_id in self.thread_ids:
-            delete_thread(user_id=self.user_id, thread_id=thread_id)
+        self.cleanup_threads()
 
     @task
     def get_threads(self) -> None:
@@ -93,104 +148,34 @@ class FastAPIGetThreadListUser(FastAPIUser):
 
 
 class FlaskGetThreadListUser(FlaskUser):
-    thread_ids: list[str]
-    user_id: str
-
     def on_start(self) -> None:
-        self.user_id = str(uuid4())
-        self.thread_ids = []
         for _ in range(NUM_THREADS_TO_CREATE):
-            thread_id = create_thread(user_id=self.user_id)
+            thread_id = make_thread(user_id=self.user_id)
             if thread_id:
                 self.thread_ids.append(thread_id)
 
     def on_stop(self) -> None:
-        for thread_id in self.thread_ids:
-            delete_thread(user_id=self.user_id, thread_id=thread_id)
+        self.cleanup_threads()
 
     @task
     def get_threads(self) -> None:
         self.client.get("/v4/threads/", headers=auth_headers(user_id=self.user_id))
 
 
+# Create new threads
+#
 class FastAPICreateThreadUser(FastAPIUser):
-    thread_ids: list[str]
-    user_id: str
-
-    def on_start(self) -> None:
-        self.user_id = str(uuid4())
-        self.thread_ids = []
-
     @task
-    def create_thread(self) -> None:
-        start = time.perf_counter()
-        with self.client.post(
-            "/v5/threads/chat",
-            data={"model": MODEL, "content": "hello", "bypass_safety_check": "true"},
-            headers=auth_headers(user_id=self.user_id),
-            stream=True,
-            catch_response=True,
-        ) as resp:
-            thread_id: str | None = None
-            for line in resp.iter_lines():
-                if line:
-                    data = json.loads(line)
-                    if thread_id is None:
-                        self.environment.events.request.fire(
-                            request_type="POST",
-                            name="/v5/threads/chat (TTFB)",
-                            response_time=(time.perf_counter() - start) * 1000,
-                            response_length=0,
-                            exception=None,
-                            context={},
-                        )
-                        thread_id = data.get("message")
-            resp.success()  # type: ignore[union-attr]
-
-        if thread_id:
-            self.thread_ids.append(thread_id)
+    def test_create_thread(self) -> None:
+        self.measure_create_thread('/v5/threads/chat')
 
     def on_stop(self) -> None:
-        for thread_id in self.thread_ids:
-            delete_thread(user_id=self.user_id, thread_id=thread_id)
+        self.cleanup_threads()
 
 class FlaskCreateThreadUser(FlaskUser):
-    thread_ids: list[str]
-    user_id: str
-
-    def on_start(self) -> None:
-        self.user_id = str(uuid4())
-        self.thread_ids = []
-
     @task
-    def create_thread(self) -> None:
-        start = time.perf_counter()
-        with self.client.post(
-            "/v4/threads/",
-            json={"model": MODEL, "content": "hello", "bypass_safety_check": True},
-            headers=auth_headers(user_id=self.user_id),
-            stream=True,
-            catch_response=True,
-        ) as resp:
-            thread_id: str | None = None
-            for line in resp.iter_lines():
-                if line:
-                    data = json.loads(line)
-                    if thread_id is None:
-                        self.environment.events.request.fire(
-                            request_type="POST",
-                            name="/v4/threads/ (TTFB)",
-                            response_time=(time.perf_counter() - start) * 1000,
-                            response_length=0,
-                            exception=None,
-                            context={},
-                        )
-                        thread_id = data.get("message")
-            resp.success()  # type: ignore[union-attr]
-
-        if thread_id:
-            self.thread_ids.append(thread_id)
+    def test_create_thread(self) -> None:
+        self.measure_create_thread("/v4/threads/")
 
     def on_stop(self) -> None:
-        for thread_id in self.thread_ids:
-            delete_thread(user_id=self.user_id, thread_id=thread_id)
+        self.cleanup_threads()

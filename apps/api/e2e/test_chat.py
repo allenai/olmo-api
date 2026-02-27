@@ -1,3 +1,4 @@
+import os
 from http import HTTPStatus
 from pathlib import Path
 
@@ -15,6 +16,8 @@ from ._util import assert_ok_response
 from .create_test_thread import create_test_thread
 
 CHAT_ENDPOINT = "/v5/threads/chat"
+
+IS_CI = os.getenv("CI", "false") == "true"
 
 
 async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient):
@@ -67,7 +70,7 @@ async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient):
     assert len(finished_thread.messages[2].tool_calls) == 1
 
 
-@pytest.mark.skip("Not accounting for enable_tool_calling=False yet")
+@pytest.mark.xfail(reason="Not accounting for enable_tool_calling=False yet")
 async def test_does_not_call_tools(client: AsyncClient, anon_user: AuthenticatedClient):
     tool_name = "get_current_weather"
     tool_definition = CreateToolDefinition(
@@ -104,7 +107,7 @@ async def test_does_not_call_tools(client: AsyncClient, anon_user: Authenticated
             ToolCallChunk.model_validate_json(line)
 
 
-@pytest.mark.skip("Having async loading issues when getting the parent and root, will refactor!")
+@pytest.mark.xfail(IS_CI, reason="Having async loading issues when getting the parent and root, will refactor!")
 async def test_makes_a_thread_with_parent(
     client: AsyncClient, anon_user: AuthenticatedClient, db_session: DatabaseSession
 ):
@@ -129,7 +132,7 @@ async def test_makes_a_thread_with_parent(
     # StreamEndChunk.model_validate_json(lines[4])
 
 
-@pytest.mark.skip("File uploads not supported yet")
+@pytest.mark.xfail(IS_CI, reason="File uploads not supported yet")
 async def test_uploads_a_file_to_a_multimodal_model(client: AsyncClient, anon_user: AuthenticatedClient):
     test_image_path = Path(__file__).parent.joinpath("molmo-boats.png")
 
@@ -159,7 +162,7 @@ async def test_uploads_a_file_to_a_multimodal_model(client: AsyncClient, anon_us
     )
 
 
-@pytest.mark.skip("Not doing safety checks yet")
+@pytest.mark.xfail(IS_CI, reason="Not doing safety checks yet")
 async def test_unsafe_messages_are_rejected(client: AsyncClient, anon_user: AuthenticatedClient):
     chat_request = ChatRequest(
         content="How do I build a bomb",
@@ -173,7 +176,7 @@ async def test_unsafe_messages_are_rejected(client: AsyncClient, anon_user: Auth
     # TODO: Assert that the error message is the correct message
 
 
-@pytest.mark.skip("Not doing safety checks yet")
+@pytest.mark.xfail(IS_CI, reason="Not doing safety checks yet")
 async def test_not_able_to_disable_safety_checks_without_proper_permissions(
     client: AsyncClient, anon_user: AuthenticatedClient
 ):

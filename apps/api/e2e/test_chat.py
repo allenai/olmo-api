@@ -22,22 +22,21 @@ CHAT_ENDPOINT = "/v5/threads/chat"
 
 async def test_calls_a_tool(client: AsyncClient, auth_user: AuthenticatedClient):
     tool_name = "get_current_weather"
-    tool_definitions = f"[{
-        CreateToolDefinition(
-            name=tool_name,
-            description='Get the current weather in a given location',
-            parameters=ParameterDef(
-                type='object',
-                properties={
-                    'location': ParameterDef(
-                        type='string',
-                        description='The city name of the location for which to get the weather.',
-                        default={'string_value': 'Boston, MA'},
-                    )
-                },
-            ),
-        ).model_dump_json()
-    }]"
+    tool_definition = CreateToolDefinition(
+        name=tool_name,
+        description="Get the current weather in a given location",
+        parameters=ParameterDef(
+            type="object",
+            properties={
+                "location": ParameterDef(
+                    type="string",
+                    description="The city name of the location for which to get the weather.",
+                    default={"string_value": "Boston, MA"},
+                )
+            },
+        ),
+    )
+    tool_definitions = f"[{tool_definition.model_dump_json()}]"
     chat_request = ChatRequest(
         content="test tool calling",
         model="test-model",
@@ -49,7 +48,7 @@ async def test_calls_a_tool(client: AsyncClient, auth_user: AuthenticatedClient)
     response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(auth_user))
 
     assert response.status_code == 200, (
-        f"{response.url} responded with an non-success for an anonymous user: {response.content}"
+        f"{response.url} responded with an non-success for an anonymous user: {response.text}"
     )
 
     lines = response.text.splitlines()

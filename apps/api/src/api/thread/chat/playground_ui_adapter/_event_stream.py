@@ -17,6 +17,7 @@ from pydantic_ai.output import OutputDataT
 from pydantic_ai.tools import AgentDepsT
 from pydantic_ai.ui import UIEventStream
 
+from api.logging.fastapi_logger import FastAPIStructLogger
 from api.thread.chat.chat_types import ChatStreamOutput
 from api.thread.chat.format_output import format_event
 from api.thread.chat.playground_ui_adapter._util import (
@@ -44,6 +45,8 @@ from db.models.tool_call import ToolCall
 __all__ = ["PlaygroundUIEventStream"]
 
 JSONL_CONTENT_TYPE = "application/jsonl"
+
+logger = FastAPIStructLogger()
 
 
 @dataclass
@@ -163,6 +166,7 @@ class PlaygroundUIEventStream(
 
     async def on_error(self, error: Exception) -> AsyncIterator[Event]:
         self._finish_reason = "error"
+        logger.exception("inference.stream-error")
         if isinstance(error, UnexpectedModelBehavior):
             yield ErrorChunk(
                 error_description=str(error), message=self.message_id, error_code=ErrorCode.TOOL_CALL_ERROR

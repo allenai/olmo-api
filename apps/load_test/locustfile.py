@@ -1,7 +1,7 @@
-from abc import abstractmethod
 import json
 import os
 import time
+from contextlib import suppress
 from typing import Any
 from uuid import uuid4
 
@@ -61,31 +61,44 @@ class BaseUser(HttpUser):
     def create_thread(self, url: str, data: dict[str, Any]):
         raise NotImplementedError
 
-    def measure_create_thread(self, url):
+    def measure_create_thread(self, url: str) -> None:
         thread_id: str | None = None
+        ttft_ms: float | None = None
 
-        with self.environment.events.request.measure("POST", url):
-            resp = self.create_thread(url=url, data={"model": MODEL, "content": "hello"})
-            with self.environment.events.request.measure("POST", f"{url} (TTFT)"):
-                for line in resp.iter_lines():
-                    if line:
-                        data = json.loads(line)
-                        if thread_id is None:
-                            thread_id = data.get("message")
-                        if data.get("type") in {"modelResponse", "thinking", "toolCall"}:  # these are the first LLM tokens
-                            break  # break to end measurement of TTFT
+        with self.create_thread(url=url, data={"model": MODEL, "content": "hello"}) as resp:
+            ttft_start = time.perf_counter()
+            for line in resp.iter_lines():
+                if line:
+                    parsed = json.loads(line)
+                    if thread_id is None:
+                        thread_id = parsed.get("message")
+                    if parsed.get("type") in {"modelResponse", "thinking", "toolCall"}:
+                        ttft_ms = (time.perf_counter() - ttft_start) * 1000
+                        break
 
-            # consume full response for measuring full response time
+            # consume rest of response
             for _ in resp.iter_lines():
                 pass
+
+            resp.success()
+
+        if ttft_ms is not None:
+            self.environment.events.request.fire(
+                request_type="POST",
+                name=f"{url} (TTFT)",
+                response_time=ttft_ms,
+                response_length=0,
+                exception=None,
+                context={},
+            )
 
         if thread_id:
             self.thread_ids.append(thread_id)
 
     def cleanup_threads(self):
         for thread_id in self.thread_ids:
-            # doesnt matter which API we delete on
-            requests.delete(f"{FASTAPI_BASE_URL}/v5/threads/{thread_id}", headers=auth_headers(user_id=self.user_id), timeout=None)  # noqa: S113
+            with suppress(Exception):
+                requests.delete(f"{FASTAPI_BASE_URL}/v5/threads/{thread_id}", headers=auth_headers(user_id=self.user_id), timeout=None)  # noqa: S113
 
 
 class FastAPIUser(BaseUser):

@@ -717,7 +717,7 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
 
     local corsIngressAnno = {
         'nginx.ingress.kubernetes.io/enable-cors': 'true',
-        'nginx.ingress.kubernetes.io/cors-allow-origin': 'https://olmo.allen.ai,https://*.olmo.allen.ai,https://playground.allenai.org,https://*.playground.allenai.org,https://*.olmo-ui.allen.ai,https://olmo-ui-playground-test.allen.ai',
+        'nginx.ingress.kubernetes.io/cors-allow-origin': 'https://olmo.allen.ai,https://*.olmo.allen.ai,https://playground.allenai.org,https://*.playground.allenai.org,https://*.olmo-ui.allen.ai,https://olmo-ui-playground-test.allen.ai,https://olmo-ui-dev.allen.ai',
         'nginx.ingress.kubernetes.io/cors-allow-credentials': 'true',
         'nginx.ingress.kubernetes.io/cors-allow-headers': 'DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,X-Anonymous-User-Id'
     };

@@ -1,6 +1,7 @@
 from core import object_id as obj
 from core.message.role import Role
 from core.object_id import new_id_generator
+from db.models.inference_opts import InferenceOpts
 from db.models.message.message import Message
 from e2e.conftest import AuthenticatedClient, DatabaseSession
 
@@ -16,7 +17,7 @@ def create_test_message(**msg_fields) -> Message:
         "model_host": "TestBackend",
         "final": True,
         "parent": None,
-        "opts": {},
+        "opts": InferenceOpts(),
         "expiration_time": None,
         **msg_fields,
     }

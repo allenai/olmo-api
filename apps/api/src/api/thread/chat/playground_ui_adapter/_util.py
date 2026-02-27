@@ -59,7 +59,7 @@ def create_message_from_run_input(
         model_host=run_input.model.host,
         model_type=run_input.model.model_type,
         tool_calls=tool_calls,
-        tool_definitions=run_input.tool_definitions,
+        tool_definitions=run_input.tool_definitions or [],
     )
 
 

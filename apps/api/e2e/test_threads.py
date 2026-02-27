@@ -47,7 +47,7 @@ async def test_threads_lists_empty_for_anon_user(client: AsyncClient, auth_user:
 async def test_threads_list_for_authed_user(
     client: AsyncClient, db_session: DatabaseSession, auth_user: AuthenticatedClient
 ):
-    thread_id = await create_test_thread(db_session=db_session, user=auth_user)
+    thread_id, _ = await create_test_thread(db_session=db_session, user=auth_user)
 
     response = await client.get(THREADS_ENDPOINT, headers=auth_headers_for_user(auth_user))
     response.raise_for_status()
@@ -62,7 +62,7 @@ async def test_threads_list_for_authed_user(
 
 
 async def test_threads_lists_for_user(client: AsyncClient, db_session: DatabaseSession, anon_user: AuthenticatedClient):
-    thread_id = await create_test_thread(db_session=db_session, user=anon_user)
+    thread_id, _ = await create_test_thread(db_session=db_session, user=anon_user)
 
     response = await client.get(THREADS_ENDPOINT, headers=auth_headers_for_user(anon_user))
     response.raise_for_status()
@@ -124,7 +124,7 @@ async def test_get_nonexistant_thread(client: AsyncClient, anon_user: Authentica
 
 
 async def test_get_valid_thread(client: AsyncClient, db_session: DatabaseSession, anon_user: AuthenticatedClient):
-    thread_id = await create_test_thread(db_session=db_session, user=anon_user)
+    thread_id, _ = await create_test_thread(db_session=db_session, user=anon_user)
 
     response = await client.get(f"{THREADS_ENDPOINT}{thread_id}", headers=auth_headers_for_user(anon_user))
     response.raise_for_status()
@@ -141,7 +141,7 @@ async def test_get_valid_thread(client: AsyncClient, db_session: DatabaseSession
 
 
 async def test_user_delete_own_thread(client: AsyncClient, db_session: DatabaseSession, anon_user: AuthenticatedClient):
-    thread_id = await create_test_thread(db_session=db_session, user=anon_user)
+    thread_id, _ = await create_test_thread(db_session=db_session, user=anon_user)
 
     # verify it exists
     response = await client.get(f"{THREADS_ENDPOINT}{thread_id}", headers=auth_headers_for_user(anon_user))
@@ -159,7 +159,7 @@ async def test_user_delete_own_thread(client: AsyncClient, db_session: DatabaseS
 async def test_cant_delete_another_users_thread(
     client: AsyncClient, db_session: DatabaseSession, auth_user: AuthenticatedClient, anon_user: AuthenticatedClient
 ):
-    thread_id = await create_test_thread(db_session=db_session, user=anon_user)
+    thread_id, _ = await create_test_thread(db_session=db_session, user=anon_user)
     response = await client.get(f"{THREADS_ENDPOINT}{thread_id}", headers=auth_headers_for_user(anon_user))
     response.raise_for_status()
 

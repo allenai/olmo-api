@@ -24,7 +24,8 @@ def create_test_message(**msg_fields) -> Message:
     return Message(**msg)
 
 
-async def create_test_thread(db_session: DatabaseSession, user: AuthenticatedClient) -> obj.ID:
+async def create_test_thread(db_session: DatabaseSession, user: AuthenticatedClient) -> tuple[obj.ID, list[Message]]:
+    messages: list[Message] = []
     async with db_session() as session, session.begin():
         root_msg = create_test_message(
             content="[Test] root message",
@@ -32,23 +33,25 @@ async def create_test_thread(db_session: DatabaseSession, user: AuthenticatedCli
             role=Role.User.value,
         )
         session.add(root_msg)
+        messages.append(root_msg)
 
         msg1 = create_test_message(
-            content="[Test] assistant message",
+            content="[Test] user message",
             creator=user.client,
-            role=Role.Assistant.value,
+            role=Role.User.value,
             root=root_msg.id,
             parent=root_msg.id,
         )
         session.add(msg1)
+        messages.append(msg1)
 
         msg2 = create_test_message(
-            content="[Test] user message",
+            content="[Test] assistant message",
             creator=user.client,
-            role=Role.User.value,
+            role=Role.Assistant.value,
             root=root_msg.id,
             parent=msg1.id,
         )
         session.add(msg2)
 
-    return root_msg.id
+    return root_msg.id, messages

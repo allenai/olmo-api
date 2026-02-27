@@ -1,10 +1,11 @@
+from apps.api.e2e.create_test_thread import create_test_thread
 from httpx import AsyncClient
 
 from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition, ParameterDef
 from api.thread.models.thread import Thread
 from core.message.message_chunk import StreamEndChunk, StreamStartChunk, ToolCallChunk
 from core.message.role import Role
-from e2e.conftest import AuthenticatedClient, auth_headers_for_user
+from e2e.conftest import AuthenticatedClient, DatabaseSession, auth_headers_for_user
 
 default_model_options = {
     "host": (None, "test_backend"),
@@ -68,3 +69,11 @@ async def test_calls_a_tool(client: AsyncClient, auth_user: AuthenticatedClient)
     assert finished_thread.messages[0].role == Role.System
     assert finished_thread.messages[1].role == Role.User
     assert finished_thread.messages[2].role == Role.Assistant
+    assert finished_thread.messages[2].tool_calls
+    assert len(finished_thread.messages[2].tool_calls) == 1
+
+
+async def test_makes_a_thread_with_parent(
+    client: AsyncClient, auth_user: AuthenticatedClient, db_session: DatabaseSession
+):
+    _root_message_id, messages = await create_test_thread(db_session, auth_user)

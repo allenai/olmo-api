@@ -80,17 +80,11 @@ class BaseUser(HttpUser):
             for _ in resp.iter_lines():
                 pass
 
-            resp.success()
+            # overwrite response time with TTFT
+            if ttft_ms is not None:
+                resp.request_meta["response_time"] = ttft_ms
 
-        if ttft_ms is not None:
-            self.environment.events.request.fire(
-                request_type="POST",
-                name=f"{url} (TTFT)",
-                response_time=ttft_ms,
-                response_length=0,
-                exception=None,
-                context={},
-            )
+            resp.success()
 
         if thread_id:
             self.thread_ids.append(thread_id)

@@ -123,12 +123,14 @@ async def test_makes_a_thread_with_parent(
 
     lines = response.text.splitlines()
 
-    assert len(lines) == 5
-    # StreamStartChunk.model_validate_json(lines[0])
-    # starting_thread = Thread.model_validate_json(lines[1])
-    # tool_call = ToolCallChunk.model_validate_json(lines[2])
-    # finished_thread = Thread.model_validate_json(lines[3])
-    # StreamEndChunk.model_validate_json(lines[4])
+    assert len(lines) == 9
+    StreamStartChunk.model_validate_json(lines[0])
+    starting_thread = Thread.model_validate_json(lines[1])
+    finished_thread = Thread.model_validate_json(lines[-2])
+    StreamEndChunk.model_validate_json(lines[-1])
+
+    assert len(starting_thread.messages) == 2
+    assert len(finished_thread.messages) == 4
 
 
 @pytest.mark.xfail(IS_CI, reason="File uploads not supported yet")

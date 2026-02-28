@@ -130,6 +130,7 @@ async def test_makes_a_thread_with_parent(
     finished_thread = Thread.model_validate_json(lines[-2])
     StreamEndChunk.model_validate_json(lines[-1])
 
+    # TODO: We may be able to get away with only having one message here if we yield a Message when we start a response
     assert len(starting_thread.messages) == 2
     assert len(finished_thread.messages) == 4
 

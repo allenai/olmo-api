@@ -119,6 +119,7 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
                 selectinload(Message.labels.and_(Label.deleted == None, Label.creator == user_id)),  # noqa: E711
                 selectinload(Message.tool_calls),
                 selectinload(Message.tool_definitions),
+                # Since we're selecting a bunch of messages and not just one we can load the children in with them
                 selectinload(Message.children),
             )
             .order_by(Message.created.asc())

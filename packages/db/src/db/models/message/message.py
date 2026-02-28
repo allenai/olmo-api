@@ -118,9 +118,7 @@ class Message(Base, kw_only=True):
 
     completion_: Mapped[Completion | None] = relationship("Completion", back_populates="message", init=False)
 
-    children: Mapped[list["Message"] | None] = relationship(
-        back_populates="parent_", foreign_keys=[parent], init=False, lazy="joined", join_depth=10
-    )
+    children: Mapped[list["Message"] | None] = relationship(back_populates="parent_", foreign_keys=[parent], init=False)
     parent_: Mapped[Optional["Message"]] = relationship(
         back_populates="children", remote_side=[id], foreign_keys=[parent], init=False
     )

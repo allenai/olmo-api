@@ -4,6 +4,7 @@ from itertools import groupby
 from typing import Annotated, cast
 
 from fastapi import Depends
+from opentelemetry import trace
 from sqlalchemy import CursorResult, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -78,6 +79,9 @@ class BaseAsyncMessageRepository(abc.ABC):
         raise NotImplementedError
 
 
+tracer = trace.get_tracer(__name__)
+
+
 class AsyncMessageRepository(BaseAsyncMessageRepository):
     session: AsyncSession
 
@@ -100,6 +104,7 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
         result = await self.session.scalars(query)
         return result.one()
 
+    @tracer.start_as_current_span("MessageRepository/get_messages_by_root")
     async def get_messages_by_root(self, message_id: obj.ID, user_id: str) -> Sequence[Message]:
         query = (
             select(Message)
@@ -114,13 +119,14 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
                 selectinload(Message.labels.and_(Label.deleted == None, Label.creator == user_id)),  # noqa: E711
                 selectinload(Message.tool_calls),
                 selectinload(Message.tool_definitions),
+                selectinload(Message.children),
             )
             .order_by(Message.created.asc())
         )
 
         result = await self.session.scalars(query)
 
-        return result.unique().all()
+        return result.all()
 
     async def get_messages_by_root_for_delete(self, message_id: obj.ID) -> Sequence[Message]:
         query = select(Message).where(Message.root == message_id)
@@ -169,6 +175,7 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
 
         return messages
 
+    @tracer.start_as_current_span("MessageRepository/get_message_by_id")
     async def get_message_by_id(
         self, message_id: obj.ID, *, label_creator: obj.ID | None = None, include_children=False
     ) -> Message | None:

@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import Depends
 from fastapi_problem.error import UnprocessableProblem
+from opentelemetry import trace
 from pydantic_ai import (
     AbstractToolset,
     Agent,
@@ -108,6 +109,9 @@ def map_tool_def_to_pydantic(tool: CreateToolDefinition) -> ToolDefinition:
     return tool_definition
 
 
+tracer = trace.get_tracer(__name__)
+
+
 class ChatService:
     def __init__(
         self,
@@ -119,6 +123,7 @@ class ChatService:
         self.session = session
         self.tools_service = tools_service
 
+    @tracer.start_as_current_span(name="ChatService/_get_model")
     async def _get_model(self, model_id: str):
         async with self.session.begin():
             stmt = base_model_config_select.where(ModelConfig.id == model_id)
@@ -139,17 +144,7 @@ class ChatService:
 
             return model
 
-    async def _get_parent_and_root_messages(self, parent_message_id: ID | None):
-        if parent_message_id is None:
-            return None, None
-
-        parent_message = await self.message_repository.get_message_by_id(parent_message_id)
-        root_message = (
-            await self.message_repository.get_message_by_id(parent_message.root) if parent_message is not None else None
-        )
-
-        return parent_message, root_message
-
+    @tracer.start_as_current_span(name="ChatService/_initialize_thread")
     async def _initialize_thread(
         self,
         root_message_id: ID | None,
@@ -245,13 +240,16 @@ class ChatService:
 
         return messages, new_messages
 
+    @tracer.start_as_current_span(name="ChatService/_validate_and_get_thread")
     async def _validate_and_get_thread(
         self,
         request: ChatRequest,
         user: Token,
         model: ModelConfig,
     ) -> tuple[list[Message], list[Message], ID, ID, list[Ai2ToolDefinition] | None]:
-        parent_message, root_message = await self._get_parent_and_root_messages(request.parent)
+        parent_message = (
+            await self.message_repository.get_message_by_id(request.parent) if request.parent is not None else None
+        )
 
         merged_inference_options = merge_inference_options(
             model, InferenceOpts.from_message(parent_message), request.inference_options
@@ -259,7 +257,7 @@ class ChatService:
 
         validate_inference_parameters_against_model_constraints(model, merged_inference_options)
 
-        root_message_id = root_message.id if root_message is not None else None
+        root_message_id = parent_message.root if parent_message is not None else None
         parent_message_id = parent_message.id if parent_message is not None else None
 
         all_messages, new_messages = await self._initialize_thread(
@@ -279,6 +277,7 @@ class ChatService:
         return (all_messages, new_messages, all_messages[0].id, all_messages[-1].id, tool_definitions)
 
     @staticmethod
+    @tracer.start_as_current_span(name="ChatService/_get_toolsets")
     def _get_toolsets(
         model: ModelConfig,
         user_tools: Sequence[CreateToolDefinition] | None,

@@ -1,7 +1,7 @@
 [project]
 name = "playground"
 version = "0.0.1"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 
 license = "Apache-2.0"
 license-files = ["LICENSE"]
@@ -16,14 +16,13 @@ test = ["pytest-asyncio>=0.25.2"]
 infini-gram-api-client = { workspace = true }
 db = { workspace = true }
 core = { workspace = true }
-inferd = { path = "vendor/inferd-0.5.9-0_v0.5.9-py3-none-any.whl" }
 
 [tool.uv.workspace]
 members = ["apps/*", "packages/*"]
 exclude = ["apps/safety-worker"]
 
 [tool.pyright]
-pythonVersion = "3.11"
+pythonVersion = "3.14"
 
 [tool.mypy]
 plugins = ['pydantic.mypy']
@@ -31,14 +30,6 @@ disable_error_code = ["prop-decorator"]
 
 [[tool.mypy.overrides]]
 module = ["authlib.*"]
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = ["inferd"]
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = ["grpc"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

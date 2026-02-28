@@ -3,7 +3,7 @@ name = "db-migrations"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = [
     "alembic==1.15.2",
     "alembic-postgresql-enum==1.7.0",

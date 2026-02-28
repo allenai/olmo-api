@@ -3,7 +3,7 @@ name = "db"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = ["core", "infini-gram-api-client", "sqlalchemy==2.0.44"]
 
 [build-system]

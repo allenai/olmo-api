@@ -56,7 +56,7 @@ docker compose down --volumes && docker compose up --build
 To run the Flask tests, execute:
 
 ```bash
-FLASK_CONFIG_PATH="./test.config.json" uv run --python 3.11 pytest apps/flask-api -m "not integration"
+FLASK_CONFIG_PATH="./test.config.json" uv run pytest apps/flask-api -m "not integration"
 ```
 
 To run the FastAPI tests, execute

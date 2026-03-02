@@ -4,8 +4,15 @@ from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
 from opentelemetry.trace import set_tracer_provider
+from pydantic_ai import Agent, InstrumentationSettings
 
 from api.config import settings
+
+agent_instrumentation_settings = InstrumentationSettings(
+    version=4,
+    include_content=False,
+    include_binary_content=False,
+)
 
 
 def setup_otel() -> None:
@@ -20,3 +27,4 @@ def setup_otel() -> None:
         )
 
     set_tracer_provider(tracer_provider)
+    Agent.instrument_all(agent_instrumentation_settings)

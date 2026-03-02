@@ -29,6 +29,10 @@ class BaseAsyncMessageRepository(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
+    async def finalize_thread(self, new_messages: Sequence[Message]) -> Message:
+        raise NotImplementedError
+
+    @abc.abstractmethod
     async def get_messages_by_root(self, message_id: obj.ID, user_id: str) -> Sequence[Message]:
         raise NotImplementedError
 
@@ -113,21 +117,25 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
         for message in messages:
             self.session.add(message)
 
+        await self.session.flush()
+
+        return messages
+
+    @tracer.start_as_current_span("MessageRepository/finalize_thread")
+    async def finalize_thread(self, new_messages: Sequence[Message]) -> Message:
+        new_messages_map = {message.id: message for message in new_messages}
+
+        for new_message in new_messages:
+            if new_message.parent in new_messages_map:
+                parent = new_messages_map[new_message.parent]
+                new_message.parent_ = parent
+
+            new_message.final = True
+            self.session.add(new_message)
+
         await self.session.commit()
 
-        query = (
-            select(Message)
-            .where(Message.id.in_([message.id for message in messages]))
-            .options(
-                selectinload(Message.labels),
-                selectinload(Message.tool_calls),
-                selectinload(Message.tool_definitions),
-                selectinload(Message.children),
-            )
-        )
-
-        result = await self.session.scalars(query)
-        return result.all()
+        return new_messages[0]
 
     @tracer.start_as_current_span("MessageRepository/get_messages_by_root")
     async def get_messages_by_root(self, message_id: obj.ID, user_id: str) -> Sequence[Message]:

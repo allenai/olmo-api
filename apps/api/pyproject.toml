@@ -41,6 +41,9 @@ build-backend = "uv_build"
 [tool.ruff]
 extend = "../../pyproject.toml"
 
+[tool.ruff.lint.extend-per-file-ignores]
+"e2e/*" = ["S"]
+
 [tool.uv.sources]
 db = { workspace = true }
 core = { workspace = true }

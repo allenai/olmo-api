@@ -21,14 +21,17 @@ from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
 from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
 from api.thread.chat.playground_ui_adapter._util import RunInput
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
+from api.thread.chat.util import attach_message_children
 from api.tools.mcp_service import get_general_mcp_servers
 from api.tools.tools_service import ToolsServiceDependency
 from core.auth.token import Token
 from core.message.role import Role
 from core.object_id import ID
+from core.tools.tool_source import ToolSource
 from db.models.inference_opts import InferenceOpts
 from db.models.message import Message, create_message_id
 from db.models.model_config import ModelConfig, PromptType
+from db.models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 
 logger = FastAPIStructLogger()
 
@@ -99,7 +102,8 @@ def map_tool_def_to_pydantic(tool: CreateToolDefinition) -> ToolDefinition:
 
     if tool.parameters is not None:
         # Pydantic-AI applies its own empty default if we don't provide anything. This lets us use that default without recreating it
-        tool_definition.parameters_json_schema = tool.parameters.model_dump()
+        # exclude_none prevents some issues with calling OpenAI APIs that don't know how to parse null
+        tool_definition.parameters_json_schema = tool.parameters.model_dump(exclude_none=True)
 
     return tool_definition
 
@@ -158,25 +162,19 @@ class ChatService:
     ) -> tuple[list[Message], list[Message]]:
         messages: list[Message] = []
         new_messages = []
-        new_root_message_id: ID | None = root_message_id
 
         if root_message_id is not None and parent_message_id is not None:
             thread_messages = await self.message_repository.get_messages_by_root(root_message_id, creator_id)
             existing_thread_messages = build_message_list_from_parent(thread_messages, parent_message_id)
 
             messages = [*messages, *existing_thread_messages]
-            if len(messages) > 0:
-                new_root_message_id = messages[0].id
         elif system_prompt is not None:
             # if parent_message_id is not set we're working with a new thread so we make a new system prompt and make it the root message
             system_message_id = create_message_id()
 
-            if new_root_message_id is None:
-                new_root_message_id = system_message_id
-
             system_message = Message(
                 id=system_message_id,
-                root=new_root_message_id,
+                root=system_message_id,
                 content=system_prompt,
                 creator=creator_id,
                 role=Role.System,
@@ -189,9 +187,17 @@ class ChatService:
 
         if request.role is Role.User:
             user_message_id = create_message_id()
+            root_message_id = messages[0].id if messages else user_message_id
 
-            if new_root_message_id is None:
-                new_root_message_id = user_message_id
+            tool_definitions = [
+                Ai2ToolDefinition(
+                    name=definition.name,
+                    description=definition.description,
+                    parameters=definition.parameters.model_dump(),
+                    tool_source=ToolSource.USER_DEFINED,
+                )
+                for definition in request.tool_definitions or []
+            ]
 
             user_message = Message(
                 id=user_message_id,
@@ -200,10 +206,11 @@ class ChatService:
                 creator=creator_id,
                 role=request.role,
                 opts=inference_options,
-                root=new_root_message_id,
+                root=root_message_id,
                 model_id=model.id,
                 model_host=model.host,
-                parent=parent_message_id,
+                parent=new_messages[-1].id if len(new_messages) > 0 else None,
+                tool_definitions=tool_definitions,
             )
 
             messages.append(user_message)
@@ -214,7 +221,9 @@ class ChatService:
                 missing_content_message = "Tool response messages must have content"
                 raise UnprocessableProblem(missing_content_message)
 
-            if not new_root_message_id:
+            parent_message = new_messages[-1] if len(new_messages) > 0 else None
+
+            if not parent_message:
                 tool_response_with_no_parent_message = "Tool response messages must have a parent"
                 raise UnprocessableProblem(tool_response_with_no_parent_message)
 
@@ -223,13 +232,16 @@ class ChatService:
                 creator=creator_id,
                 role=request.role,
                 opts=inference_options,
-                root=new_root_message_id,
+                root=parent_message.root,
                 model_id=model.id,
                 model_host=model.host,
+                parent=parent_message.id,
             )
 
             messages.append(tool_response_message)
             new_messages.append(tool_response_message)
+
+        attach_message_children(messages)
 
         return messages, new_messages
 
@@ -238,7 +250,7 @@ class ChatService:
         request: ChatRequest,
         user: Token,
         model: ModelConfig,
-    ) -> tuple[list[Message], list[Message], ID, ID]:
+    ) -> tuple[list[Message], list[Message], ID, ID, list[Ai2ToolDefinition] | None]:
         parent_message, root_message = await self._get_parent_and_root_messages(request.parent)
 
         merged_inference_options = merge_inference_options(
@@ -260,7 +272,11 @@ class ChatService:
             model=model,
         )
 
-        return (all_messages, new_messages, all_messages[0].id, all_messages[-1].id)
+        tool_definitions = next(
+            (message.tool_definitions for message in reversed(all_messages) if message.tool_definitions), None
+        )
+
+        return (all_messages, new_messages, all_messages[0].id, all_messages[-1].id, tool_definitions)
 
     @staticmethod
     def _get_toolsets(
@@ -286,9 +302,13 @@ class ChatService:
 
     async def stream_chat_message(self, request: ChatRequest, user: Token) -> AsyncIterator[str]:
         model = await self._get_model(request.model)
-        all_messages, new_messages, root_message_id, parent_message_id = await self._validate_and_get_thread(
-            request, user, model
-        )
+        (
+            all_messages,
+            new_messages,
+            root_message_id,
+            parent_message_id,
+            tool_definitions,
+        ) = await self._validate_and_get_thread(request, user, model)
 
         pydantic_model = get_pydantic_model(model)
 
@@ -306,6 +326,11 @@ class ChatService:
             new_messages=new_messages,
             root_message_id=root_message_id,
             parent_message_id=parent_message_id,
+            creator=user.client,
+            model=model,
+            inference_opts=all_messages[-1].opts,
+            user_tool_names=[definition.name for definition in request.tool_definitions or []],
+            tool_definitions=tool_definitions,
         )
 
         adapter = PlaygroundUIAdapter(agent, run_input=run_input)

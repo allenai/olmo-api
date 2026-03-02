@@ -9,7 +9,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from api.logging.fastapi_logger import FastAPIStructLogger
-from api.thread.models.flat_message import FlatMessage
+from api.thread.models.thread import Thread
 from db.models.message import Message
 
 logger = FastAPIStructLogger()
@@ -37,7 +37,7 @@ def format_base_model(x: BaseModel) -> dict[str, Any]:
 
 @encode_value.register(Message)
 def format_message(x: Message) -> dict[str, Any]:
-    return FlatMessage.from_message(x).model_dump()
+    return Thread.from_message(x).model_dump()
 
 
 def format_event(obj) -> str:

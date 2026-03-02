@@ -155,7 +155,7 @@ class ChatService:
         model: ModelConfig,
     ) -> tuple[list[Message], list[Message]]:
         messages: list[Message] = []
-        new_messages = []
+        new_messages: list[Message] = []
 
         if root_message_id is not None and parent_message_id is not None:
             thread_messages = await self.message_repository.get_messages_by_root(root_message_id, creator_id)
@@ -193,6 +193,8 @@ class ChatService:
                 for definition in request.tool_definitions or []
             ]
 
+            parent = new_messages[-1] if len(new_messages) > 0 else None
+
             user_message = Message(
                 id=user_message_id,
                 content=request.content or "",
@@ -204,6 +206,7 @@ class ChatService:
                 model_id=model.id,
                 model_host=model.host,
                 parent=new_messages[-1].id if len(new_messages) > 0 else None,
+                parent_=parent,
                 tool_definitions=tool_definitions,
             )
 
@@ -230,13 +233,13 @@ class ChatService:
                 model_id=model.id,
                 model_host=model.host,
                 parent=parent_message.id,
+                parent_=parent_message,
             )
 
             messages.append(tool_response_message)
             new_messages.append(tool_response_message)
 
         await self.message_repository.add_many(new_messages)
-        # attach_message_children(messages)
 
         return messages, new_messages
 
@@ -331,7 +334,7 @@ class ChatService:
             inference_opts=all_messages[-1].opts,
             user_tool_names=[definition.name for definition in request.tool_definitions or []],
             tool_definitions=tool_definitions,
-            handle_final_messages=self.message_repository.add_many,
+            handle_final_messages=self.message_repository.finalize_thread,
         )
 
         adapter = PlaygroundUIAdapter(agent, run_input=run_input)

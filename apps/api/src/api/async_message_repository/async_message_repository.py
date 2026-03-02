@@ -108,6 +108,7 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
         result = await self.session.scalars(query)
         return result.one()
 
+    @tracer.start_as_current_span("MessageRepository/add_many")
     async def add_many(self, messages: Sequence[Message]) -> Sequence[Message]:
         for message in messages:
             self.session.add(message)
@@ -121,10 +122,11 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
                 selectinload(Message.labels),
                 selectinload(Message.tool_calls),
                 selectinload(Message.tool_definitions),
+                selectinload(Message.children),
             )
         )
 
-        result = await self.session.scalars(query)
+        result = await self.session.scalars(query, execution_options={"populate_existing": True})
         return result.all()
 
     @tracer.start_as_current_span("MessageRepository/get_messages_by_root")

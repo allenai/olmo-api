@@ -22,7 +22,6 @@ from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
 from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
 from api.thread.chat.playground_ui_adapter._util import RunInput
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
-from api.thread.chat.util import attach_message_children
 from api.tools.mcp_service import get_general_mcp_servers
 from api.tools.tools_service import ToolsServiceDependency
 from core.auth.token import Token
@@ -236,7 +235,8 @@ class ChatService:
             messages.append(tool_response_message)
             new_messages.append(tool_response_message)
 
-        attach_message_children(messages)
+        await self.message_repository.add_many(new_messages)
+        # attach_message_children(messages)
 
         return messages, new_messages
 

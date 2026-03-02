@@ -115,7 +115,10 @@ async def test_makes_a_thread_with_parent(
     parent_message_id = messages[-1].id
 
     chat_request = ChatRequest(
-        content="test make a thread with parent", model="test-model", parent=parent_message_id
+        content="test make a thread with parent",
+        model="test-model",
+        parent=parent_message_id,
+        enable_tool_calling=False,
     ).model_dump(exclude_none=True, exclude_computed_fields=True)
 
     response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(anon_user))
@@ -131,7 +134,7 @@ async def test_makes_a_thread_with_parent(
     StreamEndChunk.model_validate_json(lines[-1])
 
     # TODO: We may be able to get away with only having one message here if we yield a Message when we start a response
-    assert len(starting_thread.messages) == 2
+    assert len(starting_thread.messages) == 1
     assert len(finished_thread.messages) == 4
 
 

@@ -27,7 +27,6 @@ from api.thread.chat.playground_ui_adapter._util import (
     create_message_from_run_input,
     map_response_pydantic_messages_to_messages,
 )
-from api.thread.chat.util import attach_message_children
 from core.message.message_chunk import (
     ErrorChunk,
     ErrorCode,
@@ -78,8 +77,7 @@ class PlaygroundUIEventStream(
 
     async def before_stream(self) -> AsyncIterator[ChatStreamOutput]:
         yield StreamStartChunk(message=self.message_id)
-        message_with_children = attach_message_children(self.run_input.new_messages)
-        yield message_with_children[0]
+        yield self.run_input.new_messages[0]
 
     async def before_request(self) -> AsyncIterator[ChatStreamOutput]:
         # TODO: Emit a new message here too
@@ -196,8 +194,8 @@ class PlaygroundUIEventStream(
             new_messages, message_ids=self._message_ids, run_input=self.run_input
         )
 
-        all_messages = attach_message_children([*self.run_input.all_messages, *mapped_new_messages])
+        await self.run_input.handle_final_messages(mapped_new_messages)
+
+        all_messages = [*self.run_input.all_messages, *mapped_new_messages]
 
         yield all_messages[0]
-
-        await self.run_input.handle_final_messages(all_messages)

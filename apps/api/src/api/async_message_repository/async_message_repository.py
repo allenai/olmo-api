@@ -126,7 +126,7 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
             )
         )
 
-        result = await self.session.scalars(query, execution_options={"populate_existing": True})
+        result = await self.session.scalars(query)
         return result.all()
 
     @tracer.start_as_current_span("MessageRepository/get_messages_by_root")

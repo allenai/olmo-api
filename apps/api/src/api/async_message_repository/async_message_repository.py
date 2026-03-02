@@ -25,6 +25,10 @@ class BaseAsyncMessageRepository(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
+    async def add_many(self, messages: Sequence[Message]) -> Sequence[Message]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
     async def get_messages_by_root(self, message_id: obj.ID, user_id: str) -> Sequence[Message]:
         raise NotImplementedError
 
@@ -104,6 +108,25 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
         result = await self.session.scalars(query)
         return result.one()
 
+    async def add_many(self, messages: Sequence[Message]) -> Sequence[Message]:
+        for message in messages:
+            self.session.add(message)
+
+        await self.session.commit()
+
+        query = (
+            select(Message)
+            .where(Message.id.in_([message.id for message in messages]))
+            .options(
+                selectinload(Message.labels),
+                selectinload(Message.tool_calls),
+                selectinload(Message.tool_definitions),
+            )
+        )
+
+        result = await self.session.scalars(query)
+        return result.all()
+
     @tracer.start_as_current_span("MessageRepository/get_messages_by_root")
     async def get_messages_by_root(self, message_id: obj.ID, user_id: str) -> Sequence[Message]:
         query = (
@@ -125,7 +148,7 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
             .order_by(Message.created.asc())
         )
 
-        result = await self.session.scalars(query)
+        result = await self.session.scalars(query, execution_options={"populate_existing": True})
 
         return result.all()
 

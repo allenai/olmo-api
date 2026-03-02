@@ -199,3 +199,5 @@ class PlaygroundUIEventStream(
         all_messages = attach_message_children([*self.run_input.all_messages, *mapped_new_messages])
 
         yield all_messages[0]
+
+        await self.run_input.handle_final_messages(mapped_new_messages)

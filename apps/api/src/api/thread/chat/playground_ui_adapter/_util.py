@@ -1,5 +1,5 @@
 import json
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from typing import TypeAlias, assert_never
 
@@ -42,6 +42,7 @@ class RunInput:
     model: ModelConfig
     user_tool_names: Sequence[str]
     tool_definitions: list[ToolDefinition] | None
+    handle_final_messages: Callable[[Sequence[Message]], Awaitable[Sequence[Message]]]
 
 
 def create_message_from_run_input(

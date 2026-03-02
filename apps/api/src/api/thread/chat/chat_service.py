@@ -331,6 +331,7 @@ class ChatService:
             inference_opts=all_messages[-1].opts,
             user_tool_names=[definition.name for definition in request.tool_definitions or []],
             tool_definitions=tool_definitions,
+            handle_final_messages=self.message_repository.add_many,
         )
 
         adapter = PlaygroundUIAdapter(agent, run_input=run_input)

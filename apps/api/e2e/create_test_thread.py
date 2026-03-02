@@ -30,7 +30,7 @@ async def create_test_thread(db_session: DatabaseSession, user: AuthenticatedCli
         root_msg = create_test_message(
             content="[Test] root message",
             creator=user.client,
-            role=Role.User.value,
+            role=Role.System.value,
         )
         session.add(root_msg)
         messages.append(root_msg)
@@ -53,5 +53,6 @@ async def create_test_thread(db_session: DatabaseSession, user: AuthenticatedCli
             parent=msg1.id,
         )
         session.add(msg2)
+        messages.append(msg2)
 
     return root_msg.id, messages

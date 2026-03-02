@@ -127,15 +127,18 @@ async def test_makes_a_thread_with_parent(
 
     lines = response.text.splitlines()
 
-    assert len(lines) == 9
+    assert len(lines) == 10
     StreamStartChunk.model_validate_json(lines[0])
     starting_thread = Thread.model_validate_json(lines[1])
+    thread_with_empty_message = Thread.model_validate_json(lines[2])
     finished_thread = Thread.model_validate_json(lines[-2])
     StreamEndChunk.model_validate_json(lines[-1])
 
     # TODO: We may be able to get away with only having one message here if we yield a Message when we start a response
     assert len(starting_thread.messages) == 1
-    assert len(finished_thread.messages) == 4
+    assert len(thread_with_empty_message.messages) == 1
+    # Only return new messages
+    assert len(finished_thread.messages) == 2
 
 
 @pytest.mark.xfail(IS_CI, reason="File uploads not supported yet")

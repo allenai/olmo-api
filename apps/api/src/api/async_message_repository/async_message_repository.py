@@ -148,7 +148,7 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
             .order_by(Message.created.asc())
         )
 
-        result = await self.session.scalars(query, execution_options={"populate_existing": True})
+        result = await self.session.scalars(query)
 
         return result.all()
 

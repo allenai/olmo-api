@@ -201,5 +201,5 @@ class PlaygroundUIEventStream(
             ])
 
             yield first_new_message
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self.on_error(e)

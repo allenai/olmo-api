@@ -14,7 +14,6 @@ from pydantic_ai import (
 )
 
 from api.thread.chat.chat_types import ChatStreamOutput
-from api.thread.chat.util import attach_message_children
 from core.message.role import Role
 from core.object_id import ID
 from core.tools.tool_source import ToolSource
@@ -42,7 +41,7 @@ class RunInput:
     model: ModelConfig
     user_tool_names: Sequence[str]
     tool_definitions: list[ToolDefinition] | None
-    handle_final_messages: Callable[[Sequence[Message]], Awaitable[Sequence[Message]]]
+    handle_final_messages: Callable[[Sequence[Message]], Awaitable[Message]]
 
 
 def create_message_from_run_input(
@@ -164,4 +163,4 @@ def map_response_pydantic_messages_to_messages(
             case _:
                 assert_never(message)
 
-    return attach_message_children(mapped_messages)
+    return mapped_messages

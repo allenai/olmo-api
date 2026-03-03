@@ -12,6 +12,7 @@ from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition, Para
 from api.thread.models.thread import Thread
 from core.message.message_chunk import (
     AddMessageChunk,
+    FinalThreadChunk,
     StartThreadChunk,
     StreamEndChunk,
     StreamStartChunk,
@@ -65,7 +66,7 @@ async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient, 
     StreamStartChunk.model_validate_json(lines[0])
     starting_thread = StartThreadChunk.model_validate_json(lines[1])
     tool_call = ToolCallChunk.model_validate_json(lines[3])
-    finished_thread = Thread.model_validate_json(lines[-2])
+    finished_thread = FinalThreadChunk.model_validate_json(lines[-2])
     StreamEndChunk.model_validate_json(lines[-1])
 
     assert tool_call.tool_name == tool_name
@@ -158,7 +159,7 @@ async def test_makes_a_thread_with_parent(
     StreamStartChunk.model_validate_json(lines[0])
     starting_thread = AddMessageChunk.model_validate_json(lines[1])
     thread_with_empty_message = AddMessageChunk.model_validate_json(lines[2])
-    finished_thread = Thread.model_validate_json(lines[-2])
+    finished_thread = FinalThreadChunk.model_validate_json(lines[-2])
     StreamEndChunk.model_validate_json(lines[-1])
 
     assert len(starting_thread.messages) == 1

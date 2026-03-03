@@ -11,9 +11,9 @@ from sqlalchemy.orm import selectinload
 
 import core.object_id as obj
 from api.db.sqlalchemy_engine import SessionDependency
-from api.thread.models.flat_message import FlatMessage
 from api.thread.models.thread import Thread, ThreadList
 from core.list_meta import ListMeta
+from core.message.flat_message import FlatMessage
 from core.sort_options import SortDirection, SortOptions
 from db.models.label import Label
 from db.models.message import Message

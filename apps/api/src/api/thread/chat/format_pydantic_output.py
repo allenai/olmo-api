@@ -17,7 +17,7 @@ from pydantic_ai.messages import (
     ToolCallPartDelta,
 )
 
-from api.thread.models.flat_message import FlatMessage
+from core.message.flat_message import FlatMessage
 from core.message.message_chunk import (
     Chunk,
     ModelResponseChunk,

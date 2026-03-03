@@ -27,7 +27,7 @@ from api.thread.chat.playground_ui_adapter._util import (
     create_message_from_run_input,
     map_response_pydantic_messages_to_messages,
 )
-from api.thread.models.flat_message import FlatMessage
+from core.message.flat_message import FlatMessage
 from core.message.message_chunk import (
     AddMessageChunk,
     ErrorChunk,

@@ -18,7 +18,7 @@ class ChunkType(StrEnum):
     THINKING = "thinking"
     START = "start"
     END = "end"
-    FIRST_MESSAGE = "firstMessage"
+    START_THREAD = "startThread"
     ADD_MESSAGE = "addMessage"
     FINAL_THREAD = "finalThread"
 
@@ -111,12 +111,12 @@ class StreamEndChunk(BaseChunk):
         return ChunkType.END
 
 
-class FirstMessageChunk(BaseChunk):
+class StartThreadChunk(BaseChunk):
     # HACK: This lets us make `type` required in the schema while also not requiring it in the init
     @computed_field  # type: ignore
     @property
-    def type(self) -> Literal[ChunkType.FIRST_MESSAGE]:
-        return ChunkType.FIRST_MESSAGE
+    def type(self) -> Literal[ChunkType.START_THREAD]:
+        return ChunkType.START_THREAD
 
     message: obj.ID
     id: obj.ID
@@ -154,7 +154,7 @@ Chunk = (
     | ThinkingChunk
     | StreamStartChunk
     | StreamEndChunk
-    | FirstMessageChunk
+    | StartThreadChunk
     | AddMessageChunk
     | FinalThreadChunk
 )

@@ -33,8 +33,8 @@ from core.message.message_chunk import (
     ErrorChunk,
     ErrorCode,
     FinalThreadChunk,
-    FirstMessageChunk,
     ModelResponseChunk,
+    StartThreadChunk,
     StreamEndChunk,
     StreamStartChunk,
     ThinkingChunk,
@@ -83,8 +83,10 @@ class PlaygroundUIEventStream(
     async def before_stream(self) -> AsyncIterator[ChatStreamOutput]:
         yield StreamStartChunk(message=self.run_input.root_message_id)
         messages = FlatMessage.from_message_seq(self.run_input.new_messages)
-        yield FirstMessageChunk(message=messages[0].id, id=messages[0].id, messages=messages)
-        # yield self.run_input.new_messages[0]
+        if self.run_input.is_new_thread:
+            yield StartThreadChunk(message=messages[0].id, id=messages[0].id, messages=messages)
+        else:
+            yield AddMessageChunk(message=messages[0].id, id=messages[0].id, messages=messages)
 
     async def before_request(self) -> AsyncIterator[ChatStreamOutput]:
         self.new_message_id()

@@ -10,7 +10,13 @@ from sqlalchemy.orm import selectinload
 
 from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition, ParameterDef
 from api.thread.models.thread import Thread
-from core.message.message_chunk import StreamEndChunk, StreamStartChunk, ToolCallChunk
+from core.message.message_chunk import (
+    AddMessageChunk,
+    StartThreadChunk,
+    StreamEndChunk,
+    StreamStartChunk,
+    ToolCallChunk,
+)
 from core.message.role import Role
 from db.models.message import Message
 from e2e.conftest import AuthenticatedClient, DatabaseSession, auth_headers_for_user
@@ -23,7 +29,7 @@ CHAT_ENDPOINT = "/v5/threads/chat"
 IS_CI = os.getenv("CI", "false") == "true"
 
 
-@pytest.mark.xfail(reason="Returning an extra assistant message after the tool call message comes back")
+@pytest.mark.xfail(IS_CI, reason="Returning an extra assistant message after the tool call message comes back")
 async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient, db_session: DatabaseSession):
     tool_name = "get_current_weather"
     tool_definition = CreateToolDefinition(
@@ -57,10 +63,10 @@ async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient, 
 
     assert len(lines) == 6
     StreamStartChunk.model_validate_json(lines[0])
-    starting_thread = Thread.model_validate_json(lines[1])
+    starting_thread = StartThreadChunk.model_validate_json(lines[1])
     tool_call = ToolCallChunk.model_validate_json(lines[3])
-    finished_thread = Thread.model_validate_json(lines[4])
-    StreamEndChunk.model_validate_json(lines[5])
+    finished_thread = Thread.model_validate_json(lines[-2])
+    StreamEndChunk.model_validate_json(lines[-1])
 
     assert tool_call.tool_name == tool_name
     assert len(starting_thread.messages) == 2
@@ -92,7 +98,7 @@ async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient, 
         assert message_in_db.children[0].id == finished_thread.messages[2].id
 
 
-@pytest.mark.xfail(reason="Not accounting for enable_tool_calling=False yet")
+@pytest.mark.xfail(IS_CI, reason="Not accounting for enable_tool_calling=False yet")
 async def test_does_not_call_tools(client: AsyncClient, anon_user: AuthenticatedClient):
     tool_name = "get_current_weather"
     tool_definition = CreateToolDefinition(
@@ -150,8 +156,8 @@ async def test_makes_a_thread_with_parent(
 
     assert len(lines) == 10
     StreamStartChunk.model_validate_json(lines[0])
-    starting_thread = Thread.model_validate_json(lines[1])
-    thread_with_empty_message = Thread.model_validate_json(lines[2])
+    starting_thread = AddMessageChunk.model_validate_json(lines[1])
+    thread_with_empty_message = AddMessageChunk.model_validate_json(lines[2])
     finished_thread = Thread.model_validate_json(lines[-2])
     StreamEndChunk.model_validate_json(lines[-1])
 

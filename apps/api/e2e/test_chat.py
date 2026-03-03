@@ -191,6 +191,48 @@ async def test_makes_a_thread_with_parent(
         assert message_in_db.children[0].id == finished_thread.messages[1].id
 
 
+async def test_rejects_a_thread_with_an_invalid_parent(client: AsyncClient, anon_user: AuthenticatedClient):
+    chat_request = ChatRequest(
+        content="test make a thread with parent that doesnt exist",
+        model="test-model",
+        parent="msg_FakeParentId",
+        enable_tool_calling=False,
+    ).model_dump(exclude_none=True, exclude_computed_fields=True)
+
+    response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(anon_user))
+
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_CONTENT
+
+async def test_rejects_a_thread_with_invalid_parent_role(client: AsyncClient, anon_user: AuthenticatedClient, db_session: DatabaseSession):
+    _root_message_id, messages = await create_test_thread(db_session, anon_user)
+    bad_parent_id = messages[1].id  # this will be the user message
+
+    chat_request = ChatRequest(
+        content="test make a thread with a user message as the parent",
+        model="test-model",
+        parent=bad_parent_id,
+        enable_tool_calling=False,
+    ).model_dump(exclude_none=True, exclude_computed_fields=True)
+
+    response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(anon_user))
+
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_CONTENT
+
+async def test_cannot_create_message_on_another_users_therad(client: AsyncClient, auth_user: AuthenticatedClient, anon_user: AuthenticatedClient, db_session: DatabaseSession):
+    _root_message_id, messages = await create_test_thread(db_session, anon_user)
+    parent_message_id = messages[-1].id  # this will be the user message
+
+    chat_request = ChatRequest(
+        content="test make a thread on another users thread",
+        model="test-model",
+        parent=parent_message_id,
+        enable_tool_calling=False,
+    ).model_dump(exclude_none=True, exclude_computed_fields=True)
+
+    response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(auth_user))
+
+    assert response.status_code == HTTPStatus.FORBIDDEN
+
 @pytest.mark.xfail(IS_CI, reason="File uploads not supported yet")
 async def test_uploads_a_file_to_a_multimodal_model(client: AsyncClient, anon_user: AuthenticatedClient):
     test_image_path = Path(__file__).parent.joinpath("molmo-boats.png")

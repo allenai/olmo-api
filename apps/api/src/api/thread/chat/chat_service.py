@@ -2,7 +2,7 @@ from collections.abc import AsyncIterator, Sequence
 from typing import Annotated
 
 from fastapi import Depends
-from fastapi_problem.error import UnprocessableProblem
+from fastapi_problem.error import ForbiddenProblem, UnprocessableProblem
 from opentelemetry import trace
 from pydantic_ai import (
     AbstractToolset,
@@ -162,6 +162,16 @@ class ChatService:
             existing_thread_messages = build_message_list_from_parent(thread_messages, parent_message_id)
 
             messages = [*messages, *existing_thread_messages]
+
+            root_message = messages[-1]
+            if root_message.creator != creator_id:
+                user_is_not_creator_message = "Cannot create message when not creator"  # words this
+                raise ForbiddenProblem(user_is_not_creator_message)
+
+            if root_message.private != request.private:
+                visibility_message = "Visibility must be identical for all messages in a thread"
+                raise UnprocessableProblem(visibility_message)
+
         elif system_prompt is not None:
             # if parent_message_id is not set we're working with a new thread so we make a new system prompt and make it the root message
             system_message_id = create_message_id()
@@ -218,6 +228,10 @@ class ChatService:
                 missing_content_message = "Tool response messages must have content"
                 raise UnprocessableProblem(missing_content_message)
 
+            if not request.tool_call_id:
+                tool_response_with_no_id_message = "Tool response must have tool call id"
+                raise UnprocessableProblem(tool_response_with_no_id_message)
+
             parent_message = messages[-1] if len(messages) > 0 else None
 
             if not parent_message:
@@ -253,6 +267,14 @@ class ChatService:
         parent_message = (
             await self.message_repository.get_message_by_id(request.parent) if request.parent is not None else None
         )
+
+        if request.parent is not None and parent_message is None:
+            request_parent_doesnt_exists_message = f"Parent message {request.parent} not exist"
+            raise UnprocessableProblem(request_parent_doesnt_exists_message)
+
+        if parent_message is not None and parent_message.role != Role.ToolResponse and parent_message.role == request.role:
+            parent_with_same_role_message = "Parent and child must have different roles"
+            raise UnprocessableProblem(parent_with_same_role_message)
 
         merged_inference_options = merge_inference_options(
             model, InferenceOpts.from_message(parent_message), request.inference_options

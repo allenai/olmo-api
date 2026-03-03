@@ -5,11 +5,14 @@ from pathlib import Path
 import pytest
 from httpx import AsyncClient
 from pydantic import ValidationError
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition, ParameterDef
 from api.thread.models.thread import Thread
 from core.message.message_chunk import StreamEndChunk, StreamStartChunk, ToolCallChunk
 from core.message.role import Role
+from db.models.message import Message
 from e2e.conftest import AuthenticatedClient, DatabaseSession, auth_headers_for_user
 
 from ._util import assert_ok_response
@@ -20,7 +23,7 @@ CHAT_ENDPOINT = "/v5/threads/chat"
 IS_CI = os.getenv("CI", "false") == "true"
 
 
-async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient):
+async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient, db_session: DatabaseSession):
     tool_name = "get_current_weather"
     tool_definition = CreateToolDefinition(
         name=tool_name,
@@ -68,6 +71,24 @@ async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient):
     assert finished_thread.messages[2].role == Role.Assistant
     assert finished_thread.messages[2].tool_calls
     assert len(finished_thread.messages[2].tool_calls) == 1
+
+    async with db_session() as session, session.begin():
+        message_query = (
+            select(Message)
+            .where(Message.id == finished_thread.messages[1].id)
+            .options(
+                selectinload(Message.children),
+                selectinload(Message.parent_),
+            )
+        )
+        message_in_db_result = await session.scalars(message_query)
+        message_in_db = message_in_db_result.one()
+
+        assert message_in_db.parent_ is not None and message_in_db.parent_.id == finished_thread.messages[0].id, (  # noqa: PT018
+            "User message did not get its parent set correctly in the DB"
+        )
+        assert message_in_db.children
+        assert message_in_db.children[0].id == finished_thread.messages[2].id
 
 
 @pytest.mark.xfail(reason="Not accounting for enable_tool_calling=False yet")

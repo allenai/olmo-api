@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Annotated, Any, Self
+from typing import Annotated, Any, Literal, Self
 
 from fastapi import UploadFile
 from pydantic import (
@@ -41,20 +41,12 @@ def captcha_token_required_on_prod(value: str | None):
     return value
 
 
-class ChatRequest(APIInterface):
-    parent: str | None = Field(default=None)
-    content: str | None = Field(default=None)
-    input_parts: list[Json[InputPart]] | None = Field(default=None)
-    role: Role = Field(default=Role.User)
-    original: str | None = Field(default=None)
-    private: bool = Field(default=False)
-    template: str | None = Field(default=None)
+class BaseChatRequest(APIInterface):
     model: str
     host: str | None = Field(default=None, deprecated=True)
-    tool_call_id: str | None = Field(default=None)
-    tool_definitions: Json[list[CreateToolDefinition]] | None = Field(default=None)
-    selected_tools: list[str] | None = Field(default=None)
-    enable_tool_calling: bool = Field(default=False)
+
+    template: str | None = Field(default=None)
+    private: bool = Field(default=False)
 
     bypass_safety_check: bool = Field(default=False)
 
@@ -64,36 +56,25 @@ class ChatRequest(APIInterface):
     temperature: float | None = Field(default=None)
     top_p: float | None = Field(default=None)
     stop: list[str] | None = Field(default_factory=list)
+    n: int | None = Field(default=1, ge=1, le=1)
+    logprobs: int | None = Field(default=None, ge=0, le=10)
+    extra_parameters: Json[dict[str, Any]] | None = Field(default=None)
+
+    files: Sequence[UploadFile] | None = Field(default=None)
+
+    tool_definitions: Json[list[CreateToolDefinition]] | None = Field(default=None)
+    selected_tools: list[str] | None = Field(default=None)
+    enable_tool_calling: bool = Field(default=False)
 
     @computed_field
     @property
     def inference_options(self) -> InferenceOpts:
         return InferenceOpts(max_tokens=self.max_tokens, temperature=self.temperature, top_p=self.top_p, stop=self.stop)
 
-    n: int | None = Field(
-        default=1, ge=1, le=1
-    )  # n has a max of 1 when streaming. if we allow for non-streaming requests we can go up to 50
-    logprobs: int | None = Field(default=None, ge=0, le=10)  # logprobs has a max of 10
 
-    extra_parameters: Json[dict[str, Any]] | None = Field(default=None)
-
-    files: Sequence[UploadFile] | None = Field(default=None)
-
-    @model_validator(mode="after")
-    def check_original_and_parent_are_different(self) -> Self:
-        if self.original is not None and self.parent == self.original:
-            msg = "The original message cannot also be the parent"
-            raise ValueError(msg)
-
-        return self
-
-    @model_validator(mode="after")
-    def check_assistant_message_has_a_parent(self) -> Self:
-        if self.role is Role.Assistant and self.parent is None:
-            msg = "Assistant messages must have a parent"
-            raise ValueError(msg)
-
-        return self
+class ContentChatRequest(BaseChatRequest):
+    content: str | None = Field(default=None)
+    input_parts: list[Json[InputPart]] | None = Field(default=None)
 
     @field_validator("content", mode="after")
     @classmethod
@@ -123,3 +104,36 @@ class ChatRequest(APIInterface):
             raise ValueError(msg)
 
         return self
+
+
+class UserChatRequest(ContentChatRequest):
+    role: Literal[Role.User] = Role.User
+    parent: str | None = Field(default=None)
+
+    original: str | None = Field(default=None)
+
+    @model_validator(mode="after")
+    def check_original_and_parent_are_different(self) -> Self:
+        if self.original is not None and self.parent == self.original:
+            msg = "The original message cannot also be the parent"
+            raise ValueError(msg)
+
+        return self
+
+
+class AssistantChatRequest(ContentChatRequest):
+    role: Literal[Role.Assistant]
+    parent: str
+
+
+class ToolResponseChatRequest(BaseChatRequest):
+    role: Literal[Role.ToolResponse]
+    parent: str
+    tool_call_id: str
+    content: str
+
+
+ChatRequest = Annotated[
+    UserChatRequest | AssistantChatRequest | ToolResponseChatRequest,
+    Field(discriminator="role"),
+]

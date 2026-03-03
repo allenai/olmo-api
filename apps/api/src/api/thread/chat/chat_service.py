@@ -224,19 +224,7 @@ class ChatService:
             new_messages.append(user_message)
 
         if request.role is Role.ToolResponse:
-            if not request.content:
-                missing_content_message = "Tool response messages must have content"
-                raise UnprocessableProblem(missing_content_message)
-
-            if not request.tool_call_id:
-                tool_response_with_no_id_message = "Tool response must have tool call id"
-                raise UnprocessableProblem(tool_response_with_no_id_message)
-
-            parent_message = messages[-1] if len(messages) > 0 else None
-
-            if not parent_message:
-                tool_response_with_no_parent_message = "Tool response messages must have a parent"
-                raise UnprocessableProblem(tool_response_with_no_parent_message)
+            parent_message = messages[-1]
 
             tool_response_message = Message(
                 content=request.content,

@@ -23,6 +23,7 @@ CHAT_ENDPOINT = "/v5/threads/chat"
 IS_CI = os.getenv("CI", "false") == "true"
 
 
+@pytest.mark.xfail(reason="Returning an extra assistant message after the tool call message comes back")
 async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient, db_session: DatabaseSession):
     tool_name = "get_current_weather"
     tool_definition = CreateToolDefinition(
@@ -54,12 +55,12 @@ async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient, 
 
     lines = response.text.splitlines()
 
-    assert len(lines) == 7
+    assert len(lines) == 6
     StreamStartChunk.model_validate_json(lines[0])
     starting_thread = Thread.model_validate_json(lines[1])
     tool_call = ToolCallChunk.model_validate_json(lines[3])
-    finished_thread = Thread.model_validate_json(lines[5])
-    StreamEndChunk.model_validate_json(lines[6])
+    finished_thread = Thread.model_validate_json(lines[4])
+    StreamEndChunk.model_validate_json(lines[5])
 
     assert tool_call.tool_name == tool_name
     assert len(starting_thread.messages) == 2

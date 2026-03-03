@@ -187,8 +187,6 @@ class PlaygroundUIEventStream(
             # if pydantic_reason:
             #     self._finish_reason = _FINISH_REASON_MAP.get(pydantic_reason, "other")
 
-            output = event.result.output  # noqa: F841
-            # all_messages = event.result.all_messages()
             new_messages = event.result.new_messages()
 
             mapped_new_messages = map_response_pydantic_messages_to_messages(

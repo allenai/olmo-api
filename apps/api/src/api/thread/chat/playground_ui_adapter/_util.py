@@ -166,7 +166,7 @@ def map_response_pydantic_messages_to_messages(
                     role=Role.Assistant,
                     parent=parent_message_id,
                     tool_calls=message_tool_calls,
-                    thinking=None,
+                    thinking=message_thinking,
                 )
 
                 mapped_messages.append(response_message)

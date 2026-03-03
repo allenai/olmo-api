@@ -111,40 +111,33 @@ class StreamEndChunk(BaseChunk):
         return ChunkType.END
 
 
-class StartThreadChunk(BaseChunk):
+class ThreadMixin(APIInterface):
+    id: obj.ID
+    messages: Sequence[FlatMessage]
+
+
+class StartThreadChunk(ThreadMixin, BaseChunk):
     # HACK: This lets us make `type` required in the schema while also not requiring it in the init
     @computed_field  # type: ignore
     @property
     def type(self) -> Literal[ChunkType.START_THREAD]:
         return ChunkType.START_THREAD
 
-    message: obj.ID
-    id: obj.ID
-    messages: Sequence[FlatMessage]
 
-
-class AddMessageChunk(BaseChunk):
+class AddMessageChunk(ThreadMixin, BaseChunk):
     # HACK: This lets us make `type` required in the schema while also not requiring it in the init
     @computed_field  # type: ignore
     @property
     def type(self) -> Literal[ChunkType.ADD_MESSAGE]:
         return ChunkType.ADD_MESSAGE
 
-    message: obj.ID
-    id: obj.ID
-    messages: Sequence[FlatMessage]
 
-
-class FinalThreadChunk(BaseChunk):
+class FinalThreadChunk(ThreadMixin, BaseChunk):
     # HACK: This lets us make `type` required in the schema while also not requiring it in the init
     @computed_field  # type: ignore
     @property
     def type(self) -> Literal[ChunkType.FINAL_THREAD]:
         return ChunkType.FINAL_THREAD
-
-    message: obj.ID
-    id: obj.ID
-    messages: Sequence[FlatMessage]
 
 
 Chunk = (

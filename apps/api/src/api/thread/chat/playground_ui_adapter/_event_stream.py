@@ -112,8 +112,8 @@ class PlaygroundUIEventStream(
 
     async def before_request(self) -> AsyncIterator[ChatStreamOutput]:
         self.new_message_id()
-        message = self._create_message_with_defaults(content="", role=Role.User)
-        yield AddMessageChunk(message=message.id, id=message.id, messages=[FlatMessage.from_message(message)])
+        return
+        yield
 
     async def before_response(self) -> AsyncIterator[ChatStreamOutput]:
         self.new_message_id()

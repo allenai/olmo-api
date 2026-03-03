@@ -260,7 +260,11 @@ class ChatService:
             request_parent_doesnt_exists_message = f"Parent message {request.parent} not exist"
             raise UnprocessableProblem(request_parent_doesnt_exists_message)
 
-        if parent_message is not None and parent_message.role != Role.ToolResponse and parent_message.role == request.role:
+        if (
+            parent_message is not None
+            and parent_message.role != Role.ToolResponse
+            and parent_message.role == request.role
+        ):
             parent_with_same_role_message = "Parent and child must have different roles"
             raise UnprocessableProblem(parent_with_same_role_message)
 

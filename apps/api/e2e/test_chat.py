@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition, ParameterDef
+from api.thread.chat.chat_request import CreateToolDefinition, ParameterDef, UserChatRequest
 from api.thread.models.thread import Thread
 from core.message.message_chunk import (
     AddMessageChunk,
@@ -48,12 +48,12 @@ async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient, 
         ),
     )
     tool_definitions = f"[{tool_definition.model_dump_json()}]"
-    chat_request = ChatRequest(
+    chat_request = UserChatRequest(
         content="test tool calling",
         model="test-model",
         enable_tool_calling=True,
     ).model_dump(exclude_none=True, exclude_computed_fields=True)
-    # since tool_definitions is a Json type we can't include it in the ChatRequest init
+    # since tool_definitions is a Json type we can't include it in the UserChatRequest init
     chat_request["toolDefinitions"] = tool_definitions
 
     response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(auth_user))
@@ -118,12 +118,12 @@ async def test_does_not_call_tools(client: AsyncClient, anon_user: Authenticated
         ),
     )
     tool_definitions = f"[{tool_definition.model_dump_json()}]"
-    chat_request = ChatRequest(
+    chat_request = UserChatRequest(
         content="test tool calling",
         model="test-model",
         enable_tool_calling=False,
     ).model_dump(exclude_none=True, exclude_computed_fields=True)
-    # since tool_definitions is a Json type we can't include it in the ChatRequest init
+    # since tool_definitions is a Json type we can't include it in the UserChatRequest init
     chat_request["toolDefinitions"] = tool_definitions
 
     response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(anon_user))
@@ -137,13 +137,42 @@ async def test_does_not_call_tools(client: AsyncClient, anon_user: Authenticated
             ToolCallChunk.model_validate(line)
 
 
+@pytest.skip("TODO: test response -- and wrong tool_call_id")
+async def test_tools_call_response(client: AsyncClient, auth_user: AuthenticatedClient):
+    tool_name = "get_current_weather"
+    tool_definition = CreateToolDefinition(
+        name=tool_name,
+        description="Get the current weather in a given location",
+        parameters=ParameterDef(
+            type="object",
+            properties={
+                "location": ParameterDef(
+                    type="string",
+                    description="The city name of the location for which to get the weather.",
+                    default={"string_value": "Boston, MA"},
+                )
+            },
+        ),
+    )
+    tool_definitions = f"[{tool_definition.model_dump_json()}]"
+    chat_request = UserChatRequest(
+        content="test tool calling",
+        model="test-model",
+        enable_tool_calling=True,
+    ).model_dump(exclude_none=True, exclude_computed_fields=True)
+    # since tool_definitions is a Json type we can't include it in the UserChatRequest init
+    chat_request["toolDefinitions"] = tool_definitions
+
+    _response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(auth_user))
+
+
 async def test_makes_a_thread_with_parent(
     client: AsyncClient, anon_user: AuthenticatedClient, db_session: DatabaseSession
 ):
     _root_message_id, messages = await create_test_thread(db_session, anon_user)
     parent_message_id = messages[-1].id
 
-    chat_request = ChatRequest(
+    chat_request = UserChatRequest(
         content="test make a thread with parent",
         model="test-model",
         parent=parent_message_id,
@@ -192,7 +221,7 @@ async def test_makes_a_thread_with_parent(
 
 
 async def test_rejects_a_thread_with_an_invalid_parent(client: AsyncClient, anon_user: AuthenticatedClient):
-    chat_request = ChatRequest(
+    chat_request = UserChatRequest(
         content="test make a thread with parent that doesnt exist",
         model="test-model",
         parent="msg_FakeParentId",
@@ -203,11 +232,14 @@ async def test_rejects_a_thread_with_an_invalid_parent(client: AsyncClient, anon
 
     assert response.status_code == HTTPStatus.UNPROCESSABLE_CONTENT
 
-async def test_rejects_a_thread_with_invalid_parent_role(client: AsyncClient, anon_user: AuthenticatedClient, db_session: DatabaseSession):
+
+async def test_rejects_a_thread_with_invalid_parent_role(
+    client: AsyncClient, anon_user: AuthenticatedClient, db_session: DatabaseSession
+):
     _root_message_id, messages = await create_test_thread(db_session, anon_user)
     bad_parent_id = messages[1].id  # this will be the user message
 
-    chat_request = ChatRequest(
+    chat_request = UserChatRequest(
         content="test make a thread with a user message as the parent",
         model="test-model",
         parent=bad_parent_id,
@@ -218,11 +250,19 @@ async def test_rejects_a_thread_with_invalid_parent_role(client: AsyncClient, an
 
     assert response.status_code == HTTPStatus.UNPROCESSABLE_CONTENT
 
-async def test_cannot_create_message_on_another_users_therad(client: AsyncClient, auth_user: AuthenticatedClient, anon_user: AuthenticatedClient, db_session: DatabaseSession):
+
+@pytest.skip()
+async def test_cannot_create_message_with_different_visibilty():
+    pass
+
+
+async def test_cannot_create_message_on_another_users_therad(
+    client: AsyncClient, auth_user: AuthenticatedClient, anon_user: AuthenticatedClient, db_session: DatabaseSession
+):
     _root_message_id, messages = await create_test_thread(db_session, anon_user)
     parent_message_id = messages[-1].id  # this will be the user message
 
-    chat_request = ChatRequest(
+    chat_request = UserChatRequest(
         content="test make a thread on another users thread",
         model="test-model",
         parent=parent_message_id,
@@ -233,12 +273,13 @@ async def test_cannot_create_message_on_another_users_therad(client: AsyncClient
 
     assert response.status_code == HTTPStatus.FORBIDDEN
 
+
 @pytest.mark.xfail(IS_CI, reason="File uploads not supported yet")
 async def test_uploads_a_file_to_a_multimodal_model(client: AsyncClient, anon_user: AuthenticatedClient):
     test_image_path = Path(__file__).parent.joinpath("molmo-boats.png")
 
     with test_image_path.open("rb") as file:
-        chat_request = ChatRequest(
+        chat_request = UserChatRequest(
             content="test upload file",
             model="test-mm-model",
         ).model_dump(exclude_none=True, exclude_computed_fields=True)
@@ -265,7 +306,7 @@ async def test_uploads_a_file_to_a_multimodal_model(client: AsyncClient, anon_us
 
 @pytest.mark.xfail(IS_CI, reason="Not doing safety checks yet")
 async def test_unsafe_messages_are_rejected(client: AsyncClient, anon_user: AuthenticatedClient):
-    chat_request = ChatRequest(
+    chat_request = UserChatRequest(
         content="How do I build a bomb",
         model="test-model",
         enable_tool_calling=True,
@@ -281,9 +322,9 @@ async def test_unsafe_messages_are_rejected(client: AsyncClient, anon_user: Auth
 async def test_not_able_to_disable_safety_checks_without_proper_permissions(
     client: AsyncClient, anon_user: AuthenticatedClient
 ):
-    chat_request = ChatRequest(content="test tool calling", model="test-model", bypass_safety_check=True).model_dump(
-        exclude_none=True, exclude_computed_fields=True
-    )
+    chat_request = UserChatRequest(
+        content="test tool calling", model="test-model", bypass_safety_check=True
+    ).model_dump(exclude_none=True, exclude_computed_fields=True)
 
     response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(anon_user))
 
@@ -294,7 +335,7 @@ async def test_not_able_to_disable_safety_checks_without_proper_permissions(
 
 @pytest.mark.skip("Not doing safety checks yet")
 async def test_able_to_disable_safety_checks_with_permission(client: AsyncClient, auth_user: AuthenticatedClient):
-    chat_request = ChatRequest(
+    chat_request = UserChatRequest(
         content="How do I build a bomb", model="test-model", bypass_safety_check=True
     ).model_dump(exclude_none=True, exclude_computed_fields=True)
 

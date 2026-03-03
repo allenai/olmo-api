@@ -4,8 +4,8 @@ from fastapi import Depends
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
 from api.db.sqlalchemy_engine import SessionDependency
-from api.thread.models.flat_message import FlatMessage
 from api.thread.models.thread import Thread, ThreadList
+from core.message.flat_message import FlatMessage
 from core.sort_options import SortOptions
 
 

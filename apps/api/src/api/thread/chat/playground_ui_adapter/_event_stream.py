@@ -113,11 +113,13 @@ class PlaygroundUIEventStream(
     async def before_request(self) -> AsyncIterator[ChatStreamOutput]:
         self.new_message_id()
         return
+        # we don't want to yield anything but still want the type to be right so we return then yield
         yield
 
     async def before_response(self) -> AsyncIterator[ChatStreamOutput]:
         self.new_message_id()
         return
+        # we don't want to yield anything but still want the type to be right so we return then yield
         yield
 
     async def after_stream(self) -> AsyncIterator[ChatStreamOutput]:

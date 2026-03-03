@@ -4,6 +4,7 @@ from itertools import groupby
 from typing import Annotated, cast
 
 from fastapi import Depends
+from opentelemetry import trace
 from sqlalchemy import CursorResult, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -21,6 +22,14 @@ from db.models.message import Message
 class BaseAsyncMessageRepository(abc.ABC):
     @abc.abstractmethod
     async def add(self, message: Message) -> Message:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    async def add_many(self, messages: Sequence[Message]) -> Sequence[Message]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    async def finalize_thread(self, new_messages: Sequence[Message]) -> Message:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -78,6 +87,9 @@ class BaseAsyncMessageRepository(abc.ABC):
         raise NotImplementedError
 
 
+tracer = trace.get_tracer(__name__)
+
+
 class AsyncMessageRepository(BaseAsyncMessageRepository):
     session: AsyncSession
 
@@ -100,6 +112,32 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
         result = await self.session.scalars(query)
         return result.one()
 
+    @tracer.start_as_current_span("MessageRepository/add_many")
+    async def add_many(self, messages: Sequence[Message]) -> Sequence[Message]:
+        for message in messages:
+            self.session.add(message)
+
+        await self.session.flush()
+
+        return messages
+
+    @tracer.start_as_current_span("MessageRepository/finalize_thread")
+    async def finalize_thread(self, new_messages: Sequence[Message]) -> Message:
+        new_messages_map = {message.id: message for message in new_messages}
+
+        for new_message in new_messages:
+            if new_message.parent in new_messages_map:
+                parent = new_messages_map[new_message.parent]
+                new_message.parent_ = parent
+
+            new_message.final = True
+            self.session.add(new_message)
+
+        await self.session.commit()
+
+        return new_messages[0]
+
+    @tracer.start_as_current_span("MessageRepository/get_messages_by_root")
     async def get_messages_by_root(self, message_id: obj.ID, user_id: str) -> Sequence[Message]:
         query = (
             select(Message)
@@ -114,6 +152,8 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
                 selectinload(Message.labels.and_(Label.deleted == None, Label.creator == user_id)),  # noqa: E711
                 selectinload(Message.tool_calls),
                 selectinload(Message.tool_definitions),
+                # Since we're selecting a bunch of messages and not just one we can load the children in with them
+                selectinload(Message.children),
             )
             .order_by(Message.created.asc())
         )
@@ -169,6 +209,7 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
 
         return messages
 
+    @tracer.start_as_current_span("MessageRepository/get_message_by_id")
     async def get_message_by_id(
         self, message_id: obj.ID, *, label_creator: obj.ID | None = None, include_children=False
     ) -> Message | None:

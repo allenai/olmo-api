@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import Depends
 from fastapi_problem.error import UnprocessableProblem
+from opentelemetry import trace
 from pydantic_ai import (
     AbstractToolset,
     Agent,
@@ -21,7 +22,6 @@ from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
 from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
 from api.thread.chat.playground_ui_adapter._util import RunInput
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
-from api.thread.chat.util import attach_message_children
 from api.tools.mcp_service import get_general_mcp_servers
 from api.tools.tools_service import ToolsServiceDependency
 from core.auth.token import Token
@@ -108,6 +108,9 @@ def map_tool_def_to_pydantic(tool: CreateToolDefinition) -> ToolDefinition:
     return tool_definition
 
 
+tracer = trace.get_tracer(__name__)
+
+
 class ChatService:
     def __init__(
         self,
@@ -119,6 +122,7 @@ class ChatService:
         self.session = session
         self.tools_service = tools_service
 
+    @tracer.start_as_current_span(name="ChatService/_get_model")
     async def _get_model(self, model_id: str):
         async with self.session.begin():
             stmt = base_model_config_select.where(ModelConfig.id == model_id)
@@ -139,17 +143,7 @@ class ChatService:
 
             return model
 
-    async def _get_parent_and_root_messages(self, parent_message_id: ID | None):
-        if parent_message_id is None:
-            return None, None
-
-        parent_message = await self.message_repository.get_message_by_id(parent_message_id)
-        root_message = (
-            await self.message_repository.get_message_by_id(parent_message.root) if parent_message is not None else None
-        )
-
-        return parent_message, root_message
-
+    @tracer.start_as_current_span(name="ChatService/_initialize_thread")
     async def _initialize_thread(
         self,
         root_message_id: ID | None,
@@ -161,7 +155,7 @@ class ChatService:
         model: ModelConfig,
     ) -> tuple[list[Message], list[Message]]:
         messages: list[Message] = []
-        new_messages = []
+        new_messages: list[Message] = []
 
         if root_message_id is not None and parent_message_id is not None:
             thread_messages = await self.message_repository.get_messages_by_root(root_message_id, creator_id)
@@ -199,6 +193,8 @@ class ChatService:
                 for definition in request.tool_definitions or []
             ]
 
+            parent = messages[-1] if len(messages) > 0 else None
+
             user_message = Message(
                 id=user_message_id,
                 content=request.content or "",
@@ -209,9 +205,10 @@ class ChatService:
                 root=root_message_id,
                 model_id=model.id,
                 model_host=model.host,
-                parent=new_messages[-1].id if len(new_messages) > 0 else None,
+                parent=parent.id if parent else None,
                 tool_definitions=tool_definitions,
             )
+            user_message.parent_ = parent
 
             messages.append(user_message)
             new_messages.append(user_message)
@@ -221,7 +218,7 @@ class ChatService:
                 missing_content_message = "Tool response messages must have content"
                 raise UnprocessableProblem(missing_content_message)
 
-            parent_message = new_messages[-1] if len(new_messages) > 0 else None
+            parent_message = messages[-1] if len(messages) > 0 else None
 
             if not parent_message:
                 tool_response_with_no_parent_message = "Tool response messages must have a parent"
@@ -237,21 +234,25 @@ class ChatService:
                 model_host=model.host,
                 parent=parent_message.id,
             )
+            tool_response_message.parent_ = parent_message
 
             messages.append(tool_response_message)
             new_messages.append(tool_response_message)
 
-        attach_message_children(messages)
+        await self.message_repository.add_many(new_messages)
 
         return messages, new_messages
 
+    @tracer.start_as_current_span(name="ChatService/_validate_and_get_thread")
     async def _validate_and_get_thread(
         self,
         request: ChatRequest,
         user: Token,
         model: ModelConfig,
     ) -> tuple[list[Message], list[Message], ID, ID, list[Ai2ToolDefinition] | None]:
-        parent_message, root_message = await self._get_parent_and_root_messages(request.parent)
+        parent_message = (
+            await self.message_repository.get_message_by_id(request.parent) if request.parent is not None else None
+        )
 
         merged_inference_options = merge_inference_options(
             model, InferenceOpts.from_message(parent_message), request.inference_options
@@ -259,7 +260,7 @@ class ChatService:
 
         validate_inference_parameters_against_model_constraints(model, merged_inference_options)
 
-        root_message_id = root_message.id if root_message is not None else None
+        root_message_id = parent_message.root if parent_message is not None else None
         parent_message_id = parent_message.id if parent_message is not None else None
 
         all_messages, new_messages = await self._initialize_thread(
@@ -279,6 +280,7 @@ class ChatService:
         return (all_messages, new_messages, all_messages[0].id, all_messages[-1].id, tool_definitions)
 
     @staticmethod
+    @tracer.start_as_current_span(name="ChatService/_get_toolsets")
     def _get_toolsets(
         model: ModelConfig,
         user_tools: Sequence[CreateToolDefinition] | None,
@@ -314,6 +316,7 @@ class ChatService:
 
         toolsets = self._get_toolsets(model, request.tool_definitions, mcp_tools=request.selected_tools)
 
+        # TODO: make sure inference options are sent
         agent = Agent(
             model=pydantic_model,
             toolsets=toolsets,
@@ -331,6 +334,7 @@ class ChatService:
             inference_opts=all_messages[-1].opts,
             user_tool_names=[definition.name for definition in request.tool_definitions or []],
             tool_definitions=tool_definitions,
+            handle_final_messages=self.message_repository.finalize_thread,
         )
 
         adapter = PlaygroundUIAdapter(agent, run_input=run_input)

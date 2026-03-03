@@ -5,11 +5,14 @@ from pathlib import Path
 import pytest
 from httpx import AsyncClient
 from pydantic import ValidationError
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition, ParameterDef
 from api.thread.models.thread import Thread
 from core.message.message_chunk import StreamEndChunk, StreamStartChunk, ToolCallChunk
 from core.message.role import Role
+from db.models.message import Message
 from e2e.conftest import AuthenticatedClient, DatabaseSession, auth_headers_for_user
 
 from ._util import assert_ok_response
@@ -20,7 +23,7 @@ CHAT_ENDPOINT = "/v5/threads/chat"
 IS_CI = os.getenv("CI", "false") == "true"
 
 
-async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient):
+async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient, db_session: DatabaseSession):
     tool_name = "get_current_weather"
     tool_definition = CreateToolDefinition(
         name=tool_name,
@@ -69,6 +72,24 @@ async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient):
     assert finished_thread.messages[2].tool_calls
     assert len(finished_thread.messages[2].tool_calls) == 1
 
+    async with db_session() as session, session.begin():
+        message_query = (
+            select(Message)
+            .where(Message.id == finished_thread.messages[1].id)
+            .options(
+                selectinload(Message.children),
+                selectinload(Message.parent_),
+            )
+        )
+        message_in_db_result = await session.scalars(message_query)
+        message_in_db = message_in_db_result.one()
+
+        assert message_in_db.parent_ is not None and message_in_db.parent_.id == finished_thread.messages[0].id, (  # noqa: PT018
+            "User message did not get its parent set correctly in the DB"
+        )
+        assert message_in_db.children
+        assert message_in_db.children[0].id == finished_thread.messages[2].id
+
 
 @pytest.mark.xfail(reason="Not accounting for enable_tool_calling=False yet")
 async def test_does_not_call_tools(client: AsyncClient, anon_user: AuthenticatedClient):
@@ -107,7 +128,6 @@ async def test_does_not_call_tools(client: AsyncClient, anon_user: Authenticated
             ToolCallChunk.model_validate_json(line)
 
 
-@pytest.mark.xfail(IS_CI, reason="Having async loading issues when getting the parent and root, will refactor!")
 async def test_makes_a_thread_with_parent(
     client: AsyncClient, anon_user: AuthenticatedClient, db_session: DatabaseSession
 ):
@@ -115,7 +135,10 @@ async def test_makes_a_thread_with_parent(
     parent_message_id = messages[-1].id
 
     chat_request = ChatRequest(
-        content="test make a thread with parent", model="test-model", parent=parent_message_id
+        content="test make a thread with parent",
+        model="test-model",
+        parent=parent_message_id,
+        enable_tool_calling=False,
     ).model_dump(exclude_none=True, exclude_computed_fields=True)
 
     response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(anon_user))
@@ -124,12 +147,41 @@ async def test_makes_a_thread_with_parent(
 
     lines = response.text.splitlines()
 
-    assert len(lines) == 5
-    # StreamStartChunk.model_validate_json(lines[0])
-    # starting_thread = Thread.model_validate_json(lines[1])
-    # tool_call = ToolCallChunk.model_validate_json(lines[2])
-    # finished_thread = Thread.model_validate_json(lines[3])
-    # StreamEndChunk.model_validate_json(lines[4])
+    # TODO: Bump this up when we emit the empty message for the start of the model response
+    assert len(lines) == 9
+    StreamStartChunk.model_validate_json(lines[0])
+    starting_thread = Thread.model_validate_json(lines[1])
+    # TODO: Uncomment this when we emit the empty message for the start of the model response
+    # thread_with_empty_message = Thread.model_validate_json(lines[2])
+    finished_thread = Thread.model_validate_json(lines[-2])
+    StreamEndChunk.model_validate_json(lines[-1])
+
+    assert len(starting_thread.messages) == 1
+    # assert len(thread_with_empty_message.messages) == 1
+    # We only return new messages, not the whole thread
+    assert len(finished_thread.messages) == 2
+
+    test_parent_message_id = parent_message_id
+    for message in finished_thread.messages:
+        assert message.parent == test_parent_message_id
+        test_parent_message_id = message.id
+
+    async with db_session() as session, session.begin():
+        message_query = (
+            select(Message)
+            .where(Message.id == finished_thread.messages[0].id)
+            .options(
+                selectinload(Message.children),
+            )
+        )
+        message_in_db_result = await session.scalars(message_query)
+        message_in_db = message_in_db_result.one()
+
+        assert message_in_db.parent is not None and message_in_db.parent == parent_message_id, (  # noqa: PT018
+            "User message did not get its parent set correctly in the DB"
+        )
+        assert message_in_db.children
+        assert message_in_db.children[0].id == finished_thread.messages[1].id
 
 
 @pytest.mark.xfail(IS_CI, reason="File uploads not supported yet")

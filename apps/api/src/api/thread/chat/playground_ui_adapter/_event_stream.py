@@ -228,7 +228,7 @@ class PlaygroundUIEventStream(
             )
 
         else:
-            yield ErrorChunk(error_description=str(error), message=self.message_id, error_code=ErrorCode.OTHER_ERROR)
+            yield ErrorChunk(error_description=str(error), message=self.message_id, error_code=ErrorCode.UNKNOWN_ERROR)
 
     async def handle_run_result(self, event: AgentRunResultEvent) -> AsyncIterator[Event]:
         try:

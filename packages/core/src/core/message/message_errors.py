@@ -3,7 +3,10 @@ from enum import StrEnum
 
 class ErrorCode(StrEnum):
     TOOL_CALL_ERROR = "toolCallError"
-    OTHER_ERROR = "otherError"
+    EXCEEDED_MAX_TOKENS = "exceededMaxTokens"
+    MODEL_OVERLOADED = "modelOverloaded"
+
+    UNKNOWN_ERROR = "unknownError"
 
 
 class ErrorSeverity(StrEnum):

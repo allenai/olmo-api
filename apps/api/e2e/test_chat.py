@@ -54,12 +54,12 @@ async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient, 
 
     lines = response.text.splitlines()
 
-    assert len(lines) == 5
+    assert len(lines) == 7
     StreamStartChunk.model_validate_json(lines[0])
     starting_thread = Thread.model_validate_json(lines[1])
-    tool_call = ToolCallChunk.model_validate_json(lines[2])
-    finished_thread = Thread.model_validate_json(lines[3])
-    StreamEndChunk.model_validate_json(lines[4])
+    tool_call = ToolCallChunk.model_validate_json(lines[3])
+    finished_thread = Thread.model_validate_json(lines[5])
+    StreamEndChunk.model_validate_json(lines[6])
 
     assert tool_call.tool_name == tool_name
     assert len(starting_thread.messages) == 2
@@ -147,17 +147,15 @@ async def test_makes_a_thread_with_parent(
 
     lines = response.text.splitlines()
 
-    # TODO: Bump this up when we emit the empty message for the start of the model response
-    assert len(lines) == 9
+    assert len(lines) == 10
     StreamStartChunk.model_validate_json(lines[0])
     starting_thread = Thread.model_validate_json(lines[1])
-    # TODO: Uncomment this when we emit the empty message for the start of the model response
-    # thread_with_empty_message = Thread.model_validate_json(lines[2])
+    thread_with_empty_message = Thread.model_validate_json(lines[2])
     finished_thread = Thread.model_validate_json(lines[-2])
     StreamEndChunk.model_validate_json(lines[-1])
 
     assert len(starting_thread.messages) == 1
-    # assert len(thread_with_empty_message.messages) == 1
+    assert len(thread_with_empty_message.messages) == 1
     # We only return new messages, not the whole thread
     assert len(finished_thread.messages) == 2
 

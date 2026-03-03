@@ -39,7 +39,8 @@ from core.message.message_chunk import (
 from core.message.role import Role
 from core.object_id import ID
 from core.tools.tool_source import ToolSource
-from db.models.message import create_message_id
+from db.models.inference_opts import InferenceOpts
+from db.models.message import Message, create_message_id
 from db.models.tool_call import ToolCall
 
 __all__ = ["PlaygroundUIEventStream"]
@@ -80,18 +81,32 @@ class PlaygroundUIEventStream(
         yield self.run_input.new_messages[0]
 
     async def before_request(self) -> AsyncIterator[ChatStreamOutput]:
-        # TODO: Emit a new message here too
         self.new_message_id()
-        return
-        # we don't want to yield anything but still want the type to be right so we return then yield
-        yield
+        message = Message(
+            content="",
+            id=self.message_id,
+            creator=self.run_input.creator,
+            role=Role.User,
+            opts=InferenceOpts(),
+            root=self.run_input.root_message_id,
+            model_id=self.run_input.model.id,
+            model_host=self.run_input.model.host,
+        )
+        yield message
 
     async def before_response(self) -> AsyncIterator[ChatStreamOutput]:
-        # TODO: Emit a new message here too
         self.new_message_id()
-        return
-        # we don't want to yield anything but still want the type to be right so we return then yield
-        yield
+        message = Message(
+            content="",
+            id=self.message_id,
+            creator=self.run_input.creator,
+            role=Role.Assistant,
+            opts=InferenceOpts(),
+            root=self.run_input.root_message_id,
+            model_id=self.run_input.model.id,
+            model_host=self.run_input.model.host,
+        )
+        yield message
 
     async def after_stream(self) -> AsyncIterator[ChatStreamOutput]:
         yield StreamEndChunk(message=self.message_id)

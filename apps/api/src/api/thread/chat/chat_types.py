@@ -1,5 +1,5 @@
 from typing import TypeAlias
 
-from core.message.message_chunk import Chunk, MessageStreamError
+from core.message.message_chunk import Chunk
 
-ChatStreamOutput: TypeAlias = Chunk | MessageStreamError
+ChatStreamOutput: TypeAlias = Chunk

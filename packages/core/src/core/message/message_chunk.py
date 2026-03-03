@@ -23,12 +23,6 @@ class ChunkType(StrEnum):
     FINAL_THREAD = "finalThread"
 
 
-class MessageStreamError(APIInterface):
-    message: obj.ID
-    error: str
-    reason: str
-
-
 class BaseChunk(APIInterface):
     message: obj.ID
 

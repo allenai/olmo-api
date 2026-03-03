@@ -5,8 +5,9 @@ from typing import Any
 from flask import json
 
 from core.api_interface import APIInterface
-from core.message.message_chunk import Chunk, MessageStreamError
+from core.message.message_chunk import Chunk
 from db.models.message import Message
+from src.message.create_message_service.message_stream_error import MessageStreamError
 from src.thread.thread_models import Thread
 from src.util import CustomEncoder
 

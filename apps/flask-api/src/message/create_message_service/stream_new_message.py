@@ -20,7 +20,6 @@ from core.auth.token import Token
 from core.message.message_chunk import (
     Chunk,
     ErrorChunk,
-    MessageStreamError,
     StreamEndChunk,
     StreamStartChunk,
 )
@@ -42,6 +41,7 @@ from src.message.create_message_service.files import (
     FileUploadResult,
     upload_request_files,
 )
+from src.message.create_message_service.message_stream_error import MessageStreamError
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.message.inference_logging import log_inference_timing
 from src.message.SafetyChecker import (

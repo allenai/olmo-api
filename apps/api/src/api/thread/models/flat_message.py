@@ -14,7 +14,7 @@ import core.object_id as obj
 from core.api_interface import APIInterface
 from core.inference_engine.finish_reason import FinishReason
 from core.label.label import Label
-from core.message.message_chunk import ErrorCode, ErrorSeverity
+from core.message.message_errors import ErrorCode, ErrorSeverity
 from core.message.role import Role
 from core.message.text_snippet import text_snippet
 from core.tools.tool_call import ToolCall

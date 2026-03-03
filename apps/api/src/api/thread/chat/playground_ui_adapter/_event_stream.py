@@ -27,9 +27,13 @@ from api.thread.chat.playground_ui_adapter._util import (
     create_message_from_run_input,
     map_response_pydantic_messages_to_messages,
 )
+from api.thread.models.flat_message import FlatMessage
 from core.message.message_chunk import (
+    AddMessageChunk,
     ErrorChunk,
     ErrorCode,
+    FinalThreadChunk,
+    FirstMessageChunk,
     ModelResponseChunk,
     StreamEndChunk,
     StreamStartChunk,
@@ -78,7 +82,9 @@ class PlaygroundUIEventStream(
 
     async def before_stream(self) -> AsyncIterator[ChatStreamOutput]:
         yield StreamStartChunk(message=self.run_input.root_message_id)
-        yield self.run_input.new_messages[0]
+        messages = FlatMessage.from_message_seq(self.run_input.new_messages)
+        yield FirstMessageChunk(message=messages[0].id, id=messages[0].id, messages=messages)
+        # yield self.run_input.new_messages[0]
 
     async def before_request(self) -> AsyncIterator[ChatStreamOutput]:
         self.new_message_id()
@@ -92,7 +98,7 @@ class PlaygroundUIEventStream(
             model_id=self.run_input.model.id,
             model_host=self.run_input.model.host,
         )
-        yield message
+        yield AddMessageChunk(message=message.id, id=message.id, messages=[FlatMessage.from_message(message)])
 
     async def before_response(self) -> AsyncIterator[ChatStreamOutput]:
         self.new_message_id()
@@ -106,7 +112,7 @@ class PlaygroundUIEventStream(
             model_id=self.run_input.model.id,
             model_host=self.run_input.model.host,
         )
-        yield message
+        yield AddMessageChunk(message=message.id, id=message.id, messages=[FlatMessage.from_message(message)])
 
     async def after_stream(self) -> AsyncIterator[ChatStreamOutput]:
         yield StreamEndChunk(message=self.message_id)
@@ -178,7 +184,9 @@ class PlaygroundUIEventStream(
                 tool_calls=tool_calls,
             )
 
-            yield message
+            flat_message = FlatMessage.from_message(message)
+
+            yield AddMessageChunk(message=message.id, id=message.id, messages=[flat_message])
 
     async def on_error(self, error: Exception) -> AsyncIterator[Event]:
         self._finish_reason = "error"
@@ -213,6 +221,8 @@ class PlaygroundUIEventStream(
                 *mapped_new_messages,
             ])
 
-            yield first_new_message
+            messages = FlatMessage.from_message_with_children(first_new_message)
+
+            yield FinalThreadChunk(message=messages[0].id, id=messages[0].id, messages=messages)
         except Exception as e:  # noqa: BLE001
             self.on_error(e)

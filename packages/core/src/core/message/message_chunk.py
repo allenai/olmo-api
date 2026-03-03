@@ -1,10 +1,13 @@
+from collections.abc import Sequence
 from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import computed_field
 
 import core.object_id as obj
+from api.thread.models.flat_message import FlatMessage
 from core.api_interface import APIInterface
+from core.message.message_errors import ErrorCode, ErrorSeverity
 from core.tools.tool_source import ToolSource
 
 
@@ -15,17 +18,9 @@ class ChunkType(StrEnum):
     THINKING = "thinking"
     START = "start"
     END = "end"
-
-
-class ErrorCode(StrEnum):
-    TOOL_CALL_ERROR = "toolCallError"
-    OTHER_ERROR = "otherError"
-
-
-class ErrorSeverity(StrEnum):
-    ERROR = "error"
-    WARNING = "warning"
-    INFO = "info"
+    FIRST_MESSAGE = "firstMessage"
+    ADD_MESSAGE = "addMessage"
+    FINAL_THREAD = "finalThread"
 
 
 class MessageStreamError(APIInterface):
@@ -116,4 +111,50 @@ class StreamEndChunk(BaseChunk):
         return ChunkType.END
 
 
-Chunk = ModelResponseChunk | ToolCallChunk | ErrorChunk | ThinkingChunk | StreamStartChunk | StreamEndChunk
+class FirstMessageChunk(BaseChunk):
+    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
+    @computed_field  # type: ignore
+    @property
+    def type(self) -> Literal[ChunkType.FIRST_MESSAGE]:
+        return ChunkType.FIRST_MESSAGE
+
+    message: obj.ID
+    id: obj.ID
+    messages: Sequence[FlatMessage]
+
+
+class AddMessageChunk(BaseChunk):
+    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
+    @computed_field  # type: ignore
+    @property
+    def type(self) -> Literal[ChunkType.ADD_MESSAGE]:
+        return ChunkType.ADD_MESSAGE
+
+    message: obj.ID
+    id: obj.ID
+    messages: Sequence[FlatMessage]
+
+
+class FinalThreadChunk(BaseChunk):
+    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
+    @computed_field  # type: ignore
+    @property
+    def type(self) -> Literal[ChunkType.FINAL_THREAD]:
+        return ChunkType.FINAL_THREAD
+
+    message: obj.ID
+    id: obj.ID
+    messages: Sequence[FlatMessage]
+
+
+Chunk = (
+    ModelResponseChunk
+    | ToolCallChunk
+    | ErrorChunk
+    | ThinkingChunk
+    | StreamStartChunk
+    | StreamEndChunk
+    | FirstMessageChunk
+    | AddMessageChunk
+    | FinalThreadChunk
+)

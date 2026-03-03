@@ -122,7 +122,7 @@ class Message(Base, kw_only=True):
         back_populates="parent_", foreign_keys=[parent], init=False, default_factory=list
     )
     parent_: Mapped[Optional["Message"]] = relationship(
-        back_populates="children", remote_side=[id], foreign_keys=[parent], default=None
+        back_populates="children", remote_side=[id], foreign_keys=[parent], init=False
     )
 
     prompt_template: Mapped[PromptTemplate | None] = relationship(

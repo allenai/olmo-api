@@ -205,10 +205,10 @@ class ChatService:
                 root=root_message_id,
                 model_id=model.id,
                 model_host=model.host,
-                parent=new_messages[-1].id if len(new_messages) > 0 else None,
-                parent_=parent,
+                parent=parent.id if parent else None,
                 tool_definitions=tool_definitions,
             )
+            user_message.parent_ = parent
 
             messages.append(user_message)
             new_messages.append(user_message)
@@ -233,8 +233,8 @@ class ChatService:
                 model_id=model.id,
                 model_host=model.host,
                 parent=parent_message.id,
-                parent_=parent_message,
             )
+            tool_response_message.parent_ = parent_message
 
             messages.append(tool_response_message)
             new_messages.append(tool_response_message)

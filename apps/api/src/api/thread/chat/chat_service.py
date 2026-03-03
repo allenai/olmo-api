@@ -193,7 +193,7 @@ class ChatService:
                 for definition in request.tool_definitions or []
             ]
 
-            parent = new_messages[-1] if len(new_messages) > 0 else None
+            parent = messages[-1] if len(messages) > 0 else None
 
             user_message = Message(
                 id=user_message_id,
@@ -218,7 +218,7 @@ class ChatService:
                 missing_content_message = "Tool response messages must have content"
                 raise UnprocessableProblem(missing_content_message)
 
-            parent_message = new_messages[-1] if len(new_messages) > 0 else None
+            parent_message = messages[-1] if len(messages) > 0 else None
 
             if not parent_message:
                 tool_response_with_no_parent_message = "Tool response messages must have a parent"

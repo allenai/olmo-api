@@ -5,8 +5,8 @@ from typing import Any, Literal
 from pydantic import computed_field
 
 import core.object_id as obj
-from api.thread.models.flat_message import FlatMessage
 from core.api_interface import APIInterface
+from core.message.flat_message import FlatMessage
 from core.message.message_errors import ErrorCode, ErrorSeverity
 from core.tools.tool_source import ToolSource
 

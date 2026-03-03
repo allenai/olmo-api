@@ -140,6 +140,11 @@ async def test_makes_a_thread_with_parent(
     # We only return new messages, not the whole thread
     assert len(finished_thread.messages) == 2
 
+    test_parent_message_id = parent_message_id
+    for message in finished_thread.messages:
+        assert message.parent == test_parent_message_id
+        test_parent_message_id = message.id
+
 
 @pytest.mark.xfail(IS_CI, reason="File uploads not supported yet")
 async def test_uploads_a_file_to_a_multimodal_model(client: AsyncClient, anon_user: AuthenticatedClient):

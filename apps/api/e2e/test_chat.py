@@ -166,6 +166,23 @@ async def test_makes_a_thread_with_parent(
         assert message.parent == test_parent_message_id
         test_parent_message_id = message.id
 
+    async with db_session() as session, session.begin():
+        message_query = (
+            select(Message)
+            .where(Message.id == finished_thread.messages[0].id)
+            .options(
+                selectinload(Message.children),
+            )
+        )
+        message_in_db_result = await session.scalars(message_query)
+        message_in_db = message_in_db_result.one()
+
+        assert message_in_db.parent is not None and message_in_db.parent == parent_message_id, (  # noqa: PT018
+            "User message did not get its parent set correctly in the DB"
+        )
+        assert message_in_db.children
+        assert message_in_db.children[0].id == finished_thread.messages[1].id
+
 
 @pytest.mark.xfail(IS_CI, reason="File uploads not supported yet")
 async def test_uploads_a_file_to_a_multimodal_model(client: AsyncClient, anon_user: AuthenticatedClient):

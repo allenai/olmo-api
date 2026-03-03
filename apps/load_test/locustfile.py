@@ -64,9 +64,9 @@ class BaseUser(HttpUser):
     def measure_create_thread(self, url: str) -> None:
         thread_id: str | None = None
         ttft_ms: float | None = None
+        ttft_start = time.perf_counter()
 
         with self.create_thread(url=url, data={"model": MODEL, "content": "hello"}) as resp:
-            ttft_start = time.perf_counter()
             for line in resp.iter_lines():
                 if line:
                     parsed = json.loads(line)

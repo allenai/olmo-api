@@ -76,6 +76,10 @@ class PlaygroundUIEventStream(
         """
         return self.message_map.get(message_id) is not None
 
+    def _get_add_message_chunk(self, id: ID, message: Message):
+        self.message_map[id] = message
+        return AddMessageChunk(message=id, id=id, messages=FlatMessage.from_message_with_children(message))
+
     def new_message_id(self) -> str:
         self.parent_message_id = self.message_id
         self.message_id = create_message_id()
@@ -135,7 +139,7 @@ class PlaygroundUIEventStream(
             yield ModelResponseChunk(message=self.message_id, content=part.content)
         else:
             message = self._create_message_with_defaults(content=part.content, role=Role.Assistant)
-            yield AddMessageChunk(message=message.id, id=message.id, messages=[FlatMessage.from_message(message)])
+            yield self._get_add_message_chunk(message.id, message)
 
     async def handle_text_delta(self, delta: TextPartDelta) -> AsyncIterator[ChatStreamOutput]:
         if delta.content_delta:
@@ -150,7 +154,7 @@ class PlaygroundUIEventStream(
             yield ThinkingChunk(message=self.message_id, content=part.content)
         else:
             message = self._create_message_with_defaults(content="", role=Role.Assistant, thinking=part.content)
-            yield AddMessageChunk(message=message.id, id=message.id, messages=[FlatMessage.from_message(message)])
+            yield self._get_add_message_chunk(message.id, message)
 
     async def handle_thinking_delta(self, delta: ThinkingPartDelta) -> AsyncIterator[ChatStreamOutput]:
         if delta.content_delta:
@@ -170,7 +174,7 @@ class PlaygroundUIEventStream(
                 part, self.message_id, user_tool_names=self.run_input.user_tool_names
             )
             message = self._create_message_with_defaults(content="", role=Role.Assistant, tool_calls=[tool_call])
-            yield AddMessageChunk(message=message.id, id=message.id, messages=[FlatMessage.from_message(message)])
+            yield self._get_add_message_chunk(message.id, message)
 
     async def handle_tool_call_delta(self, delta: ToolCallPartDelta) -> AsyncIterator[ChatStreamOutput]:
         tool_call_id = delta.tool_call_id or ""
@@ -208,9 +212,7 @@ class PlaygroundUIEventStream(
                 tool_calls=tool_calls,
             )
 
-            flat_message = FlatMessage.from_message(message)
-
-            yield AddMessageChunk(message=message.id, id=message.id, messages=[flat_message])
+            yield self._get_add_message_chunk(message.id, message)
 
     async def on_error(self, error: Exception) -> AsyncIterator[Event]:
         self._finish_reason = "error"

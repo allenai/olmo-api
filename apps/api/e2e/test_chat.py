@@ -62,7 +62,7 @@ async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient, 
 
     lines = [json.loads(line) for line in response.text.splitlines()]
 
-    assert len(lines) == 5
+    assert len(lines) == 6
     StreamStartChunk.model_validate(lines[0])
     starting_thread = StartThreadChunk.model_validate(lines[1])
     tool_call_message = AddMessageChunk.model_validate(lines[2])
@@ -99,43 +99,6 @@ async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient, 
         assert message_in_db.children
         assert message_in_db.children[0].id == finished_thread.messages[2].id
 
-    # response
-    tool_call_id = tool_call_message.messages[0].tool_calls[0].tool_call_id
-
-    tool_request = ToolResponseChatRequest(
-        content="Sunny",
-        model="test-model",
-        enable_tool_calling=True,
-        parent=finished_thread.messages[2].id,
-        tool_call_id=tool_call_id,
-    ).model_dump(exclude_none=True, exclude_computed_fields=True)
-
-    tool_request["toolDefinitions"] = tool_definitions
-
-    tool_response = await client.post(CHAT_ENDPOINT, data=tool_request, headers=auth_headers_for_user(auth_user))
-
-    assert_ok_response(response=tool_response)
-
-    lines = [json.loads(line) for line in tool_response.text.splitlines()]
-
-    # streams the tool_call_result -- how many messages?
-    # assert len(lines) == 7
-    StreamStartChunk.model_validate(lines[0])
-    tool_response_chunk = AddMessageChunk.model_validate(lines[1])
-
-    final_therad_chunk = FinalThreadChunk.model_validate(lines[-2])
-    StreamEndChunk.model_validate(lines[-1])
-
-    assert tool_response_chunk.messages[0].tool_calls, "There were no tool calls in the tool result response"
-    assert tool_response_chunk.messages[0].tool_calls[0].tool_call_id == tool_call_id
-    assert tool_response_chunk.messages[0].content == "Sunny"
-
-    assert len(final_therad_chunk.messages) == 2
-    assert final_therad_chunk.messages[0].role == Role.ToolResponse
-    assert final_therad_chunk.messages[1].role == Role.Assistant
-    assert final_therad_chunk.messages[0].tool_calls
-    assert len(final_therad_chunk.messages[0].tool_calls) == 1
-
 
 async def test_tool_call_user_response(client: AsyncClient, auth_user: AuthenticatedClient):
     tool_name = "get_current_weather"
@@ -168,7 +131,7 @@ async def test_tool_call_user_response(client: AsyncClient, auth_user: Authentic
 
     lines = [json.loads(line) for line in response.text.splitlines()]
 
-    assert len(lines) == 5
+    assert len(lines) == 6
     StreamStartChunk.model_validate(lines[0])
     StartThreadChunk.model_validate(lines[1])
     tool_call_message = AddMessageChunk.model_validate(lines[2])

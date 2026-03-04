@@ -26,7 +26,7 @@ from api.thread.chat.playground_ui_adapter._util import (
     RunInput,
     create_message_from_run_input,
     map_response_pydantic_messages_to_messages,
-    map_tool_call_part_to_tool_call,
+    tool_source_from_name,
 )
 from core.message.flat_message import FlatMessage
 from core.message.message_chunk import (
@@ -161,24 +161,24 @@ class PlaygroundUIEventStream(
             yield ThinkingChunk(message=self.message_id, content=delta.content_delta)
 
     async def handle_tool_call_start(self, part: ToolCallPart | BuiltinToolCallPart) -> AsyncIterator[ChatStreamOutput]:
-        if self._has_message_been_sent(self.message_id):
-            yield ToolCallChunk(
-                message=self.message_id,
-                tool_call_id=part.tool_call_id,
-                tool_name=part.tool_name,
-                args=part.args,
-                tool_source=None,
-            )
-        else:
-            tool_call = map_tool_call_part_to_tool_call(
-                part, self.message_id, user_tool_names=self.run_input.user_tool_names
-            )
-            message = self._create_message_with_defaults(content="", role=Role.Assistant, tool_calls=[tool_call])
+        if not self._has_message_been_sent(self.message_id):
+            message = self._create_message_with_defaults(content="", role=Role.Assistant)
             yield self._get_add_message_chunk(message.id, message)
+
+        tool_source = tool_source_from_name(tool_name=part.tool_name, user_tool_names=self.run_input.user_tool_names)
+
+        yield ToolCallChunk(
+            message=self.message_id,
+            tool_call_id=part.tool_call_id,
+            tool_name=part.tool_name,
+            args=part.args,
+            tool_source=tool_source,
+        )
 
     async def handle_tool_call_delta(self, delta: ToolCallPartDelta) -> AsyncIterator[ChatStreamOutput]:
         tool_call_id = delta.tool_call_id or ""
         assert tool_call_id, "`ToolCallPartDelta.tool_call_id` must be set"  # noqa: S101
+
         yield ToolCallChunk(
             message=self.message_id,
             tool_call_id=tool_call_id,

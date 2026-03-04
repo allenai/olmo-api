@@ -98,10 +98,13 @@ def map_tool_return_part_to_message(
     return message
 
 
+def tool_source_from_name(tool_name: str, user_tool_names: Sequence[str]) -> ToolSource:
+    # TODO: Figure out how to tell if a tool is internal
+    return ToolSource.USER_DEFINED if tool_name in user_tool_names else ToolSource.MCP
+
+
 def map_tool_call_part_to_tool_call(part: BaseToolCallPart, message_id: ID, user_tool_names: Sequence[str]) -> ToolCall:
-    tool_source = (  # TODO: Figure out how to tell if a tool is internal
-        ToolSource.USER_DEFINED if part.tool_name in user_tool_names else ToolSource.MCP
-    )
+    tool_source = tool_source_from_name(tool_name=part.tool_name, user_tool_names=user_tool_names)
     return ToolCall(
         tool_call_id=part.tool_call_id,
         tool_name=part.tool_name,

@@ -67,6 +67,8 @@ class Settings(BaseSettings):
 
     MODAL_OPENAI_API_KEY: SecretStr = Field(init=False)
 
+    USER_CONTENT_BUCKET: str
+
     model_config = SettingsConfigDict(
         extra="ignore",
         env_file=(".env", f".env.{environment}", ".env.local", f".env.{environment}.local"),

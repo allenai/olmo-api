@@ -1,3 +1,4 @@
+import os
 from collections.abc import AsyncIterator, Sequence
 from typing import Annotated
 
@@ -14,7 +15,9 @@ from pydantic_ai import (
 )
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
+from api.config import settings
 from api.db.sqlalchemy_engine import SessionDependency
+from api.gcs_dependency import GoogleCloudStorageDependency
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.model.model_query import base_model_config_select
 from api.model_config.model_config_request import validate_inference_parameters_against_model_constraints
@@ -119,10 +122,12 @@ class ChatService:
         message_repository: AsyncMessageRepositoryDependency,
         session: SessionDependency,
         tools_service: ToolsServiceDependency,
+        storage: GoogleCloudStorageDependency,
     ):
         self.message_repository = message_repository
         self.session = session
         self.tools_service = tools_service
+        self.storage = storage
 
     @tracer.start_as_current_span(name="ChatService/_get_model")
     async def _get_model(self, model_id: str):
@@ -353,6 +358,16 @@ class ChatService:
             tool_definitions,
             inference_opts,
         ) = await self._validate_and_get_thread(request, user, model)
+
+        tasks = []
+        for i, file in enumerate(request.files or []):
+            file_extension = os.path.splitext(file.filename)[1] if file.filename is not None else ""
+            filename = f"{root_message_id}/{parent_message_id}-{i}{file_extension}"
+
+            upload_response = self.storage.upload_content(filename, file.file, bucket_name=settings)
+
+        # TODO: Determine if parent_message_id is correct or if we should be getting something like request_message_id instead
+        # asyncio.gather([self.storage.upload_content(filename=f"{root_message_id}/{parent_message_id}") for i, file in enumerate(request.files)])
 
         pydantic_model = get_pydantic_model(model)
 

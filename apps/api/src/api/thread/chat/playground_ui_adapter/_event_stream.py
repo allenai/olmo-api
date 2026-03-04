@@ -69,6 +69,11 @@ class PlaygroundUIEventStream(
     message_map: dict[ID, Message] = field(default_factory=dict)
 
     def _has_message_been_sent(self, message_id: ID) -> bool:
+        """
+        Checks to see if a message has already been sent as a full Message.
+
+        The UI needs to receive a Message before receiving updates so it can properly update its state. This method and the message_map help manage that state.
+        """
         return self.message_map.get(message_id) is not None
 
     def new_message_id(self) -> str:

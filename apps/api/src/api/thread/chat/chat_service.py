@@ -1,8 +1,9 @@
+import asyncio
 import os
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Awaitable, Sequence
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, UploadFile
 from fastapi_problem.error import ForbiddenProblem, UnprocessableProblem
 from opentelemetry import trace
 from pydantic_ai import (
@@ -29,6 +30,7 @@ from api.thread.chat.pydantic_inference.pydantic_model_settings import pydantic_
 from api.tools.mcp_service import get_general_mcp_servers
 from api.tools.tools_service import ToolsServiceDependency
 from core.auth.token import Token
+from core.google_cloud_storage import UploadResponse
 from core.message.role import Role
 from core.object_id import ID
 from core.tools.tool_source import ToolSource
@@ -348,6 +350,20 @@ class ChatService:
         # Save initial messages/thread to DB
         # Support multimedia
 
+    async def _upload_request_files(self, message_id: ID, files: Sequence[UploadFile]):
+        tasks: list[Awaitable[UploadResponse]] = []
+        for i, file in enumerate(request.files or []):
+            file_extension = os.path.splitext(file.filename)[1] if file.filename is not None else ""
+            # TODO: Determine if parent_message_id is correct or if we should be getting something like request_message_id instead
+            filename = f"{root_message_id}/{parent_message_id}-{i}{file_extension}"
+
+            upload_response = self.storage.upload_content(
+                filename=filename, file_data=file.file, bucket_name=settings.USER_CONTENT_BUCKET, make_file_public=True
+            )
+            tasks.append(upload_response)
+
+        upload_results = await asyncio.gather(*tasks)
+
     async def stream_chat_message(self, request: ChatRequest, user: Token) -> AsyncIterator[str]:
         model = await self._get_model(request.model)
         (
@@ -358,16 +374,6 @@ class ChatService:
             tool_definitions,
             inference_opts,
         ) = await self._validate_and_get_thread(request, user, model)
-
-        tasks = []
-        for i, file in enumerate(request.files or []):
-            file_extension = os.path.splitext(file.filename)[1] if file.filename is not None else ""
-            filename = f"{root_message_id}/{parent_message_id}-{i}{file_extension}"
-
-            upload_response = self.storage.upload_content(filename, file.file, bucket_name=settings)
-
-        # TODO: Determine if parent_message_id is correct or if we should be getting something like request_message_id instead
-        # asyncio.gather([self.storage.upload_content(filename=f"{root_message_id}/{parent_message_id}") for i, file in enumerate(request.files)])
 
         pydantic_model = get_pydantic_model(model)
 

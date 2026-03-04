@@ -140,7 +140,6 @@ async def test_tool_call_user_response(client: AsyncClient, auth_user: Authentic
     finished_thread = FinalThreadChunk.model_validate(lines[-2])
     StreamEndChunk.model_validate(lines[-1])
 
-
     tool_request = ToolResponseChatRequest(
         content="Sunny",
         model="test-model",
@@ -275,7 +274,10 @@ async def test_rejects_a_thread_with_an_invalid_parent(client: AsyncClient, anon
 
     response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(anon_user))
 
-    assert response.status_code == HTTPStatus.UNPROCESSABLE_CONTENT
+    assert response.status_code == (
+        HTTPStatus.UNPROCESSABLE_CONTENT,
+        "Expected HTTPStatus.UNPROCESSABLE_CONTENT(422) for creating a chat message with a parent that doesnt exist",
+    )
 
 
 async def test_rejects_a_thread_with_invalid_parent_role(
@@ -293,7 +295,10 @@ async def test_rejects_a_thread_with_invalid_parent_role(
 
     response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(anon_user))
 
-    assert response.status_code == HTTPStatus.UNPROCESSABLE_CONTENT
+    assert response.status_code == (
+        HTTPStatus.UNPROCESSABLE_CONTENT,
+        "Expected HTTPStatus.UNPROCESSABLE_CONTENT(422) for creating a chat message with an invalid parent role",
+    )
 
 
 async def test_cannot_create_message_with_different_visibilty(
@@ -311,7 +316,10 @@ async def test_cannot_create_message_with_different_visibilty(
 
     response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(auth_user))
 
-    assert response.status_code == HTTPStatus.UNPROCESSABLE_CONTENT
+    assert response.status_code == (
+        HTTPStatus.UNPROCESSABLE_CONTENT,
+        "Expected HTTPStatus.UNPROCESSABLE_CONTENT(422) for creating a a chat message with differenv visibility",
+    )
 
 
 async def test_cannot_create_message_on_another_users_therad(
@@ -329,7 +337,10 @@ async def test_cannot_create_message_on_another_users_therad(
 
     response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(auth_user))
 
-    assert response.status_code == HTTPStatus.FORBIDDEN
+    assert response.status_code == (
+        HTTPStatus.FORBIDDEN,
+        "Expected HTTPStatus.Forbidden(403) error for creating a chat message on another users thread",
+    )
 
 
 @pytest.mark.xfail(IS_CI, reason="File uploads not supported yet")

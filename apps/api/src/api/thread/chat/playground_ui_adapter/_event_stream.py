@@ -188,6 +188,10 @@ class PlaygroundUIEventStream(
         )
 
     async def handle_function_tool_result(self, event: FunctionToolResultEvent) -> AsyncIterator[ChatStreamOutput]:
+        if self._has_message_been_sent(self.message_id):
+            # Pydantic doesn't call before_response before each function tool. Since we need them in separate messages we need to make a new ID if we've already sent a message for this message_id
+            self.new_message_id()
+
         result = event.result
         if isinstance(result, RetryPromptPart):
             yield ErrorChunk(

@@ -1,9 +1,8 @@
-import pytest
-from pytest_mock import MockerFixture
-
 from api.thread.chat.chat_request import CreateToolDefinition, ParameterDef
 from api.thread.chat.chat_service import ChatService
+from core.tools.tool_source import ToolSource
 from db.models.model_config import ModelConfig, ModelHost, ModelType, PromptType
+from db.models.tool_definitions import ToolDefinition
 
 
 def create_fake_model(*, can_call_tools: bool):
@@ -32,15 +31,40 @@ def create_fake_model(*, can_call_tools: bool):
     )
 
 
-@pytest.fixture(autouse=True)
-def mock_get_mcp_servers(mocker: MockerFixture):
-    mocker.patch("api.thread.chat.chat_service.get_general_mcp_servers", return_value=[])
+def get_fake_mcp_service():
+    mock_tool = ToolDefinition(
+        name="mock_tool",
+        tool_source=ToolSource.MCP,
+        mcp_server_id="mock-server",
+        description="A mock tool for testing",
+        parameters={"type": "object", "properties": {}},
+    )
+
+    class _MockMcpService:
+        @classmethod
+        async def get_general_mcp_tools(cls):
+            return [mock_tool]
+
+        @classmethod
+        async def get_tools_from_mcp_servers(cls, _mcp_server_ids: set[str]):
+            return [mock_tool]
+
+        @classmethod
+        def get_pydantic_ai_mcp_servers(cls):
+            return []
+
+    return _MockMcpService()
 
 
 def test_get_toolsets_returns_empty_if_model_cannot_call_tools():
-
-    toolsets = ChatService._get_toolsets(  # noqa: SLF001
-        create_fake_model(can_call_tools=False),
+    chat_service = ChatService(
+        mcp_service=get_fake_mcp_service(),  # type: ignore
+        message_repository=None,  # type: ignore
+        tools_service=None,  # type: ignore
+        session=None,  # type: ignore
+    )
+    toolsets = chat_service._get_toolsets(  # noqa: SLF001
+        model=create_fake_model(can_call_tools=False),
         user_tools=[
             CreateToolDefinition(name="Tool", description="This sure is a tool", parameters=ParameterDef(type="object"))
         ],
@@ -51,8 +75,14 @@ def test_get_toolsets_returns_empty_if_model_cannot_call_tools():
 
 
 async def test_get_toolsets_returns_user_and_mcp_tools():
-    toolsets = ChatService._get_toolsets(  # noqa: SLF001
-        create_fake_model(can_call_tools=True),
+    chat_service = ChatService(
+        mcp_service=get_fake_mcp_service(),  # type: ignore
+        message_repository=None,  # type: ignore
+        tools_service=None,  # type: ignore
+        session=None,  # type: ignore
+    )
+    toolsets = chat_service._get_toolsets(  # noqa: SLF001
+        model=create_fake_model(can_call_tools=True),
         user_tools=[
             CreateToolDefinition(name="Tool", description="This sure is a tool", parameters=ParameterDef(type="object"))
         ],

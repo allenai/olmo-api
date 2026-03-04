@@ -45,6 +45,7 @@ extend = "../../pyproject.toml"
 
 [tool.ruff.lint.extend-per-file-ignores]
 "e2e/*" = ["S"]
+"e2e/fake_mcp_server.py" = ["PLW", "RUF", "SLF", "EM", "TRY", "FBT"]
 
 [tool.uv.sources]
 db = { workspace = true }

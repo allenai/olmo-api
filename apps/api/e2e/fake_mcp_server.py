@@ -200,7 +200,7 @@ async def echo_deps(ctx: Context[ServerSession, None]) -> dict[str, Any]:
     """
     await ctx.info("This is an info message")
 
-    deps: Any = ctx.request_context.meta.deps
+    deps: Any = ctx.request_context.meta.deps  # type: ignore
     return {"echo": "This is an echo message", "deps": deps}
 
 

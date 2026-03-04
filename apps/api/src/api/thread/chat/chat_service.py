@@ -31,6 +31,7 @@ from core.tools.tool_source import ToolSource
 from db.models.inference_opts import InferenceOpts
 from db.models.message import Message, create_message_id
 from db.models.model_config import ModelConfig, PromptType
+from db.models.tool_call import clone_tool_call
 from db.models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 
 logger = FastAPIStructLogger()
@@ -226,6 +227,23 @@ class ChatService:
         if request.role is Role.ToolResponse:
             parent_message = messages[-1]
 
+            if not parent_message.tool_calls:
+                parent_has_no_tools_message = "Can not create a tool response. Parent has no tools"
+                raise UnprocessableProblem(parent_has_no_tools_message)
+
+            request_tool_call = next(
+                (
+                    tool_call
+                    for tool_call in parent_message.tool_calls
+                    if tool_call.tool_call_id == request.tool_call_id
+                ),
+                None,
+            )
+
+            if request_tool_call is None:
+                cannot_find_tool_message = "Can not find tool id in last assistant message"
+                raise UnprocessableProblem(cannot_find_tool_message)
+
             tool_response_message = Message(
                 content=request.content,
                 creator=creator_id,
@@ -235,6 +253,7 @@ class ChatService:
                 model_id=model.id,
                 model_host=model.host,
                 parent=parent_message.id,
+                tool_calls=[clone_tool_call(request_tool_call)],
             )
             tool_response_message.parent_ = parent_message
 

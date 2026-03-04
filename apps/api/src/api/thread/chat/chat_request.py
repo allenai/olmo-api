@@ -127,7 +127,7 @@ class AssistantChatRequest(ContentChatRequest):
 
 
 class ToolResponseChatRequest(BaseChatRequest):
-    role: Literal[Role.ToolResponse]
+    role: Literal[Role.ToolResponse] = Role.ToolResponse
     parent: str
     tool_call_id: str
     content: str

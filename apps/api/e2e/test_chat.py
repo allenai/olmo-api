@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from api.thread.chat.chat_request import CreateToolDefinition, ParameterDef, UserChatRequest
+from api.thread.chat.chat_request import CreateToolDefinition, ParameterDef, ToolResponseChatRequest, UserChatRequest
 from api.thread.models.thread import Thread
 from core.message.message_chunk import (
     AddMessageChunk,
@@ -99,6 +99,118 @@ async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient, 
         assert message_in_db.children
         assert message_in_db.children[0].id == finished_thread.messages[2].id
 
+    # response
+    tool_call_id = tool_call_message.messages[0].tool_calls[0].tool_call_id
+
+    tool_request = ToolResponseChatRequest(
+        content="Sunny",
+        model="test-model",
+        enable_tool_calling=True,
+        parent=finished_thread.messages[2].id,
+        tool_call_id=tool_call_id,
+    ).model_dump(exclude_none=True, exclude_computed_fields=True)
+
+    tool_request["toolDefinitions"] = tool_definitions
+
+    tool_response = await client.post(CHAT_ENDPOINT, data=tool_request, headers=auth_headers_for_user(auth_user))
+
+    assert_ok_response(response=tool_response)
+
+    lines = [json.loads(line) for line in tool_response.text.splitlines()]
+
+    # streams the tool_call_result -- how many messages?
+    # assert len(lines) == 7
+    StreamStartChunk.model_validate(lines[0])
+    tool_response_chunk = AddMessageChunk.model_validate(lines[1])
+
+    final_therad_chunk = FinalThreadChunk.model_validate(lines[-2])
+    StreamEndChunk.model_validate(lines[-1])
+
+    assert tool_response_chunk.messages[0].tool_calls, "There were no tool calls in the tool result response"
+    assert tool_response_chunk.messages[0].tool_calls[0].tool_call_id == tool_call_id
+    assert tool_response_chunk.messages[0].content == "Sunny"
+
+    assert len(final_therad_chunk.messages) == 2
+    assert final_therad_chunk.messages[0].role == Role.ToolResponse
+    assert final_therad_chunk.messages[1].role == Role.Assistant
+    assert final_therad_chunk.messages[0].tool_calls
+    assert len(final_therad_chunk.messages[0].tool_calls) == 1
+
+
+async def test_tool_call_user_response(client: AsyncClient, auth_user: AuthenticatedClient):
+    tool_name = "get_current_weather"
+    tool_definition = CreateToolDefinition(
+        name=tool_name,
+        description="Get the current weather in a given location",
+        parameters=ParameterDef(
+            type="object",
+            properties={
+                "location": ParameterDef(
+                    type="string",
+                    description="The city name of the location for which to get the weather.",
+                    default={"string_value": "Boston, MA"},
+                )
+            },
+        ),
+    )
+    tool_definitions = f"[{tool_definition.model_dump_json()}]"
+    chat_request = UserChatRequest(
+        content="test tool calling",
+        model="test-model",
+        enable_tool_calling=True,
+    ).model_dump(exclude_none=True, exclude_computed_fields=True)
+    # since tool_definitions is a Json type we can't include it in the UserChatRequest init
+    chat_request["toolDefinitions"] = tool_definitions
+
+    response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(auth_user))
+
+    assert_ok_response(response=response)
+
+    lines = [json.loads(line) for line in response.text.splitlines()]
+
+    assert len(lines) == 5
+    StreamStartChunk.model_validate(lines[0])
+    StartThreadChunk.model_validate(lines[1])
+    tool_call_message = AddMessageChunk.model_validate(lines[2])
+    finished_thread = FinalThreadChunk.model_validate(lines[-2])
+    StreamEndChunk.model_validate(lines[-1])
+
+    assert tool_call_message.messages[0].tool_calls
+
+    tool_call_id = tool_call_message.messages[0].tool_calls[0].tool_call_id
+
+    tool_request = ToolResponseChatRequest(
+        content="Sunny",
+        model="test-model",
+        enable_tool_calling=True,
+        parent=finished_thread.messages[2].id,
+        tool_call_id=tool_call_id,
+    ).model_dump(exclude_none=True, exclude_computed_fields=True)
+
+    tool_request["toolDefinitions"] = tool_definitions
+
+    tool_response = await client.post(CHAT_ENDPOINT, data=tool_request, headers=auth_headers_for_user(auth_user))
+
+    assert_ok_response(response=tool_response)
+
+    lines = [json.loads(line) for line in tool_response.text.splitlines()]
+
+    StreamStartChunk.model_validate(lines[0])
+    tool_response_chunk = AddMessageChunk.model_validate(lines[1])
+    # ...streaming response...
+    final_therad_chunk = FinalThreadChunk.model_validate(lines[-2])
+    StreamEndChunk.model_validate(lines[-1])
+
+    assert tool_response_chunk.messages[0].tool_calls, "There were no tool calls in the tool result response"
+    assert tool_response_chunk.messages[0].tool_calls[0].tool_call_id == tool_call_id
+    assert tool_response_chunk.messages[0].content == "Sunny"
+
+    assert len(final_therad_chunk.messages) == 2
+    assert final_therad_chunk.messages[0].role == Role.ToolResponse
+    assert final_therad_chunk.messages[1].role == Role.Assistant
+    assert final_therad_chunk.messages[0].tool_calls
+    assert len(final_therad_chunk.messages[0].tool_calls) == 1
+
 
 @pytest.mark.xfail(IS_CI, reason="Not accounting for enable_tool_calling=False yet")
 async def test_does_not_call_tools(client: AsyncClient, anon_user: AuthenticatedClient):
@@ -135,35 +247,6 @@ async def test_does_not_call_tools(client: AsyncClient, anon_user: Authenticated
     for line in lines:
         with pytest.raises(ValidationError):
             ToolCallChunk.model_validate(line)
-
-
-@pytest.skip("TODO: test response -- and wrong tool_call_id")
-async def test_tools_call_response(client: AsyncClient, auth_user: AuthenticatedClient):
-    tool_name = "get_current_weather"
-    tool_definition = CreateToolDefinition(
-        name=tool_name,
-        description="Get the current weather in a given location",
-        parameters=ParameterDef(
-            type="object",
-            properties={
-                "location": ParameterDef(
-                    type="string",
-                    description="The city name of the location for which to get the weather.",
-                    default={"string_value": "Boston, MA"},
-                )
-            },
-        ),
-    )
-    tool_definitions = f"[{tool_definition.model_dump_json()}]"
-    chat_request = UserChatRequest(
-        content="test tool calling",
-        model="test-model",
-        enable_tool_calling=True,
-    ).model_dump(exclude_none=True, exclude_computed_fields=True)
-    # since tool_definitions is a Json type we can't include it in the UserChatRequest init
-    chat_request["toolDefinitions"] = tool_definitions
-
-    _response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(auth_user))
 
 
 async def test_makes_a_thread_with_parent(
@@ -251,9 +334,22 @@ async def test_rejects_a_thread_with_invalid_parent_role(
     assert response.status_code == HTTPStatus.UNPROCESSABLE_CONTENT
 
 
-@pytest.skip()
-async def test_cannot_create_message_with_different_visibilty():
-    pass
+async def test_cannot_create_message_with_different_visibilty(
+    client: AsyncClient, auth_user: AuthenticatedClient, db_session: DatabaseSession
+):
+    _root_message_id, messages = await create_test_thread(db_session, auth_user)
+
+    chat_request = UserChatRequest(
+        content="test make a thread with a user message as the parent",
+        model="test-model",
+        parent=messages[1].id,
+        private=True,
+        enable_tool_calling=False,
+    ).model_dump(exclude_none=True, exclude_computed_fields=True)
+
+    response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(auth_user))
+
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_CONTENT
 
 
 async def test_cannot_create_message_on_another_users_therad(

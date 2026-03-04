@@ -25,3 +25,13 @@ class ToolCall(Base, kw_only=True):
 
     message_id: Mapped[str] = mapped_column(ForeignKey("message.id", ondelete="CASCADE"))
     message: Mapped["Message"] = relationship("Message", back_populates="tool_calls", init=False)
+
+
+def clone_tool_call(tool_call: ToolCall) -> ToolCall:
+    return ToolCall(
+        tool_call_id=tool_call.tool_call_id,
+        tool_name=tool_call.tool_name,
+        tool_source=tool_call.tool_source,
+        args=tool_call.args,
+        message_id="",  # None?
+    )

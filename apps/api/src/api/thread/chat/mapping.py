@@ -49,7 +49,7 @@ def _map_system_message(message: Message):
     return ModelRequest([SystemPromptPart(message.content)])
 
 
-def _map_tool_response_message(message):
+def _map_tool_response_message(message: Message):
     if message.tool_calls is None:
         msg = "expected tool call in message"
         raise TypeError(msg)

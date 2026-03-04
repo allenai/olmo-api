@@ -44,13 +44,13 @@ MCP_SERVERS: list[McpServer] = [
 ]
 
 
-def get_mcp_server(mcp_server_config: McpServer):
+def _get_mcp_server(mcp_server_config: McpServer):
     return MCPServerStreamableHTTP(url=mcp_server_config.url, headers=mcp_server_config.headers)
 
 
 @lru_cache
-def get_general_mcp_servers():
-    return [get_mcp_server(config) for config in MCP_SERVERS]
+def _get_general_mcp_servers():
+    return [_get_mcp_server(config) for config in MCP_SERVERS]
 
 
 class McpService:
@@ -60,10 +60,7 @@ class McpService:
 
     @staticmethod
     async def list_mcp_server_tools(mcp_server_config: McpServer) -> list[Ai2ToolDefinition]:
-        mcp_server = MCPServerStreamableHTTP(
-            url=mcp_server_config.url,
-            headers=mcp_server_config.headers,
-        )
+        mcp_server = _get_mcp_server(mcp_server_config)
 
         tool_list: list[MCPTool] = await mcp_server.list_tools()
         mapped_tools = [
@@ -142,15 +139,15 @@ class McpService:
             raise RuntimeError(msg)
 
         try:
-            server = MCPServerStreamableHTTP(
-                url=mcp_config.url,
-                headers=mcp_config.headers,
-            )
+            server = _get_mcp_server(mcp_config)
             return str(asyncio.run(server.direct_call_tool(name=tool_call.tool_name, args=tool_call.args or {})))
         except Exception as _e:
             logger.exception("Failed to call mcp tool.", tool_name=tool_call.tool_name)
             return f"Failed to call remote tool {tool_call.tool_name}"
 
+    @classmethod
+    def get_pydantic_ai_mcp_servers(cls) -> list[MCPServerStreamableHTTP]:
+        return _get_general_mcp_servers()
 
-# NOTE: Do not cache this dependency since it holds a per-request cache for MCP server tools
-McpServerDependency = Annotated[McpService, Depends(use_cache=False)]
+
+McpServiceDependency = Annotated[McpService, Depends()]

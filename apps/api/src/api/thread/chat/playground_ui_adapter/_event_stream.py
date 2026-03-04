@@ -72,7 +72,7 @@ class PlaygroundUIEventStream(
         """
         Checks to see if a message has already been sent as a full Message.
 
-        The UI needs to receive a Message before receiving updates so it can properly update its state. This method and the message_map help manage that state.
+        The UI needs to receive a Message before receiving updates so it can properly update its state. This method and the message_map help manage that state to ensure we only send one Message for each user/assistant message.
         """
         return self.message_map.get(message_id) is not None
 

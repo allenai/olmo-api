@@ -1,3 +1,4 @@
+import json
 import os
 from http import HTTPStatus
 from pathlib import Path
@@ -10,7 +11,14 @@ from sqlalchemy.orm import selectinload
 
 from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition, ParameterDef
 from api.thread.models.thread import Thread
-from core.message.message_chunk import StreamEndChunk, StreamStartChunk, ToolCallChunk
+from core.message.message_chunk import (
+    AddMessageChunk,
+    FinalThreadChunk,
+    StartThreadChunk,
+    StreamEndChunk,
+    StreamStartChunk,
+    ToolCallChunk,
+)
 from core.message.role import Role
 from db.models.message import Message
 from e2e.conftest import AuthenticatedClient, DatabaseSession, auth_headers_for_user
@@ -52,16 +60,17 @@ async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient, 
 
     assert_ok_response(response=response)
 
-    lines = response.text.splitlines()
+    lines = [json.loads(line) for line in response.text.splitlines()]
 
     assert len(lines) == 5
-    StreamStartChunk.model_validate_json(lines[0])
-    starting_thread = Thread.model_validate_json(lines[1])
-    tool_call = ToolCallChunk.model_validate_json(lines[2])
-    finished_thread = Thread.model_validate_json(lines[3])
-    StreamEndChunk.model_validate_json(lines[4])
+    StreamStartChunk.model_validate(lines[0])
+    starting_thread = StartThreadChunk.model_validate(lines[1])
+    tool_call_message = AddMessageChunk.model_validate(lines[2])
+    finished_thread = FinalThreadChunk.model_validate(lines[-2])
+    StreamEndChunk.model_validate(lines[-1])
 
-    assert tool_call.tool_name == tool_name
+    assert tool_call_message.messages[0].tool_calls, "There were no tool calls on the intended tool call message"
+    assert tool_call_message.messages[0].tool_calls[0].tool_name == tool_name
     assert len(starting_thread.messages) == 2
     assert finished_thread.id == starting_thread.id
     assert len(finished_thread.messages) == 3
@@ -91,7 +100,7 @@ async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient, 
         assert message_in_db.children[0].id == finished_thread.messages[2].id
 
 
-@pytest.mark.xfail(reason="Not accounting for enable_tool_calling=False yet")
+@pytest.mark.xfail(IS_CI, reason="Not accounting for enable_tool_calling=False yet")
 async def test_does_not_call_tools(client: AsyncClient, anon_user: AuthenticatedClient):
     tool_name = "get_current_weather"
     tool_definition = CreateToolDefinition(
@@ -121,11 +130,11 @@ async def test_does_not_call_tools(client: AsyncClient, anon_user: Authenticated
 
     assert_ok_response(response=response)
 
-    lines = response.text.splitlines()
+    lines = [json.loads(line) for line in response.text.splitlines()]
 
     for line in lines:
         with pytest.raises(ValidationError):
-            ToolCallChunk.model_validate_json(line)
+            ToolCallChunk.model_validate(line)
 
 
 async def test_makes_a_thread_with_parent(
@@ -145,19 +154,17 @@ async def test_makes_a_thread_with_parent(
 
     assert_ok_response(response=response)
 
-    lines = response.text.splitlines()
+    lines = [json.loads(line) for line in response.text.splitlines()]
 
-    # TODO: Bump this up when we emit the empty message for the start of the model response
     assert len(lines) == 9
-    StreamStartChunk.model_validate_json(lines[0])
-    starting_thread = Thread.model_validate_json(lines[1])
-    # TODO: Uncomment this when we emit the empty message for the start of the model response
-    # thread_with_empty_message = Thread.model_validate_json(lines[2])
-    finished_thread = Thread.model_validate_json(lines[-2])
-    StreamEndChunk.model_validate_json(lines[-1])
+    StreamStartChunk.model_validate(lines[0])
+    starting_thread = AddMessageChunk.model_validate(lines[1])
+    thread_with_empty_message = AddMessageChunk.model_validate(lines[2])
+    finished_thread = FinalThreadChunk.model_validate(lines[-2])
+    StreamEndChunk.model_validate(lines[-1])
 
     assert len(starting_thread.messages) == 1
-    # assert len(thread_with_empty_message.messages) == 1
+    assert len(thread_with_empty_message.messages) == 1
     # We only return new messages, not the whole thread
     assert len(finished_thread.messages) == 2
 
@@ -204,10 +211,10 @@ async def test_uploads_a_file_to_a_multimodal_model(client: AsyncClient, anon_us
 
     assert_ok_response(response=response)
 
-    lines = response.text.splitlines()
+    lines = [json.loads(line) for line in response.text.splitlines()]
 
     assert len(lines) == 9
-    finished_thread = Thread.model_validate_json(lines[-2])
+    finished_thread = Thread.model_validate(lines[-2])
 
     assert any(message.file_urls for message in finished_thread.messages), (
         "No file URL was included in final thread messages"

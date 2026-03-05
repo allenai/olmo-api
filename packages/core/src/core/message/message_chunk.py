@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -5,6 +6,8 @@ from pydantic import computed_field
 
 import core.object_id as obj
 from core.api_interface import APIInterface
+from core.message.flat_message import FlatMessage
+from core.message.message_errors import ErrorCode, ErrorSeverity
 from core.tools.tool_source import ToolSource
 
 
@@ -15,17 +18,9 @@ class ChunkType(StrEnum):
     THINKING = "thinking"
     START = "start"
     END = "end"
-
-
-class ErrorCode(StrEnum):
-    TOOL_CALL_ERROR = "toolCallError"
-    OTHER_ERROR = "otherError"
-
-
-class ErrorSeverity(StrEnum):
-    ERROR = "error"
-    WARNING = "warning"
-    INFO = "info"
+    START_THREAD = "startThread"
+    ADD_MESSAGE = "addMessage"
+    FINAL_THREAD = "finalThread"
 
 
 class MessageStreamError(APIInterface):
@@ -116,4 +111,43 @@ class StreamEndChunk(BaseChunk):
         return ChunkType.END
 
 
-Chunk = ModelResponseChunk | ToolCallChunk | ErrorChunk | ThinkingChunk | StreamStartChunk | StreamEndChunk
+class ThreadMixin(APIInterface):
+    id: obj.ID
+    messages: Sequence[FlatMessage]
+
+
+class StartThreadChunk(ThreadMixin, BaseChunk):
+    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
+    @computed_field  # type: ignore
+    @property
+    def type(self) -> Literal[ChunkType.START_THREAD]:
+        return ChunkType.START_THREAD
+
+
+class AddMessageChunk(ThreadMixin, BaseChunk):
+    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
+    @computed_field  # type: ignore
+    @property
+    def type(self) -> Literal[ChunkType.ADD_MESSAGE]:
+        return ChunkType.ADD_MESSAGE
+
+
+class FinalThreadChunk(ThreadMixin, BaseChunk):
+    # HACK: This lets us make `type` required in the schema while also not requiring it in the init
+    @computed_field  # type: ignore
+    @property
+    def type(self) -> Literal[ChunkType.FINAL_THREAD]:
+        return ChunkType.FINAL_THREAD
+
+
+Chunk = (
+    ModelResponseChunk
+    | ToolCallChunk
+    | ErrorChunk
+    | ThinkingChunk
+    | StreamStartChunk
+    | StreamEndChunk
+    | StartThreadChunk
+    | AddMessageChunk
+    | FinalThreadChunk
+)

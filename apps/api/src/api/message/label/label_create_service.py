@@ -8,10 +8,10 @@ import core.object_id as obj
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
 from api.db.sqlalchemy_engine import SessionDependency
 from api.service_errors import NotFoundError
-from api.thread.models.flat_message import FlatMessage
 from core.api_interface import APIInterface
 from core.label.label import Label as LabelInterface
 from core.label.rating import EXCLUSIVE_RATINGS, Rating
+from core.message.flat_message import FlatMessage
 from db.models.label import Label
 
 

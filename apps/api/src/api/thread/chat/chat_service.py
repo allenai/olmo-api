@@ -335,6 +335,7 @@ class ChatService:
             user_tool_names=[definition.name for definition in request.tool_definitions or []],
             tool_definitions=tool_definitions,
             handle_final_messages=self.message_repository.finalize_thread,
+            is_new_thread=not request.parent,
         )
 
         adapter = PlaygroundUIAdapter(agent, run_input=run_input)

@@ -42,10 +42,18 @@ class RunInput:
     user_tool_names: Sequence[str]
     tool_definitions: list[ToolDefinition] | None
     handle_final_messages: Callable[[Sequence[Message]], Awaitable[Message]]
+    is_new_thread: bool
 
 
 def create_message_from_run_input(
-    *, run_input: RunInput, id: ID, content: str, role: Role, parent: ID, tool_calls: list[ToolCall] | None
+    *,
+    run_input: RunInput,
+    id: ID,
+    content: str,
+    role: Role,
+    parent: ID,
+    tool_calls: list[ToolCall] | None,
+    thinking: str | None,
 ):
     return Message(
         id=id,
@@ -58,8 +66,9 @@ def create_message_from_run_input(
         model_id=run_input.model.id,
         model_host=run_input.model.host,
         model_type=run_input.model.model_type,
-        tool_calls=tool_calls,
+        tool_calls=tool_calls or [],
         tool_definitions=run_input.tool_definitions or [],
+        thinking=thinking,
     )
 
 
@@ -83,6 +92,7 @@ def map_tool_return_part_to_message(
         role=Role.ToolResponse,
         parent=parent_message_id,
         tool_calls=tool_calls,
+        thinking=None,
     )
 
     return message
@@ -103,7 +113,7 @@ def map_tool_call_part_to_tool_call(part: BaseToolCallPart, message_id: ID, user
 
 def map_response_pydantic_messages_to_messages(
     messages: Sequence[ModelMessage], message_ids: Sequence[ID], run_input: RunInput
-):
+) -> list[Message]:
     parent_message_id = run_input.parent_message_id
 
     mapped_messages: list[UIMessage] = []
@@ -156,6 +166,7 @@ def map_response_pydantic_messages_to_messages(
                     role=Role.Assistant,
                     parent=parent_message_id,
                     tool_calls=message_tool_calls,
+                    thinking=message_thinking,
                 )
 
                 mapped_messages.append(response_message)

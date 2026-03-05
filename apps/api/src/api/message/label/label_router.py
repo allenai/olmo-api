@@ -4,7 +4,7 @@ from api.auth.auth_service import AuthServiceDependency
 from api.message.label.label_create_service import LabelCreateRequest, LabelCreateServiceDependency
 from api.message.label.label_delete_service import LabelDeleteServiceDependency
 from api.service_errors import ForbiddenError, NotFoundError, ResourceAssocationError
-from api.thread.models.flat_message import FlatMessage
+from core.message.flat_message import FlatMessage
 
 label_router = APIRouter(prefix="/label")
 

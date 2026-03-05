@@ -1,8 +1,8 @@
 from collections.abc import Sequence
 
-from api.thread.models.flat_message import FlatMessage
 from core.api_interface import APIInterface
 from core.list_meta import ListMeta
+from core.message.flat_message import FlatMessage
 from db.models.message import Message
 
 

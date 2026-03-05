@@ -14,6 +14,7 @@ from api.thread.chat.chat_service import ChatRequest, ChatServiceDependency
 from api.thread.models.thread import Thread, ThreadList
 from api.thread.thread_delete_service import ThreadDeleteServiceDependency
 from api.thread.thread_read_service import ThreadReadServiceDependency
+from core.message.message_chunk import Chunk
 from core.sort_options import SortOptions
 
 logger = FastAPIStructLogger()
@@ -64,14 +65,17 @@ async def delete_thread(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
 
 
-@thread_router.post("/chat")
+@thread_router.post(
+    "/chat",
+    response_model=Chunk | Thread,
+)
 async def stream_chat_message(
     chat_service: ChatServiceDependency,
     auth_service: AuthServiceDependency,
     request: Annotated[ChatRequest, Form()],
 ):
     if settings.ENV.is_production:
-        return NotFoundProblem()
+        raise NotFoundProblem
 
     token = auth_service.optional_auth()
 

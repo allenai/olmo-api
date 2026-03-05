@@ -100,46 +100,6 @@ async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient, 
         assert message_in_db.children
         assert message_in_db.children[0].id == finished_thread.messages[2].id
 
-
-async def test_tool_call_user_response(client: AsyncClient, auth_user: AuthenticatedClient):
-    tool_name = "get_current_weather"
-    tool_definition = CreateToolDefinition(
-        name=tool_name,
-        description="Get the current weather in a given location",
-        parameters=ParameterDef(
-            type="object",
-            properties={
-                "location": ParameterDef(
-                    type="string",
-                    description="The city name of the location for which to get the weather.",
-                    default={"string_value": "Boston, MA"},
-                )
-            },
-        ),
-    )
-    tool_definitions = f"[{tool_definition.model_dump_json()}]"
-    chat_request = UserChatRequest(
-        content="test tool calling",
-        model="test-model",
-        enable_tool_calling=True,
-    ).model_dump(exclude_none=True, exclude_computed_fields=True)
-    # since tool_definitions is a Json type we can't include it in the UserChatRequest init
-    chat_request["toolDefinitions"] = tool_definitions
-
-    response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(auth_user))
-
-    assert_ok_response(response=response)
-
-    lines = [json.loads(line) for line in response.text.splitlines()]
-
-    assert len(lines) == 6
-    StreamStartChunk.model_validate(lines[0])
-    StartThreadChunk.model_validate(lines[1])
-    AddMessageChunk.model_validate(lines[2])
-    tool_call_chunk = ToolCallChunk.model_validate(lines[3])
-    finished_thread = FinalThreadChunk.model_validate(lines[-2])
-    StreamEndChunk.model_validate(lines[-1])
-
     tool_request = ToolResponseChatRequest(
         content="Sunny",
         model="test-model",

@@ -32,7 +32,7 @@ def create_app() -> FastAPI:
 
     setup_otel()
 
-    FastAPIInstrumentor.instrument_app(app)
+    FastAPIInstrumentor.instrument_app(app, exclude_spans=["receive", "send"])
     HTTPXClientInstrumentor().instrument()
     SQLAlchemyInstrumentor().instrument(
         engine=get_sqlalchemy_engine().sync_engine,  # "sync-style" engine for async SQLAlchemy

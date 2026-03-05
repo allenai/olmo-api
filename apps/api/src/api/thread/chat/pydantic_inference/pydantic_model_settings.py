@@ -22,5 +22,5 @@ def pydantic_model_settings(
         openai_reasoning_effort="low" if model.can_think else None,
         extra_body=extra_body,
         # HACK: This lets us send vllm args flattened. Not sure if this is only needed for beaker queues or all, but this gets us working for now
-        **kwargs
+        **kwargs,  # type: ignore
     )

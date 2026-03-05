@@ -86,6 +86,10 @@ class BaseAsyncMessageRepository(abc.ABC):
     async def get_by_creator(self, creator_id: str) -> Sequence[Message]:
         raise NotImplementedError
 
+    @abc.abstractmethod
+    async def set_file_urls_on_message(self, message_id: obj.ID, file_urls: list[str]) -> None:
+        raise NotImplementedError
+
 
 tracer = trace.get_tracer(__name__)
 
@@ -426,6 +430,14 @@ class AsyncMessageRepository(BaseAsyncMessageRepository):
         )
         result = await self.session.scalars(query)
         return result.all()
+
+    async def set_file_urls_on_message(self, message_id: str, file_urls: list[str]) -> None:
+        async with self.session.begin():
+            update_statement = (
+                update(Message).where(Message.id == message_id).values(file_urls=file_urls).returning(Message)
+            )
+            await self.session.execute(update_statement)
+            await self.session.commit()
 
 
 AsyncMessageRepositoryDependency = Annotated[BaseAsyncMessageRepository, Depends(AsyncMessageRepository)]

@@ -67,7 +67,7 @@ class Settings(BaseSettings):
 
     MODAL_OPENAI_API_KEY: SecretStr = Field(init=False)
 
-    USER_CONTENT_BUCKET: str
+    USER_CONTENT_BUCKET: str = "ai2-playground-molmo"
 
     model_config = SettingsConfigDict(
         extra="ignore",

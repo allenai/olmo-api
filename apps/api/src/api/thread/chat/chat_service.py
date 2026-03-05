@@ -1,6 +1,4 @@
-import asyncio
-import os
-from collections.abc import AsyncIterator, Awaitable, Sequence
+from collections.abc import AsyncIterator, Sequence
 from typing import Annotated
 
 from fastapi import Depends, UploadFile
@@ -16,12 +14,11 @@ from pydantic_ai import (
 )
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
-from api.config import settings
 from api.db.sqlalchemy_engine import SessionDependency
-from api.gcs_dependency import GoogleCloudStorageDependency
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.model.model_query import base_model_config_select
 from api.model_config.model_config_request import validate_inference_parameters_against_model_constraints
+from api.thread.chat.chat_file_upload_service import ChatFileUploadServiceDependency
 from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
 from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
 from api.thread.chat.playground_ui_adapter._util import RunInput
@@ -30,7 +27,6 @@ from api.thread.chat.pydantic_inference.pydantic_model_settings import pydantic_
 from api.tools.mcp_service import get_general_mcp_servers
 from api.tools.tools_service import ToolsServiceDependency
 from core.auth.token import Token
-from core.google_cloud_storage import UploadResponse
 from core.message.role import Role
 from core.object_id import ID
 from core.tools.tool_source import ToolSource
@@ -124,12 +120,12 @@ class ChatService:
         message_repository: AsyncMessageRepositoryDependency,
         session: SessionDependency,
         tools_service: ToolsServiceDependency,
-        storage: GoogleCloudStorageDependency,
+        file_upload_service: ChatFileUploadServiceDependency,
     ):
         self.message_repository = message_repository
         self.session = session
         self.tools_service = tools_service
-        self.storage = storage
+        self.file_upload_service = file_upload_service
 
     @tracer.start_as_current_span(name="ChatService/_get_model")
     async def _get_model(self, model_id: str):
@@ -350,20 +346,6 @@ class ChatService:
         # Save initial messages/thread to DB
         # Support multimedia
 
-    async def _upload_request_files(self, message_id: ID, files: Sequence[UploadFile]):
-        tasks: list[Awaitable[UploadResponse]] = []
-        for i, file in enumerate(request.files or []):
-            file_extension = os.path.splitext(file.filename)[1] if file.filename is not None else ""
-            # TODO: Determine if parent_message_id is correct or if we should be getting something like request_message_id instead
-            filename = f"{root_message_id}/{parent_message_id}-{i}{file_extension}"
-
-            upload_response = self.storage.upload_content(
-                filename=filename, file_data=file.file, bucket_name=settings.USER_CONTENT_BUCKET, make_file_public=True
-            )
-            tasks.append(upload_response)
-
-        upload_results = await asyncio.gather(*tasks)
-
     async def stream_chat_message(self, request: ChatRequest, user: Token) -> AsyncIterator[str]:
         model = await self._get_model(request.model)
         (
@@ -380,6 +362,10 @@ class ChatService:
         model_settings = pydantic_model_settings(
             inference_opts=inference_opts, extra_body=request.extra_parameters, can_think=model.can_think
         )
+        
+        if request.files:
+            # TODO: Figure out if parent_message_id is correct or if we need something like user_message_id
+            self.file_upload_service.upload_request_files(parent_message_id, root_message_id, request.files)
 
         toolsets = self._get_toolsets(model, request.tool_definitions, mcp_tools=request.selected_tools)
 

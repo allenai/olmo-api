@@ -72,7 +72,7 @@ async def delete_thread(
 async def stream_chat_message(
     chat_service: ChatServiceDependency,
     auth_service: AuthServiceDependency,
-    request: Annotated[ChatRequest, Form()],
+    request: Annotated[ChatRequest, Form(discriminator="role")],
 ):
     if settings.ENV.is_production:
         raise NotFoundProblem

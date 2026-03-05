@@ -4,6 +4,7 @@ from typing import Annotated, Any, Literal, Self
 from fastapi import UploadFile
 from pydantic import (
     AfterValidator,
+    BeforeValidator,
     Field,
     Json,
     computed_field,
@@ -41,6 +42,13 @@ def captcha_token_required_on_prod(value: str | None):
     return value
 
 
+def ensure_list(value: Any) -> Any:
+    if value is not None and not isinstance(value, list):
+        return [value]
+
+    return value
+
+
 class BaseChatRequest(APIInterface):
     model: str
     host: str | None = Field(default=None, deprecated=True)
@@ -55,15 +63,15 @@ class BaseChatRequest(APIInterface):
     max_tokens: int | None = Field(default=None)
     temperature: float | None = Field(default=None)
     top_p: float | None = Field(default=None)
-    stop: list[str] | None = Field(default_factory=list)
+    stop: Annotated[list[str] | None, BeforeValidator(ensure_list)] = Field(default_factory=list)
     n: int | None = Field(default=1, ge=1, le=1)
     logprobs: int | None = Field(default=None, ge=0, le=10)
     extra_parameters: Json[dict[str, Any]] | None = Field(default=None)
 
-    files: Sequence[UploadFile] | None = Field(default=None)
+    files: Annotated[Sequence[UploadFile] | None, BeforeValidator(ensure_list)] = Field(default=None)
 
     tool_definitions: Json[list[CreateToolDefinition]] | None = Field(default=None)
-    selected_tools: list[str] | None = Field(default=None)
+    selected_tools: Annotated[list[str] | None, BeforeValidator(ensure_list)] = Field(default=None)
     enable_tool_calling: bool = Field(default=False)
 
     @computed_field
@@ -74,7 +82,7 @@ class BaseChatRequest(APIInterface):
 
 class ContentChatRequest(BaseChatRequest):
     content: str | None = Field(default=None)
-    input_parts: list[Json[InputPart]] | None = Field(default=None)
+    input_parts: Annotated[list[Json[InputPart]] | None, BeforeValidator(ensure_list)] = Field(default=None)
 
     @field_validator("content", mode="after")
     @classmethod
@@ -133,7 +141,9 @@ class ToolResponseChatRequest(BaseChatRequest):
     content: str
 
 
+CHAT_REQUEST_DISCRIMINATOR = "role"
+
 ChatRequest = Annotated[
     UserChatRequest | AssistantChatRequest | ToolResponseChatRequest,
-    Field(discriminator="role"),
+    Field(discriminator=CHAT_REQUEST_DISCRIMINATOR),
 ]

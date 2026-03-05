@@ -10,6 +10,7 @@ from api.auth.auth_service import AuthServiceDependency
 from api.config import settings
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.service_errors import ForbiddenError, NotFoundError
+from api.thread.chat.chat_request import CHAT_REQUEST_DISCRIMINATOR
 from api.thread.chat.chat_service import ChatRequest, ChatServiceDependency
 from api.thread.models.thread import Thread, ThreadList
 from api.thread.thread_delete_service import ThreadDeleteServiceDependency
@@ -72,7 +73,7 @@ async def delete_thread(
 async def stream_chat_message(
     chat_service: ChatServiceDependency,
     auth_service: AuthServiceDependency,
-    request: Annotated[ChatRequest, Form()],
+    request: Annotated[ChatRequest, Form(discriminator=CHAT_REQUEST_DISCRIMINATOR)],
 ):
     if settings.ENV.is_production:
         raise NotFoundProblem

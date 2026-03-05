@@ -141,7 +141,9 @@ class ToolResponseChatRequest(BaseChatRequest):
     content: str
 
 
+CHAT_REQUEST_DISCRIMINATOR = "role"
+
 ChatRequest = Annotated[
     UserChatRequest | AssistantChatRequest | ToolResponseChatRequest,
-    Field(discriminator="role"),
+    Field(discriminator=CHAT_REQUEST_DISCRIMINATOR),
 ]

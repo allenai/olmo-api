@@ -6,7 +6,11 @@ requires-python = ">=3.12"
 
 dependencies = [
     "olmo-eval-internal[litellm,storage]",
+    "click>=8.0",
 ]
+
+[project.scripts]
+evaluations = "evaluations.cli:main"
 
 [build-system]
 requires = ["hatchling"]

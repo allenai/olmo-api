@@ -2,12 +2,53 @@
 
 This module contains Python-defined job configurations
 for running evaluations via Cloud Run Jobs.
+
+Structure:
+- base.py: Core dataclasses (TierConfig, ModelEval, StorageConfig)
+- tiers/: Tier definitions with model evaluations
+  - smoke.py: Quick sanity checks (multiple times/day to daily)
+  - standard.py: Curated standard evals (multiple times/week to weekly)
+  - deployment.py: Comprehensive evals (once at deployment)
+
+Usage:
+    from evaluations.configs import smoke_tier, standard_tier, deployment_tier
+    from evaluations.configs import TierName, get_tier, list_tiers
+
+    # Get all jobs for smoke tier
+    for model, cli_args in smoke_tier.get_jobs():
+        print(model.job_name("smoke"), cli_args)
+
+    # Generate docker run command
+    cmd = smoke_tier.to_docker_run_cmd(smoke_tier.models[0])
 """
 
-from evaluations.configs.base import EvalJobConfig
-from evaluations.configs.olmo3 import olmo3_7b_humaneval_bpb
+from evaluations.configs.base import (
+    ModelEval,
+    StorageConfig,
+    TierConfig,
+    TierName,
+)
+from evaluations.configs.tiers import (
+    ALL_TIERS,
+    deployment_tier,
+    get_tier,
+    list_tiers,
+    smoke_tier,
+    standard_tier,
+)
 
 __all__ = [
-    "EvalJobConfig",
-    "olmo3_7b_humaneval_bpb",
+    # Base classes
+    "ModelEval",
+    "StorageConfig",
+    "TierConfig",
+    "TierName",
+    # Tier instances
+    "smoke_tier",
+    "standard_tier",
+    "deployment_tier",
+    # Registry
+    "ALL_TIERS",
+    "get_tier",
+    "list_tiers",
 ]

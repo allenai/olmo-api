@@ -25,9 +25,14 @@ WORKDIR /app
 # Copy olmo-eval-internal source
 COPY olmo-eval-internal /app/olmo-eval-internal
 
-# Install olmo-eval-internal with litellm and storage extras
+# Copy evaluations package
+COPY src /app/src
+COPY pyproject.toml /app/pyproject.toml
+
+# Install olmo-eval-internal with litellm and storage extras, plus evaluations package
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system /app/olmo-eval-internal[litellm,storage]
+    uv pip install --system /app/olmo-eval-internal[litellm,storage] && \
+    uv pip install --system /app
 
 # ============================================================================
 # Stage 2: Runtime
@@ -46,6 +51,7 @@ RUN groupadd --system --gid 999 nonroot \
 # Copy installed packages from builder
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin/olmo-eval /usr/local/bin/olmo-eval
+COPY --from=builder /usr/local/bin/evaluations /usr/local/bin/evaluations
 
 # Copy entrypoint script
 COPY run.sh /app/run.sh

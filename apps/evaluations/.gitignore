@@ -1,0 +1,3 @@
+# Ignore the copied olmo-eval-internal directory
+# This is only needed for Docker builds and should not be committed
+olmo-eval-internal/

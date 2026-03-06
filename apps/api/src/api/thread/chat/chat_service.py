@@ -362,7 +362,7 @@ class ChatService:
         model_settings = pydantic_model_settings(
             inference_opts=inference_opts, extra_body=request.extra_parameters, can_think=model.can_think
         )
-        
+
         if request.files:
             await self.file_upload_service.upload_request_files(parent_message_id, root_message_id, request.files)
 

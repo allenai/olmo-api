@@ -69,6 +69,10 @@ class Settings(BaseSettings):
 
     USER_CONTENT_BUCKET: str = "ai2-playground-molmo"
 
+    RECAPTCHA_ENABLED: bool = True
+    RECAPTCHA_GCP_PROJECT_ID: str = "ai2-reviz"
+    RECAPTCHA_KEY: str = Field(init=False)
+
     model_config = SettingsConfigDict(
         extra="ignore",
         env_file=(".env", f".env.{environment}", ".env.local", f".env.{environment}.local"),

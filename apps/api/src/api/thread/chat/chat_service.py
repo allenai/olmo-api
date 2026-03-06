@@ -369,7 +369,9 @@ class ChatService:
         pydantic_model = get_pydantic_model(model)
 
         model_settings = pydantic_model_settings(
-            inference_opts=get_thread_result.inference_opts, extra_body=request.extra_parameters, can_think=model.can_think
+            inference_opts=get_thread_result.inference_options,
+            extra_body=request.extra_parameters,
+            can_think=model.can_think,
         )
 
         if request.files and settings.SHOULD_UPLOAD_CHAT_REQUEST_FILES:

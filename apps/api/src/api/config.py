@@ -69,8 +69,6 @@ class Settings(BaseSettings):
 
     USER_CONTENT_BUCKET: str = "ai2-playground-molmo"
 
-    SHOULD_UPLOAD_CHAT_REQUEST_FILES: bool = True
-
     model_config = SettingsConfigDict(
         extra="ignore",
         env_file=(".env", f".env.{environment}", ".env.local", f".env.{environment}.local"),

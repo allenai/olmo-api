@@ -299,7 +299,6 @@ async def test_cannot_create_message_on_another_users_therad(
     )
 
 
-@pytest.mark.xfail(IS_CI, reason="File uploads not supported yet")
 async def test_uploads_a_file_to_a_multimodal_model(client: AsyncClient, anon_user: AuthenticatedClient):
     test_image_path = Path(__file__).parent.joinpath("molmo-boats.png")
 
@@ -308,7 +307,6 @@ async def test_uploads_a_file_to_a_multimodal_model(client: AsyncClient, anon_us
             content="test upload file",
             model="test-mm-model",
         ).model_dump(exclude_none=True, exclude_computed_fields=True)
-        # chat_request["files"] = ("molmo-boats.png", file, "image/png")
 
         response = await client.post(
             CHAT_ENDPOINT,

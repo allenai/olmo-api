@@ -357,7 +357,7 @@ class ChatService:
         pydantic_model = get_pydantic_model(model)
 
         model_settings = pydantic_model_settings(
-            model=model, inference_opts=inference_opts, extra_body=request.extra_parameters
+            inference_opts=inference_opts, extra_body=request.extra_parameters, can_think=model.can_think
         )
 
         toolsets = self._get_toolsets(model, request.tool_definitions, mcp_tools=request.selected_tools)

@@ -20,9 +20,10 @@ from api.db.sqlalchemy_engine import SessionDependency
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.model.model_query import base_model_config_select
 from api.model_config.model_config_request import validate_inference_parameters_against_model_constraints
+from api.thread.chat.chat_exceptions import InvalidParentError, ModelNotAvailableError, ModelNotFoundError
 from api.thread.chat.chat_file_upload_service import ChatFileUploadServiceDependency
 from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
-from api.thread.chat.mapping.mapping import MessageAndFiles
+from api.thread.chat.mapping.pydantic_ai_mapping import MessageAndFiles
 from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
 from api.thread.chat.playground_ui_adapter._util import RunInput
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
@@ -40,14 +41,6 @@ from db.models.tool_call import clone_tool_call
 from db.models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 
 logger = FastAPIStructLogger()
-
-
-class ModelNotFoundError(UnprocessableProblem):
-    title = "Model not found"
-
-
-class ModelNotAvailableError(UnprocessableProblem):
-    title = "Model not available"
 
 
 def merge_inference_options(
@@ -74,9 +67,6 @@ def merge_inference_options(
     )
 
     return InferenceOpts.model_validate(merged_inference_options)
-
-
-class InvalidParentError(UnprocessableProblem): ...
 
 
 def build_message_list_from_parent(messages: Sequence[Message], parent_message_id: ID) -> list[MessageAndFiles]:

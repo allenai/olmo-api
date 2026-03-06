@@ -9,7 +9,7 @@ from pydantic_ai.output import OutputDataT
 from pydantic_ai.tools import AgentDepsT
 from pydantic_ai.ui import UIAdapter, UIEventStream
 
-from api.thread.chat.mapping.mapping import map_messages_to_pydantic_ai_format
+from api.thread.chat.mapping.pydantic_ai_mapping import map_messages_to_pydantic_ai_format
 from db.models.message import Message
 
 from ._event_stream import PlaygroundUIEventStream

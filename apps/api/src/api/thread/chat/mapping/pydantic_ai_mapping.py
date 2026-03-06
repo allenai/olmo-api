@@ -22,7 +22,7 @@ from pydantic_ai import (
     VideoUrl,
 )
 
-from api.thread.chat.chat_exceptions import UnsupportedMediaTypeError
+from api.thread.chat.chat_exceptions import UnhandledRoleError, UnsupportedMediaTypeError
 from api.thread.chat.mapping.input_parts import map_input_parts
 from core.message.role import Role
 from db.models.message import Message
@@ -121,9 +121,6 @@ def _map_tool_response_message(message_and_files: MessageAndFiles):
             )
         ]
     )
-
-
-class UnhandledRoleError(Exception): ...
 
 
 def map_message(message_and_files: MessageAndFiles) -> ModelMessage:

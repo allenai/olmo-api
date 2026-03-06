@@ -22,6 +22,7 @@ from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
 from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
 from api.thread.chat.playground_ui_adapter._util import RunInput
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
+from api.thread.chat.pydantic_inference.pydantic_model_settings import pydantic_model_settings
 from api.tools.mcp_service import get_general_mcp_servers
 from api.tools.tools_service import ToolsServiceDependency
 from core.auth.token import Token
@@ -270,7 +271,7 @@ class ChatService:
         request: ChatRequest,
         user: Token,
         model: ModelConfig,
-    ) -> tuple[list[Message], list[Message], ID, ID, list[Ai2ToolDefinition] | None]:
+    ) -> tuple[list[Message], list[Message], ID, ID, list[Ai2ToolDefinition] | None, InferenceOpts]:
         parent_message = (
             await self.message_repository.get_message_by_id(request.parent) if request.parent is not None else None
         )
@@ -310,7 +311,14 @@ class ChatService:
             (message.tool_definitions for message in reversed(all_messages) if message.tool_definitions), None
         )
 
-        return (all_messages, new_messages, all_messages[0].id, all_messages[-1].id, tool_definitions)
+        return (
+            all_messages,
+            new_messages,
+            all_messages[0].id,
+            all_messages[-1].id,
+            tool_definitions,
+            merged_inference_options,
+        )
 
     @staticmethod
     @tracer.start_as_current_span(name="ChatService/_get_toolsets")
@@ -343,18 +351,23 @@ class ChatService:
             root_message_id,
             parent_message_id,
             tool_definitions,
+            inference_opts,
         ) = await self._validate_and_get_thread(request, user, model)
 
         pydantic_model = get_pydantic_model(model)
 
+        model_settings = pydantic_model_settings(
+            inference_opts=inference_opts, extra_body=request.extra_parameters, can_think=model.can_think
+        )
+
         toolsets = self._get_toolsets(model, request.tool_definitions, mcp_tools=request.selected_tools)
 
-        # TODO: make sure inference options are sent
         agent = Agent(
             model=pydantic_model,
             toolsets=toolsets,
             output_type=[str, DeferredToolRequests],
             end_strategy="exhaustive",
+            model_settings=model_settings,
         )
 
         run_input = RunInput(

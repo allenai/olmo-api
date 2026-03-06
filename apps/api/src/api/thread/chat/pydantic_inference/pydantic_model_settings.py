@@ -13,7 +13,7 @@ def pydantic_model_settings(
     kwargs = extra_body if extra_body is not None else {}
 
     return OpenAIChatModelSettings(
-        *inference_opts.model_dump(exclude_none=True, exclude={"stop"}),
+        **inference_opts.model_dump(exclude_none=True, exclude={"stop"}),
         stop_sequences=inference_opts.stop or [],
         # TODO: allow changing
         openai_reasoning_effort="low" if can_think else None,

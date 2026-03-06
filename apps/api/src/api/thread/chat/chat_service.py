@@ -364,7 +364,6 @@ class ChatService:
         )
         
         if request.files:
-            # TODO: Figure out if parent_message_id is correct or if we need something like user_message_id
             await self.file_upload_service.upload_request_files(parent_message_id, root_message_id, request.files)
 
         toolsets = self._get_toolsets(model, request.tool_definitions, mcp_tools=request.selected_tools)

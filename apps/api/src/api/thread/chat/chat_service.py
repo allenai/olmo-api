@@ -281,7 +281,6 @@ class ChatService:
             )
             tool_response_message.parent_ = parent_message
 
-            tool_response_message = tool_response_message
             messages.append(tool_response_message)
             new_messages.append(tool_response_message)
             request_message_id = tool_response_message.id
@@ -295,7 +294,7 @@ class ChatService:
         # This ensures we call the model with the latest tool definitions if they change in the thread
         tool_definitions = next(
             (message.tool_definitions for message in reversed(messages) if message.tool_definitions),
-            None,
+            None,  # type:ignore [arg-type] # This is a valid place for None, not sure why mypy is saying it isn't
         )
 
         return InitializeThreadResult(

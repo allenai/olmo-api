@@ -19,6 +19,7 @@ from api.db.sqlalchemy_engine import SessionDependency
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.model.model_query import base_model_config_select
 from api.model_config.model_config_request import validate_inference_parameters_against_model_constraints
+from api.request_client import RequestClient
 from api.thread.chat.chat_exceptions import InvalidParentError, ModelNotAvailableError, ModelNotFoundError
 from api.thread.chat.chat_file_upload_service import ChatFileUploadServiceDependency
 from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
@@ -26,6 +27,7 @@ from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
 from api.thread.chat.playground_ui_adapter._util import RunInput
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
 from api.thread.chat.pydantic_inference.pydantic_model_settings import pydantic_model_settings
+from api.thread.chat.safety.validate_message_safety_service import ValidateMessageSafetyServiceDependency
 from api.tools.mcp_service import get_general_mcp_servers
 from api.tools.tools_service import ToolsServiceDependency
 from core.auth.token import Token
@@ -131,11 +133,13 @@ class ChatService:
         session: SessionDependency,
         tools_service: ToolsServiceDependency,
         file_upload_service: ChatFileUploadServiceDependency,
+        validate_message_safety_service: ValidateMessageSafetyServiceDependency,
     ):
         self.message_repository = message_repository
         self.session = session
         self.tools_service = tools_service
         self.file_upload_service = file_upload_service
+        self.validate_message_safety_service = validate_message_safety_service
 
     @tracer.start_as_current_span(name="ChatService/_get_model")
     async def _get_model(self, model_id: str):
@@ -359,7 +363,9 @@ class ChatService:
 
         return [user_tool_toolset, filtered_mcp_toolset]
 
-    async def stream_chat_message(self, request: ChatRequest, user: Token) -> AsyncIterator[str]:
+    async def stream_chat_message(
+        self, request: ChatRequest, user: Token, request_client: RequestClient
+    ) -> AsyncIterator[str]:
         model = await self._get_model(request.model)
 
         validate_thread_result = await self._validate_thread(request, model)
@@ -382,6 +388,10 @@ class ChatService:
         )
 
         toolsets = self._get_toolsets(model, request.tool_definitions, mcp_tools=request.selected_tools)
+
+        await self.validate_message_safety_service.validate(
+            chat_request=request, request_client=request_client, user=user
+        )
 
         agent = Agent(
             model=pydantic_model,

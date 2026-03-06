@@ -9,6 +9,7 @@ from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import GEN_A
 from api.auth.auth_service import AuthServiceDependency
 from api.config import settings
 from api.logging.fastapi_logger import FastAPIStructLogger
+from api.request_client import RequestClientDependency
 from api.service_errors import ForbiddenError, NotFoundError
 from api.thread.chat.chat_request import CHAT_REQUEST_DISCRIMINATOR
 from api.thread.chat.chat_service import ChatRequest, ChatServiceDependency
@@ -74,6 +75,7 @@ async def stream_chat_message(
     chat_service: ChatServiceDependency,
     auth_service: AuthServiceDependency,
     request: Annotated[ChatRequest, Form(discriminator=CHAT_REQUEST_DISCRIMINATOR)],
+    request_client: RequestClientDependency,
 ):
     if settings.ENV.is_production:
         raise NotFoundProblem
@@ -85,7 +87,7 @@ async def stream_chat_message(
 
     # This needs to be assigned to a variable outside of StreamingResponse
     # Once StreamingResponse is returned you can't raise errors normally
-    stream = await chat_service.stream_chat_message(request, token)
+    stream = await chat_service.stream_chat_message(request=request, user=token, request_client=request_client)
 
     return StreamingResponse(
         stream,

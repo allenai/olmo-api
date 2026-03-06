@@ -2,7 +2,6 @@ from collections.abc import Sequence
 from mimetypes import guess_type
 from typing import NamedTuple
 
-from fastapi import UploadFile
 from pydantic_ai import (
     AudioUrl,
     BinaryContent,
@@ -21,6 +20,10 @@ from pydantic_ai import (
     UserPromptPart,
     VideoUrl,
 )
+
+# We need to use the starlette UploadFile because FastAPI's UploadFile and the actual UploadFile type we get from the request are different
+# https://github.com/fastapi/fastapi/discussions/13208
+from starlette.datastructures import UploadFile
 
 from api.thread.chat.chat_exceptions import UnhandledRoleError, UnsupportedMediaTypeError
 from api.thread.chat.mapping.input_parts import map_input_parts

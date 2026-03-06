@@ -1,5 +1,7 @@
 from collections.abc import Sequence
+from typing import NamedTuple
 
+from fastapi import UploadFile
 from pydantic_ai import (
     ModelMessage,
     ModelRequest,
@@ -16,6 +18,15 @@ from pydantic_ai import (
 from api.thread.chat.input_parts import map_input_parts
 from core.message.role import Role
 from db.models.message import Message
+
+
+class MessageAndFiles(NamedTuple):
+    message: Message
+    files: Sequence[UploadFile] | Sequence[str] | None
+
+    @staticmethod
+    def from_message(message: Message):
+        return MessageAndFiles(message=message, files=message.file_urls)
 
 
 def _map_user_message(message: Message) -> ModelRequest:

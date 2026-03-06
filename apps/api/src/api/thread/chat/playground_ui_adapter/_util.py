@@ -14,6 +14,7 @@ from pydantic_ai import (
 )
 
 from api.thread.chat.chat_types import ChatStreamOutput
+from api.thread.chat.mapping import MessageAndFiles
 from core.message.role import Role
 from core.object_id import ID
 from core.tools.tool_source import ToolSource
@@ -32,8 +33,8 @@ Event: TypeAlias = ChatStreamOutput
 
 @dataclass
 class RunInput:
-    all_messages: Sequence[Message]
-    new_messages: Sequence[Message]
+    all_messages: Sequence[MessageAndFiles]
+    new_messages: Sequence[MessageAndFiles]
     parent_message_id: ID
     root_message_id: ID
     creator: str

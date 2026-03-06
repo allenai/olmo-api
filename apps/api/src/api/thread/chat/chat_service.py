@@ -79,7 +79,7 @@ def build_message_list_from_parent(messages: Sequence[Message], parent_message_i
 
     message_list: list[Message] = [intermediate_parent_message]
 
-    # Since we're starting at the parent message, it's the last one in the thread that we care about
+    # The parent message is at the end of the thread
     # Since it's the last one in the thread we build the message list backwards, appending to the start of the list when we get each message's parent
     while message_list[0].parent is not None:
         intermediate_parent_message = messages_dict.get(message_list[0].parent)

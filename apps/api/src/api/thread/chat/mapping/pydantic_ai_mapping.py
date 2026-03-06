@@ -29,6 +29,8 @@ from db.models.message import Message
 
 
 class MessageAndFiles(NamedTuple):
+    """Named tuple that handles the message -> files mapping"""
+
     message: Message
     files: Sequence[UploadFile] | Sequence[str] | None
 
@@ -38,9 +40,8 @@ class MessageAndFiles(NamedTuple):
 
 
 def _map_part_from_file(file: str | UploadFile) -> MultiModalContent:
-    match file:
-        case UploadFile():
-            return BinaryContent(data=file.file.read(), media_type=file.content_type or "")
+    if isinstance(file, UploadFile):
+        return BinaryContent(data=file.file.read(), media_type=file.content_type or "")
 
     (mimetype, _encoding) = guess_type(file)
 
@@ -48,19 +49,19 @@ def _map_part_from_file(file: str | UploadFile) -> MultiModalContent:
         case None:
             # Defaulting to Image for now since most of our uploads are images
             # We can error if we enforce file extensions on upload
-            return ImageUrl(file)  # pyright: ignore[reportCallIssue]
+            return ImageUrl(file)
 
         case mimetype if mimetype.startswith("video"):
-            return VideoUrl(file)  # pyright: ignore[reportCallIssue]
+            return VideoUrl(file)
 
         case mimetype if mimetype.startswith("image"):
-            return ImageUrl(file)  # pyright: ignore[reportCallIssue]
+            return ImageUrl(file)
 
         case mimetype if mimetype.startswith(("text", "application")):
-            return DocumentUrl(file)  # pyright: ignore[reportCallIssue]
+            return DocumentUrl(file)
 
         case mimetype if mimetype.startswith("audio"):
-            return AudioUrl(file)  # pyright: ignore[reportCallIssue]
+            return AudioUrl(file)
 
     unsupported_media_type_msg = f"File URL {file} has unsupported MIME type {mimetype}"
     raise UnsupportedMediaTypeError(unsupported_media_type_msg)

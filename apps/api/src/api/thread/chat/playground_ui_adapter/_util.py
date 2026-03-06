@@ -24,10 +24,10 @@ from db.models.model_config import ModelConfig
 from db.models.tool_call import ToolCall
 from db.models.tool_definitions import ToolDefinition
 
-__all__ = ["Event", "RunInput", "UIMessage"]
+__all__ = ["Event", "InputMessage", "RunInput"]
 
 
-UIMessage: TypeAlias = MessageAndFiles
+InputMessage: TypeAlias = MessageAndFiles
 Event: TypeAlias = ChatStreamOutput
 
 
@@ -75,7 +75,7 @@ def create_message_from_run_input(
 
 def map_tool_return_part_to_message(
     part: ToolReturnPart, message_id: ID, parent_message_id: ID, run_input: RunInput
-) -> UIMessage:
+) -> Message:
     tool_calls = [
         ToolCall(
             tool_call_id=part.tool_call_id,
@@ -120,7 +120,7 @@ def map_response_pydantic_messages_to_messages(
 ) -> list[Message]:
     parent_message_id = run_input.parent_message_id
 
-    mapped_messages: list[UIMessage] = []
+    mapped_messages: list[Message] = []
     for i, message in enumerate(messages):
         message_id = message_ids[i]
         match message:

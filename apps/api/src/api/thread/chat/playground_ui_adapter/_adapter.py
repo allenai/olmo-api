@@ -13,13 +13,13 @@ from api.thread.chat.mapping.pydantic_ai_mapping import map_messages_to_pydantic
 from db.models.message import Message
 
 from ._event_stream import PlaygroundUIEventStream
-from ._util import Event, RunInput, UIMessage
+from ._util import Event, InputMessage, RunInput
 
 __all__ = ["PlaygroundUIAdapter"]
 
 
 @dataclass
-class PlaygroundUIAdapter(UIAdapter[RunInput, UIMessage, Event, AgentDepsT, OutputDataT]):
+class PlaygroundUIAdapter(UIAdapter[RunInput, InputMessage, Event, AgentDepsT, OutputDataT]):
     def build_run_input(cls, body: bytes) -> list[Message]:  # type: ignore # noqa: N805
         raise NotImplementedError
 
@@ -33,7 +33,7 @@ class PlaygroundUIAdapter(UIAdapter[RunInput, UIMessage, Event, AgentDepsT, Outp
         return self.load_messages(self.run_input.all_messages)
 
     @classmethod
-    def load_messages(cls, messages: Sequence[UIMessage]) -> list[ModelMessage]:
+    def load_messages(cls, messages: Sequence[InputMessage]) -> list[ModelMessage]:
         agent_messages = map_messages_to_pydantic_ai_format(messages)
 
         return agent_messages

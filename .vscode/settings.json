@@ -18,7 +18,9 @@
         "pyproject",
         "sessionmaker",
         "usefixtures",
-        "videointelligence"
+        "videointelligence",
+        "toolsets",
+        "asgi"
     ],
     "ruff.configurationPreference": "filesystemFirst",
     "ruff.format.preview": true,

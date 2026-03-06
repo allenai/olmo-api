@@ -22,7 +22,6 @@ from api.model_config.model_config_request import validate_inference_parameters_
 from api.thread.chat.chat_exceptions import InvalidParentError, ModelNotAvailableError, ModelNotFoundError
 from api.thread.chat.chat_file_upload_service import ChatFileUploadServiceDependency
 from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
-from api.thread.chat.mapping.pydantic_ai_mapping import MessageAndFiles
 from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
 from api.thread.chat.playground_ui_adapter._util import RunInput
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
@@ -68,7 +67,7 @@ def merge_inference_options(
     return InferenceOpts.model_validate(merged_inference_options)
 
 
-def build_message_list_from_parent(messages: Sequence[Message], parent_message_id: ID) -> list[MessageAndFiles]:
+def build_message_list_from_parent(messages: Sequence[Message], parent_message_id: ID) -> list[Message]:
     messages_dict = {message.id: message for message in messages}
     intermediate_parent_message = messages_dict.get(parent_message_id)
 
@@ -78,18 +77,18 @@ def build_message_list_from_parent(messages: Sequence[Message], parent_message_i
         )
         raise InvalidParentError(invalid_parent_message)
 
-    message_list: list[MessageAndFiles] = [MessageAndFiles.from_message(intermediate_parent_message)]
+    message_list: list[Message] = [intermediate_parent_message]
 
     # Since we're starting at the parent message, it's the last one in the thread that we care about
     # Since it's the last one in the thread we build the message list backwards, appending to the start of the list when we get each message's parent
-    while message_list[0].message.parent is not None:
-        intermediate_parent_message = messages_dict.get(message_list[0].message.parent)
+    while message_list[0].parent is not None:
+        intermediate_parent_message = messages_dict.get(message_list[0].parent)
 
         if intermediate_parent_message is None:
-            invalid_parent_message = f"Intermediate message in thread with ID {message_list[0].message.parent} was not found when trying to access it as a parent"
+            invalid_parent_message = f"Intermediate message in thread with ID {message_list[0].parent} was not found when trying to access it as a parent"
             raise InvalidParentError(invalid_parent_message)
 
-        message_list.insert(0, MessageAndFiles.from_message(intermediate_parent_message))
+        message_list.insert(0, intermediate_parent_message)
 
     return message_list
 
@@ -117,8 +116,8 @@ class ValidateThreadResult:
 
 @dataclass
 class InitializeThreadResult:
-    all_messages: list[MessageAndFiles]
-    new_messages: list[MessageAndFiles]
+    all_messages: list[Message]
+    new_messages: list[Message]
     request_message_id: str
     tool_definitions: list[Ai2ToolDefinition] | None
     root_message_id: str
@@ -170,8 +169,8 @@ class ChatService:
         inference_options: InferenceOpts,
         model: ModelConfig,
     ) -> InitializeThreadResult:
-        messages: list[MessageAndFiles] = []
-        new_messages: list[MessageAndFiles] = []
+        messages: list[Message] = []
+        new_messages: list[Message] = []
         request_message_id: str
 
         if root_message_id is not None and request_parent_message_id is not None:
@@ -181,11 +180,11 @@ class ChatService:
             messages = [*messages, *existing_thread_messages]
 
             root_message = messages[-1]
-            if root_message.message.creator != creator_id:
+            if root_message.creator != creator_id:
                 user_is_not_creator_message = "Cannot create message when not creator"  # words this
                 raise ForbiddenProblem(user_is_not_creator_message)
 
-            if root_message.message.private != request.private:
+            if root_message.private != request.private:
                 visibility_message = "Visibility must be identical for all messages in a thread"
                 raise UnprocessableProblem(visibility_message)
 
@@ -203,12 +202,12 @@ class ChatService:
                 model_id=model.id,
                 model_host=model.host,
             )
-            messages.append(MessageAndFiles.from_message(system_message))
-            new_messages.append(MessageAndFiles.from_message(system_message))
+            messages.append(system_message)
+            new_messages.append(system_message)
 
         if request.role is Role.User:
             user_message_id = create_message_id()
-            root_message_id = messages[0].message.id if messages else user_message_id
+            root_message_id = messages[0].id if messages else user_message_id
 
             tool_definitions = [
                 Ai2ToolDefinition(
@@ -220,7 +219,7 @@ class ChatService:
                 for definition in request.tool_definitions or []
             ]
 
-            parent = messages[-1].message if len(messages) > 0 else None
+            parent = messages[-1] if len(messages) > 0 else None
 
             file_urls: list[str] | None = None
 
@@ -245,13 +244,12 @@ class ChatService:
             )
             user_message.parent_ = parent
 
-            user_message_with_files = MessageAndFiles.from_message(user_message)
-            messages.append(user_message_with_files)
-            new_messages.append(user_message_with_files)
+            messages.append(user_message)
+            new_messages.append(user_message)
             request_message_id = user_message.id
 
         elif request.role is Role.ToolResponse:
-            parent_message = messages[-1].message
+            parent_message = messages[-1]
 
             if not parent_message.tool_calls:
                 parent_has_no_tools_message = "Can not create a tool response. Parent has no tools"
@@ -283,24 +281,20 @@ class ChatService:
             )
             tool_response_message.parent_ = parent_message
 
-            tool_response_message_with_files = MessageAndFiles(tool_response_message, request.files)
-            messages.append(tool_response_message_with_files)
-            new_messages.append(tool_response_message_with_files)
+            tool_response_message = tool_response_message
+            messages.append(tool_response_message)
+            new_messages.append(tool_response_message)
             request_message_id = tool_response_message.id
 
         else:
             assert_never(request.role)
 
-        await self.message_repository.add_many([message_with_files.message for message_with_files in new_messages])
+        await self.message_repository.add_many(new_messages)
 
         # Gets tool definitions from the last message in the thread
         # This ensures we call the model with the latest tool definitions if they change in the thread
         tool_definitions = next(
-            (
-                message_with_files.message.tool_definitions
-                for message_with_files in reversed(messages)
-                if message_with_files.message.tool_definitions
-            ),
+            (message.tool_definitions for message in reversed(messages) if message.tool_definitions),
             None,
         )
 
@@ -309,8 +303,8 @@ class ChatService:
             new_messages=new_messages,
             request_message_id=request_message_id,
             tool_definitions=tool_definitions,
-            root_message_id=messages[0].message.id,
-            last_message_id=messages[-1].message.id,
+            root_message_id=messages[0].id,
+            last_message_id=messages[-1].id,
         )
 
     @tracer.start_as_current_span("ChatService/_validate_thread")
@@ -406,7 +400,7 @@ class ChatService:
             parent_message_id=initialize_thread_result.last_message_id,
             creator=user.client,
             model=model,
-            inference_opts=initialize_thread_result.all_messages[-1].message.opts,
+            inference_opts=initialize_thread_result.all_messages[-1].opts,
             user_tool_names=[definition.name for definition in request.tool_definitions or []],
             tool_definitions=initialize_thread_result.tool_definitions,
             handle_final_messages=self.message_repository.finalize_thread,

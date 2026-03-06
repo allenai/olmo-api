@@ -113,9 +113,7 @@ class PlaygroundUIEventStream(
 
     async def before_stream(self) -> AsyncIterator[ChatStreamOutput]:
         yield StreamStartChunk(message=self.run_input.root_message_id)
-        messages = FlatMessage.from_message_seq([
-            message_with_files.message for message_with_files in self.run_input.new_messages
-        ])
+        messages = FlatMessage.from_message_seq(self.run_input.new_messages)
         if self.run_input.is_new_thread:
             yield StartThreadChunk(message=messages[0].id, id=messages[0].id, messages=messages)
         else:
@@ -245,7 +243,7 @@ class PlaygroundUIEventStream(
             )
 
             first_new_message = await self.run_input.handle_final_messages([
-                *[message_with_files.message for message_with_files in self.run_input.new_messages],
+                *self.run_input.new_messages,
                 *mapped_new_messages,
             ])
 

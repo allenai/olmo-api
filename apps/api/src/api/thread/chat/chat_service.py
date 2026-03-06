@@ -30,7 +30,7 @@ from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydant
 from api.tools.mcp_service import McpServiceDependency
 from api.thread.chat.pydantic_inference.pydantic_model_settings import pydantic_model_settings
 from api.thread.chat.safety.validate_message_safety_service import ValidateMessageSafetyServiceDependency
-from api.tools.mcp_service import get_general_mcp_servers
+from api.tools.mcp_service import McpServiceDependency
 from api.tools.tools_service import ToolsServiceDependency
 from core.message.role import Role
 from core.object_id import ID

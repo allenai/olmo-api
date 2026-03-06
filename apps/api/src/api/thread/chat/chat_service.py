@@ -15,7 +15,6 @@ from pydantic_ai import (
 )
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
-from api.config import settings
 from api.db.sqlalchemy_engine import SessionDependency
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.model.model_query import base_model_config_select
@@ -223,6 +222,13 @@ class ChatService:
 
             parent = messages[-1].message if len(messages) > 0 else None
 
+            file_urls: list[str] | None = None
+
+            if request.files:
+                file_urls = await self.file_upload_service.upload_request_files(
+                    message_id=user_message_id, root_message_id=root_message_id, files=request.files
+                )
+
             user_message = Message(
                 id=user_message_id,
                 content=request.content or "",
@@ -235,10 +241,12 @@ class ChatService:
                 model_host=model.host,
                 parent=parent.id if parent else None,
                 tool_definitions=tool_definitions,
+                file_urls=file_urls,
             )
             user_message.parent_ = parent
 
-            user_message_with_files = MessageAndFiles(user_message, request.files)
+            files = [await file.read() for file in request.files] if request.files is not None else None
+            user_message_with_files = MessageAndFiles(user_message, files)
             messages.append(user_message_with_files)
             new_messages.append(user_message_with_files)
             request_message_id = user_message.id
@@ -362,6 +370,7 @@ class ChatService:
 
     async def stream_chat_message(self, request: ChatRequest, user: Token) -> AsyncIterator[str]:
         model = await self._get_model(request.model)
+
         validate_thread_result = await self._validate_thread(request, model)
         initialize_thread_result = await self._initialize_thread(
             root_message_id=validate_thread_result.root_message_id,
@@ -380,11 +389,6 @@ class ChatService:
             extra_body=request.extra_parameters,
             can_think=model.can_think,
         )
-
-        if request.files and settings.SHOULD_UPLOAD_CHAT_REQUEST_FILES:
-            await self.file_upload_service.upload_request_files(
-                initialize_thread_result.request_message_id, initialize_thread_result.root_message_id, request.files
-            )
 
         toolsets = self._get_toolsets(model, request.tool_definitions, mcp_tools=request.selected_tools)
 

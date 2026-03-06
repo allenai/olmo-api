@@ -11,7 +11,7 @@ dependencies = [
     "core",
     "db",
     "fastapi-problem>=0.11.6",
-    "fastapi[standard]>=0.128.0",
+    "fastapi[standard]>=0.135.1",
     "httpx>=0.28.1",
     "opentelemetry-api>=1.39.1",
     "opentelemetry-exporter-gcp-trace>=1.10.0",

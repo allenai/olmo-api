@@ -37,7 +37,7 @@ class ChatFileUploadService:
                 task = tg.create_task(
                     self._storage.upload_content(
                         filename=filename,
-                        file_data=file.file,
+                        file_data=await file.read(),
                         bucket_name=settings.USER_CONTENT_BUCKET,
                         make_file_public=True,
                     )

@@ -245,8 +245,7 @@ class ChatService:
             )
             user_message.parent_ = parent
 
-            files = [await file.read() for file in request.files] if request.files is not None else None
-            user_message_with_files = MessageAndFiles(user_message, files)
+            user_message_with_files = MessageAndFiles.from_message(user_message)
             messages.append(user_message_with_files)
             new_messages.append(user_message_with_files)
             request_message_id = user_message.id

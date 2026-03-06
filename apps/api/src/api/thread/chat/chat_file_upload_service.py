@@ -28,9 +28,6 @@ class ChatFileUploadService:
 
     @tracer.start_as_current_span(name="ChatFileUploadService/upload_request_files")
     async def upload_request_files(self, message_id: ID, root_message_id: ID, files: Sequence[UploadFile]) -> list[str]:
-        """
-        Starts the upload for files and sets a callback to update the message with the file URLs
-        """
         tasks: list[asyncio.Task[UploadResponse]] = []
         async with asyncio.TaskGroup() as tg:
             for i, file in enumerate(files or []):

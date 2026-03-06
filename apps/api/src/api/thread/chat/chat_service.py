@@ -110,6 +110,13 @@ tracer = trace.get_tracer(__name__)
 
 
 @dataclass
+class ValidateThreadResult:
+    request_parent_message_id: ID | None
+    root_message_id: ID | None
+    inference_options: InferenceOpts
+
+
+@dataclass
 class InitializeThreadResult:
     all_messages: list[MessageAndFiles]
     new_messages: list[MessageAndFiles]
@@ -117,7 +124,6 @@ class InitializeThreadResult:
     tool_definitions: list[Ai2ToolDefinition] | None
     root_message_id: str
     last_message_id: str
-    inference_options: InferenceOpts
 
 
 class ChatService:
@@ -298,16 +304,14 @@ class ChatService:
             tool_definitions=tool_definitions,
             root_message_id=messages[0].message.id,
             last_message_id=messages[-1].message.id,
-            inference_options=inference_options,
         )
 
-    @tracer.start_as_current_span(name="ChatService/_validate_and_get_thread")
-    async def _validate_and_get_thread(
+    @tracer.start_as_current_span("ChatService/_validate_thread")
+    async def _validate_thread(
         self,
         request: ChatRequest,
-        user: Token,
         model: ModelConfig,
-    ) -> InitializeThreadResult:
+    ) -> ValidateThreadResult:
         parent_message = (
             await self.message_repository.get_message_by_id(request.parent) if request.parent is not None else None
         )
@@ -333,17 +337,11 @@ class ChatService:
         root_message_id = parent_message.root if parent_message is not None else None
         request_parent_message_id = parent_message.id if parent_message is not None else None
 
-        initialize_thread_result = await self._initialize_thread(
-            root_message_id,
+        return ValidateThreadResult(
             request_parent_message_id=request_parent_message_id,
-            request=request,
-            creator_id=user.client,
-            system_prompt=model.default_system_prompt,
+            root_message_id=root_message_id,
             inference_options=merged_inference_options,
-            model=model,
         )
-
-        return initialize_thread_result
 
     @staticmethod
     @tracer.start_as_current_span(name="ChatService/_get_toolsets")
@@ -364,19 +362,28 @@ class ChatService:
 
     async def stream_chat_message(self, request: ChatRequest, user: Token) -> AsyncIterator[str]:
         model = await self._get_model(request.model)
-        get_thread_result = await self._validate_and_get_thread(request, user, model)
+        validate_thread_result = await self._validate_thread(request, model)
+        initialize_thread_result = await self._initialize_thread(
+            root_message_id=validate_thread_result.root_message_id,
+            request_parent_message_id=validate_thread_result.request_parent_message_id,
+            request=request,
+            creator_id=user.client,
+            system_prompt=model.default_system_prompt,
+            inference_options=validate_thread_result.inference_options,
+            model=model,
+        )
 
         pydantic_model = get_pydantic_model(model)
 
         model_settings = pydantic_model_settings(
-            inference_opts=get_thread_result.inference_options,
+            inference_opts=validate_thread_result.inference_options,
             extra_body=request.extra_parameters,
             can_think=model.can_think,
         )
 
         if request.files and settings.SHOULD_UPLOAD_CHAT_REQUEST_FILES:
             await self.file_upload_service.upload_request_files(
-                get_thread_result.request_message_id, get_thread_result.root_message_id, request.files
+                initialize_thread_result.request_message_id, initialize_thread_result.root_message_id, request.files
             )
 
         toolsets = self._get_toolsets(model, request.tool_definitions, mcp_tools=request.selected_tools)
@@ -390,15 +397,15 @@ class ChatService:
         )
 
         run_input = RunInput(
-            all_messages=get_thread_result.all_messages,
-            new_messages=get_thread_result.new_messages,
-            root_message_id=get_thread_result.root_message_id,
-            parent_message_id=get_thread_result.last_message_id,
+            all_messages=initialize_thread_result.all_messages,
+            new_messages=initialize_thread_result.new_messages,
+            root_message_id=initialize_thread_result.root_message_id,
+            parent_message_id=initialize_thread_result.last_message_id,
             creator=user.client,
             model=model,
-            inference_opts=get_thread_result.all_messages[-1].message.opts,
+            inference_opts=initialize_thread_result.all_messages[-1].message.opts,
             user_tool_names=[definition.name for definition in request.tool_definitions or []],
-            tool_definitions=get_thread_result.tool_definitions,
+            tool_definitions=initialize_thread_result.tool_definitions,
             handle_final_messages=self.message_repository.finalize_thread,
             is_new_thread=not request.parent,
         )

@@ -15,13 +15,14 @@ from pydantic_ai import (
 )
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
+from api.config import settings
 from api.db.sqlalchemy_engine import SessionDependency
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.model.model_query import base_model_config_select
 from api.model_config.model_config_request import validate_inference_parameters_against_model_constraints
 from api.thread.chat.chat_file_upload_service import ChatFileUploadServiceDependency
 from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
-from api.thread.chat.mapping import MessageAndFiles
+from api.thread.chat.mapping.mapping import MessageAndFiles
 from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
 from api.thread.chat.playground_ui_adapter._util import RunInput
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
@@ -381,7 +382,7 @@ class ChatService:
             inference_opts=get_thread_result.inference_opts, extra_body=request.extra_parameters, can_think=model.can_think
         )
 
-        if request.files:
+        if request.files and settings.SHOULD_UPLOAD_CHAT_REQUEST_FILES:
             await self.file_upload_service.upload_request_files(
                 get_thread_result.request_message_id, get_thread_result.root_message_id, request.files
             )

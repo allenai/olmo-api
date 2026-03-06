@@ -14,7 +14,7 @@ from pydantic_ai import (
 )
 
 from api.thread.chat.chat_types import ChatStreamOutput
-from api.thread.chat.mapping import MessageAndFiles
+from api.thread.chat.mapping.mapping import MessageAndFiles
 from core.message.role import Role
 from core.object_id import ID
 from core.tools.tool_source import ToolSource
@@ -27,7 +27,7 @@ from db.models.tool_definitions import ToolDefinition
 __all__ = ["Event", "RunInput", "UIMessage"]
 
 
-UIMessage: TypeAlias = Message
+UIMessage: TypeAlias = MessageAndFiles
 Event: TypeAlias = ChatStreamOutput
 
 

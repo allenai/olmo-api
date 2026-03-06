@@ -34,7 +34,8 @@ class ChatFileUploadService:
         file_urls = [upload_result.public_url for upload_result in upload_results]
         await self._message_repository.set_file_urls_on_message(message_id, file_urls)
 
-    def upload_request_files(self, message_id: ID, root_message_id: ID, files: Sequence[UploadFile]):
+    @tracer.start_as_current_span(name="ChatFileUploadService/upload_request_files")
+    async def upload_request_files(self, message_id: ID, root_message_id: ID, files: Sequence[UploadFile]):
         """
         Starts the upload for files and sets a callback to update the message with the file URLs
         """
@@ -43,8 +44,13 @@ class ChatFileUploadService:
             file_extension = os.path.splitext(file.filename)[1] if file.filename is not None else ""
             filename = f"{root_message_id}/{message_id}-{i}{file_extension}"
 
-            upload_response = self._storage.upload_content(
-                filename=filename, file_data=file.file, bucket_name=settings.USER_CONTENT_BUCKET, make_file_public=True
+            upload_response = asyncio.create_task(
+                self._storage.upload_content(
+                    filename=filename,
+                    file_data=file.file,
+                    bucket_name=settings.USER_CONTENT_BUCKET,
+                    make_file_public=True,
+                )
             )
             tasks.append(upload_response)
 

@@ -292,16 +292,15 @@ class ChatService:
 
         # Gets tool definitions from the last message in the thread
         # This ensures we call the model with the latest tool definitions if they change in the thread
-        tool_definitions = next(
-            (message.tool_definitions for message in reversed(messages) if message.tool_definitions),
-            None,  # type:ignore [arg-type] # This is a valid place for None, not sure why mypy is saying it isn't
+        newest_tool_definitions = next(
+            (message.tool_definitions or None for message in reversed(messages) if message.tool_definitions), None
         )
 
         return InitializeThreadResult(
             all_messages=messages,
             new_messages=new_messages,
             request_message_id=request_message_id,
-            tool_definitions=tool_definitions,
+            tool_definitions=newest_tool_definitions,
             root_message_id=messages[0].id,
             last_message_id=messages[-1].id,
         )

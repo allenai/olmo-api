@@ -9,22 +9,25 @@ from google.cloud.recaptchaenterprise_v1 import (
     Event,
     RecaptchaEnterpriseServiceAsyncClient,
 )
+from opentelemetry import trace
 
 from api.config import settings
 from api.logging.fastapi_logger import FastAPIStructLogger
 
 logger = FastAPIStructLogger()
 
+tracer = trace.get_tracer(__name__)
+
 
 @lru_cache
-def get_default_recaptcha_service() -> "GoogleRecaptcha":
-    return GoogleRecaptcha(
+def get_default_recaptcha_service() -> "GoogleRecaptchaService":
+    return GoogleRecaptchaService(
         project_id=settings.RECAPTCHA_GCP_PROJECT_ID,
         recaptcha_key=settings.RECAPTCHA_KEY,
     )
 
 
-class GoogleRecaptcha:
+class GoogleRecaptchaService:
     def __init__(self, project_id: str, recaptcha_key: str):
         self.project_id = project_id
         self.recaptcha_key = recaptcha_key
@@ -38,8 +41,6 @@ class GoogleRecaptcha:
     ) -> Assessment | None:
         """Create an assessment to analyze the risk of a UI action.
         Args:
-            project_id: Your Google Cloud Project ID.
-            recaptcha_key: The reCAPTCHA key associated with the site/app
             token: The generated token obtained from the client.
             recaptcha_action: Action name corresponding to the token.
         """
@@ -71,6 +72,7 @@ class GoogleRecaptcha:
 
         return response
 
+    @tracer.start_as_current_span(name="GoogleRecaptchaService/evaluate_text")
     async def evaluate_text(
         self, captcha_token: str, user_ip_address: str | None, user_agent: str | None, recaptcha_action: str
     ) -> None:
@@ -80,11 +82,10 @@ class GoogleRecaptcha:
             user_ip_address=user_ip_address,
             user_agent=user_agent,
         )
-        logger.bind(assessment=captcha_assessment)
 
         if captcha_assessment is None or not captcha_assessment.token_properties.valid:
             invalid_captcha_message = "invalid_captcha"
-            logger.info(invalid_captcha_message)
+            logger.info(invalid_captcha_message, assessment=captcha_assessment)
             raise BadRequestProblem(invalid_captcha_message)
 
         if (
@@ -92,8 +93,8 @@ class GoogleRecaptcha:
             or captcha_assessment.token_properties.action != recaptcha_action
         ):
             failed_captcha_assessment_message = "failed_captcha_assessment"
-            logger.info(failed_captcha_assessment_message)
+            logger.info(failed_captcha_assessment_message, assessment=captcha_assessment)
             raise BadRequestProblem(failed_captcha_assessment_message)
 
 
-GoogleRecaptchaDependency = Annotated[GoogleRecaptcha, Depends(get_default_recaptcha_service)]
+GoogleRecaptchaServiceDependency = Annotated[GoogleRecaptchaService, Depends(get_default_recaptcha_service)]

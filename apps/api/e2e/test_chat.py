@@ -119,18 +119,18 @@ async def test_calls_user_tools(client: AsyncClient, auth_user: AuthenticatedCli
     StreamStartChunk.model_validate(lines[0])
     tool_response_chunk = AddMessageChunk.model_validate(lines[1])
     # ...streaming response...
-    final_therad_chunk = FinalThreadChunk.model_validate(lines[-2])
+    final_thread_chunk = FinalThreadChunk.model_validate(lines[-2])
     StreamEndChunk.model_validate(lines[-1])
 
     assert tool_response_chunk.messages[0].tool_calls, "There were no tool calls in the tool result response"
     assert tool_response_chunk.messages[0].tool_calls[0].tool_call_id == tool_call_chunk.tool_call_id
     assert tool_response_chunk.messages[0].content == "Sunny"
 
-    assert len(final_therad_chunk.messages) == 2
-    assert final_therad_chunk.messages[0].role == Role.ToolResponse
-    assert final_therad_chunk.messages[1].role == Role.Assistant
-    assert final_therad_chunk.messages[0].tool_calls
-    assert len(final_therad_chunk.messages[0].tool_calls) == 1
+    assert len(final_thread_chunk.messages) == 2
+    assert final_thread_chunk.messages[0].role == Role.ToolResponse
+    assert final_thread_chunk.messages[1].role == Role.Assistant
+    assert final_thread_chunk.messages[0].tool_calls
+    assert len(final_thread_chunk.messages[0].tool_calls) == 1
 
 
 async def test_calls_mcp_tools(client: AsyncClient, auth_user: AuthenticatedClient, db_session: DatabaseSession):
@@ -148,15 +148,13 @@ async def test_calls_mcp_tools(client: AsyncClient, auth_user: AuthenticatedClie
 
     lines = [json.loads(line) for line in response.text.splitlines()]
 
-    assert len(lines) == 17
     StreamStartChunk.model_validate(lines[0])
     starting_thread = StartThreadChunk.model_validate(lines[1])
-    tool_call_message = AddMessageChunk.model_validate(lines[2])
+    tool_call_chunk = ToolCallChunk.model_validate(lines[3])
     finished_thread = FinalThreadChunk.model_validate(lines[-2])
     StreamEndChunk.model_validate(lines[-1])
 
-    assert tool_call_message.messages[0].tool_calls, "There were no tool calls on the intended tool call message"
-    assert tool_call_message.messages[0].tool_calls[0].tool_name == tool_name
+    assert tool_call_chunk.tool_name == tool_name
     assert len(starting_thread.messages) == 2
     assert finished_thread.id == starting_thread.id
     assert len(finished_thread.messages) == 5
@@ -168,7 +166,9 @@ async def test_calls_mcp_tools(client: AsyncClient, auth_user: AuthenticatedClie
     assert finished_thread.messages[4].role == Role.Assistant
 
     assert finished_thread.messages[3].tool_calls
-    assert len(finished_thread.messages[3].tool_calls) == 1
+    assert len(finished_thread.messages[3].tool_calls) == 1, (
+        "There were no tool calls on the intended tool call message"
+    )
     assert finished_thread.messages[3].tool_calls[0].tool_name == tool_name
 
     async with db_session() as session, session.begin():

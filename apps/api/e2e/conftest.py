@@ -10,7 +10,6 @@ from httpx import ASGITransport, AsyncClient, Client
 from main import app
 from psycopg import AsyncConnection
 from pydantic import Field
-from pydantic_ai.mcp import MCPServer, MCPServerStdio
 from pytest_postgresql import factories
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -31,6 +30,8 @@ from core.tools.tool_source import ToolSource
 from db.models.tool_definitions import ToolDefinition
 from db.models.user import User
 from db.url import make_url
+
+from .fake_mcp_server import test_toolset
 
 ANONYMOUS_USER_ID_HEADER = "X-Anonymous-User-ID"
 
@@ -175,15 +176,8 @@ async def anon_user(client: AsyncClient) -> AuthenticatedClient:
     return await make_user(client=client, anonymous=True)
 
 
-@pytest.fixture
-def mcp_server() -> MCPServerStdio:
-    folder = Path(__file__).parent
-    mcp_server_path = (folder / "fake_mcp_server.py").absolute().resolve()
-    return MCPServerStdio("python", [str(mcp_server_path)])
-
-
 @pytest.fixture(autouse=True)
-def mock_mcp_service(mcp_server: MCPServer):
+def mock_mcp_service():
     """Override McpService to avoid calling real MCP servers"""
 
     mock_tool = ToolDefinition(
@@ -205,7 +199,7 @@ def mock_mcp_service(mcp_server: MCPServer):
 
         @classmethod
         def get_pydantic_ai_mcp_servers(cls):
-            return [mcp_server]
+            return [test_toolset]
 
     app.dependency_overrides[McpService] = _MockMcpService
 

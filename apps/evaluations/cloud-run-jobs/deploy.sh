@@ -5,9 +5,11 @@
 #   ./deploy.sh                    # Deploy jobs only (no schedulers)
 #   ./deploy.sh --with-schedulers  # Deploy jobs and create schedulers
 #
-# Environment variables (or set in ../.env.local):
-#   GCP_PROJECT  - GCP project ID (required)
-#   GCP_REGION   - GCP region (default: us-west1)
+# Prerequisites:
+#   - Logged into gcloud CLI: gcloud auth login
+#   - Project set: gcloud config set project <project-id>
+#
+# Optional environment variables:
 #   IMAGE_TAG    - Full image tag to use (optional, updates YAML if provided)
 
 set -e
@@ -17,15 +19,25 @@ APP_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Load .env.local if it exists
 if [ -f "$APP_DIR/.env.local" ]; then
-  echo "Loading environment from .env.local"
   set -a
   source "$APP_DIR/.env.local"
   set +a
 fi
 
 # Configuration
-PROJECT="${GCP_PROJECT:?Error: GCP_PROJECT environment variable is required}"
-REGION="${GCP_REGION:-us-west1}"
+REGION="us-west1"
+
+# Get project from gcloud config
+PROJECT=$(gcloud config get-value project 2>/dev/null)
+if [ -z "$PROJECT" ] || [ "$PROJECT" = "(unset)" ]; then
+  echo "Error: No GCP project set. Run: gcloud config set project <project-id>"
+  exit 1
+fi
+
+# Get default compute service account from gcloud
+PROJECT_NUMBER=$(gcloud projects describe "$PROJECT" --format="value(projectNumber)" 2>/dev/null)
+SERVICE_ACCOUNT="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+
 WITH_SCHEDULERS=false
 
 # Parse arguments
@@ -64,8 +76,11 @@ for tier in smoke standard full; do
 
     # If IMAGE_TAG is provided, update the image
     if [ -n "$IMAGE_TAG" ]; then
-      sed -i.bak "s|gcr.io/${PROJECT}/evaluations:latest|${IMAGE_TAG}|g" "$PROCESSED_YAML"
+      sed -i.bak "s|us-west1-docker.pkg.dev/${PROJECT}/model-evals/evaluations:latest|${IMAGE_TAG}|g" "$PROCESSED_YAML"
     fi
+
+    echo "Using service account: $SERVICE_ACCOUNT"
+    echo "Command: gcloud run jobs replace $PROCESSED_YAML --region $REGION --project $PROJECT"
 
     gcloud run jobs replace "$PROCESSED_YAML" --region "$REGION" --project "$PROJECT"
   fi
@@ -75,10 +90,6 @@ done
 if [ "$WITH_SCHEDULERS" = true ]; then
   echo ""
   echo "Creating Cloud Schedulers..."
-
-  # Get project number for default compute service account
-  PROJECT_NUMBER=$(gcloud projects describe "$PROJECT" --format="value(projectNumber)")
-  SERVICE_ACCOUNT="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
   echo "Using service account: $SERVICE_ACCOUNT"
 
   echo "Creating scheduler eval-smoke-schedule..."

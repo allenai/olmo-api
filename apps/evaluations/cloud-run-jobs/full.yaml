@@ -17,7 +17,7 @@ spec:
       template:
         spec:
           containers:
-            - image: gcr.io/my-project/evaluations:latest
+            - image: us-west1-docker.pkg.dev/my-project/model-evals/evaluations:latest
               resources:
                 limits:
                   cpu: "4"
@@ -25,40 +25,33 @@ spec:
               env:
                 - name: EVAL_TIER
                   value: full
+                - name: LOCAL
+                  value: "true"
                 # Secrets from Secret Manager
                 - name: LITELLM_PROXY_API_KEY
                   valueFrom:
                     secretKeyRef:
                       name: litellm-proxy-api-key
                       key: latest
-                - name: PGHOST
-                  valueFrom:
-                    secretKeyRef:
-                      name: pg-host
-                      key: latest
-                - name: PGPORT
-                  valueFrom:
-                    secretKeyRef:
-                      name: pg-port
-                      key: latest
-                - name: PGUSER
-                  valueFrom:
-                    secretKeyRef:
-                      name: pg-user
-                      key: latest
-                - name: PGPASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: pg-password
-                      key: latest
-                - name: AWS_ACCESS_KEY_ID
-                  valueFrom:
-                    secretKeyRef:
-                      name: aws-access-key-id
-                      key: latest
-                - name: AWS_SECRET_ACCESS_KEY
-                  valueFrom:
-                    secretKeyRef:
-                      name: aws-secret-access-key
-                      key: latest
+                # Storage secrets (uncomment when storage is configured)
+                # - name: PGHOST
+                #   valueFrom:
+                #     secretKeyRef:
+                #       name: pg-host
+                #       key: latest
+                # - name: PGPASSWORD
+                #   valueFrom:
+                #     secretKeyRef:
+                #       name: pg-password
+                #       key: latest
+                # - name: AWS_ACCESS_KEY_ID
+                #   valueFrom:
+                #     secretKeyRef:
+                #       name: aws-access-key-id
+                #       key: latest
+                # - name: AWS_SECRET_ACCESS_KEY
+                #   valueFrom:
+                #     secretKeyRef:
+                #       name: aws-secret-access-key
+                #       key: latest
           timeoutSeconds: 21600

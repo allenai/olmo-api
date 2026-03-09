@@ -6,15 +6,17 @@ This application wraps [olmo-eval-internal](https://github.com/allenai/olmo-eval
 
 ## Overview
 
-Evaluations are organized into **tiers** with different schedules and scopes:
+Evaluations are organized into **tiers** with different scopes:
 
-| Tier | Description | Schedule | Timeout |
-|------|-------------|----------|---------|
-| `smoke` | Quick sanity checks | Every 6 hours | 1 hour |
-| `standard` | Curated standard evals | Mon/Thu at 2 AM | 2 hours |
-| `full` | Comprehensive suite | Manual trigger | 6 hours |
+| Tier | Description | Timeout |
+|------|-------------|---------|
+| `smoke` | Quick sanity checks | 1 hour |
+| `standard` | Curated standard evals | 2 hours |
+| `full` | Comprehensive suite | 6 hours |
 
 Each tier defines a list of models to evaluate. When a tier runs as a Cloud Run Job, each model runs as a parallel task using `CLOUD_RUN_TASK_INDEX`.
+
+Scheduling is configured separately in `cloud-run-jobs/deploy.sh` using Cloud Scheduler.
 
 ## Configuration
 
@@ -41,7 +43,6 @@ from evaluations.configs.base import ModelEval, StorageConfig, TierConfig, TierN
 standard_tier = TierConfig(
     name=TierName.STANDARD,
     description="Curated standard evaluations",
-    schedule="0 2 * * 1,4",  # Cron expression
     timeout_minutes=120,
     storage=STANDARD_STORAGE,
     models=[
@@ -109,13 +110,9 @@ To change resource allocation (CPU, memory) or timeout, edit the YAML files dire
    AWS_ACCESS_KEY_ID=xxxx
    AWS_SECRET_ACCESS_KEY=xxxx
 
-   #Optional for storage (defaults shown)
+   # Optional for storage (defaults shown)
    PGPORT=5432
    PGUSER=postgres
-
-   # Optional: GCP deployment
-   GCP_PROJECT=ai2-skiff2-playground
-   GCP_REGION=us-west1
    ```
 
 ### Running Locally
@@ -179,8 +176,9 @@ The GitHub Actions workflow (`.github/workflows/build-and-push-evals.yml`) autom
 ### Manual Deployment
 
 ```bash
-# Set project
-export GCP_PROJECT=ai2-skiff2-playground
+# Ensure you're logged in and project is set
+gcloud auth login
+gcloud config set project ai2-skiff2-playground
 
 # Deploy Cloud Run Jobs
 cd cloud-run-jobs
@@ -190,15 +188,15 @@ cd cloud-run-jobs
 ./deploy.sh --with-schedulers
 ```
 
-### Manual Push to GCR
+### Manual Push to Artifact Registry
 
 ```bash
-# Configure Docker for GCR
-gcloud auth configure-docker
+# Configure Docker for Artifact Registry
+gcloud auth configure-docker us-west1-docker.pkg.dev
 
 # Tag and push
-docker tag evaluations gcr.io/ai2-skiff2-playground/olmo-api-evaluations:latest
-docker push gcr.io/ai2-skiff2-playground/olmo-api-evaluations:latest
+docker tag evaluations us-west1-docker.pkg.dev/ai2-skiff2-playground/model-evals/evaluations:latest
+docker push us-west1-docker.pkg.dev/ai2-skiff2-playground/model-evals/evaluations:latest
 ```
 
 ## CLI Reference

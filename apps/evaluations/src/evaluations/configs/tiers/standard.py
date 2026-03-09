@@ -15,7 +15,6 @@ STANDARD_STORAGE = StorageConfig(
 standard_tier = TierConfig(
     name=TierName.STANDARD,
     description="Curated standard evaluations, 1-2 hours",
-    schedule="0 2 * * 1,4",  # Monday and Thursday at 2 AM
     timeout_minutes=120,
     storage=STANDARD_STORAGE,
     models=[

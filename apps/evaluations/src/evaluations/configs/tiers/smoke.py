@@ -15,7 +15,6 @@ SMOKE_STORAGE = StorageConfig(
 smoke_tier = TierConfig(
     name=TierName.SMOKE,
     description="Quick sanity checks, simple pass/fail, <1 hour",
-    schedule="0 */6 * * *",  # Every 6 hours
     timeout_minutes=60,
     storage=SMOKE_STORAGE,
     models=[

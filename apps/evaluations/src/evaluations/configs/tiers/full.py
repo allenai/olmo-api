@@ -15,7 +15,6 @@ FULL_STORAGE = StorageConfig(
 full_tier = TierConfig(
     name=TierName.FULL,
     description="Comprehensive evaluation suite, run sparingly",
-    schedule="",  # Not scheduled, triggered manually
     timeout_minutes=360,
     storage=FULL_STORAGE,
     models=[

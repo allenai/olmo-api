@@ -94,12 +94,12 @@ class ModelEval:
 class TierConfig:
     """Configuration for an evaluation tier.
 
-    A tier defines a set of model evaluations that run on the same schedule.
-    Each ModelEval becomes one parallel Cloud Run Job instance.
+    A tier defines a set of model evaluations that run together.
+    Each ModelEval becomes one parallel Cloud Run Job task.
+    Scheduling is configured separately in cloud-run-jobs/deploy.sh.
     """
 
     name: TierName
-    schedule: str  # Cloud Scheduler cron expression (empty for manual trigger)
     timeout_minutes: int  # Max job duration
     storage: StorageConfig
     models: list[ModelEval]

@@ -77,7 +77,6 @@ def list_jobs(tier_name: str) -> None:
     tier = get_tier(TierName(tier_name))
 
     click.echo(f"Tier: {tier_name}")
-    click.echo(f"Schedule: {tier.schedule or '(manual)'}")
     click.echo(f"Task count: {tier.task_count}")
     click.echo()
 
@@ -94,7 +93,6 @@ def list_tiers() -> None:
     for tier in _list_tiers():
         click.echo(f"{tier.name.value}:")
         click.echo(f"  Description: {tier.description}")
-        click.echo(f"  Schedule: {tier.schedule or '(manual)'}")
         click.echo(f"  Task count: {tier.task_count}")
         click.echo(f"  Timeout: {tier.timeout_minutes} min")
         click.echo()

@@ -33,6 +33,10 @@ dependencies = [
     "beaker-py==2.5.0",
     "google-cloud-language>=2.15.0",
     "google-cloud-recaptcha-enterprise>=1.27.0",
+    "google-cloud-videointelligence>=2.17.0",
+    "dramatiq>=2.0.0",
+    "redis>=6.4.0",
+    "prometheus-client>=0.23.1",
 ]
 
 [build-system]

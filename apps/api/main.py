@@ -11,6 +11,7 @@ from api.db.sqlalchemy_engine import get_sqlalchemy_engine
 from api.health import health_router
 from api.logging import StructLogMiddleware, setup_logging
 from api.otel.setup import setup_otel
+from api.safety_queue import setup_safety_queue
 from api.v5 import v5_router
 
 
@@ -38,6 +39,8 @@ def create_app() -> FastAPI:
         engine=get_sqlalchemy_engine().sync_engine,  # "sync-style" engine for async SQLAlchemy
         enable_commenter=True,
     )
+
+    setup_safety_queue()
 
     # get the token validator on startup, causing the app to fail fast if there are issues
     get_bearer_token_validator()

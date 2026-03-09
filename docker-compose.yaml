@@ -77,6 +77,8 @@ services:
     environment:
       <<: *shared-env
       DATABASE_URL: "postgres://app:llmz@db:5432/llmx?sslmode=disable"
+      OTEL_COLLECTOR_TYPE: "local"
+      SAFETY_QUEUE_URL: "redis://redis:6379"
       ENV: development
 
     ports:
@@ -103,6 +105,36 @@ services:
           path: ./config.json
 
   
+  api-safety-worker:
+    build:
+      dockerfile: apps/api-safety-worker/safety-worker.Dockerfile
+      context: .
+      target: dev
+
+    volumes:
+      - ./service_account.json:/secret/cfg/service_account.json
+
+    environment:
+      <<: *shared-env
+      DATABASE_URL: "postgres://app:llmz@db:5432/llmx?sslmode=disable"
+      SAFETY_QUEUE_URL: "redis://redis:6379"
+      ENV: development
+
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /app
+          ignore:
+            - .venv/
+            - apps/flask-api/
+            - apps/safety-worker/
+        - action: rebuild
+          path: ./uv.lock
+
+    ports:
+      - 9192:9191
+
   safety-worker:
     build:
       dockerfile: apps/safety-worker/safety-worker.Dockerfile
@@ -137,6 +169,10 @@ services:
     ports:
       # We use the Prometheus middleware to check if a worker is healthy
       - 9191:9191
+
+    depends_on:
+      redis:
+        condition: service_started
 
   redis:
     image: redis:7

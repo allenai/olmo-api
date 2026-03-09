@@ -19,9 +19,9 @@ from api.config import Settings
 from api.db.sqlalchemy_engine import get_session
 from api.gcs_dependency import get_google_cloud_storage
 from api.thread.chat.safety.safety_checkers.safety_checker_base import (
+    SafetyChecker,
     SafetyCheckRequest,
     SafetyCheckResponse,
-    TextSafetyChecker,
 )
 from api.thread.chat.safety.text_safety_checker_service import get_text_safety_checker
 from api.tools.mcp_service import McpService
@@ -247,7 +247,7 @@ def mock_unsafe_text_safety_checker():
         def is_safe(self) -> bool:
             return False
 
-    class _MockTextSafetyChecker(TextSafetyChecker):
+    class _MockTextSafetyChecker(SafetyChecker):
         @override
         async def check_request(self, request: SafetyCheckRequest) -> SafetyCheckResponse:
             return _UnsafeSafetyCheckResponse()

@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     RECAPTCHA_GCP_PROJECT_ID: str = "ai2-reviz"
     RECAPTCHA_KEY: str = Field(init=False)
 
+    SAFETY_QUEUE_URL: str = Field(init=False)
+    SAFTEY_GCS_UPLOAD_BUCKET: str = Field(init=False)
+
     model_config = SettingsConfigDict(
         extra="ignore",
         env_file=(".env", f".env.{environment}", ".env.local", f".env.{environment}.local"),

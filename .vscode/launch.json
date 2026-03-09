@@ -25,7 +25,8 @@
             "request": "launch",
             "module": "uvicorn",
             "env": {
-                "ENV": "development"
+                "ENV": "development",
+                "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4318",
             },
             "args": [
                 "apps.api.main:app",

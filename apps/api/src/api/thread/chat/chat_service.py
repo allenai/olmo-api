@@ -321,7 +321,7 @@ class ChatService:
         request: ChatRequest,
         model: ModelConfig,
     ) -> ValidateThreadResult:
-        await self.validate_message_safety_service.validate(chat_request=request)
+        await self.validate_message_safety_service.validate_before(request=request)
 
         parent_message = (
             await self.message_repository.get_message_by_id(request.parent) if request.parent is not None else None
@@ -394,6 +394,11 @@ class ChatService:
         )
 
         toolsets = self._get_toolsets(model, request.tool_definitions, mcp_tools=request.selected_tools)
+
+        await self.validate_message_safety_service.validate_after(
+            request=request,
+            message_id=initialize_thread_result.request_message_id,  # this is what taylor is talking about
+        )
 
         agent = Agent(
             model=pydantic_model,

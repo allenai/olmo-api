@@ -1,0 +1,10 @@
+{
+    "projectName": "playground",
+    "services": [
+        {
+            "name": "evaluations",
+            "cwd": "./apps/evaluations",
+            "deploy": false
+        }
+    ]
+}

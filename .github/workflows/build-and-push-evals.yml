@@ -1,0 +1,38 @@
+name: Build Evaluations Docker Image and Push to GCR
+
+on:
+  push:
+    branches:
+        - main
+
+permissions:
+    contents: read
+    id-token: write
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        environment:
+            name: ${{ github.ref_name }}
+            url: ${{ steps.deploy.outputs.default_url }}
+        steps:
+            - name: Skiff2 Setup
+              id: setup
+              uses: allenai/skiff-commodore/shared-actions/setup/@main
+              with:
+                  workload_identity_provider: ${{ vars.SKIFF2_WORKLOAD_IDENTITY_PROVIDER }}
+                  service_account: ${{ vars.SKIFF2_SERVICE_ACCOUNT }}
+                  project_id: ${{ vars.GCP_DOCS_PROJECT_ID }}
+
+            # - name: Skiff2 Build
+            #   id: build
+            #   uses: allenai/skiff-commodore/shared-actions/build/@main
+            #   with:
+            #       project_id: ${{ vars.GCP_DOCS_PROJECT_ID }}
+
+            # - name: Skiff2 Deploy
+            #   id: deploy
+            #   uses: allenai/skiff-commodore/shared-actions/deploy/@main
+            #   with:
+            #       project_id: ${{ vars.GCP_DOCS_PROJECT_ID }}
+            #       command: apply

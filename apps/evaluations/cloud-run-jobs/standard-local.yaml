@@ -1,0 +1,25 @@
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: eval-standard-local
+spec:
+  template:
+    spec:
+      parallelism: 2
+      taskCount: 2
+      template:
+        spec:
+          containers:
+            - image: us-west1-docker.pkg.dev/ai2-skiff2-playground/model-evals/evaluations:latest
+              env:
+                - name: EVAL_TIER
+                  value: standard
+                - name: LOCAL
+                  value: "true"
+                - name: LITELLM_PROXY_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: litellm-proxy-api-key
+                      key: latest
+          timeoutSeconds: 7200
+          serviceAccountName: github-actions@ai2-skiff2-playground.iam.gserviceaccount.com

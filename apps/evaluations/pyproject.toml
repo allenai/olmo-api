@@ -5,7 +5,7 @@ description = "OLMo evaluation runner for Cloud Run Jobs"
 requires-python = ">=3.12"
 
 dependencies = [
-    "olmo-eval-internal[litellm,storage]",
+    "olmo-eval-internal[litellm,storage] @ git+https://github.com/allenai/olmo-eval-internal.git@main",
     "click>=8.0",
 ]
 
@@ -18,6 +18,3 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/evaluations"]
-
-[tool.uv.sources]
-olmo-eval-internal = { path = "olmo-eval-internal" }

@@ -2,7 +2,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import override, BinaryIO
+from typing import BinaryIO
 from unittest.mock import create_autospec
 
 import pytest
@@ -13,6 +13,7 @@ from pydantic import Field
 from pytest_postgresql import factories
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from typing_extensions import override
 
 from api.config import Settings
 from api.db.sqlalchemy_engine import get_session

@@ -62,4 +62,3 @@ spec:
                       name: aws-secret-access-key
                       key: latest
           timeoutSeconds: 21600
-          serviceAccountName: evaluations@my-project.iam.gserviceaccount.com

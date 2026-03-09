@@ -5,19 +5,27 @@
 #   ./deploy.sh                    # Deploy jobs only (no schedulers)
 #   ./deploy.sh --with-schedulers  # Deploy jobs and create schedulers
 #
-# Environment variables:
+# Environment variables (or set in ../.env.local):
 #   GCP_PROJECT  - GCP project ID (required)
-#   GCP_REGION   - GCP region (default: us-central1)
+#   GCP_REGION   - GCP region (default: us-west1)
 #   IMAGE_TAG    - Full image tag to use (optional, updates YAML if provided)
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Load .env.local if it exists
+if [ -f "$APP_DIR/.env.local" ]; then
+  echo "Loading environment from .env.local"
+  set -a
+  source "$APP_DIR/.env.local"
+  set +a
+fi
 
 # Configuration
 PROJECT="${GCP_PROJECT:?Error: GCP_PROJECT environment variable is required}"
 REGION="${GCP_REGION:-us-west1}"
-SERVICE_ACCOUNT="evaluations@${PROJECT}.iam.gserviceaccount.com"
 WITH_SCHEDULERS=false
 
 # Parse arguments
@@ -68,6 +76,11 @@ if [ "$WITH_SCHEDULERS" = true ]; then
   echo ""
   echo "Creating Cloud Schedulers..."
 
+  # Get project number for default compute service account
+  PROJECT_NUMBER=$(gcloud projects describe "$PROJECT" --format="value(projectNumber)")
+  SERVICE_ACCOUNT="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+  echo "Using service account: $SERVICE_ACCOUNT"
+
   echo "Creating scheduler eval-smoke-schedule..."
   gcloud scheduler jobs delete eval-smoke-schedule --location "$REGION" --project "$PROJECT" --quiet 2>/dev/null || true
   gcloud scheduler jobs create http eval-smoke-schedule \
@@ -100,13 +113,3 @@ echo "Manual execution commands:"
 echo "  gcloud run jobs execute eval-smoke --region $REGION --project $PROJECT"
 echo "  gcloud run jobs execute eval-standard --region $REGION --project $PROJECT"
 echo "  gcloud run jobs execute eval-full --region $REGION --project $PROJECT"
-
-
-
- docker run --rm \
-    -e EVAL_TIER=standard \
-    -e CLOUD_RUN_TASK_INDEX=0 \
-    -e LITELLM_PROXY_API_KEY=$LITELLM_PROXY_API_KEY \
-    -e PGHOST=$PGHOST \
-    -e PGPASSWORD=$PGPASSWORD \
-    evaluations

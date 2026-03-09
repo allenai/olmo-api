@@ -12,15 +12,21 @@ FULL_STORAGE = StorageConfig(
     s3_group="release",
 )
 
+LITELLM_API_BASE = "https://ai2-model-hub.allen.ai"
+
 full_tier = TierConfig(
     name=TierName.FULL,
     description="Comprehensive evaluation suite, run sparingly",
     timeout_minutes=360,
     storage=FULL_STORAGE,
     models=[
-        # Cirrascale deployments
         ModelEval(
-            model="cirrascale-olmo-3-7b-instruct",
+            model="olmo-3-7b-instruct-cirrascale",
+            provider_overrides={
+                "kind": "litellm",
+                "model": "litellm_proxy/openai/Olmo-3-7B-Instruct",
+                "api_base": LITELLM_API_BASE,
+            },
             tasks=[
                 "humaneval:pass_at_10",
                 "humaneval_plus:pass_at_10",
@@ -31,9 +37,13 @@ full_tier = TierConfig(
             ],
             harness_overrides={"metrics.enabled": "true"},
         ),
-        # Modal deployments
         ModelEval(
-            model="modal-olmo-3-7b-instruct",
+            model="olmo-3-7b-instruct-modal",
+            provider_overrides={
+                "kind": "litellm",
+                "model": "litellm_proxy/openai/ai2-release-partners/Olmo-3-7B-Instruct",
+                "api_base": LITELLM_API_BASE,
+            },
             tasks=[
                 "humaneval:pass_at_10",
                 "humaneval_plus:pass_at_10",

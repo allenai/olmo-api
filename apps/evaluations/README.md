@@ -40,6 +40,9 @@ Edit the appropriate tier file in `src/evaluations/configs/tiers/`. Each tier ha
 ```python
 from evaluations.configs.base import ModelEval, StorageConfig, TierConfig, TierName
 
+# LiteLLM proxy configuration
+LITELLM_API_BASE = "https://ai2-model-hub.allen.ai"
+
 standard_tier = TierConfig(
     name=TierName.STANDARD,
     description="Curated standard evaluations",
@@ -47,10 +50,15 @@ standard_tier = TierConfig(
     storage=STANDARD_STORAGE,
     models=[
         ModelEval(
-            model="cirrascale-olmo-3-7b-instruct",  # Model preset name
-            tasks=["humaneval:bpb", "mbpp:bpb"],    # Evaluation tasks
-            task_overrides={"limit": "10"},         # Per-task overrides
-            harness_overrides={"metrics.enabled": "true"},  # Harness overrides
+            model="olmo-3-7b-instruct-cirrascale",  # Display name
+            provider_overrides={
+                "kind": "litellm",
+                "model": "litellm_proxy/openai/Olmo-3-7B-Instruct",
+                "api_base": LITELLM_API_BASE,
+            },
+            tasks=["humaneval:bpb", "mbpp:bpb"],
+            task_overrides={"limit": "10"},
+            harness_overrides={"metrics.enabled": "true"},
         ),
         # Add more models here...
     ],
@@ -59,12 +67,17 @@ standard_tier = TierConfig(
 
 ### ModelEval Options
 
-- `model`: Model preset name (defined in olmo-eval-internal)
+- `model`: Display name for the model (used in logs and results, also passed to -m for preset fallback)
+- `provider_overrides`: Dict of provider config overrides (applied via `-o provider.{key}={value}`):
+  - `kind`: Provider type (`litellm`, `vllm`, `vllm_server`, `hf`)
+  - `model`: Model path (e.g., `litellm_proxy/openai/Olmo-3-7B-Instruct`)
+  - `api_base`: API base URL for the provider
+  - `max_concurrency`: Max concurrent requests
+  - `dtype`: Data type (`auto`, `float16`, `bfloat16`)
 - `tasks`: List of task names or suites (e.g., `humaneval:bpb`, `mbpp:pass_at_10`)
 - `harness`: Harness name (default: `"default"`)
-- `model_overrides`: Dict of model-level overrides
 - `task_overrides`: Dict of task-level overrides (applied to all tasks)
-- `harness_overrides`: Dict of harness-level overrides
+- `harness_overrides`: Dict of harness-level overrides (non-provider settings)
 
 ### Cloud Run Job YAML Files
 
@@ -156,15 +169,6 @@ docker run --rm \
   -e LOCAL=true \
   -e LITELLM_PROXY_API_KEY=$LITELLM_PROXY_API_KEY \
   evaluations
-
-# List available commands
-docker run --rm evaluations --help
-
-# List tiers
-docker run --rm evaluations list-tiers
-
-# List jobs in a tier
-docker run --rm evaluations list-jobs standard
 ```
 
 ## Deployment
@@ -206,6 +210,9 @@ The `evaluations` CLI is available inside the container:
 ```bash
 # Auto-run tier from env vars (used by Cloud Run)
 EVAL_TIER=standard CLOUD_RUN_TASK_INDEX=0 evaluations
+
+# Show help
+evaluations --help
 
 # Run a specific tier/task
 evaluations run-tier standard --task-index 0

@@ -36,35 +36,38 @@ class ModelEval:
 
     Represents one `olmo-eval run` invocation = one Cloud Run Job instance.
 
-    Overrides are positional on the CLI:
-    - model_overrides: Applied after -m
+    Provider overrides configure the model via harness provider settings:
+    - provider_overrides: Applied as -o provider.{key}={value} after -H
     - task_overrides: Applied after each -t
-    - harness_overrides: Applied after -H
+    - harness_overrides: Applied after -H (for non-provider settings)
+
+    The olmo-eval CLI requires provider config via harness overrides, not model overrides.
     """
 
-    model: str  # Model preset name (e.g., "cirrascale-olmo-3-7b-instruct")
+    model: str  # Display name (used for logging/storage, passed to -m for preset lookup fallback)
     tasks: list[str]  # Task names or suite names
     harness: str = "default"
-    model_overrides: dict[str, str] = field(default_factory=dict)
+    provider_overrides: dict[str, str] = field(default_factory=dict)
     task_overrides: dict[str, str] = field(default_factory=dict)
     harness_overrides: dict[str, str] = field(default_factory=dict)
 
     def to_cli_args(self, storage: StorageConfig | None = None) -> list[str]:
         """Convert to olmo-eval run CLI arguments.
 
-        Generates args in order with positional overrides:
-            -m {model} [-o {model_override}...]
+        Generates args in order:
+            -m {model}
             -t {task1} [-o {task_override}...]
             -t {task2} [-o {task_override}...]
-            -H {harness} [-o {harness_override}...]
+            -H {harness} [-o provider.{key}={value}...] [-o {harness_override}...]
             [--store --s3-bucket ... ]
+
+        Provider overrides are applied to the harness config, which takes precedence
+        over the -m model preset lookup.
         """
         args: list[str] = []
 
-        # Model with its overrides
+        # Model name (used for preset lookup, but provider_overrides take precedence)
         args.extend(["-m", self.model])
-        for key, value in self.model_overrides.items():
-            args.extend(["-o", f"{key}={value}"])
 
         # Tasks with their overrides (same overrides apply to each task)
         for task in self.tasks:
@@ -72,8 +75,10 @@ class ModelEval:
             for key, value in self.task_overrides.items():
                 args.extend(["-o", f"{key}={value}"])
 
-        # Harness with its overrides
+        # Harness with provider overrides and other harness overrides
         args.extend(["-H", self.harness])
+        for key, value in self.provider_overrides.items():
+            args.extend(["-o", f"provider.{key}={value}"])
         for key, value in self.harness_overrides.items():
             args.extend(["-o", f"{key}={value}"])
 

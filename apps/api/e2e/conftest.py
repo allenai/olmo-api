@@ -1,13 +1,10 @@
-from typing import override
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import BinaryIO
+from typing import override, BinaryIO
 from unittest.mock import create_autospec
 
-from api.thread.chat.safety.safety_checkers.safety_checker_base import SafetyCheckRequest, SafetyCheckResponse, TextSafetyChecker
-from api.thread.chat.safety.text_safety_checker_service import get_text_safety_checker
 import pytest
 from httpx import ASGITransport, AsyncClient, Client
 from main import app
@@ -20,6 +17,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from api.config import Settings
 from api.db.sqlalchemy_engine import get_session
 from api.gcs_dependency import get_google_cloud_storage
+from api.thread.chat.safety.safety_checkers.safety_checker_base import (
+    SafetyCheckRequest,
+    SafetyCheckResponse,
+    TextSafetyChecker,
+)
+from api.thread.chat.safety.text_safety_checker_service import get_text_safety_checker
 from api.tools.mcp_service import McpService
 from core.google_cloud_storage import GoogleCloudStorage, UploadResponse
 from core.tools.tool_source import ToolSource
@@ -240,7 +243,7 @@ def mock_unsafe_text_safety_checker():
     class _MockTextSafetyChecker(TextSafetyChecker):
         @override
         async def check_request(self, request: SafetyCheckRequest) -> SafetyCheckResponse:
-          return _UnsafeSafetyCheckResponse()
+            return _UnsafeSafetyCheckResponse()
 
     app.dependency_overrides[get_text_safety_checker] = _MockTextSafetyChecker
 

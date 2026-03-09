@@ -326,6 +326,7 @@ async def test_uploads_a_file_to_a_multimodal_model(client: AsyncClient, anon_us
         "No file URL was included in final thread messages"
     )
 
+
 @pytest.mark.usefixtures("mock_unsafe_text_safety_checker")
 async def test_unsafe_messages_are_rejected(client: AsyncClient, anon_user: AuthenticatedClient):
     chat_request = UserChatRequest(

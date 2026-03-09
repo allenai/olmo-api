@@ -1,38 +1,76 @@
-name: Build Evaluations Docker Image and Push to GCR
+name: Build and Deploy Evaluations Cloud Run Jobs
 
 on:
   push:
     branches:
-        - main
+      - main
+    paths:
+      - 'apps/evaluations/**'
+      - '.github/workflows/build-and-push-evals.yml'
+  workflow_dispatch:
 
 permissions:
-    contents: read
-    id-token: write
+  contents: read
+  id-token: write
+
+env:
+  REGION: us-west1
+  SERVICE_NAME: evaluations
+  # Image name follows Skiff2 convention: {repo}-{service}
+  IMAGE_NAME: olmo-api-evaluations
 
 jobs:
-    build:
-        runs-on: ubuntu-latest
-        environment:
-            name: ${{ github.ref_name }}
-            url: ${{ steps.deploy.outputs.default_url }}
-        steps:
-            - name: Skiff2 Setup
-              id: setup
-              uses: allenai/skiff-commodore/shared-actions/setup/@main
-              with:
-                  workload_identity_provider: ${{ vars.SKIFF2_WORKLOAD_IDENTITY_PROVIDER }}
-                  service_account: ${{ vars.SKIFF2_SERVICE_ACCOUNT }}
-                  project_id: ${{ vars.GCP_DOCS_PROJECT_ID }}
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref_name }}
+    steps:
+      - name: Skiff2 Setup
+        id: setup
+        uses: allenai/skiff-commodore/shared-actions/setup/@main
+        with:
+          workload_identity_provider: ${{ vars.SKIFF2_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.SKIFF2_SERVICE_ACCOUNT }}
+          project_id: ${{ vars.SKIFF2_PROJECT_ID }}
 
-            # - name: Skiff2 Build
-            #   id: build
-            #   uses: allenai/skiff-commodore/shared-actions/build/@main
-            #   with:
-            #       project_id: ${{ vars.GCP_DOCS_PROJECT_ID }}
+      # Custom build step for evaluations (handles GITHUB_TOKEN for private repo)
+      # Once olmo-eval-internal is public, this can be replaced with Skiff2 Build
+      - name: Build and Push Evaluations Image
+        id: build
+        env:
+          PROJECT_ID: ${{ vars.SKIFF2_PROJECT_ID }}
+          GITHUB_TOKEN: ${{ secrets.OLMO_EVAL_INTERNAL_TOKEN }}
+        run: |
+          IMAGE_TAG="gcr.io/${PROJECT_ID}/${IMAGE_NAME}"
 
-            # - name: Skiff2 Deploy
-            #   id: deploy
-            #   uses: allenai/skiff-commodore/shared-actions/deploy/@main
-            #   with:
-            #       project_id: ${{ vars.GCP_DOCS_PROJECT_ID }}
-            #       command: apply
+          docker buildx build \
+            --platform linux/amd64 \
+            --push \
+            --cache-from "type=registry,ref=${IMAGE_TAG}:latest" \
+            --cache-to "type=inline" \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            --build-arg "GITHUB_TOKEN=${GITHUB_TOKEN}" \
+            --tag "${IMAGE_TAG}:latest" \
+            --tag "${IMAGE_TAG}:${{ github.sha }}" \
+            --file apps/evaluations/Dockerfile \
+            apps/evaluations
+
+          echo "image=${IMAGE_TAG}:${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      # Deploy Cloud Run Jobs
+      - name: Deploy Cloud Run Jobs
+        env:
+          PROJECT_ID: ${{ vars.SKIFF2_PROJECT_ID }}
+          IMAGE: ${{ steps.build.outputs.image }}
+        run: |
+          # Update job YAMLs with actual image tag and deploy
+          for tier in smoke standard full; do
+            YAML_FILE="apps/evaluations/cloud-run-jobs/${tier}.yaml"
+            if [ -f "$YAML_FILE" ]; then
+              echo "Deploying eval-${tier}..."
+              # Replace placeholder image with actual image
+              sed -i "s|gcr.io/my-project/evaluations:latest|${IMAGE}|g" "$YAML_FILE"
+              sed -i "s|my-project|${PROJECT_ID}|g" "$YAML_FILE"
+              gcloud run jobs replace "$YAML_FILE" --region "$REGION" --project "$PROJECT_ID"
+            fi
+          done

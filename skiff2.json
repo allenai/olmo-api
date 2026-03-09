@@ -4,7 +4,12 @@
         {
             "name": "evaluations",
             "cwd": "./apps/evaluations",
-            "deploy": false
+            "dockerFile": "Dockerfile",
+            "deploy": false,
+            "extraBuildArgs": [
+                "--platform", "linux/amd64",
+                "--build-arg", "GITHUB_TOKEN=${GITHUB_TOKEN}"
+            ]
         }
     ]
 }

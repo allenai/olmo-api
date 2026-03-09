@@ -56,8 +56,9 @@ class ValidateMessageSafetyService:
         chat_request: ChatRequest,
     ):
         # Recaptcha
+        # chat_request.captcha_token is required and validated in `env.PRODUCTION` environement
         #
-        if settings.RECAPTCHA_ENABLED:
+        if settings.RECAPTCHA_ENABLED and chat_request.captcha_token:
             await self.recaptcha_service.evaluate_text(
                 captcha_token=chat_request.captcha_token,
                 user_ip_address=self.request_client.ip_address,
@@ -66,7 +67,7 @@ class ValidateMessageSafetyService:
                 is_anonymous_user=self.auth_user.is_anonymous_user,
             )
 
-        # Bypass safety?
+        # Bypass safety
         #
         can_bypass_safety_checks = self.permission_service.has_permission(
             self.auth_user, permission=Permissions.WRITE_BYPASS_SAFETY_CHECKS

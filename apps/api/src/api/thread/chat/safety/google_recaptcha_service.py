@@ -19,9 +19,6 @@ logger = FastAPIStructLogger()
 tracer = trace.get_tracer(__name__)
 
 
-class FailedCaptchaProblem(BadRequestProblem): ...
-
-
 @lru_cache
 def get_default_recaptcha_service() -> "GoogleRecaptchaService":
     return GoogleRecaptchaService(
@@ -78,46 +75,36 @@ class GoogleRecaptchaService:
     @tracer.start_as_current_span(name="GoogleRecaptchaService/evaluate_text")
     async def evaluate_text(
         self,
-        captcha_token: str | None,
+        captcha_token: str,
         user_ip_address: str | None,
         user_agent: str | None,
         recaptcha_action: str,
         *,
         is_anonymous_user: bool,
     ):
-        """
-        Captcha is always evaluated, unless `captcha_token` is not present in request, in which case, if the user is anonymous it is an error
+        captcha_assessment = await self.create_assessment(
+            token=captcha_token,
+            recaptcha_action=recaptcha_action,
+            user_ip_address=user_ip_address,
+            user_agent=user_agent,
+        )
 
-        Upon assessment, if the user is anonymous we validate that the captcha is valid and didt fail
-        """
+        if not is_anonymous_user:
+            # assessment is not enforced for authenticated users
+            return
 
-        if not captcha_token:
-            if is_anonymous_user:
-                required_captcha_message = "required_captcha_message"
-                raise BadRequestProblem(required_captcha_message)
-        else:
-            captcha_assessment = await self.create_assessment(
-                token=captcha_token,
-                recaptcha_action=recaptcha_action,
-                user_ip_address=user_ip_address,
-                user_agent=user_agent,
-            )
+        if captcha_assessment is None or not captcha_assessment.token_properties.valid:
+            logger.info("captcha.invalid", assessment=captcha_assessment)
+            invalid_captcha_message = "Invalid captcha"
+            raise BadRequestProblem(invalid_captcha_message)
 
-            if not is_anonymous_user:
-                return
-
-            if captcha_assessment is None or not captcha_assessment.token_properties.valid:
-                invalid_captcha_message = "invalid_captcha"
-                logger.info(invalid_captcha_message, assessment=captcha_assessment)
-                raise BadRequestProblem(invalid_captcha_message)
-
-            if (
-                captcha_assessment.risk_analysis.score == 0.0
-                or captcha_assessment.token_properties.action != recaptcha_action
-            ):
-                failed_captcha_assessment_message = "failed_captcha_assessment"
-                logger.info(failed_captcha_assessment_message, assessment=captcha_assessment)
-                raise BadRequestProblem(failed_captcha_assessment_message)
+        if (
+            captcha_assessment.risk_analysis.score == 0.0
+            or captcha_assessment.token_properties.action != recaptcha_action
+        ):
+            logger.info("captcha.failed", assessment=captcha_assessment)
+            failed_captcha_assessment_message = "Captcha assessment failed"
+            raise BadRequestProblem(failed_captcha_assessment_message)
 
 
 GoogleRecaptchaServiceDependency = Annotated[GoogleRecaptchaService, Depends(get_default_recaptcha_service)]

@@ -75,7 +75,6 @@ async def stream_chat_message(
     chat_service: ChatServiceDependency,
     auth_service: AuthServiceDependency,
     request: Annotated[ChatRequest, Form(discriminator=CHAT_REQUEST_DISCRIMINATOR)],
-    request_client: RequestClientDependency,
 ):
     if settings.ENV.is_production:
         raise NotFoundProblem
@@ -87,7 +86,7 @@ async def stream_chat_message(
 
     # This needs to be assigned to a variable outside of StreamingResponse
     # Once StreamingResponse is returned you can't raise errors normally
-    stream = await chat_service.stream_chat_message(request=request, user=token, request_client=request_client)
+    stream = await chat_service.stream_chat_message(request=request)
 
     return StreamingResponse(
         stream,

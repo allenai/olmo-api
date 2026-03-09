@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Final
 
 from fastapi import Depends
 from fastapi_problem.error import BadRequestProblem, ForbiddenProblem
@@ -12,7 +12,7 @@ from api.thread.chat.chat_request import ChatRequest
 from core.auth import Permissions
 from core.auth.token import Token
 
-from .google_recaptcha_service import GoogleRecaptchaServiceDependency
+from .google_recaptcha_service import FailedCaptchaProblem, GoogleRecaptchaServiceDependency
 from .safety_checkers.safety_checker_base import SafetyCheckRequest
 from .text_safety_checker_service import TextSafetyCheckerServiceDependency
 
@@ -20,6 +20,7 @@ logger = FastAPIStructLogger()
 
 tracer = trace.get_tracer(__name__)
 
+RECAPTCHA_ACTION_PROMPT_ACTION: Final[str] = "prompt_submission"
 
 class ValidateMessageSafetyService:
     def __init__(
@@ -46,7 +47,7 @@ class ValidateMessageSafetyService:
         return None
 
     @tracer.start_as_current_span(name="ValidateMessageSafetyService/validate")
-    async def validate(  # UserChatRequest ?
+    async def validate(
         self,
         chat_request: ChatRequest,
         request_client: RequestClient,
@@ -54,14 +55,13 @@ class ValidateMessageSafetyService:
     ):
         # Recaptcha
         #
-        recaptcha_action = "prompt_submission"
-
-        if not user.is_anonymous_user and settings.RECAPTCHA_ENABLED and chat_request.captcha_token:
+        if settings.RECAPTCHA_ENABLED:
             await self.recaptcha_service.evaluate_text(
                 captcha_token=chat_request.captcha_token,
                 user_ip_address=request_client.ip_address,
                 user_agent=request_client.user_agent,
-                recaptcha_action=recaptcha_action,
+                recaptcha_action=RECAPTCHA_ACTION_PROMPT_ACTION,
+                is_anonymous_user=user.is_anonymous_user,
             )
 
         # Bypass safety?

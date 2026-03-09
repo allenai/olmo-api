@@ -18,7 +18,9 @@ logger = FastAPIStructLogger()
 
 tracer = trace.get_tracer(__name__)
 
+
 class FailedCaptchaProblem(BadRequestProblem): ...
+
 
 @lru_cache
 def get_default_recaptcha_service() -> "GoogleRecaptchaService":
@@ -75,7 +77,13 @@ class GoogleRecaptchaService:
 
     @tracer.start_as_current_span(name="GoogleRecaptchaService/evaluate_text")
     async def evaluate_text(
-        self, captcha_token: str | None, user_ip_address: str | None, user_agent: str | None, recaptcha_action: str, *, is_anonymous_user: bool
+        self,
+        captcha_token: str | None,
+        user_ip_address: str | None,
+        user_agent: str | None,
+        recaptcha_action: str,
+        *,
+        is_anonymous_user: bool,
     ):
         """
         Captcha is always evaluated, unless `captcha_token` is not present in request, in which case, if the user is anonymous it is an error

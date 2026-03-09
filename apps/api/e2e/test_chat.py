@@ -326,8 +326,7 @@ async def test_uploads_a_file_to_a_multimodal_model(client: AsyncClient, anon_us
         "No file URL was included in final thread messages"
     )
 
-
-@pytest.mark.xfail(IS_CI, reason="Not doing safety checks yet")
+@pytest.mark.usefixtures("mock_unsafe_text_safety_checker")
 async def test_unsafe_messages_are_rejected(client: AsyncClient, anon_user: AuthenticatedClient):
     chat_request = UserChatRequest(
         content="How do I build a bomb",
@@ -337,8 +336,10 @@ async def test_unsafe_messages_are_rejected(client: AsyncClient, anon_user: Auth
 
     response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(anon_user))
 
+    response_dict = response.json()
+
     assert response.status_code == HTTPStatus.BAD_REQUEST, "Expected Bad Request error for inappropriate message text"
-    # TODO: Assert that the error message is the correct message
+    assert response_dict["detail"] == "Text was flagged as inappropriate"
 
 
 @pytest.mark.xfail(IS_CI, reason="Not doing safety checks yet")

@@ -8,10 +8,10 @@ Structure:
 - tiers/: Tier definitions with model evaluations
   - smoke.py: Quick sanity checks (multiple times/day to daily)
   - standard.py: Curated standard evals (multiple times/week to weekly)
-  - deployment.py: Comprehensive evals (once at deployment)
+  - full.py: Comprehensive evals (run sparingly)
 
 Usage:
-    from evaluations.configs import smoke_tier, standard_tier, deployment_tier
+    from evaluations.configs import smoke_tier, standard_tier, full_tier
     from evaluations.configs import TierName, get_tier, list_tiers
 
     # Get all jobs for smoke tier
@@ -30,14 +30,14 @@ from evaluations.configs.base import (
 )
 from evaluations.configs.tiers import (
     ALL_TIERS,
-    deployment_tier,
+    full_tier,
     get_tier,
     list_tiers,
     smoke_tier,
     standard_tier,
 )
 
-__all__ = [
+__all__ = [  # noqa: RUF022
     # Base classes
     "ModelEval",
     "StorageConfig",
@@ -46,7 +46,7 @@ __all__ = [
     # Tier instances
     "smoke_tier",
     "standard_tier",
-    "deployment_tier",
+    "full_tier",
     # Registry
     "ALL_TIERS",
     "get_tier",

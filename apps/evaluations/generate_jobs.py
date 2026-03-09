@@ -88,7 +88,7 @@ spec:
 TIER_RESOURCES = {
     "smoke": {"cpu": "2", "memory": "4Gi"},
     "standard": {"cpu": "2", "memory": "4Gi"},
-    "deployment": {"cpu": "4", "memory": "8Gi"},
+    "full": {"cpu": "4", "memory": "8Gi"},
 }
 
 
@@ -238,7 +238,7 @@ def main():
     parser.add_argument("--image", default="IMAGE_URL", help="Container image URL")
     parser.add_argument("--service-account", default="SERVICE_ACCOUNT", help="Service account email")
     parser.add_argument("--project", default="PROJECT_ID", help="GCP project ID")
-    parser.add_argument("--region", default="us-central1", help="GCP region")
+    parser.add_argument("--region", default="us-west1", help="GCP region")
     parser.add_argument("--output-dir", default="cloud-run-jobs", help="Output directory")
     args = parser.parse_args()
 

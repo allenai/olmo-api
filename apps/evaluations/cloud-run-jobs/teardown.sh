@@ -5,16 +5,16 @@
 set -e
 
 PROJECT="my-project"
-REGION="us-central1"
+REGION="us-west1"
 
 # Delete Cloud Scheduler jobs
 gcloud scheduler jobs delete eval-smoke-schedule --location "$REGION" --project "$PROJECT" --quiet 2>/dev/null || true
 gcloud scheduler jobs delete eval-standard-schedule --location "$REGION" --project "$PROJECT" --quiet 2>/dev/null || true
-gcloud scheduler jobs delete eval-deployment-schedule --location "$REGION" --project "$PROJECT" --quiet 2>/dev/null || true
+gcloud scheduler jobs delete eval-full-schedule --location "$REGION" --project "$PROJECT" --quiet 2>/dev/null || true
 
 # Delete Cloud Run Jobs
 gcloud run jobs delete eval-smoke --region "$REGION" --project "$PROJECT" --quiet 2>/dev/null || true
 gcloud run jobs delete eval-standard --region "$REGION" --project "$PROJECT" --quiet 2>/dev/null || true
-gcloud run jobs delete eval-deployment --region "$REGION" --project "$PROJECT" --quiet 2>/dev/null || true
+gcloud run jobs delete eval-full --region "$REGION" --project "$PROJECT" --quiet 2>/dev/null || true
 
 echo "Done!"

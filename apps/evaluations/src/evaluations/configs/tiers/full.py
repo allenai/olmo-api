@@ -1,23 +1,23 @@
-"""Deployment tier configuration.
+"""Full tier configuration.
 
-Comprehensive evaluations that run once at deployment time.
+Comprehensive evaluations that take longer to run.
 Triggered manually, not scheduled.
 """
 
 from evaluations.configs.base import ModelEval, StorageConfig, TierConfig, TierName
 
-DEPLOYMENT_STORAGE = StorageConfig(
+FULL_STORAGE = StorageConfig(
     s3_bucket="olmo-eval-results",
-    s3_prefix="deployment",
+    s3_prefix="full",
     s3_group="release",
 )
 
-deployment_tier = TierConfig(
-    name=TierName.DEPLOYMENT,
-    description="Comprehensive evaluation at deployment, run manually",
+full_tier = TierConfig(
+    name=TierName.FULL,
+    description="Comprehensive evaluation suite, run sparingly",
     schedule="",  # Not scheduled, triggered manually
     timeout_minutes=360,
-    storage=DEPLOYMENT_STORAGE,
+    storage=FULL_STORAGE,
     models=[
         # Cirrascale deployments
         ModelEval(

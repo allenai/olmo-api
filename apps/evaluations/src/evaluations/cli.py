@@ -21,7 +21,7 @@ def main() -> None:
 def run_tier(tier_name: str, task_index: int, local: bool) -> None:
     """Run a specific model evaluation from a tier.
 
-    TIER_NAME is the tier to run (smoke, standard, deployment).
+    TIER_NAME is the tier to run (smoke, standard, full).
     --task-index corresponds to CLOUD_RUN_TASK_INDEX for parallelism.
     """
     tier = get_tier(TierName(tier_name))

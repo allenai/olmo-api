@@ -9,7 +9,7 @@ class TierName(Enum):
 
     SMOKE = "smoke"  # Multiple times/day to daily, <1hr
     STANDARD = "standard"  # Multiple times/week to weekly, 1-2hr
-    DEPLOYMENT = "deployment"  # Once at deployment
+    FULL = "full"  # Comprehensive suite, run sparingly
 
 
 @dataclass

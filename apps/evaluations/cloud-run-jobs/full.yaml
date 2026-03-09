@@ -1,9 +1,9 @@
 apiVersion: run.googleapis.com/v1
 kind: Job
 metadata:
-  name: eval-deployment
+  name: eval-full
   labels:
-    tier: deployment
+    tier: full
   annotations:
     run.googleapis.com/launch-stage: BETA
 spec:
@@ -24,7 +24,7 @@ spec:
                   memory: 8Gi
               env:
                 - name: EVAL_TIER
-                  value: deployment
+                  value: full
                 # Secrets from Secret Manager
                 - name: LITELLM_PROXY_API_KEY
                   valueFrom:

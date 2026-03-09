@@ -97,6 +97,7 @@ class GoogleTextSafetyChecker(TextSafetyChecker):
 
     @tracer.start_as_current_span(name="GoogleTextSafetyChecker/check_request")
     async def check_request(self, request: SafetyCheckRequest) -> SafetyCheckResponse:
+        span = trace.get_current_span()
         moderate_text_request = ModerateTextRequest(
             document=Document(content=request.content, type=Document.Type.PLAIN_TEXT),
             model_version="MODEL_VERSION_2",
@@ -107,15 +108,10 @@ class GoogleTextSafetyChecker(TextSafetyChecker):
         end_ns = time_ns()
 
         response = GoogleSafetyCheckResponse(result)
-
-        # TODO: are we logging every prompt (including request.content) ?
-        logger.info(
-            "safety-check.results",
-            checker="GoogleModerateText",
-            prompt=request.content,
-            duration_ms=(end_ns - start_ns) / 1_000_000,
-            violations=[info.model_dump() for info in response.get_violations()],
-            scores=response.get_scores(),
-        )
+        span.set_attributes({
+            "duration_ms": (end_ns - start_ns) / 1_000_000,
+            "violations": [violation.model_dump_json() for violation in response.get_violations()],
+            "scores": [str(score) for score in response.get_scores()],
+        })
 
         return response

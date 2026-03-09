@@ -9,7 +9,6 @@ from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import GEN_A
 from api.auth.auth_service import AuthServiceDependency
 from api.config import settings
 from api.logging.fastapi_logger import FastAPIStructLogger
-from api.request_client import RequestClientDependency
 from api.service_errors import ForbiddenError, NotFoundError
 from api.thread.chat.chat_request import CHAT_REQUEST_DISCRIMINATOR
 from api.thread.chat.chat_service import ChatRequest, ChatServiceDependency

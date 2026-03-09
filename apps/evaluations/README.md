@@ -217,10 +217,4 @@ evaluations --help
 # Run a specific tier/task
 evaluations run-tier standard --task-index 0
 evaluations run-tier smoke --task-index 0 --local
-
-# List available tiers
-evaluations list-tiers
-
-# List jobs in a tier
-evaluations list-jobs standard
 ```

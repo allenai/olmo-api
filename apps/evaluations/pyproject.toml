@@ -6,7 +6,6 @@ requires-python = ">=3.12"
 
 dependencies = [
     "olmo-eval-internal[litellm,storage] @ git+https://github.com/allenai/olmo-eval-internal.git@main",
-    "click>=8.0",
 ]
 
 [project.scripts]

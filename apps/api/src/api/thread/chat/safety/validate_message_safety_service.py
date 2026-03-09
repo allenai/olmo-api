@@ -51,10 +51,7 @@ class ValidateMessageSafetyService:
         return None
 
     @tracer.start_as_current_span(name="ValidateMessageSafetyService/validate")
-    async def validate(
-        self,
-        chat_request: ChatRequest,
-    ):
+    async def validate(self, chat_request: ChatRequest):
         # Recaptcha
         # chat_request.captcha_token is required and validated in `env.PRODUCTION` environement
         #
@@ -79,7 +76,7 @@ class ValidateMessageSafetyService:
         if can_bypass_safety_checks is True and chat_request.bypass_safety_check is True:
             return
 
-        # Check message contents
+        # Check message text
         #
         is_text_safe = await self._check_text(chat_request.content)
 

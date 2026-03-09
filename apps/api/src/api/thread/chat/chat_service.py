@@ -319,6 +319,8 @@ class ChatService:
         request: ChatRequest,
         model: ModelConfig,
     ) -> ValidateThreadResult:
+        await self.validate_message_safety_service.validate(chat_request=request)
+
         parent_message = (
             await self.message_repository.get_message_by_id(request.parent) if request.parent is not None else None
         )

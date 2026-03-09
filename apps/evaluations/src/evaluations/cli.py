@@ -1,17 +1,34 @@
 """CLI for evaluations Cloud Run Jobs."""
 
+import os
 import subprocess
 import sys
 
 import click
 
 from evaluations.configs import TierName, get_tier
+from evaluations.configs import list_tiers as _list_tiers
 
 
-@click.group()
-def main() -> None:
-    """Evaluations CLI for Cloud Run Jobs."""
-    pass
+@click.group(invoke_without_command=True)
+@click.pass_context
+def main(ctx: click.Context) -> None:
+    """Evaluations CLI for Cloud Run Jobs.
+
+    If EVAL_TIER env var is set, automatically runs that tier.
+    Otherwise, use subcommands like 'run-tier', 'list-jobs', 'list-tiers'.
+    """
+    if ctx.invoked_subcommand is not None:
+        return
+
+    # Check for EVAL_TIER env var (Cloud Run Jobs mode)
+    eval_tier = os.environ.get("EVAL_TIER")
+    if eval_tier:
+        task_index = int(os.environ.get("CLOUD_RUN_TASK_INDEX", "0"))
+        local_mode = os.environ.get("LOCAL", "").lower() == "true"
+        ctx.invoke(run_tier, tier_name=eval_tier, task_index=task_index, local=local_mode)
+    else:
+        click.echo(ctx.get_help())
 
 
 @main.command()
@@ -74,8 +91,6 @@ def list_jobs(tier_name: str) -> None:
 @main.command()
 def list_tiers() -> None:
     """List all available tiers."""
-    from evaluations.configs import list_tiers as _list_tiers
-
     for tier in _list_tiers():
         click.echo(f"{tier.name.value}:")
         click.echo(f"  Description: {tier.description}")

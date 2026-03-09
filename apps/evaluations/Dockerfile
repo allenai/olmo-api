@@ -6,13 +6,15 @@
 #
 # Once olmo-eval-internal is public, remove --build-arg GITHUB_TOKEN
 #
-# Run locally:
-#   docker run -e LITELLM_PROXY_API_KEY=$LITELLM_PROXY_API_KEY evaluations \
-#     -m cirrascale-olmo-3-7b-instruct -t humaneval:bpb -o limit=10 -H default
-#
-# Run tier (local mode):
+# Run tier (local mode, no storage):
 #   docker run -e EVAL_TIER=standard -e CLOUD_RUN_TASK_INDEX=0 -e LOCAL=true \
 #     -e LITELLM_PROXY_API_KEY=$LITELLM_PROXY_API_KEY evaluations
+#
+# Run with helper script:
+#   python run_local.py --tier standard --build
+#
+# List available commands:
+#   docker run evaluations --help
 
 # ============================================================================
 # Stage 1: Builder
@@ -60,10 +62,6 @@ COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin/olmo-eval /usr/local/bin/olmo-eval
 COPY --from=builder /usr/local/bin/evaluations /usr/local/bin/evaluations
 
-# Copy entrypoint script
-COPY run.sh /app/run.sh
-RUN chmod +x /app/run.sh
-
 WORKDIR /app
 
 # Use non-root user
@@ -71,4 +69,7 @@ USER nonroot
 
 ENV PYTHONUNBUFFERED=1
 
-ENTRYPOINT ["/app/run.sh"]
+# Use Python CLI as entrypoint
+# - With EVAL_TIER env var: runs tier evaluation automatically
+# - Without: pass subcommands like 'run-tier', 'list-jobs', 'list-tiers'
+ENTRYPOINT ["python", "-m", "evaluations.cli"]

@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - olmo-eval_cloudrun
     paths:
       - 'apps/evaluations/**'
       - '.github/workflows/build-and-push-evals.yml'
@@ -25,11 +24,11 @@ jobs:
     environment:
       name: ${{ github.ref_name }}
     steps:
-      - uses: actions/checkout@v6
-      
+      - uses: actions/checkout@v6 # remove this when switching back to shared action
+
       - name: Skiff2 Setup
         id: setup
-        uses: ./.github/actions/skiff2/setup
+        uses: ./.github/actions/skiff2/setup # temporary workaround until share action is available
         with:
           workload_identity_provider: ${{ vars.SKIFF2_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.SKIFF2_SERVICE_ACCOUNT }}

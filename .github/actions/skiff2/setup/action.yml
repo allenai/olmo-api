@@ -1,6 +1,8 @@
 name: Setup GCP and Docker
 description: Sets up Google Cloud authentication, Cloud SDK, and Docker for GCR
 author: Skiff
+# This is a temp workaround until skiff2 shared actions are accessible from public repos
+# Please remove this file and switch to shared action when available.
 
 inputs:
     workload_identity_provider:
@@ -16,13 +18,13 @@ inputs:
 runs:
     using: composite
     steps:
-        # - name: Check branch is main
-        #   shell: bash
-        #   run: |
-        #       if [ "${{ github.ref }}" != "refs/heads/main" ]; then
-        #         echo "This action can only run on the main branch. Current ref: ${{ github.ref }}"
-        #         exit 1
-        #       fi
+        - name: Check branch is main
+          shell: bash
+          run: |
+              if [ "${{ github.ref }}" != "refs/heads/main" ]; then
+                echo "This action can only run on the main branch. Current ref: ${{ github.ref }}"
+                exit 1
+              fi
 
         - name: Checkout calling repository
           uses: actions/checkout@v4

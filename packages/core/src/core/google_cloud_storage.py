@@ -48,6 +48,7 @@ class GoogleCloudStorage:
         bucket_name: str,
         content_type: str | None = None,
         make_file_public: bool = False,
+        timeout: int = 60,  # default in sync GCS (google.aio.storage default is 30s)
     ) -> UploadResponse:
         start_ns = time_ns()
 
@@ -58,6 +59,7 @@ class GoogleCloudStorage:
                 file_data=file_data,
                 content_type=content_type,
                 parameters={"predefinedAcl": "publicRead"} if make_file_public else None,
+                timeout=timeout,
             )
 
         end_ns = time_ns()

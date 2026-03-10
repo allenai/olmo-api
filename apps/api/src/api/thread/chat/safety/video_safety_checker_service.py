@@ -44,7 +44,7 @@ class VideoSafetyCheckerService:
 
                 await file.seek(0)
                 response = await self.cloud_storage.upload_content(
-                    filename=filename, file_data=file.file, bucket_name=settings.SAFTEY_GCS_UPLOAD_BUCKET
+                    filename=filename, file_data=await file.read(), bucket_name=settings.SAFTEY_GCS_UPLOAD_BUCKET
                 )
                 request = SafetyCheckRequest(message_id=message_id, content=response.storage_path, name=filename)
 

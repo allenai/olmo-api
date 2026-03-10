@@ -14,7 +14,6 @@ permissions:
   id-token: write
 
 env:
-  REGION: us-west1
   SERVICE_NAME: evaluations
   REGISTRY: us-west1-docker.pkg.dev
   REPO: model-evals
@@ -64,17 +63,7 @@ jobs:
       # Deploy Cloud Run Jobs
       - name: Deploy Cloud Run Jobs
         env:
-          PROJECT_ID: ${{ vars.SKIFF2_PROJECT_ID }}
-          IMAGE: ${{ steps.build.outputs.image }}
+          IMAGE_TAG: ${{ steps.build.outputs.image }}
         run: |
-          # Update job YAMLs with actual image tag and deploy
-          for tier in smoke standard full; do
-            YAML_FILE="apps/evaluations/cloud-run-jobs/${tier}.yaml"
-            if [ -f "$YAML_FILE" ]; then
-              echo "Deploying eval-${tier}..."
-              # Replace placeholder project and image with actual values
-              sed -i "s|my-project|${PROJECT_ID}|g" "$YAML_FILE"
-              sed -i "s|${REGISTRY}/${PROJECT_ID}/${REPO}/${SERVICE_NAME}:latest|${IMAGE}|g" "$YAML_FILE"
-              gcloud run jobs replace "$YAML_FILE" --region "$REGION" --project "$PROJECT_ID"
-            fi
-          done
+          cd apps/evaluations/cloud-run-jobs
+          ./deploy.sh

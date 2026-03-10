@@ -1,5 +1,8 @@
 # Evaluations Docker Image for Cloud Run Jobs
 #
+# Docker image with which to run a list of model evals basedb on tier configuration,
+# and will run each individual model eval as it's own Google Cloud Job
+#
 # Build (requires GitHub token for private repo access):
 #   docker build --platform linux/amd64 --build-arg GITHUB_TOKEN=$GITHUB_TOKEN \
 #     -t evaluations -f apps/evaluations/Dockerfile apps/evaluations
@@ -10,16 +13,15 @@
 #   docker run -e EVAL_TIER=standard -e CLOUD_RUN_TASK_INDEX=0 -e LOCAL=true \
 #     -e LITELLM_PROXY_API_KEY=$LITELLM_PROXY_API_KEY evaluations
 #
-# Run with helper script:
+# Run builds/evals locally with helper script:
 #   python run_local.py --tier standard --build
+#   python run_local.py --build-only
 #
-# List available commands:
-#   docker run evaluations --help
 
 # ============================================================================
 # Stage 1: Builder
 # ============================================================================
-FROM --platform=linux/amd64 ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
+FROM --platform=linux/amd64 ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS builder
 
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 ENV UV_PYTHON_DOWNLOADS=0
@@ -46,7 +48,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ============================================================================
 # Stage 2: Runtime
 # ============================================================================
-FROM --platform=linux/amd64 python:3.12-slim-bookworm AS runner
+FROM --platform=linux/amd64 python:3.14-slim-bookworm AS runner
 
 # Install runtime dependencies
 RUN apt-get update -qq && \
@@ -58,7 +60,7 @@ RUN groupadd --system --gid 999 nonroot \
     && useradd --system --gid 999 --uid 999 --create-home nonroot
 
 # Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/lib/python3.14/site-packages /usr/local/lib/python3.14/site-packages
 COPY --from=builder /usr/local/bin/olmo-eval /usr/local/bin/olmo-eval
 COPY --from=builder /usr/local/bin/evaluations /usr/local/bin/evaluations
 
@@ -72,6 +74,4 @@ ENV TERM=dumb
 ENV NO_COLOR=1
 
 # Use Python CLI as entrypoint
-# - With EVAL_TIER env var: runs tier evaluation automatically
-# - Without: pass subcommands like 'run-tier', 'list-jobs', 'list-tiers'
 ENTRYPOINT ["python", "-m", "evaluations.cli"]

@@ -27,7 +27,7 @@ jobs:
     steps:
       - name: Skiff2 Setup
         id: setup
-        uses: allenai/skiff-commodore/shared-actions/setup/@main
+        uses: ./.github/setup-action.yml
         with:
           workload_identity_provider: ${{ vars.SKIFF2_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.SKIFF2_SERVICE_ACCOUNT }}

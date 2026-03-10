@@ -393,7 +393,11 @@ class ChatService:
             can_think=model.can_think,
         )
 
-        toolsets = self._get_toolsets(model, request.tool_definitions, mcp_tools=request.selected_tools)
+        toolsets = (
+            self._get_toolsets(model, request.tool_definitions, mcp_tools=request.selected_tools)
+            if request.enable_tool_calling
+            else []
+        )
 
         agent = Agent(
             model=pydantic_model,

@@ -190,7 +190,6 @@ async def test_calls_mcp_tools(client: AsyncClient, auth_user: AuthenticatedClie
         assert message_in_db.children[0].id == finished_thread.messages[2].id
 
 
-@pytest.mark.xfail(IS_CI, reason="Not accounting for enable_tool_calling=False yet")
 async def test_does_not_call_tools(client: AsyncClient, anon_user: AuthenticatedClient):
     tool_name = "get_current_weather"
     tool_definition = CreateToolDefinition(

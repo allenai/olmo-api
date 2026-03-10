@@ -44,9 +44,9 @@ class ModelEval:
     The olmo-eval CLI requires provider config via harness overrides, not model overrides.
     """
 
-    model: str  # Display name (used for logging/storage, passed to -m for preset lookup fallback)
+    model: str  # Provider preset, or Display name when provider_overrides are used.
     tasks: list[str]  # Task names or suite names
-    harness: str = "default"
+    harness: str = "default"  # Harness preset
     provider_overrides: dict[str, str] = field(default_factory=dict)
     task_overrides: dict[str, str] = field(default_factory=dict)
     harness_overrides: dict[str, str] = field(default_factory=dict)
@@ -109,12 +109,6 @@ class ModelEval:
 
         return args
 
-    def job_name(self, tier_name: str) -> str:
-        """Generate a Cloud Run Job name for this evaluation."""
-        # e.g., "eval-smoke-cirrascale-olmo-3-7b-instruct"
-        model_slug = self.model.replace("_", "-").lower()
-        return f"eval-{tier_name}-{model_slug}"
-
 
 @dataclass
 class TierConfig:
@@ -142,7 +136,8 @@ class TierConfig:
     def get_job_by_index(self, index: int) -> tuple[ModelEval, list[str]]:
         """Get a specific job by task index (for CLOUD_RUN_TASK_INDEX)."""
         if index < 0 or index >= len(self.models):
-            raise IndexError(f"Task index {index} out of range (0-{len(self.models) - 1})")
+            msg = f"Task index {index} out of range (0-{len(self.models) - 1})"
+            raise IndexError(msg)
         model = self.models[index]
         return (model, model.to_cli_args(self.storage, self.harness_overrides))
 

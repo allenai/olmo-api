@@ -16,7 +16,7 @@ Usage:
 
     # Get all jobs for smoke tier
     for model, cli_args in smoke_tier.get_jobs():
-        print(model.job_name("smoke"), cli_args)
+        print(model.model, cli_args)
 
     # Generate docker run command
     cmd = smoke_tier.to_docker_run_cmd(smoke_tier.models[0])

@@ -2,10 +2,13 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import Depends
+from opentelemetry import trace
 from sqlalchemy import select
+from sqlalchemy.exc import MultipleResultsFound
 
 from api.auth.permission_service import PermissionServiceDependency
 from api.db.sqlalchemy_engine import SessionDependency
+from api.logging.fastapi_logger import FastAPIStructLogger
 from core.auth.authenticated_client import AuthenticatedClient
 from core.auth.token import Token
 from db.models.user import User
@@ -15,16 +18,25 @@ from db.models.user import User
 # so that we can check if the user has accepted the latest version
 LAST_TERMS_UPDATE_DATE = datetime(2025, 12, 16, tzinfo=UTC)
 
+logger = FastAPIStructLogger()
+tracer = trace.get_tracer(__name__)
+
 
 class UserWhoAmIService:
     def __init__(self, session: SessionDependency, permission_service: PermissionServiceDependency):
         self.session = session
         self.permission_service = permission_service
 
+    @tracer.start_as_current_span("UserWhoAmIService/get_by_client")
     async def get_by_client(self, token: Token) -> AuthenticatedClient:
         stmt = select(User).where(User.client == token.client)
         result = await self.session.scalars(stmt)
-        user = result.one_or_none()
+        try:
+            user = result.one_or_none()
+        except MultipleResultsFound as e:
+            logger.exception("Multiple results found when getting user")
+            trace.get_current_span().record_exception(e)
+            raise
 
         # A user is considered to have accepted the latest terms if:
         # - they exist,

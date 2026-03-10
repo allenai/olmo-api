@@ -25,9 +25,11 @@ jobs:
     environment:
       name: ${{ github.ref_name }}
     steps:
+      - uses: actions/checkout@v6
+      
       - name: Skiff2 Setup
         id: setup
-        uses: ./.github/skiff2/setup
+        uses: ./.github/actions/skiff2/setup
         with:
           workload_identity_provider: ${{ vars.SKIFF2_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.SKIFF2_SERVICE_ACCOUNT }}

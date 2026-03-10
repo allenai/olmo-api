@@ -130,7 +130,7 @@ class ChatService:
     def __init__(
         self,
         message_repository: AsyncMessageRepositoryDependency,
-        auth_user: OptionalAuthUser,
+        user: OptionalAuthUser,
         session: SessionDependency,
         tools_service: ToolsServiceDependency,
         file_upload_service: ChatFileUploadServiceDependency,
@@ -140,7 +140,7 @@ class ChatService:
     ):
         self.message_repository = message_repository
         self.session = session
-        self.auth_user = auth_user
+        self.user = user
         self.tools_service = tools_service
         self.file_upload_service = file_upload_service
         self.validate_message_safety_service = validate_message_safety_service
@@ -379,7 +379,7 @@ class ChatService:
             root_message_id=validate_thread_result.root_message_id,
             request_parent_message_id=validate_thread_result.request_parent_message_id,
             request=request,
-            creator_id=self.auth_user.client,
+            creator_id=self.user.client,
             system_prompt=model.default_system_prompt,
             inference_options=validate_thread_result.inference_options,
             model=model,
@@ -413,7 +413,7 @@ class ChatService:
             new_messages=initialize_thread_result.new_messages,
             root_message_id=initialize_thread_result.root_message_id,
             parent_message_id=initialize_thread_result.last_message_id,
-            creator=self.auth_user.client,
+            creator=self.user.client,
             model=model,
             inference_opts=initialize_thread_result.all_messages[-1].opts,
             user_tool_names=[definition.name for definition in request.tool_definitions or []],

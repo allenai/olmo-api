@@ -57,20 +57,20 @@ class ValidateMessageSafetyService:
         text_safety_checker_service: TextSafetyCheckerServiceDependency,
         video_safety_checker_service: VideoSafetyCheckerServiceDependency,
         request_client: RequestClientDependency,
-        auth_user: OptionalAuthUser,
+        user: OptionalAuthUser,
     ):
         self.recaptcha_service = recaptcha_service
         self.permission_service = permission_service
         self.text_safety_checker_service = text_safety_checker_service
         self.video_safety_checker_service = video_safety_checker_service
         self.request_client = request_client
-        self.auth_user = auth_user
+        self.user = user
 
     async def _can_bypass_safety_checks(self, request: ChatRequest):
         # Bypass safety
         #
         can_bypass_safety_checks = self.permission_service.has_permission(
-            self.auth_user, permission=Permissions.WRITE_BYPASS_SAFETY_CHECKS
+            self.user, permission=Permissions.WRITE_BYPASS_SAFETY_CHECKS
         )
         if can_bypass_safety_checks is False and request.bypass_safety_check is True:
             cannot_bypass_safety_checks_message = "User is not allowed to change this setting"
@@ -101,7 +101,7 @@ class ValidateMessageSafetyService:
                 user_ip_address=self.request_client.ip_address,
                 user_agent=self.request_client.user_agent,
                 recaptcha_action=RECAPTCHA_ACTION_PROMPT_ACTION,
-                is_anonymous_user=self.auth_user.is_anonymous_user,
+                is_anonymous_user=self.user.is_anonymous_user,
             )
 
         await self._check_text(text=request.content)

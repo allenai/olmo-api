@@ -27,7 +27,6 @@ from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
 from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
 from api.thread.chat.playground_ui_adapter._util import RunInput
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
-from api.tools.mcp_service import McpServiceDependency
 from api.thread.chat.pydantic_inference.pydantic_model_settings import pydantic_model_settings
 from api.thread.chat.safety.validate_message_safety_service import ValidateMessageSafetyServiceDependency
 from api.tools.mcp_service import McpServiceDependency

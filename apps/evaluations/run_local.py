@@ -23,9 +23,9 @@ ENV_FILE = APP_DIR / ".env.local"
 
 if ENV_FILE.exists():
     print(f"Loading environment from {ENV_FILE}")
-    with open(ENV_FILE) as f:
-        for line in f:
-            line = line.strip()
+    with open(ENV_FILE, encoding="utf-8") as f:
+        for raw_line in f:
+            line = raw_line.strip()
             if line and not line.startswith("#") and "=" in line:
                 key, _, value = line.partition("=")
                 os.environ.setdefault(key.strip(), value.strip())
@@ -52,14 +52,19 @@ def main() -> int:
 
         print("Building Docker image...")
         build_cmd = [
-            "docker", "build",
-            "--platform", "linux/amd64",
-            "--build-arg", f"GITHUB_TOKEN={github_token}",
-            "-t", args.image,
-            "-f", str(APP_DIR / "Dockerfile"),
+            "docker",
+            "build",
+            "--platform",
+            "linux/amd64",
+            "--build-arg",
+            f"GITHUB_TOKEN={github_token}",
+            "-t",
+            args.image,
+            "-f",
+            str(APP_DIR / "Dockerfile"),
             str(APP_DIR),
         ]
-        result = subprocess.run(build_cmd)
+        result = subprocess.run(build_cmd, check=False)
         if result.returncode != 0:
             return result.returncode
 
@@ -69,20 +74,31 @@ def main() -> int:
 
     # Build docker run command
     docker_cmd = [
-        "docker", "run", "--rm",
-        "-e", f"EVAL_TIER={args.tier}",
-        "-e", f"CLOUD_RUN_TASK_INDEX={args.task_index}",
-        "-e", f"LITELLM_PROXY_API_KEY={os.environ.get('LITELLM_PROXY_API_KEY', '')}",
+        "docker",
+        "run",
+        "--rm",
+        "-e",
+        f"EVAL_TIER={args.tier}",
+        "-e",
+        f"CLOUD_RUN_TASK_INDEX={args.task_index}",
+        "-e",
+        f"LITELLM_PROXY_API_KEY={os.environ.get('LITELLM_PROXY_API_KEY', '')}",
     ]
 
     if args.with_storage:
         docker_cmd.extend([
-            "-e", f"PGHOST={os.environ.get('PGHOST', '')}",
-            "-e", f"PGPORT={os.environ.get('PGPORT', '5432')}",
-            "-e", f"PGUSER={os.environ.get('PGUSER', '')}",
-            "-e", f"PGPASSWORD={os.environ.get('PGPASSWORD', '')}",
-            "-e", f"AWS_ACCESS_KEY_ID={os.environ.get('AWS_ACCESS_KEY_ID', '')}",
-            "-e", f"AWS_SECRET_ACCESS_KEY={os.environ.get('AWS_SECRET_ACCESS_KEY', '')}",
+            "-e",
+            f"PGHOST={os.environ.get('PGHOST', '')}",
+            "-e",
+            f"PGPORT={os.environ.get('PGPORT', '5432')}",
+            "-e",
+            f"PGUSER={os.environ.get('PGUSER', '')}",
+            "-e",
+            f"PGPASSWORD={os.environ.get('PGPASSWORD', '')}",
+            "-e",
+            f"AWS_ACCESS_KEY_ID={os.environ.get('AWS_ACCESS_KEY_ID', '')}",
+            "-e",
+            f"AWS_SECRET_ACCESS_KEY={os.environ.get('AWS_SECRET_ACCESS_KEY', '')}",
         ])
         print(f"Running: tier={args.tier}, task_index={args.task_index} (with storage)")
     else:
@@ -92,7 +108,7 @@ def main() -> int:
     docker_cmd.append(args.image)
 
     print()
-    result = subprocess.run(docker_cmd)
+    result = subprocess.run(docker_cmd, check=False)
     return result.returncode
 
 

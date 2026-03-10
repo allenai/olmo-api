@@ -24,9 +24,12 @@ class StorageConfig:
         """Convert to olmo-eval CLI arguments."""
         return [
             "--store",
-            "--s3-bucket", self.s3_bucket,
-            "--s3-prefix", self.s3_prefix,
-            "--s3-group", self.s3_group,
+            "--s3-bucket",
+            self.s3_bucket,
+            "--s3-prefix",
+            self.s3_prefix,
+            "--s3-group",
+            self.s3_group,
         ]
 
 
@@ -128,10 +131,7 @@ class TierConfig:
 
     def get_jobs(self) -> list[tuple[ModelEval, list[str]]]:
         """Get all jobs for this tier as (ModelEval, cli_args) tuples."""
-        return [
-            (model, model.to_cli_args(self.storage, self.harness_overrides))
-            for model in self.models
-        ]
+        return [(model, model.to_cli_args(self.storage, self.harness_overrides)) for model in self.models]
 
     def get_job_by_index(self, index: int) -> tuple[ModelEval, list[str]]:
         """Get a specific job by task index (for CLOUD_RUN_TASK_INDEX)."""

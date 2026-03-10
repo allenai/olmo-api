@@ -44,7 +44,7 @@ def run_tier(tier_name: str, task_index: int, local: bool) -> int:
     print()
 
     # Execute olmo-eval run
-    result = subprocess.run(cmd)
+    result = subprocess.run(cmd, check=False)
     return result.returncode
 
 

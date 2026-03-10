@@ -23,7 +23,7 @@ def get_video_safety_checker() -> SafetyChecker:
     return GoogleVideoIntelligenceSafetyChecker()
 
 
-GoogleVideoSafetyCheckerDependecy = Annotated[SafetyChecker, Depends(get_video_safety_checker)]
+VideoSafetyCheckerDependecy = Annotated[SafetyChecker, Depends(get_video_safety_checker)]
 
 
 def generate_random_filename(original_filename: str) -> str:
@@ -33,7 +33,7 @@ def generate_random_filename(original_filename: str) -> str:
 
 
 class VideoSafetyCheckerService:
-    def __init__(self, cloud_storage: GoogleCloudStorageDependency, checker: GoogleVideoSafetyCheckerDependecy):
+    def __init__(self, cloud_storage: GoogleCloudStorageDependency, checker: VideoSafetyCheckerDependecy):
         self._cloud_storage = cloud_storage
         self._checker = checker
 

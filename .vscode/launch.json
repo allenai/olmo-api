@@ -32,7 +32,8 @@
                 "--reload",
                 "--port", "8888"
             ],
-            "jinja": true
+            "jinja": true,
+            "justMyCode": false
         },
         {
             "name": "Python Debugger: Safety Worker",

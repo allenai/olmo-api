@@ -18,7 +18,12 @@
         "pyproject",
         "sessionmaker",
         "usefixtures",
-        "videointelligence"
+        "videointelligence",
+        "toolsets",
+        "asgi",
+        "ondelete",
+        "pkey",
+        "sqlacodegen"
     ],
     "ruff.configurationPreference": "filesystemFirst",
     "ruff.format.preview": true,

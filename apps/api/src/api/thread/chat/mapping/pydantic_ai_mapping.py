@@ -1,29 +1,71 @@
 from collections.abc import Sequence
+from mimetypes import guess_type
 
 from pydantic_ai import (
+    AudioUrl,
+    BinaryContent,
+    DocumentUrl,
+    ImageUrl,
     ModelMessage,
     ModelRequest,
     ModelResponse,
     ModelResponsePart,
+    MultiModalContent,
     SystemPromptPart,
     TextPart,
     ThinkingPart,
     ToolReturnPart,
     UserContent,
     UserPromptPart,
+    VideoUrl,
 )
 
-from api.thread.chat.input_parts import map_input_parts
+# We need to use the starlette UploadFile because FastAPI's UploadFile and the actual UploadFile type we get from the request are different
+# https://github.com/fastapi/fastapi/discussions/13208
+from starlette.datastructures import UploadFile
+
+from api.thread.chat.chat_exceptions import UnhandledRoleError, UnsupportedMediaTypeError
+from api.thread.chat.mapping.input_parts import map_input_parts
 from core.message.role import Role
 from db.models.message import Message
 
 
-def _map_user_message(message: Message) -> ModelRequest:
-    # file_user_content = [_map_part_from_file_url(file_url, blob_map) for file_url in message.file_urls or []]
-    text_content = map_input_parts(message.input_parts, message.content)
+def _map_part_from_file(file: str | UploadFile) -> MultiModalContent:
+    if isinstance(file, UploadFile):
+        return BinaryContent(data=file.file.read(), media_type=file.content_type or "")
 
-    # user_content: list[UserContent] = [text_content, *file_user_content]
+    (mimetype, _encoding) = guess_type(file)
+
+    match mimetype:
+        case None:
+            # Defaulting to Image for now since most of our uploads are images
+            # We can error if we enforce file extensions on upload
+            return ImageUrl(file)
+
+        case mimetype if mimetype.startswith("video"):
+            return VideoUrl(file)
+
+        case mimetype if mimetype.startswith("image"):
+            return ImageUrl(file)
+
+        case mimetype if mimetype.startswith(("text", "application")):
+            return DocumentUrl(file)
+
+        case mimetype if mimetype.startswith("audio"):
+            return AudioUrl(file)
+
+    unsupported_media_type_msg = f"File URL {file} has unsupported MIME type {mimetype}"
+    raise UnsupportedMediaTypeError(unsupported_media_type_msg)
+
+
+def _map_user_message(message: Message) -> ModelRequest:
+    text_content = map_input_parts(message.input_parts, message.content)
     user_content: list[UserContent] = [text_content]
+
+    file_content = [_map_part_from_file(file) for file in message.file_urls] if message.file_urls is not None else None
+    if file_content:
+        user_content += file_content
+
     user_prompt_part = UserPromptPart(user_content)
 
     return ModelRequest([user_prompt_part])
@@ -71,9 +113,6 @@ def _map_tool_response_message(message: Message):
     )
 
 
-class UnhandledRoleError(Exception): ...
-
-
 def map_message(message: Message) -> ModelMessage:
     match message.role:
         case Role.User:
@@ -89,6 +128,5 @@ def map_message(message: Message) -> ModelMessage:
             raise UnhandledRoleError(unhandled_role_message)
 
 
-# def pydantic_map_messages(messages: list[Message], blob_map: dict[str, FileUploadResult] | None) -> list[ModelMessage]:
 def map_messages_to_pydantic_ai_format(messages: Sequence[Message]) -> list[ModelMessage]:
     return [map_message(message) for message in messages]

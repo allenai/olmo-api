@@ -6,6 +6,7 @@ from time import time_ns
 from typing import BinaryIO
 
 from gcloud.aio.storage import Storage
+from opentelemetry import trace
 
 from core.logger import CoreLogger
 
@@ -14,6 +15,8 @@ logger = CoreLogger("google_cloud")
 # GOOGLE CLOUD STORAGE doesn't accept extreme datetime values like 3000 AD as custom time
 # For whoever sees this code in 2100 AD, please update the value!!!
 GCS_MAX_DATETIME_LIMIT = datetime(2100, 10, 31, tzinfo=UTC)
+
+tracer = trace.get_tracer(__name__)
 
 
 @dataclass(kw_only=True)
@@ -36,6 +39,7 @@ class GoogleCloudStorage:
         """
         self.session = session
 
+    @tracer.start_as_current_span("GoogleCloudStorageService/upload_content")
     async def upload_content(
         self,
         filename: str,

@@ -1,5 +1,6 @@
 from collections.abc import AsyncIterator, Sequence
-from typing import Annotated
+from dataclasses import dataclass
+from typing import Annotated, assert_never
 
 from fastapi import Depends
 from fastapi_problem.error import ForbiddenProblem, UnprocessableProblem
@@ -18,6 +19,8 @@ from api.db.sqlalchemy_engine import SessionDependency
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.model.model_query import base_model_config_select
 from api.model_config.model_config_request import validate_inference_parameters_against_model_constraints
+from api.thread.chat.chat_exceptions import InvalidParentError, ModelNotAvailableError, ModelNotFoundError
+from api.thread.chat.chat_file_upload_service import ChatFileUploadServiceDependency
 from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
 from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
 from api.thread.chat.playground_ui_adapter._util import RunInput
@@ -36,14 +39,6 @@ from db.models.tool_call import clone_tool_call
 from db.models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 
 logger = FastAPIStructLogger()
-
-
-class ModelNotFoundError(UnprocessableProblem):
-    title = "Model not found"
-
-
-class ModelNotAvailableError(UnprocessableProblem):
-    title = "Model not available"
 
 
 def merge_inference_options(
@@ -72,9 +67,6 @@ def merge_inference_options(
     return InferenceOpts.model_validate(merged_inference_options)
 
 
-class InvalidParentError(UnprocessableProblem): ...
-
-
 def build_message_list_from_parent(messages: Sequence[Message], parent_message_id: ID) -> list[Message]:
     messages_dict = {message.id: message for message in messages}
     intermediate_parent_message = messages_dict.get(parent_message_id)
@@ -87,6 +79,8 @@ def build_message_list_from_parent(messages: Sequence[Message], parent_message_i
 
     message_list: list[Message] = [intermediate_parent_message]
 
+    # The parent message is at the end of the thread
+    # Since it's the last one in the thread we build the message list backwards, appending to the start of the list when we get each message's parent
     while message_list[0].parent is not None:
         intermediate_parent_message = messages_dict.get(message_list[0].parent)
 
@@ -113,16 +107,35 @@ def map_tool_def_to_pydantic(tool: CreateToolDefinition) -> ToolDefinition:
 tracer = trace.get_tracer(__name__)
 
 
+@dataclass
+class ValidateThreadResult:
+    request_parent_message_id: ID | None
+    root_message_id: ID | None
+    inference_options: InferenceOpts
+
+
+@dataclass
+class InitializeThreadResult:
+    all_messages: list[Message]
+    new_messages: list[Message]
+    request_message_id: str
+    tool_definitions: list[Ai2ToolDefinition] | None
+    root_message_id: str
+    last_message_id: str
+
+
 class ChatService:
     def __init__(
         self,
         message_repository: AsyncMessageRepositoryDependency,
         session: SessionDependency,
         tools_service: ToolsServiceDependency,
+        file_upload_service: ChatFileUploadServiceDependency,
     ):
         self.message_repository = message_repository
         self.session = session
         self.tools_service = tools_service
+        self.file_upload_service = file_upload_service
 
     @tracer.start_as_current_span(name="ChatService/_get_model")
     async def _get_model(self, model_id: str):
@@ -149,19 +162,20 @@ class ChatService:
     async def _initialize_thread(
         self,
         root_message_id: ID | None,
-        parent_message_id: ID | None,
+        request_parent_message_id: ID | None,
         request: ChatRequest,
         creator_id: str,
         system_prompt: str | None,
         inference_options: InferenceOpts,
         model: ModelConfig,
-    ) -> tuple[list[Message], list[Message]]:
+    ) -> InitializeThreadResult:
         messages: list[Message] = []
         new_messages: list[Message] = []
+        request_message_id: str
 
-        if root_message_id is not None and parent_message_id is not None:
+        if root_message_id is not None and request_parent_message_id is not None:
             thread_messages = await self.message_repository.get_messages_by_root(root_message_id, creator_id)
-            existing_thread_messages = build_message_list_from_parent(thread_messages, parent_message_id)
+            existing_thread_messages = build_message_list_from_parent(thread_messages, request_parent_message_id)
 
             messages = [*messages, *existing_thread_messages]
 
@@ -207,6 +221,13 @@ class ChatService:
 
             parent = messages[-1] if len(messages) > 0 else None
 
+            file_urls: list[str] | None = None
+
+            if request.files:
+                file_urls = await self.file_upload_service.upload_request_files(
+                    message_id=user_message_id, root_message_id=root_message_id, files=request.files
+                )
+
             user_message = Message(
                 id=user_message_id,
                 content=request.content or "",
@@ -219,13 +240,15 @@ class ChatService:
                 model_host=model.host,
                 parent=parent.id if parent else None,
                 tool_definitions=tool_definitions,
+                file_urls=file_urls,
             )
             user_message.parent_ = parent
 
             messages.append(user_message)
             new_messages.append(user_message)
+            request_message_id = user_message.id
 
-        if request.role is Role.ToolResponse:
+        elif request.role is Role.ToolResponse:
             parent_message = messages[-1]
 
             if not parent_message.tool_calls:
@@ -260,18 +283,34 @@ class ChatService:
 
             messages.append(tool_response_message)
             new_messages.append(tool_response_message)
+            request_message_id = tool_response_message.id
+
+        else:
+            assert_never(request.role)
 
         await self.message_repository.add_many(new_messages)
 
-        return messages, new_messages
+        # Gets tool definitions from the last message in the thread
+        # This ensures we call the model with the latest tool definitions if they change in the thread
+        newest_tool_definitions = next(
+            (message.tool_definitions or None for message in reversed(messages) if message.tool_definitions), None
+        )
 
-    @tracer.start_as_current_span(name="ChatService/_validate_and_get_thread")
-    async def _validate_and_get_thread(
+        return InitializeThreadResult(
+            all_messages=messages,
+            new_messages=new_messages,
+            request_message_id=request_message_id,
+            tool_definitions=newest_tool_definitions,
+            root_message_id=messages[0].id,
+            last_message_id=messages[-1].id,
+        )
+
+    @tracer.start_as_current_span("ChatService/_validate_thread")
+    async def _validate_thread(
         self,
         request: ChatRequest,
-        user: Token,
         model: ModelConfig,
-    ) -> tuple[list[Message], list[Message], ID, ID, list[Ai2ToolDefinition] | None, InferenceOpts]:
+    ) -> ValidateThreadResult:
         parent_message = (
             await self.message_repository.get_message_by_id(request.parent) if request.parent is not None else None
         )
@@ -295,29 +334,12 @@ class ChatService:
         validate_inference_parameters_against_model_constraints(model, merged_inference_options)
 
         root_message_id = parent_message.root if parent_message is not None else None
-        parent_message_id = parent_message.id if parent_message is not None else None
+        request_parent_message_id = parent_message.id if parent_message is not None else None
 
-        all_messages, new_messages = await self._initialize_thread(
-            root_message_id,
-            parent_message_id=parent_message_id,
-            request=request,
-            creator_id=user.client,
-            system_prompt=model.default_system_prompt,
+        return ValidateThreadResult(
+            request_parent_message_id=request_parent_message_id,
+            root_message_id=root_message_id,
             inference_options=merged_inference_options,
-            model=model,
-        )
-
-        tool_definitions = next(
-            (message.tool_definitions for message in reversed(all_messages) if message.tool_definitions), None
-        )
-
-        return (
-            all_messages,
-            new_messages,
-            all_messages[0].id,
-            all_messages[-1].id,
-            tool_definitions,
-            merged_inference_options,
         )
 
     @staticmethod
@@ -337,27 +359,26 @@ class ChatService:
 
         return [user_tool_toolset, filtered_mcp_toolset]
 
-        # TODO: below
-        # Safety check
-        # Upload files
-        # Save initial messages/thread to DB
-        # Support multimedia
-
     async def stream_chat_message(self, request: ChatRequest, user: Token) -> AsyncIterator[str]:
         model = await self._get_model(request.model)
-        (
-            all_messages,
-            new_messages,
-            root_message_id,
-            parent_message_id,
-            tool_definitions,
-            inference_opts,
-        ) = await self._validate_and_get_thread(request, user, model)
+
+        validate_thread_result = await self._validate_thread(request, model)
+        initialize_thread_result = await self._initialize_thread(
+            root_message_id=validate_thread_result.root_message_id,
+            request_parent_message_id=validate_thread_result.request_parent_message_id,
+            request=request,
+            creator_id=user.client,
+            system_prompt=model.default_system_prompt,
+            inference_options=validate_thread_result.inference_options,
+            model=model,
+        )
 
         pydantic_model = get_pydantic_model(model)
 
         model_settings = pydantic_model_settings(
-            inference_opts=inference_opts, extra_body=request.extra_parameters, can_think=model.can_think
+            inference_opts=validate_thread_result.inference_options,
+            extra_body=request.extra_parameters,
+            can_think=model.can_think,
         )
 
         toolsets = self._get_toolsets(model, request.tool_definitions, mcp_tools=request.selected_tools)
@@ -371,15 +392,15 @@ class ChatService:
         )
 
         run_input = RunInput(
-            all_messages=all_messages,
-            new_messages=new_messages,
-            root_message_id=root_message_id,
-            parent_message_id=parent_message_id,
+            all_messages=initialize_thread_result.all_messages,
+            new_messages=initialize_thread_result.new_messages,
+            root_message_id=initialize_thread_result.root_message_id,
+            parent_message_id=initialize_thread_result.last_message_id,
             creator=user.client,
             model=model,
-            inference_opts=all_messages[-1].opts,
+            inference_opts=initialize_thread_result.all_messages[-1].opts,
             user_tool_names=[definition.name for definition in request.tool_definitions or []],
-            tool_definitions=tool_definitions,
+            tool_definitions=initialize_thread_result.tool_definitions,
             handle_final_messages=self.message_repository.finalize_thread,
             is_new_thread=not request.parent,
         )

@@ -2,6 +2,8 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import BinaryIO
+from unittest.mock import create_autospec
 
 import pytest
 from httpx import ASGITransport, AsyncClient, Client
@@ -14,7 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from api.config import Settings
 from api.db.sqlalchemy_engine import get_session
+from api.gcs_dependency import get_google_cloud_storage
 from api.tools.mcp_service import McpService
+from core.google_cloud_storage import GoogleCloudStorage, UploadResponse
 from db.models.tool_definitions import ToolDefinition, ToolSource
 from db.models.user import User
 from db.url import make_url
@@ -188,3 +192,35 @@ def mock_mcp_service():
     yield
 
     app.dependency_overrides.pop(McpService, None)
+
+
+@pytest.fixture(autouse=True)
+def mock_google_cloud_storage():
+
+    def mock_google_cloud_storage():
+        mock = create_autospec(
+            GoogleCloudStorage,
+            spec_set=True,
+        )
+
+        def upload_content_side_effect(
+            filename: str,
+            file_data: BinaryIO | bytes,  # noqa: ARG001
+            *,
+            bucket_name: str,
+            content_type: str | None = None,  # noqa: ARG001
+            make_file_public: bool = False,  # noqa: ARG001
+        ) -> UploadResponse:
+            return UploadResponse(
+                public_url=f"http://localhost:8888/{filename}", storage_path=f"foo://{bucket_name}/{filename}"
+            )
+
+        mock.upload_content.side_effect = upload_content_side_effect
+
+        return mock
+
+    app.dependency_overrides[get_google_cloud_storage] = mock_google_cloud_storage
+
+    yield
+
+    app.dependency_overrides.pop(get_google_cloud_storage, None)

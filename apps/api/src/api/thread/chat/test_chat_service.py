@@ -58,11 +58,14 @@ def get_fake_mcp_service():
 
 async def test_get_toolsets_returns_user_and_mcp_tools():
     chat_service = ChatService(
-        mcp_service=get_fake_mcp_service(),  # type: ignore
+        mcp_service=get_fake_mcp_service(),  # type:ignore
         message_repository=None,  # type: ignore
         tools_service=None,  # type: ignore
         session=None,  # type: ignore
         file_upload_service=None,  # type: ignore
+        validate_message_safety_service=None,  # type: ignore
+        request_client=None,  # type: ignore
+        auth_user=None,  # type:ignore
     )
     toolsets = chat_service._get_toolsets(  # noqa: SLF001
         model=create_fake_model(can_call_tools=True),

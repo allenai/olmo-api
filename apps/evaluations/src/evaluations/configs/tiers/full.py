@@ -19,6 +19,7 @@ full_tier = TierConfig(
     description="Comprehensive evaluation suite, run sparingly",
     timeout_minutes=360,
     storage=FULL_STORAGE,
+    harness_overrides={"metrics.enabled": "false"},
     models=[
         ModelEval(
             model="olmo-3-7b-instruct-cirrascale",
@@ -35,7 +36,6 @@ full_tier = TierConfig(
                 "simpleqa:judge",
                 "math500:bpb",
             ],
-            harness_overrides={"metrics.enabled": "true"},
         ),
         ModelEval(
             model="olmo-3-7b-instruct-modal",
@@ -52,7 +52,6 @@ full_tier = TierConfig(
                 "simpleqa:judge",
                 "math500:bpb",
             ],
-            harness_overrides={"metrics.enabled": "true"},
         ),
         # Add more models as they are deployed...
     ],

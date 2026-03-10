@@ -51,7 +51,11 @@ class ModelEval:
     task_overrides: dict[str, str] = field(default_factory=dict)
     harness_overrides: dict[str, str] = field(default_factory=dict)
 
-    def to_cli_args(self, storage: StorageConfig | None = None) -> list[str]:
+    def to_cli_args(
+        self,
+        storage: StorageConfig | None = None,
+        tier_harness_overrides: dict[str, str] | None = None,
+    ) -> list[str]:
         """Convert to olmo-eval run CLI arguments.
 
         Generates args in order:
@@ -63,6 +67,10 @@ class ModelEval:
 
         Provider overrides are applied to the harness config, which takes precedence
         over the -m model preset lookup.
+
+        Args:
+            storage: Storage config (None for local mode).
+            tier_harness_overrides: Harness overrides from TierConfig (applied before model overrides).
         """
         args: list[str] = []
 
@@ -79,6 +87,19 @@ class ModelEval:
         args.extend(["-H", self.harness])
         for key, value in self.provider_overrides.items():
             args.extend(["-o", f"provider.{key}={value}"])
+
+        # Metrics reporters based on storage mode (can be overridden by tier/model harness_overrides)
+        if storage:
+            args.extend(["-o", "metrics.reporters=[console,db]"])
+        else:
+            args.extend(["-o", "metrics.reporters=[console,file]"])
+
+        # Tier-level harness overrides
+        if tier_harness_overrides:
+            for key, value in tier_harness_overrides.items():
+                args.extend(["-o", f"{key}={value}"])
+
+        # Model-level harness overrides (can override tier-level)
         for key, value in self.harness_overrides.items():
             args.extend(["-o", f"{key}={value}"])
 
@@ -109,17 +130,21 @@ class TierConfig:
     storage: StorageConfig
     models: list[ModelEval]
     description: str = ""
+    harness_overrides: dict[str, str] = field(default_factory=dict)
 
     def get_jobs(self) -> list[tuple[ModelEval, list[str]]]:
         """Get all jobs for this tier as (ModelEval, cli_args) tuples."""
-        return [(model, model.to_cli_args(self.storage)) for model in self.models]
+        return [
+            (model, model.to_cli_args(self.storage, self.harness_overrides))
+            for model in self.models
+        ]
 
     def get_job_by_index(self, index: int) -> tuple[ModelEval, list[str]]:
         """Get a specific job by task index (for CLOUD_RUN_TASK_INDEX)."""
         if index < 0 or index >= len(self.models):
             raise IndexError(f"Task index {index} out of range (0-{len(self.models) - 1})")
         model = self.models[index]
-        return (model, model.to_cli_args(self.storage))
+        return (model, model.to_cli_args(self.storage, self.harness_overrides))
 
     @property
     def task_count(self) -> int:
@@ -138,6 +163,6 @@ class TierConfig:
             "AWS_SECRET_ACCESS_KEY",
         ]
         env_flags = " \\\n  ".join(f"-e {var}=${var}" for var in env_vars)
-        cli_args = " ".join(model.to_cli_args(self.storage))
+        cli_args = " ".join(model.to_cli_args(self.storage, self.harness_overrides))
 
         return f"docker run --rm \\\n  {env_flags} \\\n  {image} \\\n  {cli_args}"

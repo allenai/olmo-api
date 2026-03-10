@@ -19,6 +19,7 @@ standard_tier = TierConfig(
     description="Curated standard evaluations, 1-2 hours",
     timeout_minutes=120,
     storage=STANDARD_STORAGE,
+    harness_overrides={"metrics.enabled": "true"},
     models=[
         ModelEval(
             model="olmo-3-7b-instruct-cirrascale",  # display name
@@ -31,7 +32,6 @@ standard_tier = TierConfig(
                 "humaneval:bpb",
             ],
             task_overrides={"limit": "10"},
-            harness_overrides={"metrics.enabled": "true"},
         ),
         ModelEval(
             model="olmo-3-7b-instruct-modal",  # display name
@@ -44,7 +44,6 @@ standard_tier = TierConfig(
                 "humaneval:bpb",
             ],
             task_overrides={"limit": "10"},
-            harness_overrides={"metrics.enabled": "true"},
         ),
         # Add more models as they are deployed...
     ],

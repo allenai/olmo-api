@@ -29,7 +29,7 @@ def run_tier(tier_name: str, task_index: int, local: bool) -> int:
 
     # For local testing, remove storage flags
     if local:
-        cli_args = model.to_cli_args(storage=None)
+        cli_args = model.to_cli_args(storage=None, tier_harness_overrides=tier.harness_overrides)
 
     print(f"Tier: {tier_name}")
     print(f"Task index: {task_index}/{tier.task_count - 1}")

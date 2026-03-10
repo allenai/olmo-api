@@ -19,6 +19,7 @@ smoke_tier = TierConfig(
     description="Quick sanity checks, simple pass/fail, <1 hour",
     timeout_minutes=60,
     storage=SMOKE_STORAGE,
+    harness_overrides={"metrics.enabled": "false"},
     models=[
         ModelEval(
             model="olmo-3-7b-instruct-cirrascale",

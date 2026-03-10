@@ -1,5 +1,6 @@
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
+from api.config import settings
 import pytest
 from google.cloud.videointelligence_v1 import (
     AnnotateVideoResponse,
@@ -86,6 +87,9 @@ def mock_gcs():
 
 
 async def test_deferred_strategy_path(mocker: MockerFixture, mock_video_client):
+    # Just this test cares about this code path
+    mocker.patch.object(settings, "VIDEO_SAFETY_CHECK_WORKER_STRATEGY", "deferred")
+
     op = MagicMock()
     op.operation.name = OPERATION_NAME
     mock_video_client.annotate_video = AsyncMock(return_value=op)

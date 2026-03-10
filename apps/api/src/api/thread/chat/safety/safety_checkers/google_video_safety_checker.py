@@ -1,6 +1,5 @@
 from functools import lru_cache
 from pathlib import Path
-from typing import override
 
 import dramatiq
 from google.api_core import operation_async
@@ -15,6 +14,7 @@ from google.cloud.videointelligence_v1 import (
 from opentelemetry import trace
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
+from typing_extensions import override
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepository
 from api.config import settings

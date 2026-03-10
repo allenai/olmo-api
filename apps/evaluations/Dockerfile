@@ -68,6 +68,8 @@ WORKDIR /app
 USER nonroot
 
 ENV PYTHONUNBUFFERED=1
+ENV TERM=dumb
+ENV NO_COLOR=1
 
 # Use Python CLI as entrypoint
 # - With EVAL_TIER env var: runs tier evaluation automatically

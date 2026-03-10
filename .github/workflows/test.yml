@@ -1,0 +1,15 @@
+name: Deploy
+
+on:
+    push:
+        branches:
+            - workflow-skiff-test
+
+jobs:
+    deploy:
+        uses: allenai/skiff-commodore/.github/workflows/build-and-deploy.yml@add-reusable-build-deploy-workflow
+        with:
+            project_id: ${{ vars.SKIFF2_PROJECT_ID }}
+        secrets:
+            SKIFF2_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.SKIFF2_WORKLOAD_IDENTITY_PROVIDER }}
+            SKIFF2_SERVICE_ACCOUNT: ${{ vars.SKIFF2_SERVICE_ACCOUNT }}

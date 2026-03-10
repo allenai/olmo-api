@@ -4,7 +4,7 @@ from fastapi import Depends
 from fastapi_problem.error import BadRequestProblem, ForbiddenProblem
 from opentelemetry import trace
 
-from api.auth.auth_user import AuthUser
+from api.auth.optional_auth_user import OptionalAuthUser
 from api.auth.permission_service import PermissionServiceDependency
 from api.config import settings
 from api.logging.fastapi_logger import FastAPIStructLogger
@@ -30,7 +30,7 @@ class ValidateMessageSafetyService:
         permission_service: PermissionServiceDependency,
         text_safety_checker_service: TextSafetyCheckerServiceDependency,
         request_client: RequestClientDependency,
-        auth_user: AuthUser,
+        auth_user: OptionalAuthUser,
     ):
         self.recaptcha_service = recaptcha_service
         self.permission_service = permission_service

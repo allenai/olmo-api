@@ -15,7 +15,7 @@ from pydantic_ai import (
 )
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
-from api.auth.auth_user import AuthUser
+from api.auth.optional_auth_user import OptionalAuthUser
 from api.db.sqlalchemy_engine import SessionDependency
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.model.model_query import base_model_config_select
@@ -130,7 +130,7 @@ class ChatService:
     def __init__(
         self,
         message_repository: AsyncMessageRepositoryDependency,
-        auth_user: AuthUser,
+        auth_user: OptionalAuthUser,
         session: SessionDependency,
         tools_service: ToolsServiceDependency,
         file_upload_service: ChatFileUploadServiceDependency,

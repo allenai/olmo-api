@@ -8,7 +8,7 @@ import sys
 from evaluations.configs import TierName, get_tier
 
 
-def run_tier(tier_name: str, task_index: int, local: bool) -> int:
+def run_tier(tier_name: str, task_index: int, *, local: bool) -> int:
     """Run a specific model evaluation from a tier.
 
     Args:
@@ -59,7 +59,7 @@ def main() -> None:
     if eval_tier:
         task_index = int(os.environ.get("CLOUD_RUN_TASK_INDEX", "0"))
         local_mode = os.environ.get("LOCAL", "").lower() == "true"
-        sys.exit(run_tier(eval_tier, task_index, local_mode))
+        sys.exit(run_tier(eval_tier, task_index, local=local_mode))
 
     # CLI mode
     parser = argparse.ArgumentParser(
@@ -93,7 +93,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "run-tier":
-        sys.exit(run_tier(args.tier_name, args.task_index, args.local))
+        sys.exit(run_tier(args.tier_name, args.task_index, local=args.local))
 
 
 if __name__ == "__main__":

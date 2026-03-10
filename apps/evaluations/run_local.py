@@ -12,6 +12,7 @@ Usage:
 Environment variables are loaded from .env.local
 """
 
+import argparse
 import os
 import subprocess
 import sys
@@ -32,7 +33,6 @@ if ENV_FILE.exists():
 
 
 def main() -> int:
-    import argparse
 
     parser = argparse.ArgumentParser(description="Run evaluations locally with Docker")
     parser.add_argument("--tier", default="standard", help="Tier to run (default: standard)")

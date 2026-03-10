@@ -80,6 +80,12 @@ class GoogleVideoIntelligenceSafetyChecker(SafetyChecker):
     @tracer.start_as_current_span("GoogleVideoIntelligenceSafetyChecker/check_request")
     @override
     async def check_request(self, request: SafetyCheckRequest) -> SafetyCheckResponse:
+        span = trace.get_current_span()
+        span.set_attributes({
+            "message_id": request.message_id or "None",
+            "filename": request.name or "None",
+            "path": request.content,
+        })
 
         if not request.message_id:
             message_id_required_message = "SafetyCheckRequest.message_id is required for Video Safety Check"
@@ -93,6 +99,8 @@ class GoogleVideoIntelligenceSafetyChecker(SafetyChecker):
         operation = await client.annotate_video(annotated_request)
         operation_name = operation.operation.name
 
+        span.set_attribute("operation_name", operation_name)
+
         handle_video_safety_check.send(
             operation_name=operation_name, file_url=request.content, message_id=request.message_id
         )
@@ -104,12 +112,9 @@ class GoogleVideoIntelligenceSafetyChecker(SafetyChecker):
 def handle_retry_exhausted(*args, **kwargs) -> None:
     # Logs retry limits so we can alert of off them
     logger.error(
-        "Job reached retry limits",
-        extra={
-            "event": "queue.retry-exhausted",
-            "job_args": str(args),
-            "job_kwargs": str(kwargs),
-        },
+        "video_safety_worker.retry_exhausted",
+        job_args=str(args),
+        job_kwargs=str(kwargs),
     )
 
 
@@ -122,12 +127,12 @@ def handle_retry_exhausted(*args, **kwargs) -> None:
 async def handle_video_safety_check(operation_name: str, file_url: str, message_id: str) -> None:
     span = trace.get_current_span()
     span.set_attributes({
-        "operationName": operation_name,
-        "messageId": message_id,
-        "safetyFileUrl": file_url,
+        "operation_name": operation_name,
+        "message_id": message_id,
+        "safety_file_url": file_url,
     })
 
-    logger.info("video_safety.start", message_id=message_id, file_url=file_url)
+    logger.info("video_safety.worker", message_id=message_id, file_url=file_url)
 
     Session = _make_worker_sessionmaker()  # noqa: N806
     async with Session() as session:
@@ -163,6 +168,8 @@ async def handle_video_safety_check(operation_name: str, file_url: str, message_
             raise TypeError(msg)
 
         mapped_response = GoogleVideoIntelligenceResponse(result)
+        span.set_attribute("is_safe", mapped_response.is_safe())
+
         message_repository = AsyncMessageRepository(session)
         message = await message_repository.get_message_by_id(message_id)
 

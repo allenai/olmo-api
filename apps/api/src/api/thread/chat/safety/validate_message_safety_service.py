@@ -104,7 +104,11 @@ class ValidateMessageSafetyService:
                 is_anonymous_user=self.user.is_anonymous_user,
             )
 
-        await self._check_text(text=request.content)
+        is_text_safe = await self._check_text(text=request.content)
+
+        if is_text_safe is False:
+            inappropriate_text_msg = "Text was flagged as inappropriate"
+            raise BadRequestProblem(inappropriate_text_msg)
 
     async def validate_after(
         self,

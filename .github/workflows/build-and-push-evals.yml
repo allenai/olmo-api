@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - olmo-eval_cloudrun
     paths:
       - 'apps/evaluations/**'
       - '.github/workflows/build-and-push-evals.yml'

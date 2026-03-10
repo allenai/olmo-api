@@ -25,6 +25,8 @@ jobs:
     environment:
       name: ${{ github.ref_name }}
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
       - name: Skiff2 Setup
         id: setup
         uses: ./.github/skiff2/setup

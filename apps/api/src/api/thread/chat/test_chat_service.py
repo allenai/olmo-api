@@ -62,6 +62,7 @@ def test_get_toolsets_returns_empty_if_model_cannot_call_tools():
         message_repository=None,  # type: ignore
         tools_service=None,  # type: ignore
         session=None,  # type: ignore
+        file_upload_service=None,  # type: ignore
     )
     toolsets = chat_service._get_toolsets(  # noqa: SLF001
         model=create_fake_model(can_call_tools=False),
@@ -80,6 +81,7 @@ async def test_get_toolsets_returns_user_and_mcp_tools():
         message_repository=None,  # type: ignore
         tools_service=None,  # type: ignore
         session=None,  # type: ignore
+        file_upload_service=None,  # type: ignore
     )
     toolsets = chat_service._get_toolsets(  # noqa: SLF001
         model=create_fake_model(can_call_tools=True),

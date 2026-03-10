@@ -98,5 +98,9 @@ async def test_get_toolsets_returns_user_and_mcp_tools():
     user_toolset_tools = await toolsets[0].get_tools(run_context)
     assert len(user_toolset_tools) == 1
     assert user_toolset_tools.get("Tool") is not None
-    # This mostly tests to make sure our mcp server mock is working. If it starts failing make sure to fix the mock!
-    assert len(await toolsets[1].get_tools(run_context)) == 1
+
+    mcp_toolset_tools = await toolsets[1].get_tools(run_context)
+    assert len(mcp_toolset_tools) == 1
+    assert mcp_toolset_tools.get("celsius_to_fahrenheit") is not None, (
+        "MCP filtering didn't filter only to the specified tools"
+    )

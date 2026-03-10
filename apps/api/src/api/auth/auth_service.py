@@ -5,9 +5,11 @@ from typing import Annotated
 import httpx
 from authlib.oauth2 import OAuth2Error
 from fastapi import Depends, Header, HTTPException, status
+from opentelemetry import trace
 
 from api.config import settings
 from api.logging.fastapi_logger import FastAPIStructLogger
+from api.otel.otel_constants import IS_TOKEN_EXPIRED_ATTRIBUTE, UNAUTHORIZED_USER_EVENT, USER_ATTRIBUTE
 from core.auth.token import Token
 from core.auth.token_validator import Auth0JWTBearerTokenValidator
 from core.auth.user_info import UserInfo
@@ -86,27 +88,42 @@ class AuthService:
 
         if token_string:
             try:
-                return self._validate_token(token_string)
+                token = self._validate_token(token_string)
+                trace.get_current_span().set_attribute(USER_ATTRIBUTE, token.client)
+                logger.bind(user=token.client)
+
+                return token
             except OAuth2Error:
                 # if invalid, check for anonymous
                 pass
 
         if self.anonymous_user_id:
-            return Token(
+            token = Token(
                 client=self.anonymous_user_id,
                 is_anonymous_user=True,
                 token=self.anonymous_user_id,
             )
+            trace.get_current_span().set_attribute(USER_ATTRIBUTE, token.client)
+
+            return token
 
         return None
 
     def optional_auth(self) -> Token:
         token = self.get_token()
+
         if token is None or token.expired():
+            attributes = {}
+
+            if token is not None:
+                attributes[IS_TOKEN_EXPIRED_ATTRIBUTE] = token.expired()
+
+            trace.get_current_span().add_event(UNAUTHORIZED_USER_EVENT, attributes)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authentication required",
             )
+
         return token
 
     async def get_user_info(self) -> UserInfo | None:

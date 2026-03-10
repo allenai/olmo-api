@@ -23,7 +23,7 @@ def setup_otel() -> None:
         tracer_provider.add_span_processor(span_processor=SimpleSpanProcessor(OTLPSpanExporter()))
     elif settings.OTEL_COLLECTOR_TYPE == "cloud":
         tracer_provider.add_span_processor(
-            BatchSpanProcessor(CloudTraceSpanExporter(project_id=settings.OTEL_GCP_PROJECT_ID))
+            BatchSpanProcessor(CloudTraceSpanExporter(project_id=settings.OTEL_GCP_PROJECT_ID, resource_regex=".*"))
         )
 
     set_tracer_provider(tracer_provider)

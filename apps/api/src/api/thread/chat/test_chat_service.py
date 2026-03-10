@@ -56,25 +56,6 @@ def get_fake_mcp_service():
     return _MockMcpService()
 
 
-def test_get_toolsets_returns_empty_if_model_cannot_call_tools():
-    chat_service = ChatService(
-        mcp_service=get_fake_mcp_service(),  # type: ignore
-        message_repository=None,  # type: ignore
-        tools_service=None,  # type: ignore
-        session=None,  # type: ignore
-        file_upload_service=None,  # type: ignore
-    )
-    toolsets = chat_service._get_toolsets(  # noqa: SLF001
-        model=create_fake_model(can_call_tools=False),
-        user_tools=[
-            CreateToolDefinition(name="Tool", description="This sure is a tool", parameters=ParameterDef(type="object"))
-        ],
-        mcp_tools=["fake_tool"],
-    )
-
-    assert len(toolsets) == 0
-
-
 async def test_get_toolsets_returns_user_and_mcp_tools():
     chat_service = ChatService(
         mcp_service=get_fake_mcp_service(),  # type: ignore

@@ -31,7 +31,7 @@ CHAT_ENDPOINT = "/v5/threads/chat"
 IS_CI = os.getenv("CI", "false") == "true"
 
 
-async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient, db_session: DatabaseSession):
+async def test_calls_user_tools(client: AsyncClient, auth_user: AuthenticatedClient, db_session: DatabaseSession):
     tool_name = "get_current_weather"
     tool_definition = CreateToolDefinition(
         name=tool_name,
@@ -119,18 +119,75 @@ async def test_calls_tools(client: AsyncClient, auth_user: AuthenticatedClient, 
     StreamStartChunk.model_validate(lines[0])
     tool_response_chunk = AddMessageChunk.model_validate(lines[1])
     # ...streaming response...
-    final_therad_chunk = FinalThreadChunk.model_validate(lines[-2])
+    final_thread_chunk = FinalThreadChunk.model_validate(lines[-2])
     StreamEndChunk.model_validate(lines[-1])
 
     assert tool_response_chunk.messages[0].tool_calls, "There were no tool calls in the tool result response"
     assert tool_response_chunk.messages[0].tool_calls[0].tool_call_id == tool_call_chunk.tool_call_id
     assert tool_response_chunk.messages[0].content == "Sunny"
 
-    assert len(final_therad_chunk.messages) == 2
-    assert final_therad_chunk.messages[0].role == Role.ToolResponse
-    assert final_therad_chunk.messages[1].role == Role.Assistant
-    assert final_therad_chunk.messages[0].tool_calls
-    assert len(final_therad_chunk.messages[0].tool_calls) == 1
+    assert len(final_thread_chunk.messages) == 2
+    assert final_thread_chunk.messages[0].role == Role.ToolResponse
+    assert final_thread_chunk.messages[1].role == Role.Assistant
+    assert final_thread_chunk.messages[0].tool_calls
+    assert len(final_thread_chunk.messages[0].tool_calls) == 1
+
+
+async def test_calls_mcp_tools(client: AsyncClient, auth_user: AuthenticatedClient, db_session: DatabaseSession):
+    tool_name = "get_weather_forecast"
+    chat_request = UserChatRequest(
+        content="test tool calling",
+        model="test-model",
+        enable_tool_calling=True,
+        selected_tools=[tool_name],
+    ).model_dump(exclude_none=True, exclude_computed_fields=True)
+
+    response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(auth_user))
+
+    assert_ok_response(response=response)
+
+    lines = [json.loads(line) for line in response.text.splitlines()]
+
+    StreamStartChunk.model_validate(lines[0])
+    starting_thread = StartThreadChunk.model_validate(lines[1])
+    tool_call_chunk = ToolCallChunk.model_validate(lines[3])
+    finished_thread = FinalThreadChunk.model_validate(lines[-2])
+    StreamEndChunk.model_validate(lines[-1])
+
+    assert tool_call_chunk.tool_name == tool_name
+    assert len(starting_thread.messages) == 2
+    assert finished_thread.id == starting_thread.id
+    assert len(finished_thread.messages) == 5
+
+    assert finished_thread.messages[0].role == Role.System
+    assert finished_thread.messages[1].role == Role.User
+    assert finished_thread.messages[2].role == Role.Assistant
+    assert finished_thread.messages[3].role == Role.ToolResponse
+    assert finished_thread.messages[4].role == Role.Assistant
+
+    assert finished_thread.messages[3].tool_calls
+    assert len(finished_thread.messages[3].tool_calls) == 1, (
+        "There were no tool calls on the intended tool call message"
+    )
+    assert finished_thread.messages[3].tool_calls[0].tool_name == tool_name
+
+    async with db_session() as session, session.begin():
+        message_query = (
+            select(Message)
+            .where(Message.id == finished_thread.messages[1].id)
+            .options(
+                selectinload(Message.children),
+                selectinload(Message.parent_),
+            )
+        )
+        message_in_db_result = await session.scalars(message_query)
+        message_in_db = message_in_db_result.one()
+
+        assert message_in_db.parent_ is not None and message_in_db.parent_.id == finished_thread.messages[0].id, (  # noqa: PT018
+            "User message did not get its parent set correctly in the DB"
+        )
+        assert message_in_db.children
+        assert message_in_db.children[0].id == finished_thread.messages[2].id
 
 
 @pytest.mark.xfail(IS_CI, reason="Not accounting for enable_tool_calling=False yet")

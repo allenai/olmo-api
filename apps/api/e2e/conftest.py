@@ -31,6 +31,8 @@ from db.models.tool_definitions import ToolDefinition
 from db.models.user import User
 from db.url import make_url
 
+from .fake_mcp_server import test_toolset
+
 ANONYMOUS_USER_ID_HEADER = "X-Anonymous-User-ID"
 
 
@@ -174,7 +176,7 @@ async def anon_user(client: AsyncClient) -> AuthenticatedClient:
     return await make_user(client=client, anonymous=True)
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mock_mcp_service():
     """Override McpService to avoid calling real MCP servers"""
 
@@ -194,6 +196,10 @@ def mock_mcp_service():
         @classmethod
         async def get_tools_from_mcp_servers(cls, _mcp_server_ids: set[str]):
             return [mock_tool]
+
+        @classmethod
+        def get_pydantic_ai_mcp_servers(cls):
+            return [test_toolset]
 
     app.dependency_overrides[McpService] = _MockMcpService
 

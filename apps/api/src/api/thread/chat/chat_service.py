@@ -29,7 +29,7 @@ from api.thread.chat.playground_ui_adapter._util import RunInput
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
 from api.thread.chat.pydantic_inference.pydantic_model_settings import pydantic_model_settings
 from api.thread.chat.safety.validate_message_safety_service import ValidateMessageSafetyServiceDependency
-from api.tools.mcp_service import get_general_mcp_servers
+from api.tools.mcp_service import McpServiceDependency
 from api.tools.tools_service import ToolsServiceDependency
 from core.message.role import Role
 from core.object_id import ID
@@ -136,6 +136,7 @@ class ChatService:
         file_upload_service: ChatFileUploadServiceDependency,
         validate_message_safety_service: ValidateMessageSafetyServiceDependency,
         request_client: RequestClientDependency,
+        mcp_service: McpServiceDependency,
     ):
         self.message_repository = message_repository
         self.session = session
@@ -144,6 +145,7 @@ class ChatService:
         self.file_upload_service = file_upload_service
         self.validate_message_safety_service = validate_message_safety_service
         self.request_client = request_client
+        self.mcp_service = mcp_service
 
     @tracer.start_as_current_span(name="ChatService/_get_model")
     async def _get_model(self, model_id: str):
@@ -352,9 +354,9 @@ class ChatService:
             inference_options=merged_inference_options,
         )
 
-    @staticmethod
     @tracer.start_as_current_span(name="ChatService/_get_toolsets")
     def _get_toolsets(
+        self,
         model: ModelConfig,
         user_tools: Sequence[CreateToolDefinition] | None,
         mcp_tools: Sequence[str] | None,
@@ -364,7 +366,7 @@ class ChatService:
 
         user_tool_toolset = ExternalToolset([map_tool_def_to_pydantic(tool) for tool in user_tools or []])
 
-        mcp_toolset = CombinedToolset(get_general_mcp_servers())
+        mcp_toolset = CombinedToolset(self.mcp_service.get_pydantic_ai_mcp_servers())
         filtered_mcp_toolset = mcp_toolset.filtered(lambda _ctx, tool_def: tool_def.name in (mcp_tools or []))
 
         return [user_tool_toolset, filtered_mcp_toolset]

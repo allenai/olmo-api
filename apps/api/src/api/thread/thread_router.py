@@ -68,7 +68,7 @@ async def delete_thread(
 
 @thread_router.post(
     "/chat",
-    response_model=Chunk | Thread,
+    response_model=Chunk,
 )
 async def stream_chat_message(
     chat_service: ChatServiceDependency,

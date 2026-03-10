@@ -10,7 +10,7 @@ from db.models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 from db.models.tool_definitions import ToolSource
 
 from .internal_tools_service import InternalToolServiceDependency
-from .mcp_service import McpServerDependency
+from .mcp_service import McpServiceDependency
 
 if TYPE_CHECKING:
     from api.model.model_response import BaseModelResponse
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class ToolsService:
-    def __init__(self, mcp_service: McpServerDependency, internal_tool_service: InternalToolServiceDependency):
+    def __init__(self, mcp_service: McpServiceDependency, internal_tool_service: InternalToolServiceDependency):
         self.mcp_service = mcp_service
         self.internal_tool_service = internal_tool_service
 

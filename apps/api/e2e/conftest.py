@@ -18,6 +18,7 @@ from typing_extensions import override
 from api.config import Settings
 from api.db.sqlalchemy_engine import get_session
 from api.gcs_dependency import get_google_cloud_storage
+from api.test_utils.fake_mcp_server import test_toolset
 from api.thread.chat.safety.safety_checkers.safety_checker_base import (
     SafetyCheckRequest,
     SafetyCheckResponse,
@@ -30,8 +31,6 @@ from core.tools.tool_source import ToolSource
 from db.models.tool_definitions import ToolDefinition
 from db.models.user import User
 from db.url import make_url
-
-from .fake_mcp_server import test_toolset
 
 ANONYMOUS_USER_ID_HEADER = "X-Anonymous-User-ID"
 

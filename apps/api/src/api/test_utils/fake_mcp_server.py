@@ -4,7 +4,7 @@ test_toolset = FunctionToolset()
 
 
 @test_toolset.tool()
-async def celsius_to_fahrenheit(celsius: float) -> float:
+async def celsius_to_fahrenheit(celsius: float) -> float:  # noqa: RUF029
     """Convert Celsius to Fahrenheit.
 
     Args:
@@ -17,7 +17,7 @@ async def celsius_to_fahrenheit(celsius: float) -> float:
 
 
 @test_toolset.tool()
-async def get_weather_forecast(location: str) -> str:
+async def get_weather_forecast(location: str) -> str:  # noqa: RUF029
     """Get the weather forecast for a location.
 
     Args:

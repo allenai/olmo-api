@@ -1,8 +1,26 @@
+from pydantic_ai import FunctionToolset
+
+from api.test_utils.fake_run_context import make_fake_run_context
 from api.thread.chat.chat_request import CreateToolDefinition, ParameterDef
 from api.thread.chat.chat_service import ChatService
 from core.tools.tool_source import ToolSource
 from db.models.model_config import ModelConfig, ModelHost, ModelType, PromptType
 from db.models.tool_definitions import ToolDefinition
+
+test_toolset = FunctionToolset()
+
+
+@test_toolset.tool()
+async def celsius_to_fahrenheit(celsius: float) -> float:  # noqa: RUF029
+    """Convert Celsius to Fahrenheit.
+
+    Args:
+        celsius: Temperature in Celsius
+
+    Returns:
+        Temperature in Fahrenheit
+    """
+    return (celsius * 9 / 5) + 32
 
 
 def create_fake_model(*, can_call_tools: bool):
@@ -51,7 +69,7 @@ def get_fake_mcp_service():
 
         @classmethod
         def get_pydantic_ai_mcp_servers(cls):
-            return []
+            return [test_toolset]
 
     return _MockMcpService()
 
@@ -68,14 +86,21 @@ async def test_get_toolsets_returns_user_and_mcp_tools():
         auth_user=None,  # type:ignore
     )
     toolsets = chat_service._get_toolsets(  # noqa: SLF001
-        model=create_fake_model(can_call_tools=True),
         user_tools=[
             CreateToolDefinition(name="Tool", description="This sure is a tool", parameters=ParameterDef(type="object"))
         ],
-        mcp_tools=["fake_tool"],
+        mcp_tools=["celsius_to_fahrenheit"],
     )
 
+    run_context = make_fake_run_context()
+
     assert len(toolsets) == 2
-    assert len(await toolsets[0].get_tools(None)) == 1  # pyright: ignore[reportArgumentType]
-    # This mostly tests to make sure our mcp server mock is working. If it starts failing make sure to fix the mock!
-    assert len(await toolsets[1].get_tools(None)) == 0  # pyright: ignore[reportArgumentType]
+    user_toolset_tools = await toolsets[0].get_tools(run_context)
+    assert len(user_toolset_tools) == 1
+    assert user_toolset_tools.get("Tool") is not None
+
+    mcp_toolset_tools = await toolsets[1].get_tools(run_context)
+    assert len(mcp_toolset_tools) == 1
+    assert mcp_toolset_tools.get("celsius_to_fahrenheit") is not None, (
+        "MCP filtering didn't filter only to the specified tools"
+    )

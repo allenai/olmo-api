@@ -57,7 +57,7 @@ class VideoSafetyCheckerService:
                     )
                     return False
 
-            except Exception as e:
+            except Exception:
                 logger.exception(
                     "video_safety.error", filename=filename, message_id=message_id, original_filename=file.filename
                 )

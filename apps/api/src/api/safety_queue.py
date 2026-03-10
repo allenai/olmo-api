@@ -21,6 +21,9 @@ class OtelMiddleware(dramatiq.Middleware):
 
 
 def setup_safety_queue() -> None:
+    if settings.VIDEO_SAFETY_CHECK_WORKER_STRATEGY != "deferred":
+        return
+
     redis_broker = RedisBroker(url=settings.SAFETY_QUEUE_URL, namespace="playground_safety_queue")
 
     old_broker = dramatiq.get_broker()

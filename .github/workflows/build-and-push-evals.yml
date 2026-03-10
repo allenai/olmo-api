@@ -27,7 +27,7 @@ jobs:
     steps:
       - name: Skiff2 Setup
         id: setup
-        uses: ./.github/skiff2.setup-action.yml
+        uses: ./.github/skiff2/setup
         with:
           workload_identity_provider: ${{ vars.SKIFF2_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.SKIFF2_SERVICE_ACCOUNT }}

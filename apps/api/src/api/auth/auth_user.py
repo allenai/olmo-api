@@ -10,4 +10,4 @@ def get_optional_auth_user(auth_service: AuthServiceDependency) -> Token:
     return auth_service.optional_auth()
 
 
-AuthUser = Annotated[Token, Depends(get_auth_user)]
+OptionalAuthUser = Annotated[Token, Depends(get_optional_auth_user)]

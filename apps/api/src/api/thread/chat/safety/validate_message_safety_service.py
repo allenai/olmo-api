@@ -129,9 +129,7 @@ class ValidateMessageSafetyService:
             files=video_files, message_id=message_id
         )
 
-        # TODO: check:
-        # - Image safety
-        # - Video safety
+        # TODO: Image safety
 
         if is_video_safe is False:
             inappropriate_video_message = "Video was flagged as inappropriate"

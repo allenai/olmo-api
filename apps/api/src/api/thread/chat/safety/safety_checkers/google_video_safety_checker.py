@@ -182,7 +182,7 @@ async def _handle_video_safety_check_async(
         mapped_response = GoogleVideoIntelligenceResponse(result)
         span.set_attribute("is_safe", mapped_response.is_safe())
 
-        # if we are blocking mode -- the emssage doesn't exist yet and we will return
+        # if we are blocking mode -- the message doesn't exist yet and we will return
         # a response to indicate its not safe back to the main event loop
         if settings.VIDEO_SAFETY_CHECK_WORKER_STRATEGY == "inline":
             logger.info(

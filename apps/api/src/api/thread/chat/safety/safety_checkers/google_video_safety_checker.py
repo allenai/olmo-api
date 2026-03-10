@@ -107,8 +107,9 @@ class GoogleVideoIntelligenceSafetyChecker(SafetyChecker):
             )
 
         if settings.VIDEO_SAFETY_CHECK_WORKER_STRATEGY == "inline":
-            return await _handle_video_safety_check_async(operation_name=operation_name, file_url=request.content, message_id=request.message_id)
-
+            return await _handle_video_safety_check_async(
+                operation_name=operation_name, file_url=request.content, message_id=request.message_id
+            )
 
         return SkippedSafetyCheckResponse()
 
@@ -133,7 +134,9 @@ async def handle_video_safety_check(operation_name: str, file_url: str, message_
 
 
 @tracer.start_as_current_span("handle_video_safety_check")
-async def _handle_video_safety_check_async(operation_name: str, file_url: str, message_id: str) -> GoogleVideoIntelligenceResponse:
+async def _handle_video_safety_check_async(
+    operation_name: str, file_url: str, message_id: str
+) -> GoogleVideoIntelligenceResponse:
     span = trace.get_current_span()
     span.set_attributes({
         "operation_name": operation_name,

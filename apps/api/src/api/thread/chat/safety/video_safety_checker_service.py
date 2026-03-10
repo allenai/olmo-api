@@ -50,6 +50,7 @@ class VideoSafetyCheckerService:
 
                 result = await checker.check_request(request)
 
+                # this handles the file deletion for the inline strategy
                 if not result.is_safe():
                     await self.cloud_storage.delete_file(response.storage_path, bucket_name=settings.SAFTEY_GCS_UPLOAD_BUCKET)
                     return False

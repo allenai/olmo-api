@@ -101,9 +101,14 @@ class GoogleVideoIntelligenceSafetyChecker(SafetyChecker):
 
         span.set_attribute("operation_name", operation_name)
 
-        handle_video_safety_check.send(
-            operation_name=operation_name, file_url=request.content, message_id=request.message_id
-        )
+        if settings.VIDEO_SAFETY_CHECK_WORKER_STRATEGY == "deferred":
+            handle_video_safety_check.send(
+                operation_name=operation_name, file_url=request.content, message_id=request.message_id
+            )
+
+        if settings.VIDEO_SAFETY_CHECK_WORKER_STRATEGY == "inline":
+            return await _handle_video_safety_check_async(operation_name=operation_name, file_url=request.content, message_id=request.message_id)
+
 
         return SkippedSafetyCheckResponse()
 
@@ -123,8 +128,12 @@ def handle_retry_exhausted(*args, **kwargs) -> None:
     max_retries=5,
     on_retry_exhausted=handle_retry_exhausted.actor_name,
 )
-@tracer.start_as_current_span("handle_video_safety_check")
 async def handle_video_safety_check(operation_name: str, file_url: str, message_id: str) -> None:
+    await _handle_video_safety_check_async(operation_name=operation_name, file_url=file_url, message_id=message_id)
+
+
+@tracer.start_as_current_span("handle_video_safety_check")
+async def _handle_video_safety_check_async(operation_name: str, file_url: str, message_id: str) -> GoogleVideoIntelligenceResponse:
     span = trace.get_current_span()
     span.set_attributes({
         "operation_name": operation_name,
@@ -170,6 +179,18 @@ async def handle_video_safety_check(operation_name: str, file_url: str, message_
         mapped_response = GoogleVideoIntelligenceResponse(result)
         span.set_attribute("is_safe", mapped_response.is_safe())
 
+        # if we are blocking mode -- the emssage doesn't exist yet and we will return
+        # a response to indicate its not safe back to the main event loop
+        if settings.VIDEO_SAFETY_CHECK_WORKER_STRATEGY == "inline":
+            logger.info(
+                "video_safety.blocking_mode.complete",
+                operation=operation_name,
+                is_safe=mapped_response.is_safe(),
+                message_id=message_id,
+            )
+
+            return mapped_response
+
         message_repository = AsyncMessageRepository(session)
         message = await message_repository.get_message_by_id(message_id)
 
@@ -212,8 +233,10 @@ async def handle_video_safety_check(operation_name: str, file_url: str, message_
         await session.commit()
 
         logger.info(
-            "video_safety.complete",
+            "video_safety.queue_mode.complete",
             operation=operation_name,
             is_safe=mapped_response.is_safe(),
             message_id=message_id,
         )
+
+        return mapped_response

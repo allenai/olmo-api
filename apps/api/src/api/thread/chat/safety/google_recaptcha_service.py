@@ -82,12 +82,21 @@ class GoogleRecaptchaService:
         *,
         is_anonymous_user: bool,
     ):
+        span = trace.get_current_span()
+
         captcha_assessment = await self.create_assessment(
             token=captcha_token,
             recaptcha_action=recaptcha_action,
             user_ip_address=user_ip_address,
             user_agent=user_agent,
         )
+
+        if captcha_assessment:
+            span.set_attributes({
+                "valid": captcha_assessment.token_properties.valid,
+                "score": captcha_assessment.risk_analysis.score,
+                "reasons": captcha_assessment.risk_analysis.reasons,
+            })
 
         if not is_anonymous_user:
             # assessment is not enforced for authenticated users

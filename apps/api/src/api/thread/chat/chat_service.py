@@ -357,13 +357,9 @@ class ChatService:
     @tracer.start_as_current_span(name="ChatService/_get_toolsets")
     def _get_toolsets(
         self,
-        model: ModelConfig,
         user_tools: Sequence[CreateToolDefinition] | None,
         mcp_tools: Sequence[str] | None,
     ) -> list[AbstractToolset]:
-        if not model.can_call_tools:
-            return []
-
         user_tool_toolset = ExternalToolset([map_tool_def_to_pydantic(tool) for tool in user_tools or []])
 
         mcp_toolset = CombinedToolset(self.mcp_service.get_pydantic_ai_mcp_servers())
@@ -394,8 +390,8 @@ class ChatService:
         )
 
         toolsets = (
-            self._get_toolsets(model, request.tool_definitions, mcp_tools=request.selected_tools)
-            if request.enable_tool_calling
+            self._get_toolsets(request.tool_definitions, mcp_tools=request.selected_tools)
+            if request.enable_tool_calling and model.can_call_tools
             else []
         )
 

@@ -1,6 +1,5 @@
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
-from api.config import settings
 import pytest
 from google.cloud.videointelligence_v1 import (
     AnnotateVideoResponse,
@@ -12,6 +11,7 @@ from google.cloud.videointelligence_v1 import (
 from pytest_mock import MockerFixture
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepository
+from api.config import settings
 from api.thread.chat.safety.safety_checkers.google_video_safety_checker import (
     GoogleVideoIntelligenceSafetyChecker,
     _handle_video_safety_check_async,

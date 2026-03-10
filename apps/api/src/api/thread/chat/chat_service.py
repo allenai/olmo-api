@@ -15,10 +15,12 @@ from pydantic_ai import (
 )
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
+from api.auth.optional_auth_user import OptionalAuthUser
 from api.db.sqlalchemy_engine import SessionDependency
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.model.model_query import base_model_config_select
 from api.model_config.model_config_request import validate_inference_parameters_against_model_constraints
+from api.request_client import RequestClientDependency
 from api.thread.chat.chat_exceptions import InvalidParentError, ModelNotAvailableError, ModelNotFoundError
 from api.thread.chat.chat_file_upload_service import ChatFileUploadServiceDependency
 from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
@@ -26,9 +28,9 @@ from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
 from api.thread.chat.playground_ui_adapter._util import RunInput
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
 from api.thread.chat.pydantic_inference.pydantic_model_settings import pydantic_model_settings
+from api.thread.chat.safety.validate_message_safety_service import ValidateMessageSafetyServiceDependency
 from api.tools.mcp_service import get_general_mcp_servers
 from api.tools.tools_service import ToolsServiceDependency
-from core.auth.token import Token
 from core.message.role import Role
 from core.object_id import ID
 from core.tools.tool_source import ToolSource
@@ -128,14 +130,20 @@ class ChatService:
     def __init__(
         self,
         message_repository: AsyncMessageRepositoryDependency,
+        auth_user: OptionalAuthUser,
         session: SessionDependency,
         tools_service: ToolsServiceDependency,
         file_upload_service: ChatFileUploadServiceDependency,
+        validate_message_safety_service: ValidateMessageSafetyServiceDependency,
+        request_client: RequestClientDependency,
     ):
         self.message_repository = message_repository
         self.session = session
+        self.auth_user = auth_user
         self.tools_service = tools_service
         self.file_upload_service = file_upload_service
+        self.validate_message_safety_service = validate_message_safety_service
+        self.request_client = request_client
 
     @tracer.start_as_current_span(name="ChatService/_get_model")
     async def _get_model(self, model_id: str):
@@ -311,6 +319,8 @@ class ChatService:
         request: ChatRequest,
         model: ModelConfig,
     ) -> ValidateThreadResult:
+        await self.validate_message_safety_service.validate(chat_request=request)
+
         parent_message = (
             await self.message_repository.get_message_by_id(request.parent) if request.parent is not None else None
         )
@@ -359,7 +369,7 @@ class ChatService:
 
         return [user_tool_toolset, filtered_mcp_toolset]
 
-    async def stream_chat_message(self, request: ChatRequest, user: Token) -> AsyncIterator[str]:
+    async def stream_chat_message(self, request: ChatRequest) -> AsyncIterator[str]:
         model = await self._get_model(request.model)
 
         validate_thread_result = await self._validate_thread(request, model)
@@ -367,7 +377,7 @@ class ChatService:
             root_message_id=validate_thread_result.root_message_id,
             request_parent_message_id=validate_thread_result.request_parent_message_id,
             request=request,
-            creator_id=user.client,
+            creator_id=self.auth_user.client,
             system_prompt=model.default_system_prompt,
             inference_options=validate_thread_result.inference_options,
             model=model,
@@ -396,7 +406,7 @@ class ChatService:
             new_messages=initialize_thread_result.new_messages,
             root_message_id=initialize_thread_result.root_message_id,
             parent_message_id=initialize_thread_result.last_message_id,
-            creator=user.client,
+            creator=self.auth_user.client,
             model=model,
             inference_opts=initialize_thread_result.all_messages[-1].opts,
             user_tool_names=[definition.name for definition in request.tool_definitions or []],

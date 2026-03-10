@@ -85,7 +85,7 @@ async def stream_chat_message(
 
     # This needs to be assigned to a variable outside of StreamingResponse
     # Once StreamingResponse is returned you can't raise errors normally
-    stream = await chat_service.stream_chat_message(request, token)
+    stream = await chat_service.stream_chat_message(request=request)
 
     return StreamingResponse(
         stream,

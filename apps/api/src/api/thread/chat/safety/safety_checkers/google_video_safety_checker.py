@@ -228,7 +228,7 @@ async def _handle_video_safety_check_async(
             if message.file_urls:
                 await storage_client.delete_multiple_files_by_url(
                     file_urls=message.file_urls,
-                    bucket_name=settings.GCS_PUBLIC_UPLOAD_BUCKET,
+                    bucket_name=settings.USER_CONTENT_BUCKET,
                 )
                 message.file_urls = None
 

@@ -382,6 +382,7 @@ async def test_uploads_a_file_to_a_multimodal_model(client: AsyncClient, anon_us
         "No file URL was included in final thread messages"
     )
 
+
 @pytest.mark.usefixtures("mock_unsafe_image_safety_checker")
 async def test_unsafe_images_in_messages_are_rejected(client: AsyncClient, anon_user: AuthenticatedClient):
     test_image_path = Path(__file__).parent.joinpath("molmo-boats.png")
@@ -393,7 +394,12 @@ async def test_unsafe_images_in_messages_are_rejected(client: AsyncClient, anon_
             enable_tool_calling=True,
         ).model_dump(exclude_none=True, exclude_computed_fields=True)
 
-        response = await client.post(CHAT_ENDPOINT, data=chat_request, files={"files": ("molmo-boats.png", file, "image/png")}, headers=auth_headers_for_user(anon_user))
+        response = await client.post(
+            CHAT_ENDPOINT,
+            data=chat_request,
+            files={"files": ("molmo-boats.png", file, "image/png")},
+            headers=auth_headers_for_user(anon_user),
+        )
 
     response_dict = response.json()
 

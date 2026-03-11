@@ -17,12 +17,13 @@ from api.thread.chat.safety.safety_checkers.google_video_safety_checker import (
     _handle_video_safety_check_async,
     handle_video_safety_check,
 )
-from api.thread.chat.safety.safety_checkers.safety_checker_base import (
+from core.google_cloud_storage import GoogleCloudStorage
+from db.models.message import Message
+
+from .safety_checker_base import (
     SafetyCheckRequest,
     SkippedSafetyCheckResponse,
 )
-from core.google_cloud_storage import GoogleCloudStorage
-from db.models.message import Message
 
 SAFETY_MODULE = "api.thread.chat.safety.safety_checkers.google_video_safety_checker"
 

@@ -8,8 +8,9 @@ from fastapi import Depends, UploadFile
 from opentelemetry import trace
 
 from api.logging.fastapi_logger import FastAPIStructLogger
-from api.thread.chat.safety.safety_checkers.google_image_safety_checker import GoogleImageSafetyChecker
-from api.thread.chat.safety.safety_checkers.safety_checker_base import (
+
+from .safety_checkers.google_image_safety_checker import GoogleImageSafetyChecker
+from .safety_checkers.safety_checker_base import (
     SafetyChecker,
     SafetyCheckRequest,
     SafetyCheckResponse,

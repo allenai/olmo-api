@@ -12,13 +12,13 @@ from api.config import settings
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.request_client import RequestClientDependency
 from api.thread.chat.chat_request import ChatRequest
-from api.thread.chat.safety.video_safety_checker_service import VideoSafetyCheckerServiceDependency
 from core.auth import Permissions
 
 from .google_recaptcha_service import GoogleRecaptchaServiceDependency
 from .image_safety_checker_service import ImageSafetyCheckerServiceDependency
 from .safety_checkers.safety_checker_base import SafetyCheckRequest
 from .text_safety_checker_service import TextSafetyCheckerServiceDependency
+from .video_safety_checker_service import VideoSafetyCheckerServiceDependency
 
 logger = FastAPIStructLogger()
 

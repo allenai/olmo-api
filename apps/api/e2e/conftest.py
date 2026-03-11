@@ -19,7 +19,9 @@ from api.config import Settings
 from api.db.sqlalchemy_engine import get_session
 from api.gcs_dependency import get_google_cloud_storage
 from api.test_utils.fake_mcp_server import test_toolset
+from api.thread.chat.safety.image_safety_checker_service import get_imaage_safety_checker
 from api.thread.chat.safety.safety_checkers.safety_checker_base import (
+    SafetyCheckUnsafeError,
     SafetyChecker,
     SafetyCheckRequest,
     SafetyCheckResponse,
@@ -239,20 +241,46 @@ def mock_google_cloud_storage():
     app.dependency_overrides.pop(get_google_cloud_storage, None)
 
 
-@pytest.fixture
-def mock_unsafe_text_safety_checker():
-    class _UnsafeSafetyCheckResponse(SafetyCheckResponse):
+def _make_safety_checker_mock(*, is_safe: bool) -> type[SafetyChecker]:
+    class _Response(SafetyCheckResponse):
         @override
         def is_safe(self) -> bool:
-            return False
+            return is_safe
 
-    class _MockTextSafetyChecker(SafetyChecker):
+    class _MockChecker(SafetyChecker):
         @override
         async def check_request(self, request: SafetyCheckRequest, *, throw: bool = False) -> SafetyCheckResponse:
-            return _UnsafeSafetyCheckResponse()
+            response = _Response()
+            if not response.is_safe() and throw:
+                raise SafetyCheckUnsafeError
+            return response
 
-    app.dependency_overrides[get_text_safety_checker] = _MockTextSafetyChecker
+    return _MockChecker
 
+
+@pytest.fixture(autouse=True)
+def mock_text_safety_checker():
+    app.dependency_overrides[get_text_safety_checker] = _make_safety_checker_mock(is_safe=True)
     yield
-
     app.dependency_overrides.pop(get_text_safety_checker, None)
+
+
+@pytest.fixture(autouse=True)
+def mock_image_safety_checker():
+    app.dependency_overrides[get_imaage_safety_checker] = _make_safety_checker_mock(is_safe=True)
+    yield
+    app.dependency_overrides.pop(get_imaage_safety_checker, None)
+
+
+@pytest.fixture
+def mock_unsafe_text_safety_checker():
+    app.dependency_overrides[get_text_safety_checker] = _make_safety_checker_mock(is_safe=False)
+    yield
+    app.dependency_overrides.pop(get_text_safety_checker, None)
+
+
+@pytest.fixture
+def mock_unsafe_image_safety_checker():
+    app.dependency_overrides[get_imaage_safety_checker] = _make_safety_checker_mock(is_safe=False)
+    yield
+    app.dependency_overrides.pop(get_imaage_safety_checker, None)

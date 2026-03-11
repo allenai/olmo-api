@@ -46,7 +46,8 @@ class ImageSafetyCheckerService:
         try:
             async with asyncio.TaskGroup() as tg:
                 for file in files:
-                    task = tg.create_task(self._checker.check_request(await self._request_for_file(file)))
+                    request = await self._request_for_file(file)
+                    task = tg.create_task(self._checker.check_request(request=request, throw=True))
                     tasks.append(task)
             return True
         except* SafetyCheckUnsafeError:

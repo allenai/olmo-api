@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing_extensions import override
 
 
-@dataclass
+@dataclass(kw_only=True)
 class SafetyCheckRequest:
     content: str
     name: str | None = None
@@ -23,7 +23,10 @@ class SkippedSafetyCheckResponse(SafetyCheckResponse):
         return True
 
 
+class SafetyCheckUnsafeError(Exception): ...
+
+
 class SafetyChecker(ABC):
     @abstractmethod
-    async def check_request(self, request: SafetyCheckRequest) -> SafetyCheckResponse:
+    async def check_request(self, request: SafetyCheckRequest, *, throw: bool = False) -> SafetyCheckResponse:
         raise NotImplementedError

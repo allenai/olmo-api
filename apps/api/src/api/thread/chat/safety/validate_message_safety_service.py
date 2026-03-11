@@ -16,6 +16,7 @@ from api.thread.chat.safety.video_safety_checker_service import VideoSafetyCheck
 from core.auth import Permissions
 
 from .google_recaptcha_service import GoogleRecaptchaServiceDependency
+from .image_safety_checker_service import ImageSafetyCheckerServiceDependency
 from .safety_checkers.safety_checker_base import SafetyCheckRequest
 from .text_safety_checker_service import TextSafetyCheckerServiceDependency
 
@@ -56,6 +57,7 @@ class ValidateMessageSafetyService:
         permission_service: PermissionServiceDependency,
         text_safety_checker_service: TextSafetyCheckerServiceDependency,
         video_safety_checker_service: VideoSafetyCheckerServiceDependency,
+        image_safety_checker_service: ImageSafetyCheckerServiceDependency,
         request_client: RequestClientDependency,
         user: OptionalAuthUser,
     ):
@@ -63,6 +65,7 @@ class ValidateMessageSafetyService:
         self.permission_service = permission_service
         self.text_safety_checker_service = text_safety_checker_service
         self.video_safety_checker_service = video_safety_checker_service
+        self.image_safety_checker_service = image_safety_checker_service
         self.request_client = request_client
         self.user = user
 
@@ -109,6 +112,14 @@ class ValidateMessageSafetyService:
         if is_text_safe is False:
             inappropriate_text_msg = "Text was flagged as inappropriate"
             raise BadRequestProblem(inappropriate_text_msg)
+
+        image_files, video_files, unsupported_files = split_files(request.files)
+
+        are_images_safe = await self.image_safety_checker_service.check_image_safety(files=image_files)
+
+        if are_images_safe is False:
+            inappropriate_image_msg = "One or more images were flagged as inappropriate"
+            raise BadRequestProblem(inappropriate_image_msg)
 
     async def validate_after(
         self,

@@ -248,7 +248,7 @@ def mock_unsafe_text_safety_checker():
 
     class _MockTextSafetyChecker(SafetyChecker):
         @override
-        async def check_request(self, request: SafetyCheckRequest) -> SafetyCheckResponse:
+        async def check_request(self, request: SafetyCheckRequest, *, throw: bool = False) -> SafetyCheckResponse:
             return _UnsafeSafetyCheckResponse()
 
     app.dependency_overrides[get_text_safety_checker] = _MockTextSafetyChecker

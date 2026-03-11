@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from src import db
 from src.admin.admin_blueprint import create_admin_blueprint
 from src.agent.agent_blueprint import create_agents_blueprint
+from src.fake_request.fake_request_blueprint import create_fake_request_blueprint
 from src.message.GoogleCloudStorage import GoogleCloudStorage
 from src.model_config.model_config_blueprint import create_model_config_blueprint
 from src.prompt_template.prompt_template_blueprint import create_prompt_template_blueprint
@@ -13,6 +14,9 @@ from src.transcription.transcription_blueprint import create_transcription_bluep
 
 def create_v4_blueprint(dbc: db.Client, storage_client: GoogleCloudStorage, session_maker: sessionmaker[Session]):
     v4_blueprint = Blueprint(name="v4", import_name=__name__)
+
+    # testing
+    v4_blueprint.register_blueprint(create_fake_request_blueprint(), url_prefix="/fake-request", name="fake-request")
 
     v4_blueprint.register_blueprint(create_model_config_blueprint(session_maker), url_prefix="/models", name="models")
     v4_blueprint.register_blueprint(

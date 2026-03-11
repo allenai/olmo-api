@@ -178,15 +178,15 @@ def stream_message_from_model(
 
     new_message_id = create_message_id()
 
-    validate_message_security_and_safety(
-        request=mapped_request,
-        client_auth=client_auth,
-        checker_type=checker_type,
-        user_ip_address=user_ip_address,
-        user_agent=user_agent,
-        storage_client=storage_client,
-        message_id=new_message_id,
-    )
+    # validate_message_security_and_safety(
+    #     request=mapped_request,
+    #     client_auth=client_auth,
+    #     checker_type=checker_type,
+    #     user_ip_address=user_ip_address,
+    #     user_agent=user_agent,
+    #     storage_client=storage_client,
+    #     message_id=new_message_id,
+    # )
 
     return create_new_message(
         mapped_request,

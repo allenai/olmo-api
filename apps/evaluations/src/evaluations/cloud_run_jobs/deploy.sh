@@ -10,7 +10,7 @@
 #   - Project set: gcloud config set project <project-id>
 #
 # Optional environment variables:
-#   IMAGE_TAG    - Full image tag to use (optional, updates YAML if provided)
+#   IMAGE_TAG    - Full image tag to use (default: latest from Artifact Registry)
 
 set -e
 
@@ -57,32 +57,31 @@ done
 echo "Deploying to project: $PROJECT"
 echo "Region: $REGION"
 
-# Create temp directory for processed YAMLs
+# Create temp directory for generated YAMLs
 TEMP_DIR=$(mktemp -d)
 trap "rm -rf $TEMP_DIR" EXIT
 
+# Generate YAMLs from Python tier configs
+echo "Generating job YAMLs..."
+GENERATE_ARGS="--project $PROJECT --output-dir $TEMP_DIR"
+if [ -n "$IMAGE_TAG" ]; then
+  GENERATE_ARGS="$GENERATE_ARGS --image $IMAGE_TAG"
+fi
+
+# Run generator (use uv if available, otherwise python)
+if command -v uv &> /dev/null; then
+  (cd "$APP_DIR" && uv run python "$SCRIPT_DIR/generate_jobs.py" $GENERATE_ARGS)
+else
+  python "$SCRIPT_DIR/generate_jobs.py" $GENERATE_ARGS
+fi
+
 # Deploy Cloud Run Jobs
 for tier in smoke standard full; do
-  YAML_FILE="$SCRIPT_DIR/${tier}.yaml"
+  YAML_FILE="$TEMP_DIR/${tier}.yaml"
   if [ -f "$YAML_FILE" ]; then
+    echo ""
     echo "Deploying eval-${tier}..."
-
-    # Copy and process YAML
-    PROCESSED_YAML="$TEMP_DIR/${tier}.yaml"
-    cp "$YAML_FILE" "$PROCESSED_YAML"
-
-    # Replace placeholders
-    sed -i.bak "s|my-project|${PROJECT}|g" "$PROCESSED_YAML"
-
-    # If IMAGE_TAG is provided, update the image
-    if [ -n "$IMAGE_TAG" ]; then
-      sed -i.bak "s|us-west1-docker.pkg.dev/${PROJECT}/model-evals/evaluations:latest|${IMAGE_TAG}|g" "$PROCESSED_YAML"
-    fi
-
-    echo "Using service account: $SERVICE_ACCOUNT"
-    echo "Command: gcloud run jobs replace $PROCESSED_YAML --region $REGION --project $PROJECT"
-
-    gcloud run jobs replace "$PROCESSED_YAML" --region "$REGION" --project "$PROJECT"
+    gcloud run jobs replace "$YAML_FILE" --region "$REGION" --project "$PROJECT"
   fi
 done
 

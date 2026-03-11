@@ -67,5 +67,5 @@ jobs:
         env:
           IMAGE_TAG: ${{ steps.build.outputs.image }}
         run: |
-          cd apps/evaluations/cloud-run-jobs
+          cd apps/evaluations/src/evaluations/cloud_run_jobs
           ./deploy.sh

@@ -16,7 +16,7 @@ Evaluations are organized into **tiers** with different scopes:
 
 Each tier defines a list of models to evaluate. When a tier runs as a Cloud Run Job, each model runs as a parallel task using `CLOUD_RUN_TASK_INDEX`.
 
-Scheduling is configured separately in `cloud-run-jobs/deploy.sh` using Cloud Scheduler.
+Scheduling is configured separately in `src/evaluations/cloud_run_jobs/deploy.sh` using Cloud Scheduler.
 
 ## Configuration
 
@@ -79,20 +79,18 @@ standard_tier = TierConfig(
 - `task_overrides`: Dict of task-level overrides (applied to all tasks)
 - `harness_overrides`: Dict of harness-level overrides (non-provider settings)
 
-### Cloud Run Job YAML Files
+### Cloud Run Job Configuration
 
-The Cloud Run Job definitions are in `cloud-run-jobs/`:
+Cloud Run Job YAMLs are generated dynamically from the Python tier configs:
 
 ```
-cloud-run-jobs/
-├── smoke.yaml      # Smoke tier job definition
-├── standard.yaml   # Standard tier job definition
-├── full.yaml       # Full tier job definition
-├── deploy.sh       # Deployment script
-└── teardown.sh     # Teardown script
+src/evaluations/cloud_run_jobs/
+├── generate_jobs.py  # Generates YAML from TierConfig
+├── deploy.sh         # Deployment script (calls generator)
+└── teardown.sh       # Teardown script
 ```
 
-To change resource allocation (CPU, memory) or timeout, edit the YAML files directly.
+Job settings (timeout, task count) come from `TierConfig` in Python. Resource allocation (CPU, memory) is defined in `generate_jobs.py`.
 
 ## Local Development
 
@@ -185,7 +183,7 @@ gcloud auth login
 gcloud config set project ai2-skiff2-playground
 
 # Deploy Cloud Run Jobs
-cd cloud-run-jobs
+cd src/evaluations/cloud_run_jobs
 ./deploy.sh
 
 # Deploy with schedulers

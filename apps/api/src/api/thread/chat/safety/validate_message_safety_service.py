@@ -113,7 +113,7 @@ class ValidateMessageSafetyService:
             inappropriate_text_msg = "Text was flagged as inappropriate"
             raise BadRequestProblem(inappropriate_text_msg)
 
-        image_files, video_files, unsupported_files = split_files(request.files)
+        image_files, _video_files, _unsupported_files = split_files(request.files)
 
         are_images_safe = await self.image_safety_checker_service.check_image_safety(files=image_files)
 

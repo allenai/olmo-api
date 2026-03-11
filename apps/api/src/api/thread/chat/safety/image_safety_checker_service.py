@@ -32,29 +32,20 @@ class ImageSafetyCheckerService:
     def __init__(self, checker: ImageSafetyCheckerDependecy):
         self._checker = checker
 
-    # outside of class?
     @staticmethod
     async def _request_for_file(file: UploadFile) -> SafetyCheckRequest:
         image_contents = base64.b64encode(await file.read()).decode("utf-8")
         await file.seek(0)
         return SafetyCheckRequest(content=image_contents, name=file.filename)
 
-    @tracer.start_as_current_span("VideoSafetyCheckerService/check_video_safety")
+    @tracer.start_as_current_span("ImageSafetyCheckerService/check_image_safety")
     async def check_image_safety(self, files: Sequence[UploadFile]) -> bool | None:
         span = trace.get_current_span()
         tasks: list[asyncio.Task[SafetyCheckResponse]] = []
         try:
             async with asyncio.TaskGroup() as tg:
                 for file in files:
-                    task = tg.create_task(
-                        self._checker.check_request(
-                            SafetyCheckRequest(
-                                content=base64.b64encode(await file.read()).decode("utf-8"),
-                                name=file.filename,
-                            ),
-                            throw=True,
-                        )
-                    )
+                    task = tg.create_task(self._checker.check_request(await self._request_for_file(file)))
                     tasks.append(task)
             return True
         except* SafetyCheckUnsafeError:

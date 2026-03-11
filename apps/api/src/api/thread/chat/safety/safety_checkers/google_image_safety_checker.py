@@ -7,15 +7,18 @@ from google.cloud.vision_v1 import (
     ImageAnnotatorAsyncClient,
     Likelihood,
 )
-from google.cloud.vision_v1.types.image_annotator import Feature
+from google.cloud.vision_v1.types import Feature
+from opentelemetry import trace
 from typing_extensions import override
 
-from api.thread.chat.safety.safety_checkers.safety_checker_base import (
+from .safety_checker_base import (
     SafetyChecker,
     SafetyCheckRequest,
     SafetyCheckResponse,
     SafetyCheckUnsafeError,
 )
+
+tracer = trace.get_tracer(__name__)
 
 
 class GoogleImageSafetyCheckResponse(SafetyCheckResponse):
@@ -47,10 +50,11 @@ class GoogleImageSafetyChecker(SafetyChecker):
     def client(self) -> ImageAnnotatorAsyncClient:
         return ImageAnnotatorAsyncClient()
 
+    @tracer.start_as_current_span("GoogleImageSafetyChecker/check_request")
     @override
     async def check_request(self, request: SafetyCheckRequest, *, throw: bool = False) -> SafetyCheckResponse:
         annotation_request = AnnotateImageRequest(
-            image=Image(content=request.content), features=[Feature.Type.SAFE_SEARCH_DETECTION]
+            image=Image(content=request.content), features=[Feature(type=Feature.Type.SAFE_SEARCH_DETECTION)]
         )
 
         operation = await self.client.batch_annotate_images(requests=[annotation_request])

@@ -6,6 +6,7 @@ import subprocess
 import sys
 
 from evaluations.configs import TierName, get_tier
+from evaluations.logging import logger
 
 
 def run_tier(tier_name: str, task_index: int, *, local: bool) -> int:
@@ -24,24 +25,22 @@ def run_tier(tier_name: str, task_index: int, *, local: bool) -> int:
     try:
         model, cli_args = tier.get_job_by_index(task_index)
     except IndexError as e:
-        print(f"Error: {e}", file=sys.stderr)
+        logger.error("Error: %s", e)
         return 1
 
     # For local testing, remove storage flags
     if local:
         cli_args = model.to_cli_args(storage=None, tier_harness_overrides=tier.harness_overrides)
 
-    print(f"Tier: {tier_name}")
-    print(f"Task index: {task_index}/{tier.task_count - 1}")
-    print(f"Model: {model.model}")
-    print(f"Tasks: {', '.join(model.tasks)}")
-    print(f"Local mode: {local}")
-    print()
+    logger.info("Tier: %s", tier_name)
+    logger.info("Task index: %d/%d", task_index, tier.task_count - 1)
+    logger.info("Model: %s", model.model)
+    logger.info("Tasks: %s", ", ".join(model.tasks))
+    logger.info("Local mode: %s", local)
 
     # Build the olmo-eval command
     cmd = ["olmo-eval", "run", *cli_args]
-    print(f"Running: {' '.join(cmd)}")
-    print()
+    logger.info("Running: %s", " ".join(cmd))
 
     # Execute olmo-eval run
     result = subprocess.run(cmd, check=False)

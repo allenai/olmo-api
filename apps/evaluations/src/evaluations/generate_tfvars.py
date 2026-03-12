@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 from evaluations.configs import list_tiers
+from evaluations.logging import logger
 
 
 def generate_tfvars() -> dict:
@@ -35,9 +36,7 @@ def generate_tfvars() -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Generate terraform.tfvars.json from Python tier configs"
-    )
+    parser = argparse.ArgumentParser(description="Generate terraform.tfvars.json from Python tier configs")
     parser.add_argument(
         "-o",
         "--output",
@@ -51,9 +50,9 @@ def main() -> int:
 
     if args.output:
         args.output.write_text(json_output + "\n")
-        print(f"Generated {args.output}", file=sys.stderr)
+        logger.info("Generated %s", args.output)
     else:
-        print(json_output)
+        print(json_output)  # noqa: T201 - stdout is the intended output
 
     return 0
 

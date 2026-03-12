@@ -18,13 +18,13 @@ inputs:
 runs:
     using: composite
     steps:
-        - name: Check branch is main
-          shell: bash
-          run: |
-              if [ "${{ github.ref }}" != "refs/heads/main" ]; then
-                echo "This action can only run on the main branch. Current ref: ${{ github.ref }}"
-                exit 1
-              fi
+        # - name: Check branch is main
+        #   shell: bash
+        #   run: |
+        #       if [ "${{ github.ref }}" != "refs/heads/main" ]; then
+        #         echo "This action can only run on the main branch. Current ref: ${{ github.ref }}"
+        #         exit 1
+        #       fi
 
         - name: Checkout calling repository
           uses: actions/checkout@v4

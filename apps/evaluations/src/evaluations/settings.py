@@ -18,7 +18,6 @@ class Settings(BaseSettings):
     AWS_ACCESS_KEY_ID: str | None = None
     AWS_SECRET_ACCESS_KEY: str | None = None
 
-
     model_config = SettingsConfigDict(
         env_file=".env.local",
         env_file_encoding="utf-8",

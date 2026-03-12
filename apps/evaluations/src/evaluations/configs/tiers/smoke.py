@@ -5,14 +5,13 @@ Should complete in under 1 hour with simple pass/fail results.
 """
 
 from evaluations.configs.base import ModelEval, StorageConfig, TierConfig, TierName
+from evaluations.settings import settings
 
 SMOKE_STORAGE = StorageConfig(
-    s3_bucket="olmo-eval-results",
-    s3_prefix="smoke",
-    s3_group="daily",
+    s3_bucket="ai2-paull",
+    s3_prefix="olmo-eval",
+    s3_group="smoke",
 )
-
-LITELLM_API_BASE = "https://ai2-model-hub.allen.ai"
 
 smoke_tier = TierConfig(
     name=TierName.SMOKE,
@@ -20,13 +19,14 @@ smoke_tier = TierConfig(
     timeout_minutes=60,
     storage=SMOKE_STORAGE,
     harness_overrides={"metrics.enabled": "false"},
+    schedule=None,  # "0 */6 * * *",  # Every 6 hours
     models=[
         ModelEval(
             model="olmo-3-7b-instruct-cirrascale",
             provider_overrides={
                 "kind": "litellm",
                 "model": "litellm_proxy/openai/Olmo-3-7B-Instruct",
-                "api_base": LITELLM_API_BASE,
+                "api_base": settings.LITELLM_API_BASE,
             },
             tasks=[
                 "smoke_identity_olmo",
@@ -39,7 +39,7 @@ smoke_tier = TierConfig(
             provider_overrides={
                 "kind": "litellm",
                 "model": "litellm_proxy/openai/ai2-release-partners/Olmo-3-7B-Instruct",
-                "api_base": LITELLM_API_BASE,
+                "api_base": settings.LITELLM_API_BASE,
             },
             tasks=[
                 "smoke_identity_olmo",

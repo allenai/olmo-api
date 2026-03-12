@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - olmo-eval_cloudrun # temp for testing in ci
     paths:
       - 'apps/evaluations/**'
       - '.github/workflows/build-and-push-evals.yml'
@@ -62,10 +63,30 @@ jobs:
 
           echo "image=${IMAGE_TAG}:${{ github.sha }}" >> $GITHUB_OUTPUT
 
-      # Deploy Cloud Run Jobs
-      - name: Deploy Cloud Run Jobs
-        env:
-          IMAGE_TAG: ${{ steps.build.outputs.image }}
+      # Generate Terraform variables from Python tier configs
+      - name: Generate Terraform Variables
+        working-directory: apps/evaluations
+        run: uv run generate-tfvars -o terraform/terraform.tfvars.json
+
+      # Setup Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5"
+
+      # Deploy with Terraform
+      - name: Terraform Init
+        working-directory: apps/evaluations/terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: apps/evaluations/terraform
         run: |
-          cd apps/evaluations/src/evaluations/cloud_run_jobs
-          ./deploy.sh
+          terraform plan \
+            -var="project_id=${{ vars.SKIFF2_PROJECT_ID }}" \
+            -var="image_tag=${{ github.sha }}" \
+            -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: apps/evaluations/terraform
+        run: terraform apply -auto-approve tfplan

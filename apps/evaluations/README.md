@@ -16,7 +16,7 @@ Evaluations are organized into **tiers** with different scopes:
 
 Each tier defines a list of models to evaluate. When a tier runs as a Cloud Run Job, each model runs as a parallel task using `CLOUD_RUN_TASK_INDEX`.
 
-Scheduling is configured separately in `src/evaluations/cloud_run_jobs/deploy.sh` using Cloud Scheduler.
+Scheduling is configured in each tier's Python config via the `schedule` field (cron expression).
 
 ## Configuration
 
@@ -48,6 +48,7 @@ standard_tier = TierConfig(
     description="Curated standard evaluations",
     timeout_minutes=120,
     storage=STANDARD_STORAGE,
+    schedule="0 2 * * 1,4",  # Monday and Thursday at 2am UTC
     models=[
         ModelEval(
             model="olmo-3-7b-instruct-cirrascale",  # Display name
@@ -81,16 +82,20 @@ standard_tier = TierConfig(
 
 ### Cloud Run Job Configuration
 
-Cloud Run Job YAMLs are generated dynamically from the Python tier configs:
+Infrastructure is managed with Terraform, with configuration derived from Python tier configs:
 
 ```
-src/evaluations/cloud_run_jobs/
-├── generate_jobs.py  # Generates YAML from TierConfig
-├── deploy.sh         # Deployment script (calls generator)
-└── teardown.sh       # Teardown script
+terraform/
+├── main.tf              # Provider and backend config
+├── variables.tf         # Input variables
+├── outputs.tf           # Exported values
+├── cloud_run_jobs.tf    # Cloud Run Job resources
+├── schedulers.tf        # Cloud Scheduler resources
+├── generate_tfvars.py   # Generates tfvars from Python configs
+└── .gitignore           # Ignores state and generated files
 ```
 
-Job settings (timeout, task count) come from `TierConfig` in Python. Resource allocation (CPU, memory) is defined in `generate_jobs.py`.
+Job settings (timeout, task count, schedule) come from `TierConfig` in Python. Resource allocation (CPU, memory) is defined in `cloud_run_jobs.tf`.
 
 ## Local Development
 
@@ -173,7 +178,7 @@ docker run --rm \
 
 ### CI/CD
 
-The GitHub Actions workflow (`.github/workflows/build-and-push-evals.yml`) automatically builds and deploys on push to `main` when files in `apps/evaluations/` change.
+The GitHub Actions workflow (`.github/workflows/build-and-push-evals.yml`) automatically builds and deploys on push to `main` when files in `apps/evaluations/` change. It uses Terraform to manage Cloud Run Jobs and Cloud Schedulers.
 
 ### Manual Deployment
 
@@ -182,13 +187,28 @@ The GitHub Actions workflow (`.github/workflows/build-and-push-evals.yml`) autom
 gcloud auth login
 gcloud config set project ai2-skiff2-playground
 
-# Deploy Cloud Run Jobs
-cd src/evaluations/cloud_run_jobs
-./deploy.sh
+# Generate tfvars from Python tier configs
+uv run generate-tfvars -o terraform/terraform.tfvars.json
 
-# Deploy with schedulers
-./deploy.sh --with-schedulers
+# Navigate to terraform directory
+cd terraform
+
+# Initialize Terraform (first time only)
+terraform init
+
+# Preview changes
+terraform plan -var="project_id=ai2-skiff2-playground"
+
+# Apply changes
+terraform apply -var="project_id=ai2-skiff2-playground"
 ```
+
+### Terraform State
+
+Terraform state is stored in a GCS bucket (`ai2-skiff2-playground-tf-state`). This enables:
+- Team collaboration (shared state)
+- Drift detection
+- Rollback via version control
 
 ### Manual Push to Artifact Registry
 

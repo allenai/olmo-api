@@ -6,10 +6,12 @@ requires-python = ">=3.12"
 
 dependencies = [
     "olmo-eval-internal[litellm,storage] @ git+https://github.com/allenai/olmo-eval-internal.git@main",
+    "pydantic-settings>=2.0",
 ]
 
 [project.scripts]
 evaluations = "evaluations.cli:main"
+generate-tfvars = "evaluations.generate_tfvars:main"
 
 [build-system]
 requires = ["hatchling"]

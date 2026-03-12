@@ -5,14 +5,13 @@ Triggered manually, not scheduled.
 """
 
 from evaluations.configs.base import ModelEval, StorageConfig, TierConfig, TierName
+from evaluations.settings import settings
 
 FULL_STORAGE = StorageConfig(
-    s3_bucket="olmo-eval-results",
-    s3_prefix="full",
-    s3_group="release",
+    s3_bucket="ai2-paull",
+    s3_prefix="olmo-eval",
+    s3_group="full",
 )
-
-LITELLM_API_BASE = "https://ai2-model-hub.allen.ai"
 
 full_tier = TierConfig(
     name=TierName.FULL,
@@ -20,13 +19,14 @@ full_tier = TierConfig(
     timeout_minutes=360,
     storage=FULL_STORAGE,
     harness_overrides={"metrics.enabled": "false"},
+    schedule=None,  # Manual trigger only
     models=[
         ModelEval(
             model="olmo-3-7b-instruct-cirrascale",
             provider_overrides={
                 "kind": "litellm",
                 "model": "litellm_proxy/openai/Olmo-3-7B-Instruct",
-                "api_base": LITELLM_API_BASE,
+                "api_base": settings.LITELLM_API_BASE,
             },
             tasks=[
                 "humaneval:pass_at_10",
@@ -41,7 +41,7 @@ full_tier = TierConfig(
             provider_overrides={
                 "kind": "litellm",
                 "model": "litellm_proxy/openai/ai2-release-partners/Olmo-3-7B-Instruct",
-                "api_base": LITELLM_API_BASE,
+                "api_base": settings.LITELLM_API_BASE,
             },
             tasks=[
                 "humaneval:pass_at_10",

@@ -1,0 +1,22 @@
+# Terraform state (stored in GCS backend, not locally)
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Generated tfvars (created by generate_tfvars.py)
+terraform.tfvars.json
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Override files (for local development)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI configuration
+.terraformrc
+terraform.rc

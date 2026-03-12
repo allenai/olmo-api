@@ -119,7 +119,6 @@ class TierConfig:
 
     A tier defines a set of model evaluations that run together.
     Each ModelEval becomes one parallel Cloud Run Job task.
-    Scheduling is configured separately in cloud-run-jobs/deploy.sh.
     """
 
     name: TierName
@@ -128,6 +127,7 @@ class TierConfig:
     models: list[ModelEval]
     description: str = ""
     harness_overrides: dict[str, str] = field(default_factory=dict)
+    schedule: str | None = None  # Cron expression for Cloud Scheduler, None = manual only
 
     def get_jobs(self) -> list[tuple[ModelEval, list[str]]]:
         """Get all jobs for this tier as (ModelEval, cli_args) tuples."""

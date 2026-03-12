@@ -9,7 +9,7 @@ from werkzeug.datastructures import FileStorage
 from core.auth.token import Token
 from src.auth.auth_utils import Permissions, user_has_permission
 from src.bot_detection.create_assessment import create_assessment
-from src.config.get_config import cfg
+from src.config.get_config import cfg, get_config
 from src.message.create_message_request import (
     CreateMessageRequestWithFullMessages,
 )
@@ -136,9 +136,10 @@ def evaluate_prompt_submission_captcha(
             )
             invalid_captcha_message = "invalid_captcha"
             raise exceptions.BadRequest(invalid_captcha_message)
+        config = get_config()
 
         if (
-            captcha_assessment.risk_analysis.score == 0.0
+            captcha_assessment.risk_analysis.score <= config.google_cloud_services.captcha_minimum_score_requirement
             or captcha_assessment.token_properties.action != prompt_submission_action
         ):
             logger.info(

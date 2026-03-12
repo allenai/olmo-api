@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - olmo-eval_cloudrun # temp for testing in ci
     paths:
       - 'apps/evaluations/**'
       - '.github/workflows/build-and-push-evals.yml'

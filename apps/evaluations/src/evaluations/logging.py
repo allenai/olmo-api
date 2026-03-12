@@ -24,5 +24,4 @@ def setup_logging(level: int = logging.INFO) -> None:
     logger.setLevel(level)
 
 
-# Auto-setup on import with INFO level
 setup_logging()

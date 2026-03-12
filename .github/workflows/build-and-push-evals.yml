@@ -63,6 +63,10 @@ jobs:
 
           echo "image=${IMAGE_TAG}:${{ github.sha }}" >> $GITHUB_OUTPUT
 
+      # Setup uv for Python package management
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+
       # Generate Terraform variables from Python tier configs
       - name: Generate Terraform Variables
         working-directory: apps/evaluations

@@ -67,6 +67,10 @@ jobs:
       - name: Setup uv
         uses: astral-sh/setup-uv@v7
 
+      # Configure git to use token for private repo access
+      - name: Configure Git for Private Repos
+        run: git config --global url."https://${{ secrets.OLMO_EVAL_INTERNAL_TOKEN }}@github.com/".insteadOf "https://github.com/"
+
       # Generate Terraform variables from Python tier configs
       - name: Generate Terraform Variables
         working-directory: apps/evaluations

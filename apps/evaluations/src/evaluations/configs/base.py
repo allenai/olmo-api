@@ -138,6 +138,7 @@ class TierConfig:
         if index < 0 or index >= len(self.models):
             msg = f"Task index {index} out of range (0-{len(self.models) - 1})"
             raise IndexError(msg)
+
         model = self.models[index]
         return (model, model.to_cli_args(self.storage, self.harness_overrides))
 

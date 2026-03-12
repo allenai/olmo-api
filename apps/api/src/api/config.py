@@ -72,6 +72,7 @@ class Settings(BaseSettings):
     RECAPTCHA_ENABLED: bool = True
     RECAPTCHA_GCP_PROJECT_ID: str = "ai2-reviz"
     RECAPTCHA_KEY: str = Field(init=False)
+    RECAPTCHA_MIN_SCORE_REQUIREMENT: float = 0.3
 
     model_config = SettingsConfigDict(
         extra="ignore",

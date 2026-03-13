@@ -1,5 +1,5 @@
 import json
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from typing import TypeAlias, assert_never
 
@@ -14,6 +14,8 @@ from pydantic_ai import (
 )
 
 from api.thread.chat.chat_types import ChatStreamOutput
+from core.message.flat_message import FlatMessage
+from core.message.message_chunk import AddMessageChunk, FinalThreadChunk, StreamEndChunk, StreamStartChunk
 from core.message.role import Role
 from core.object_id import ID
 from core.tools.tool_source import ToolSource
@@ -120,13 +122,15 @@ def map_response_pydantic_messages_to_messages(
     parent_message_id = run_input.parent_message_id
 
     mapped_messages: list[Message] = []
-    for i, message in enumerate(messages):
-        message_id = message_ids[i]
+    msg_id_stack = list(reversed(message_ids))
+    for message in messages:
         match message:
             case ModelRequest():
                 for request_part in message.parts:
                     match request_part:
                         case ToolReturnPart():
+                            message_id = msg_id_stack.pop()
+
                             tool_return_message = map_tool_return_part_to_message(
                                 request_part,
                                 message_id=message_id,
@@ -143,6 +147,8 @@ def map_response_pydantic_messages_to_messages(
                 message_content = ""
                 message_thinking: str | None = None
                 message_tool_calls: list[ToolCall] = []
+
+                message_id = msg_id_stack.pop()
 
                 for response_part in message.parts:
                     match response_part:
@@ -178,3 +184,17 @@ def map_response_pydantic_messages_to_messages(
                 assert_never(message)
 
     return mapped_messages
+
+
+async def stream_pending_tool_responses(run_input: RunInput) -> AsyncIterator[Event]:
+    """Short circut the event stream and flush pending tool responses"""
+    yield StreamStartChunk(message=run_input.root_message_id)
+
+    new_flat = FlatMessage.from_message_seq(run_input.new_messages)
+    yield AddMessageChunk(message=new_flat[0].id, id=new_flat[0].id, messages=new_flat)
+
+    first_message = await run_input.handle_final_messages(run_input.new_messages)
+    final_flat = FlatMessage.from_message_with_children(first_message)
+    yield FinalThreadChunk(message=final_flat[0].id, id=final_flat[0].id, messages=final_flat)
+
+    yield StreamEndChunk(message=run_input.new_messages[-1].id)

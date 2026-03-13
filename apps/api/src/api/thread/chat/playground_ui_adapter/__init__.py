@@ -5,10 +5,11 @@ This module provides classes for integrating Pydantic AI agents with the Playgro
 
 from ._adapter import PlaygroundUIAdapter
 from ._event_stream import PlaygroundUIEventStream
-from ._util import RunInput
+from ._util import RunInput, stream_pending_tool_responses
 
 __all__ = [
     "PlaygroundUIAdapter",
     "PlaygroundUIEventStream",
     "RunInput",
+    "stream_pending_tool_responses",
 ]

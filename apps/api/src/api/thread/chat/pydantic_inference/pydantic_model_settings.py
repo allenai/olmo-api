@@ -14,7 +14,7 @@ def pydantic_model_settings(
 
     return OpenAIChatModelSettings(
         # these have been validated alreeady
-        **inference_opts.model_dump(exclude_none=True, exclude={"stop"}),  # type: ignore
+        **inference_opts.model_dump(exclude_none=True, by_alias=False, exclude={"stop"}),  # type: ignore
         stop_sequences=inference_opts.stop or [],
         # TODO: allow changing
         openai_reasoning_effort="low" if can_think else None,

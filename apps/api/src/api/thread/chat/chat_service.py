@@ -415,7 +415,7 @@ class ChatService:
             parent_message_id=initialize_thread_result.last_message_id,
             creator=self.user.client,
             model=model,
-            inference_opts=initialize_thread_result.all_messages[-1].opts,
+            inference_opts=validate_thread_result.inference_options,
             user_tool_names=[definition.name for definition in request.tool_definitions or []],
             tool_definitions=initialize_thread_result.tool_definitions,
             handle_final_messages=self.message_repository.finalize_thread,

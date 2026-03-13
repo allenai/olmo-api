@@ -1,13 +1,13 @@
 from functools import cached_property
 
-from google.cloud.vision_v1 import (
+from google.cloud.vision import (
     AnnotateImageRequest,
     AnnotateImageResponse,
+    Feature,
     Image,
     ImageAnnotatorAsyncClient,
     Likelihood,
 )
-from google.cloud.vision_v1.types import Feature
 from opentelemetry import trace
 from typing_extensions import override
 
@@ -53,15 +53,21 @@ class GoogleImageSafetyChecker(SafetyChecker):
     @tracer.start_as_current_span("GoogleImageSafetyChecker/check_request")
     @override
     async def check_request(self, request: SafetyCheckRequest, *, throw: bool = False) -> SafetyCheckResponse:
+        span = trace.get_current_span()
+        span.set_attribute("filename", request.name or "unknown")
         annotation_request = AnnotateImageRequest(
             image=Image(content=request.content), features=[Feature(type=Feature.Type.SAFE_SEARCH_DETECTION)]
         )
 
         operation = await self.client.batch_annotate_images(requests=[annotation_request])
-
         response = next(iter(operation.responses))
 
         safety_response = GoogleImageSafetyCheckResponse(response=response, filename=request.name)
+
+        span.set_attributes({
+            "is_safe": safety_response.is_safe(),
+            "violation_categories": list(safety_response.get_violation_categories()),
+        })
 
         if not safety_response.is_safe() and throw:
             raise SafetyCheckUnsafeError

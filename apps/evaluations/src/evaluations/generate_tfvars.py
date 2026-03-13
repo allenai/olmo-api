@@ -23,6 +23,8 @@ from evaluations.logging import logger
 def generate_tfvars() -> dict:
     """Generate Terraform variables from tier configurations."""
     tiers = {}
+    max_timeout = 0
+    max_tasks = 0
 
     for tier in list_tiers():
         tier_name = tier.name.value
@@ -31,8 +33,14 @@ def generate_tfvars() -> dict:
             "timeout_minutes": tier.timeout_minutes,
             "schedule": tier.schedule,
         }
+        max_timeout = max(max_timeout, tier.timeout_minutes)
+        max_tasks = max(max_tasks, tier.task_count)
 
-    return {"tiers": tiers}
+    return {
+        "tiers": tiers,
+        "max_task_timeout_minutes": max_timeout,
+        "max_parallel_task_count": max_tasks,
+    }
 
 
 def main() -> int:

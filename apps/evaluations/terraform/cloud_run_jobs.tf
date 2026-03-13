@@ -1,26 +1,32 @@
-# Cloud Run Jobs for each evaluation tier
+# Single Cloud Run Job for all evaluations
 #
-# Each tier runs as a Cloud Run Job with parallel tasks.
-# The number of tasks equals the number of models in the tier config.
-# Each task uses CLOUD_RUN_TASK_INDEX to select which model to evaluate.
+# This job supports two modes:
+# 1. Tier mode: Pass EVAL_TIER env var, task count matches tier config
+# 2. Ad-hoc mode: Pass EVAL_MODE=ad-hoc with AD_HOC_* env vars
+#
+# Task count and env vars are overridden at execution time via:
+#   gcloud run jobs execute eval --tasks N --update-env-vars "KEY=VALUE"
 
 resource "google_cloud_run_v2_job" "eval" {
-  for_each = var.tiers
-
-  name     = "eval-${each.key}"
+  name     = "eval"
   location = var.region
 
   labels = {
-    tier       = each.key
     managed-by = "terraform"
   }
 
   template {
-    parallelism = each.value.task_count
-    task_count  = each.value.task_count
+    # Parallelism set to max - actual task count is overridden at execution time
+    # Note: parallelism cannot be overridden at execution, only taskCount can
+    parallelism = var.max_parallel_task_count
+    task_count  = 1
 
     template {
-      timeout = "${each.value.timeout_minutes * 60}s"
+      # Use max timeout from all tiers (can't be overridden at execution)
+      timeout = "${var.max_task_timeout_minutes * 60}s"
+
+      # Retry failed tasks up to 3 times (Cloud Run default, made explicit)
+      max_retries = 3
 
       containers {
         image = "us-west1-docker.pkg.dev/${var.project_id}/model-evals/evaluations:${var.image_tag}"
@@ -32,14 +38,11 @@ resource "google_cloud_run_v2_job" "eval" {
           }
         }
 
-        env {
-          name  = "EVAL_TIER"
-          value = each.key
-        }
-
+        # No EVAL_TIER set here - passed at execution time
+        # LOCAL=false by default for Cloud Run
         env {
           name  = "LOCAL"
-          value = "false"
+          value = "true" # set to false when db access is working
         }
 
         env {
@@ -76,7 +79,6 @@ resource "google_cloud_run_v2_job" "eval" {
   }
 
   lifecycle {
-    # Prevent destruction without explicit approval
     prevent_destroy = false
   }
 }

@@ -142,7 +142,7 @@ python run_local.py --build-only
 # Run standard tier, task index 0 (local mode, no storage)
 python run_local.py
 
-# Run a specific tier
+# Run a specific tier (default is smoke)
 python run_local.py --tier smoke
 
 # Run a specific task index (for multi-model tiers)
@@ -221,6 +221,49 @@ docker tag evaluations us-west1-docker.pkg.dev/ai2-skiff2-playground/model-evals
 docker push us-west1-docker.pkg.dev/ai2-skiff2-playground/model-evals/evaluations:latest
 ```
 
+## Executing Jobs
+
+A single Cloud Run Job (`eval`) handles all evaluation modes. Task count and environment variables are passed at execution time.
+
+### Execute a Tier
+
+```bash
+# Run smoke tier (2 parallel tasks)
+gcloud run jobs execute eval --region us-west1 \
+  --tasks 2 \
+  --update-env-vars "EVAL_TIER=smoke"
+
+# Run standard tier
+gcloud run jobs execute eval --region us-west1 \
+  --tasks 2 \
+  --update-env-vars "EVAL_TIER=standard"
+```
+
+### Execute Ad-Hoc Evaluation
+
+Run a single model/task combination without adding it to tier configs:
+
+```bash
+gcloud run jobs execute eval --region us-west1 \
+  --tasks 1 \
+  --update-env-vars "EVAL_MODE=ad-hoc,AD_HOC_MODEL=litellm_proxy/openai/Olmo-7B,AD_HOC_TASKS=humaneval:bpb"
+
+# With harness overrides
+gcloud run jobs execute eval --region us-west1 \
+  --tasks 1 \
+  --update-env-vars "EVAL_MODE=ad-hoc,AD_HOC_MODEL=litellm_proxy/openai/Olmo-7B,AD_HOC_TASKS=humaneval:bpb,AD_HOC_HARNESS_OVERRIDES=metrics.enabled=true"
+```
+
+### Ad-Hoc Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `EVAL_MODE` | Set to `ad-hoc` | Yes |
+| `AD_HOC_MODEL` | Provider model path (e.g., `litellm_proxy/openai/Olmo-7B`) | Yes |
+| `AD_HOC_TASKS` | Comma-separated task names (e.g., `humaneval:bpb,mbpp:bpb`) | Yes |
+| `AD_HOC_PROVIDER_KIND` | Provider type (default: `litellm`) | No |
+| `AD_HOC_HARNESS_OVERRIDES` | Comma-separated key=value pairs | No |
+
 ## CLI Reference
 
 The `evaluations` CLI is available inside the container:
@@ -229,10 +272,16 @@ The `evaluations` CLI is available inside the container:
 # Auto-run tier from env vars (used by Cloud Run)
 EVAL_TIER=standard CLOUD_RUN_TASK_INDEX=0 evaluations
 
+# Auto-run ad-hoc from env vars
+EVAL_MODE=ad-hoc AD_HOC_MODEL=litellm_proxy/openai/Olmo-7B AD_HOC_TASKS=humaneval:bpb evaluations
+
 # Show help
 evaluations --help
 
 # Run a specific tier/task
 evaluations run-tier standard --task-index 0
 evaluations run-tier smoke --task-index 0 --local
+
+# Run ad-hoc evaluation
+evaluations ad-hoc --model litellm_proxy/openai/Olmo-7B --tasks humaneval:bpb --local
 ```

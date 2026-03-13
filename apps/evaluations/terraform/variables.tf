@@ -15,6 +15,18 @@ variable "image_tag" {
   default     = "latest"
 }
 
+variable "max_task_timeout_minutes" {
+  description = "Maximum timeout per Cloud Run task (from longest tier)"
+  type        = number
+  default     = 360 # 6 hours (full tier default)
+}
+
+variable "max_parallel_task_count" {
+  description = "Maximum parallel Cloud Run tasks (from largest tier)"
+  type        = number
+  default     = 10
+}
+
 variable "tiers" {
   description = "Evaluation tier configurations (generated from Python configs)"
   type = map(object({

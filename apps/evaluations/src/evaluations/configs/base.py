@@ -1,5 +1,7 @@
 """Base configuration classes for evaluation jobs."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -53,6 +55,49 @@ class ModelEval:
     provider_overrides: dict[str, str] = field(default_factory=dict)
     task_overrides: dict[str, str] = field(default_factory=dict)
     harness_overrides: dict[str, str] = field(default_factory=dict)
+
+    @classmethod
+    def from_ad_hoc(
+        cls,
+        model: str,
+        tasks: str,
+        provider_kind: str = "litellm",
+        harness_overrides: str | None = None,
+    ) -> ModelEval:
+        """Create a ModelEval from ad-hoc environment variables.
+
+        Args:
+            model: Provider model path (e.g., "litellm_proxy/openai/Olmo-7B").
+            tasks: Comma-separated task names (e.g., "humaneval:bpb,mbpp:bpb").
+            provider_kind: Provider type (default: "litellm").
+            harness_overrides: Comma-separated key=value pairs (e.g., "metrics.enabled=true,limit=10").
+
+        Returns:
+            A ModelEval configured for ad-hoc execution.
+        """
+        task_list = [t.strip() for t in tasks.split(",") if t.strip()]
+
+        provider_overrides = {
+            "kind": provider_kind,
+            "model": model,
+        }
+
+        parsed_harness_overrides: dict[str, str] = {}
+        if harness_overrides:
+            for item in harness_overrides.split(","):
+                if "=" in item:
+                    key, value = item.split("=", 1)
+                    parsed_harness_overrides[key.strip()] = value.strip()
+
+        # Use model path as display name (last part)
+        display_name = model.split("/")[-1] if "/" in model else model
+
+        return cls(
+            model=display_name,
+            tasks=task_list,
+            provider_overrides=provider_overrides,
+            harness_overrides=parsed_harness_overrides,
+        )
 
     def to_cli_args(
         self,

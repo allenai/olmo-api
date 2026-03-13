@@ -43,8 +43,6 @@ class Settings(BaseSettings):
     AUTH_DOMAIN: str = Field(init=False)
     AUTH_AUDIENCE: str = Field(init=False)
 
-    GCS_PUBLIC_UPLOAD_BUCKET: str = Field(init=False)
-
     HUBSPOT_URL: str = "https://api.hubapi.com"
     HUBSPOT_TOKEN: str = Field(init=False)
     ASTA_MCP_API_KEY: str = Field(init=False)
@@ -72,6 +70,10 @@ class Settings(BaseSettings):
     RECAPTCHA_ENABLED: bool = True
     RECAPTCHA_GCP_PROJECT_ID: str = "ai2-reviz"
     RECAPTCHA_KEY: str = Field(init=False)
+
+    SAFETY_QUEUE_URL: str = Field(init=False)
+    SAFTEY_GCS_UPLOAD_BUCKET: str = Field(init=False)
+    VIDEO_SAFETY_CHECK_WORKER_STRATEGY: str = "deferred"
 
     model_config = SettingsConfigDict(
         extra="ignore",

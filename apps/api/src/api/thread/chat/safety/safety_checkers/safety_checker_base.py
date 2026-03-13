@@ -1,11 +1,14 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from typing_extensions import override
+
 
 @dataclass
 class SafetyCheckRequest:
     content: str
     name: str | None = None
+    message_id: str | None = None
 
 
 class SafetyCheckResponse(ABC):
@@ -14,7 +17,13 @@ class SafetyCheckResponse(ABC):
         raise NotImplementedError
 
 
-class TextSafetyChecker(ABC):
+class SkippedSafetyCheckResponse(SafetyCheckResponse):
+    @override
+    def is_safe(self) -> bool:
+        return True
+
+
+class SafetyChecker(ABC):
     @abstractmethod
     async def check_request(self, request: SafetyCheckRequest) -> SafetyCheckResponse:
         raise NotImplementedError

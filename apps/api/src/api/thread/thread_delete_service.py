@@ -52,7 +52,7 @@ class ThreadDeleteService:
             ]
 
             await self.storage_client.delete_multiple_files_by_url(
-                files_to_delete, bucket_name=settings.GCS_PUBLIC_UPLOAD_BUCKET
+                files_to_delete, bucket_name=settings.USER_CONTENT_BUCKET
             )
 
             message_ids = [msg.id for msg in messages]

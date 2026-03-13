@@ -83,7 +83,7 @@ async def test_get_toolsets_returns_user_and_mcp_tools():
         file_upload_service=None,  # type: ignore
         validate_message_safety_service=None,  # type: ignore
         request_client=None,  # type: ignore
-        auth_user=None,  # type:ignore
+        user=None,  # type:ignore
     )
     toolsets = chat_service._get_toolsets(  # noqa: SLF001
         user_tools=[

@@ -4,14 +4,15 @@ from time import time_ns
 
 from google.cloud.language_v2 import Document, LanguageServiceAsyncClient, ModerateTextRequest, ModerateTextResponse
 from opentelemetry import trace
+from typing_extensions import override
 
 from api.logging.fastapi_logger import FastAPIStructLogger
 from core import APIInterface
 
 from .safety_checker_base import (
+    SafetyChecker,
     SafetyCheckRequest,
     SafetyCheckResponse,
-    TextSafetyChecker,
 )
 
 logger = FastAPIStructLogger()
@@ -89,13 +90,14 @@ class GoogleSafetyCheckResponse(SafetyCheckResponse):
         ]
 
 
-class GoogleTextSafetyChecker(TextSafetyChecker):
+class GoogleTextSafetyChecker(SafetyChecker):
     # defer creation of client until inside the thread loop
     @cached_property
     def client(self) -> LanguageServiceAsyncClient:
         return LanguageServiceAsyncClient()
 
     @tracer.start_as_current_span(name="GoogleTextSafetyChecker/check_request")
+    @override
     async def check_request(self, request: SafetyCheckRequest) -> SafetyCheckResponse:
         span = trace.get_current_span()
         moderate_text_request = ModerateTextRequest(

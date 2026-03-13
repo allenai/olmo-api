@@ -37,6 +37,7 @@ dependencies = [
     "dramatiq>=2.0.0",
     "redis>=6.4.0",
     "prometheus-client>=0.23.1",
+    "google-cloud-vision>=3.9.0",
 ]
 
 [build-system]

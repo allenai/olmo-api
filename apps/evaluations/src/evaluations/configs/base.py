@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
+from evaluations.settings import settings
+
 
 class TierName(Enum):
     """Evaluation tier names."""
@@ -80,6 +82,7 @@ class ModelEval:
         provider_overrides = {
             "kind": provider_kind,
             "model": model,
+            "api_base": settings.LITELLM_API_BASE,
         }
 
         parsed_harness_overrides: dict[str, str] = {}

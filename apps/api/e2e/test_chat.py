@@ -383,6 +383,30 @@ async def test_uploads_a_file_to_a_multimodal_model(client: AsyncClient, anon_us
     )
 
 
+@pytest.mark.usefixtures("mock_unsafe_image_safety_checker")
+async def test_unsafe_images_in_messages_are_rejected(client: AsyncClient, anon_user: AuthenticatedClient):
+    test_image_path = Path(__file__).parent.joinpath("molmo-boats.png")
+
+    with test_image_path.open("rb") as file:
+        chat_request = UserChatRequest(
+            content="is this image legal?",
+            model="test-model",
+            enable_tool_calling=True,
+        ).model_dump(exclude_none=True, exclude_computed_fields=True)
+
+        response = await client.post(
+            CHAT_ENDPOINT,
+            data=chat_request,
+            files={"files": ("molmo-boats.png", file, "image/png")},
+            headers=auth_headers_for_user(anon_user),
+        )
+
+    response_dict = response.json()
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST, "Expected Bad Request error for inappropriate image"
+    assert response_dict["detail"] == "One or more images were flagged as inappropriate"
+
+
 @pytest.mark.usefixtures("mock_unsafe_text_safety_checker")
 async def test_unsafe_messages_are_rejected(client: AsyncClient, anon_user: AuthenticatedClient):
     chat_request = UserChatRequest(

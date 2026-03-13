@@ -13,6 +13,7 @@ from .safety_checker_base import (
     SafetyChecker,
     SafetyCheckRequest,
     SafetyCheckResponse,
+    SafetyCheckUnsafeError,
 )
 
 logger = FastAPIStructLogger()
@@ -51,7 +52,7 @@ class ViolationInfo(APIInterface):
     severity_threshold: float
 
 
-class GoogleSafetyCheckResponse(SafetyCheckResponse):
+class GoogleTextSafetyCheckResponse(SafetyCheckResponse):
     result: ModerateTextResponse
     safety_settings: GoogleTextSafetySettings
 
@@ -59,6 +60,7 @@ class GoogleSafetyCheckResponse(SafetyCheckResponse):
         self.result = result
         self.safety_settings = GoogleTextSafetySettings()  # do we need to load from somewhere
 
+    @override
     def is_safe(self) -> bool:
         violations = self.get_violations()
 
@@ -98,7 +100,7 @@ class GoogleTextSafetyChecker(SafetyChecker):
 
     @tracer.start_as_current_span(name="GoogleTextSafetyChecker/check_request")
     @override
-    async def check_request(self, request: SafetyCheckRequest) -> SafetyCheckResponse:
+    async def check_request(self, request: SafetyCheckRequest, *, throw: bool = False) -> SafetyCheckResponse:
         span = trace.get_current_span()
         moderate_text_request = ModerateTextRequest(
             document=Document(content=request.content, type=Document.Type.PLAIN_TEXT),
@@ -109,11 +111,14 @@ class GoogleTextSafetyChecker(SafetyChecker):
         result = await self.client.moderate_text(moderate_text_request)
         end_ns = time_ns()
 
-        response = GoogleSafetyCheckResponse(result)
+        response = GoogleTextSafetyCheckResponse(result)
         span.set_attributes({
             "duration_ms": (end_ns - start_ns) / 1_000_000,
             "violations": [violation.model_dump_json() for violation in response.get_violations()],
             "scores": [str(score) for score in response.get_scores()],
         })
+
+        if not response.is_safe() and throw:
+            raise SafetyCheckUnsafeError
 
         return response

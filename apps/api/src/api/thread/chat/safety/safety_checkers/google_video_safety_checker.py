@@ -22,7 +22,13 @@ from api.gcs_dependency import get_google_cloud_storage
 from api.logging.fastapi_logger import FastAPIStructLogger
 from db.url import make_url
 
-from .safety_checker_base import SafetyChecker, SafetyCheckRequest, SafetyCheckResponse, SkippedSafetyCheckResponse
+from .safety_checker_base import (
+    SafetyChecker,
+    SafetyCheckRequest,
+    SafetyCheckResponse,
+    SafetyCheckUnsafeError,
+    SkippedSafetyCheckResponse,
+)
 
 logger = FastAPIStructLogger()
 tracer = trace.get_tracer(__name__)
@@ -62,6 +68,7 @@ class GoogleVideoIntelligenceResponse(SafetyCheckResponse):
     def __init__(self, response: AnnotateVideoResponse):
         self.response = response
 
+    @override
     def is_safe(self) -> bool:
         return not self.has_violation()
 
@@ -79,7 +86,7 @@ class GoogleVideoIntelligenceResponse(SafetyCheckResponse):
 class GoogleVideoIntelligenceSafetyChecker(SafetyChecker):
     @tracer.start_as_current_span("GoogleVideoIntelligenceSafetyChecker/check_request")
     @override
-    async def check_request(self, request: SafetyCheckRequest) -> SafetyCheckResponse:
+    async def check_request(self, request: SafetyCheckRequest, *, throw: bool = False) -> SafetyCheckResponse:
         span = trace.get_current_span()
         span.set_attributes({
             "message_id": request.message_id or "None",
@@ -107,9 +114,13 @@ class GoogleVideoIntelligenceSafetyChecker(SafetyChecker):
             )
 
         if settings.VIDEO_SAFETY_CHECK_WORKER_STRATEGY == "inline":
-            return await _handle_video_safety_check_async(
+            response = await _handle_video_safety_check_async(
                 operation_name=operation_name, file_url=request.content, message_id=request.message_id
             )
+            if not response.is_safe() and throw:
+                raise SafetyCheckUnsafeError
+
+            return response
 
         return SkippedSafetyCheckResponse()
 

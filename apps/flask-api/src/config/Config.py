@@ -94,6 +94,7 @@ class GoogleCloudServices:
     enable_recaptcha: bool
     require_recaptcha: bool
     safety_storage_bucket: str
+    captcha_minimum_score_requirement: float
 
 
 class FeatureFlags(BaseModel):
@@ -251,6 +252,9 @@ class Config:
                     enable_recaptcha=data["google_cloud_services"].get("enable_recaptcha", True),
                     require_recaptcha=data["google_cloud_services"].get("require_recaptcha", True),
                     safety_storage_bucket=data["google_cloud_services"].get("safety_storage_bucket", ""),
+                    captcha_minimum_score_requirement=data["google_cloud_services"].get(
+                        "captcha_minimum_score_requirement", 0.3
+                    ),
                 ),
                 feature_flags=FeatureFlags.model_validate(data.get("feature_flags", {})),
                 beaker=Beaker(

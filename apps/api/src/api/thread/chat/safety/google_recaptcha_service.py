@@ -81,6 +81,7 @@ class GoogleRecaptchaService:
         recaptcha_action: str,
         *,
         is_anonymous_user: bool,
+        score_requirement: float = settings.RECAPTCHA_MIN_SCORE_REQUIREMENT,
     ):
         span = trace.get_current_span()
 
@@ -108,7 +109,7 @@ class GoogleRecaptchaService:
             raise BadRequestProblem(invalid_captcha_message)
 
         if (
-            captcha_assessment.risk_analysis.score == 0.0
+            captcha_assessment.risk_analysis.score <= score_requirement
             or captcha_assessment.token_properties.action != recaptcha_action
         ):
             logger.info("captcha.failed", assessment=captcha_assessment)

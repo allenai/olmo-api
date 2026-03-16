@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     RECAPTCHA_ENABLED: bool = True
     RECAPTCHA_GCP_PROJECT_ID: str = "ai2-reviz"
     RECAPTCHA_KEY: str = Field(init=False)
+    RECAPTCHA_MIN_SCORE_REQUIREMENT: float = 0.3
 
     SAFETY_QUEUE_URL: str = Field(init=False)
     SAFTEY_GCS_UPLOAD_BUCKET: str = Field(init=False)

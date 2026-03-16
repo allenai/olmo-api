@@ -403,7 +403,7 @@ async def test_unsafe_images_in_messages_are_rejected(client: AsyncClient, anon_
 
     response_dict = response.json()
 
-    assert response.status_code == HTTPStatus.BAD_REQUEST, "Expected Bad Request error for inappropriate image"
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY, "Expected Bad Request error for inappropriate image"
     assert response_dict["detail"] == "One or more images were flagged as inappropriate"
 
 
@@ -419,7 +419,9 @@ async def test_unsafe_messages_are_rejected(client: AsyncClient, anon_user: Auth
 
     response_dict = response.json()
 
-    assert response.status_code == HTTPStatus.BAD_REQUEST, "Expected Bad Request error for inappropriate message text"
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY, (
+        "Expected Bad Request error for inappropriate message text"
+    )
     assert response_dict["detail"] == "Text was flagged as inappropriate"
 
 

@@ -3,7 +3,7 @@ from mimetypes import guess_type
 from typing import Annotated, Final
 
 from fastapi import Depends, UploadFile
-from fastapi_problem.error import BadRequestProblem, ForbiddenProblem
+from fastapi_problem.error import ForbiddenProblem
 from opentelemetry import trace
 
 from api.auth.optional_auth_user import OptionalAuthUser
@@ -11,6 +11,7 @@ from api.auth.permission_service import PermissionServiceDependency
 from api.config import settings
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.request_client import RequestClientDependency
+from api.thread.chat.chat_exceptions import InappropriateFileError, InappropriateTextError, UnsupportedFileTypeError
 from api.thread.chat.chat_request import ChatRequest
 from core.auth import Permissions
 
@@ -111,7 +112,7 @@ class ValidateMessageSafetyService:
 
         if is_text_safe is False:
             inappropriate_text_msg = "Text was flagged as inappropriate"
-            raise BadRequestProblem(inappropriate_text_msg)
+            raise InappropriateTextError(inappropriate_text_msg)
 
         image_files, _video_files, _unsupported_files = split_files(request.files)
 
@@ -119,7 +120,7 @@ class ValidateMessageSafetyService:
 
         if are_images_safe is False:
             inappropriate_image_msg = "One or more images were flagged as inappropriate"
-            raise BadRequestProblem(inappropriate_image_msg)
+            raise InappropriateFileError(inappropriate_image_msg)
 
     async def validate_after(
         self,
@@ -138,17 +139,15 @@ class ValidateMessageSafetyService:
                 files=unsupported_names,
             )
             msg = "Unsupported file types in input"
-            raise BadRequestProblem(msg)
+            raise UnsupportedFileTypeError(msg)
 
         is_video_safe = await self.video_safety_checker_service.check_video_safety(
             files=video_files, message_id=message_id
         )
 
-        # TODO: Image safety
-
         if is_video_safe is False:
             inappropriate_video_message = "Video was flagged as inappropriate"
-            raise BadRequestProblem(inappropriate_video_message)
+            raise InappropriateFileError(inappropriate_video_message)
 
         return
 

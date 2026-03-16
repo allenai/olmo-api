@@ -19,3 +19,23 @@ class UnhandledRoleError(ServerProblem): ...
 
 
 class InvalidParentError(UnprocessableProblem): ...
+
+
+class InappropriateTextError(UnprocessableProblem):
+    title = "Inappropriate prompt text"
+    type_ = "inappropriate_prompt_text"
+
+
+class InappropriateFileError(UnprocessableProblem):
+    title = "Inappropriate file"
+    type_ = "inappropriate_file"
+
+
+class FailedCaptchaError(UnprocessableProblem):
+    title = "Failed captcha"
+    type_ = "recaptcha"
+
+
+class UnsupportedFileTypeError(UnprocessableProblem):
+    title = "Unsupported file type"
+    type_ = "unsupported_type"

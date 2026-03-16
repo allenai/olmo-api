@@ -2,12 +2,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Form, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
-from fastapi_problem.error import NotFoundProblem
 from opentelemetry import trace
 from opentelemetry.semconv._incubating.attributes.gen_ai_attributes import GEN_AI_REQUEST_MODEL  # noqa: PLC2701
 
 from api.auth.auth_service import AuthServiceDependency
-from api.config import settings
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.service_errors import ForbiddenError, NotFoundError
 from api.thread.chat.chat_request import CHAT_REQUEST_DISCRIMINATOR
@@ -75,9 +73,6 @@ async def stream_chat_message(
     auth_service: AuthServiceDependency,
     request: Annotated[ChatRequest, Form(discriminator=CHAT_REQUEST_DISCRIMINATOR)],
 ):
-    if settings.ENV.is_production:
-        raise NotFoundProblem
-
     token = auth_service.optional_auth()
 
     logger.bind(model=request.model, user=token.client)

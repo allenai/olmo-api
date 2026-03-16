@@ -110,7 +110,7 @@ class ValidateMessageSafetyService:
 
         is_text_safe = await self._check_text(text=request.content)
 
-        if is_text_safe is not True:
+        if is_text_safe is False:
             inappropriate_text_msg = "Text was flagged as inappropriate"
             raise InappropriateTextError(inappropriate_text_msg)
 

@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Callable, Sequence
 from dataclasses import dataclass
 from typing import Annotated, assert_never
 
@@ -24,6 +24,7 @@ from api.request_client import RequestClientDependency
 from api.thread.chat.chat_exceptions import InvalidParentError, ModelNotAvailableError, ModelNotFoundError
 from api.thread.chat.chat_file_upload_service import ChatFileUploadServiceDependency
 from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
+from api.thread.chat.playground_ui_adapter import stream_pending_tool_responses
 from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
 from api.thread.chat.playground_ui_adapter._util import RunInput
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
@@ -93,6 +94,30 @@ def build_message_list_from_parent(messages: Sequence[Message], parent_message_i
         message_list.insert(0, intermediate_parent_message)
 
     return message_list
+
+
+def has_pending_tool_calls(chain: list[Message]) -> bool:
+    # find the last assistant message in the list...
+    # find the current tool responses...
+    # if we haven't answered them all return true
+    last_assistant_message = find_last_matching(chain, lambda m: m.role == Role.Assistant)
+
+    if last_assistant_message is None:
+        return False
+
+    tool_responses = list(filter(lambda msg: msg.role == Role.ToolResponse, chain))
+    tool_responses_ids = [tool.tool_calls[0].tool_call_id if tool.tool_calls else None for tool in tool_responses]
+
+    return any(
+        tool_call.tool_call_id not in tool_responses_ids for tool_call in last_assistant_message.tool_calls or []
+    )
+
+
+def find_last_matching(arr: list[Message], condition: Callable[[Message], bool]) -> Message | None:
+    for item in reversed(arr):
+        if condition(item):
+            return item
+    return None
 
 
 def map_tool_def_to_pydantic(tool: CreateToolDefinition) -> ToolDefinition:
@@ -261,14 +286,13 @@ class ChatService:
         elif request.role is Role.ToolResponse:
             parent_message = messages[-1]
 
-            if not parent_message.tool_calls:
-                parent_has_no_tools_message = "Can not create a tool response. Parent has no tools"
-                raise UnprocessableProblem(parent_has_no_tools_message)
-
+            # Find the tool call by searching up the chain for the assistant message that contains the tool call
             request_tool_call = next(
                 (
                     tool_call
-                    for tool_call in parent_message.tool_calls
+                    for message in reversed(messages)
+                    if message.role == Role.Assistant and message.tool_calls
+                    for tool_call in message.tool_calls
                     if tool_call.tool_call_id == request.tool_call_id
                 ),
                 None,
@@ -424,9 +448,12 @@ class ChatService:
 
         adapter = PlaygroundUIAdapter(agent, run_input=run_input)
 
-        event_stream = adapter.run_stream()
+        # short circuts the event steam when there are pending tool calls
+        # prevents the model responding before all user tool calls have been responded to
+        if has_pending_tool_calls(initialize_thread_result.all_messages):
+            return adapter.encode_stream(stream_pending_tool_responses(run_input))
 
-        return adapter.encode_stream(event_stream)
+        return adapter.encode_stream(adapter.run_stream())
 
 
 ChatServiceDependency = Annotated[ChatService, Depends()]

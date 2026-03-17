@@ -59,9 +59,7 @@ class UserService:
         if request.media_collection_accepted_date is not None:
             user_to_update.media_collection_accepted_date = request.media_collection_accepted_date
         if request.media_collection_acceptance_revoked_date is not None:
-            user_to_update.media_collection_acceptance_revoked_date = (
-                request.media_collection_acceptance_revoked_date
-            )
+            user_to_update.media_collection_acceptance_revoked_date = request.media_collection_acceptance_revoked_date
 
         return user_to_update
 

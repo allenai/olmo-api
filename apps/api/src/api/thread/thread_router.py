@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterator
 from typing import Annotated
 
 from fastapi import APIRouter, Form, HTTPException, Query, status
@@ -10,6 +11,7 @@ from api.logging.fastapi_logger import FastAPIStructLogger
 from api.service_errors import ForbiddenError, NotFoundError
 from api.thread.chat.chat_request import CHAT_REQUEST_DISCRIMINATOR
 from api.thread.chat.chat_service import ChatRequest, ChatServiceDependency
+from api.thread.chat.format_output import format_event
 from api.thread.models.thread import Thread, ThreadList
 from api.thread.thread_delete_service import ThreadDeleteServiceDependency
 from api.thread.thread_read_service import ThreadReadServiceDependency
@@ -64,6 +66,11 @@ async def delete_thread(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
 
 
+async def jsonl_stream(stream: AsyncIterator[Chunk]) -> AsyncIterator[str]:
+    async for chunk in stream:
+        yield format_event(chunk)
+
+
 @thread_router.post(
     "/chat",
     response_model=Chunk,
@@ -85,6 +92,6 @@ async def stream_chat_message(
     stream = chat_service.stream_chat_message(adapter)
 
     return StreamingResponse(
-        stream,
+        jsonl_stream(stream),
         media_type="application/jsonl",
     )

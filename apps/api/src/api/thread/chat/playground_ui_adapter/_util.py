@@ -1,5 +1,5 @@
 import json
-from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
 from typing import TypeAlias, assert_never
 
@@ -43,7 +43,6 @@ class RunInput:
     model: ModelConfig
     user_tool_names: Sequence[str]
     tool_definitions: list[ToolDefinition] | None
-    handle_final_messages: Callable[[Sequence[Message]], Awaitable[Message]]
     is_new_thread: bool
 
 

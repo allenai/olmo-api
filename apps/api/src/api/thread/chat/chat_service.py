@@ -24,7 +24,6 @@ from api.request_client import RequestClientDependency
 from api.thread.chat.chat_exceptions import InvalidParentError, ModelNotAvailableError, ModelNotFoundError
 from api.thread.chat.chat_file_upload_service import ChatFileUploadServiceDependency
 from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
-from api.thread.chat.format_output import format_event
 from api.thread.chat.playground_ui_adapter import stream_pending_tool_responses
 from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
 from api.thread.chat.playground_ui_adapter._util import RunInput
@@ -449,7 +448,6 @@ class ChatService:
             inference_opts=validate_thread_result.inference_options,
             user_tool_names=[definition.name for definition in request.tool_definitions or []],
             tool_definitions=initialize_thread_result.tool_definitions,
-            handle_final_messages=self.message_repository.finalize_thread,
             is_new_thread=not request.parent,
         )
 
@@ -459,7 +457,7 @@ class ChatService:
 
     async def stream_chat_message(
         self, adapter: PlaygroundUIAdapter[None, DeferredToolRequests | str]
-    ) -> AsyncIterator[str]:
+    ) -> AsyncIterator[Chunk]:
         # short circuits the event steam when there are pending tool calls
         # prevents the model responding before all user tool calls have been responded to
         if has_pending_tool_calls(adapter.run_input.all_messages):
@@ -467,7 +465,6 @@ class ChatService:
 
         stream = adapter.encode_stream(adapter.run_stream())
 
-        new_messages: list[FlatMessage] = []
         message_map: dict[ID, FlatMessage] = {}
         errors: list[ErrorChunk] = []
         chunks = []
@@ -475,13 +472,11 @@ class ChatService:
         async for chunk in stream:
             chunk = cast(Chunk, chunk)
             chunks.append(chunk)
-            yield format_event(chunk)
+            yield chunk
 
             if isinstance(chunk, AddMessageChunk):
                 for message in chunk.messages:
                     message_map[message.id] = message
-
-                new_messages.extend(chunk.messages)
 
             if isinstance(chunk, ErrorChunk):
                 errors.append(chunk)
@@ -493,6 +488,7 @@ class ChatService:
                 message.error_code = error.error_code
                 message.error_description = error.error_description
                 message.error_severity = error.error_severity
+
         try:
             mapped_messages: list[Message] = [message.to_database_message() for message in message_map.values()]
             first_new_message = await self.message_repository.finalize_thread([
@@ -500,13 +496,12 @@ class ChatService:
                 *mapped_messages,
             ])
 
-            yield format_event(
-                FinalThreadChunk(
-                    message=first_new_message.id,
-                    id=first_new_message.id,
-                    messages=FlatMessage.from_message_with_children(first_new_message),
-                )
+            yield FinalThreadChunk(
+                message=first_new_message.id,
+                id=first_new_message.id,
+                messages=FlatMessage.from_message_with_children(first_new_message),
             )
+
         except Exception as e:
             logger.exception("inference.finalize-error")
             span = trace.get_current_span()
@@ -514,12 +509,10 @@ class ChatService:
             span.record_exception(e)
             span.add_event("inference.finalize-error")
 
-            yield format_event(
-                ErrorChunk(
-                    message=adapter.run_input.root_message_id,
-                    error_code=ErrorCode.OTHER_ERROR,
-                    error_description=str(e),
-                )
+            yield ErrorChunk(
+                message=adapter.run_input.root_message_id,
+                error_code=ErrorCode.OTHER_ERROR,
+                error_description=str(e),
             )
 
 

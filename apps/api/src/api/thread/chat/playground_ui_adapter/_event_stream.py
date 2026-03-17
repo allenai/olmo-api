@@ -241,27 +241,3 @@ class PlaygroundUIEventStream(
 
         else:
             yield ErrorChunk(error_description=str(error), message=self.message_id, error_code=ErrorCode.OTHER_ERROR)
-
-    # async def handle_run_result(self, event: AgentRunResultEvent) -> AsyncIterator[Event]:
-    #     try:
-    #         pydantic_reason = event.result.response.finish_reason
-    #         # if pydantic_reason:
-    #         #     self._finish_reason = _FINISH_REASON_MAP.get(pydantic_reason, "other")
-
-    #         new_messages = event.result.new_messages()
-
-    #         mapped_new_messages = map_response_pydantic_messages_to_messages(
-    #             new_messages, message_ids=self._message_ids, run_input=self.run_input
-    #         )
-
-    #         first_new_message = await self.run_input.handle_final_messages([
-    #             *self.run_input.new_messages,
-    #             *mapped_new_messages,
-    #         ])
-
-    #         messages = FlatMessage.from_message_with_children(first_new_message)
-
-    #         yield FinalThreadChunk(message=messages[0].id, id=messages[0].id, messages=messages)
-    #     except Exception as e:
-    #         async for error_event in self.on_error(e):
-    #             yield error_event

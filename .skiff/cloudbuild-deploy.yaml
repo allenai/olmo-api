@@ -54,7 +54,6 @@ steps:
     '.',
   ]
 
-
 - id: 'safety-worker.push'
   name: 'gcr.io/cloud-builders/docker'
   args: [
@@ -74,7 +73,6 @@ steps:
     '-f', 'apps/api-safety-worker/api-safety-worker.Dockerfile',
     '.',
   ]
-
 
 - id: 'api-safety-worker.push'
   name: 'gcr.io/cloud-builders/docker'
@@ -113,7 +111,7 @@ steps:
     'webapp.yaml'
   ]
   dir: '.skiff'
-  waitFor: [ 'api.push', 'fastapi.push', 'api-safety-worker', 'safety-worker.push', 'config' ]
+  waitFor: [ 'api.push', 'fastapi.push', 'api-safety-worker.push', 'safety-worker.push', 'config' ]
 
 substitutions:
   _ENV: prod

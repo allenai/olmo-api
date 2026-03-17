@@ -11,7 +11,7 @@
 local config = import '../skiff.json';
 local util = import './util.libsonnet';
 
-function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', safetyWorkerImage, fastApiImage)
+function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', safetyWorkerImage, apiSafetyWorkerImage, fastApiImage)
     // All Skiff applications get a *.allen.ai URL in addition to *.apps.allenai.org.
     // This domain is attached to a separate Ingress, as to support authentication
     // via either canonical domain.

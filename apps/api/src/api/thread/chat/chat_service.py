@@ -12,6 +12,7 @@ from pydantic_ai import (
     DeferredToolRequests,
     ExternalToolset,
     ToolDefinition,
+    capture_run_messages,
 )
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepositoryDependency
@@ -458,62 +459,63 @@ class ChatService:
     async def stream_chat_message(
         self, adapter: PlaygroundUIAdapter[None, DeferredToolRequests | str]
     ) -> AsyncIterator[Chunk]:
-        # short circuits the event steam when there are pending tool calls
-        # prevents the model responding before all user tool calls have been responded to
-        if has_pending_tool_calls(adapter.run_input.all_messages):
-            stream = adapter.encode_stream(stream_pending_tool_responses(adapter.run_input))
+        with capture_run_messages() as captured_messages:
+            # short circuits the event steam when there are pending tool calls
+            # prevents the model responding before all user tool calls have been responded to
+            if has_pending_tool_calls(adapter.run_input.all_messages):
+                stream = adapter.encode_stream(stream_pending_tool_responses(adapter.run_input))
 
-        stream = adapter.encode_stream(adapter.run_stream())
+            stream = adapter.encode_stream(adapter.run_stream())
 
-        message_map: dict[ID, FlatMessage] = {}
-        errors: list[ErrorChunk] = []
-        chunks = []
+            message_map: dict[ID, FlatMessage] = {}
+            errors: list[ErrorChunk] = []
+            chunks = []
 
-        async for chunk in stream:
-            chunk = cast(Chunk, chunk)
-            chunks.append(chunk)
-            yield chunk
+            async for chunk in stream:
+                chunk = cast(Chunk, chunk)
+                chunks.append(chunk)
+                yield chunk
 
-            if isinstance(chunk, AddMessageChunk):
-                for message in chunk.messages:
-                    message_map[message.id] = message
+                if isinstance(chunk, AddMessageChunk):
+                    for message in chunk.messages:
+                        message_map[message.id] = message
 
-            if isinstance(chunk, ErrorChunk):
-                errors.append(chunk)
+                if isinstance(chunk, ErrorChunk):
+                    errors.append(chunk)
 
-        for error in errors:
-            if error.message in message_map:
-                message = message_map[error.message]
+            for error in errors:
+                if error.message in message_map:
+                    message = message_map[error.message]
 
-                message.error_code = error.error_code
-                message.error_description = error.error_description
-                message.error_severity = error.error_severity
+                    message.error_code = error.error_code
+                    message.error_description = error.error_description
+                    message.error_severity = error.error_severity
 
-        try:
-            mapped_messages: list[Message] = [message.to_database_message() for message in message_map.values()]
-            first_new_message = await self.message_repository.finalize_thread([
-                *adapter.run_input.new_messages,
-                *mapped_messages,
-            ])
+            try:
+                mapped_messages: list[Message] = [message.to_database_message() for message in message_map.values()]
+                first_new_message = await self.message_repository.finalize_thread([
+                    *adapter.run_input.new_messages,
+                    *mapped_messages,
+                ])
 
-            yield FinalThreadChunk(
-                message=first_new_message.id,
-                id=first_new_message.id,
-                messages=FlatMessage.from_message_with_children(first_new_message),
-            )
+                yield FinalThreadChunk(
+                    message=first_new_message.id,
+                    id=first_new_message.id,
+                    messages=FlatMessage.from_message_with_children(first_new_message),
+                )
 
-        except Exception as e:
-            logger.exception("inference.finalize-error")
-            span = trace.get_current_span()
-            span.set_status(trace.StatusCode.ERROR)
-            span.record_exception(e)
-            span.add_event("inference.finalize-error")
+            except Exception as e:
+                logger.exception("inference.finalize-error")
+                span = trace.get_current_span()
+                span.set_status(trace.StatusCode.ERROR)
+                span.record_exception(e)
+                span.add_event("inference.finalize-error")
 
-            yield ErrorChunk(
-                message=adapter.run_input.root_message_id,
-                error_code=ErrorCode.OTHER_ERROR,
-                error_description=str(e),
-            )
+                yield ErrorChunk(
+                    message=adapter.run_input.root_message_id,
+                    error_code=ErrorCode.OTHER_ERROR,
+                    error_description=type(e).__name__,
+                )
 
 
 ChatServiceDependency = Annotated[ChatService, Depends()]

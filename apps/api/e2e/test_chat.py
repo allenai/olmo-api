@@ -131,6 +131,7 @@ async def test_calls_user_tools(client: AsyncClient, auth_user: AuthenticatedCli
     assert final_thread_chunk.messages[1].role == Role.Assistant
     assert final_thread_chunk.messages[0].tool_calls
     assert len(final_thread_chunk.messages[0].tool_calls) == 1
+    assert len(final_thread_chunk.messages[-1].content) > 0
 
 
 async def test_calls_mcp_tools(client: AsyncClient, auth_user: AuthenticatedClient, db_session: DatabaseSession):

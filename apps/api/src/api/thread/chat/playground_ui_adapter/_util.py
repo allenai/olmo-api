@@ -15,7 +15,7 @@ from pydantic_ai import (
 
 from api.thread.chat.chat_types import ChatStreamOutput
 from core.message.flat_message import FlatMessage
-from core.message.message_chunk import AddMessageChunk, FinalThreadChunk, StreamEndChunk, StreamStartChunk
+from core.message.message_chunk import AddMessageChunk, FinalThreadChunk, StreamEndChunk
 from core.message.role import Role
 from core.object_id import ID
 from core.tools.tool_source import ToolSource
@@ -187,7 +187,7 @@ def map_response_pydantic_messages_to_messages(
 
 async def stream_pending_tool_responses(run_input: RunInput) -> AsyncIterator[Event]:
     """Short circut the event stream and flush pending tool responses"""
-    yield StreamStartChunk(message=run_input.root_message_id)
+    # yield StreamStartChunk(message=run_input.root_message_id)
 
     new_flat = FlatMessage.from_message_seq(run_input.new_messages)
     yield AddMessageChunk(message=new_flat[0].id, id=new_flat[0].id, messages=new_flat)

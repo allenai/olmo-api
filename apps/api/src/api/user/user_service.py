@@ -44,6 +44,27 @@ class UserService:
         self.session = session
         self.hubspot_service = hubspot_service
 
+    @staticmethod
+    def _update_user(user_to_update: User, request: UpsertUserRequest) -> User:
+        if request.id is not None:
+            user_to_update.id = request.id
+        if request.terms_accepted_date is not None:
+            user_to_update.terms_accepted_date = request.terms_accepted_date
+        if request.acceptance_revoked_date is not None:
+            user_to_update.acceptance_revoked_date = request.acceptance_revoked_date
+        if request.data_collection_accepted_date is not None:
+            user_to_update.data_collection_accepted_date = request.data_collection_accepted_date
+        if request.data_collection_acceptance_revoked_date is not None:
+            user_to_update.data_collection_acceptance_revoked_date = request.data_collection_acceptance_revoked_date
+        if request.media_collection_accepted_date is not None:
+            user_to_update.media_collection_accepted_date = request.media_collection_accepted_date
+        if request.media_collection_acceptance_revoked_date is not None:
+            user_to_update.media_collection_acceptance_revoked_date = (
+                request.media_collection_acceptance_revoked_date
+            )
+
+        return user_to_update
+
     async def upsert_user(
         self,
         request: UpsertUserRequest,
@@ -54,22 +75,7 @@ class UserService:
         user_to_update = result.one_or_none()
 
         if user_to_update is not None:
-            if request.id is not None:
-                user_to_update.id = request.id
-            if request.terms_accepted_date is not None:
-                user_to_update.terms_accepted_date = request.terms_accepted_date
-            if request.acceptance_revoked_date is not None:
-                user_to_update.acceptance_revoked_date = request.acceptance_revoked_date
-            if request.data_collection_accepted_date is not None:
-                user_to_update.data_collection_accepted_date = request.data_collection_accepted_date
-            if request.data_collection_acceptance_revoked_date is not None:
-                user_to_update.data_collection_acceptance_revoked_date = request.data_collection_acceptance_revoked_date
-            if request.media_collection_accepted_date is not None:
-                user_to_update.media_collection_accepted_date = request.media_collection_accepted_date
-            if request.media_collection_acceptance_revoked_date is not None:
-                user_to_update.media_collection_acceptance_revoked_date = (
-                    request.media_collection_acceptance_revoked_date
-                )
+            self._update_user(user_to_update=user_to_update, request=request)
 
             await self.session.flush()
             await self.session.commit()
@@ -92,9 +98,27 @@ class UserService:
             await self.session.flush()
             await self.session.commit()
         except IntegrityError as e:
-            if isinstance(e.orig, UniqueViolation):
-                raise ConflictProblem(detail="User already exists") from e
-            raise
+            if not isinstance(e.orig, UniqueViolation):
+                raise
+
+            # try again
+            await self.session.rollback()
+            result = await self.session.scalars(stmt)
+            user_to_update = result.one()
+
+            self._update_user(user_to_update=user_to_update, request=request)
+
+            try:
+                await self.session.flush()
+                await self.session.commit()
+            # What... again?
+            except IntegrityError as e:
+                if isinstance(e.orig, UniqueViolation):
+                    raise ConflictProblem(detail="User already exists") from e
+                raise
+
+            return UpsertUserResponse.model_validate(user_to_update)
+
         await self.session.refresh(new_user)
 
         # Create HubSpot contact for new non-anonymous users

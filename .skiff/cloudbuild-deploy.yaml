@@ -63,6 +63,27 @@ steps:
   ]
   waitFor: [ 'safety-worker.build' ]
 
+- id: 'api-safety-worker.build'
+  name: 'gcr.io/cloud-builders/docker'
+  args: [
+    'build',
+    '-t', 'gcr.io/$PROJECT_ID/$REPO_NAME-api-safety-worker:latest',
+    '-t', 'gcr.io/$PROJECT_ID/$REPO_NAME-api-safety-worker:$COMMIT_SHA',
+    '--cache-from', 'gcr.io/$PROJECT_ID/$REPO_NAME-api-safety-worker:latest',
+    '--build-arg', 'BUILDKIT_INLINE_CACHE=1',
+    '-f', 'apps/api-safety-worker/api-safety-worker.Dockerfile',
+    '.',
+  ]
+
+
+- id: 'api-safety-worker.push'
+  name: 'gcr.io/cloud-builders/docker'
+  args: [
+    'push',
+    'gcr.io/$PROJECT_ID/$REPO_NAME-api-safety-worker:$COMMIT_SHA',
+  ]
+  waitFor: [ 'api-safety-worker.build' ]
+
 # Generate our Kubernetes configuration
 - id: 'config'
   name: 'gcr.io/ai2-reviz/jsonnet'
@@ -92,7 +113,7 @@ steps:
     'webapp.yaml'
   ]
   dir: '.skiff'
-  waitFor: [ 'api.push', 'fastapi.push', 'safety-worker.push', 'config' ]
+  waitFor: [ 'api.push', 'fastapi.push', 'api-safety-worker', 'safety-worker.push', 'config' ]
 
 substitutions:
   _ENV: prod
@@ -104,6 +125,8 @@ images: [
   'gcr.io/$PROJECT_ID/$REPO_NAME-fastapi:latest',
   'gcr.io/$PROJECT_ID/$REPO_NAME-safety-worker:$COMMIT_SHA',
   'gcr.io/$PROJECT_ID/$REPO_NAME-safety-worker:latest',
+  'gcr.io/$PROJECT_ID/$REPO_NAME-api-safety-worker:$COMMIT_SHA',
+  'gcr.io/$PROJECT_ID/$REPO_NAME-api-safety-worker:latest',
 ]
 
 artifacts:

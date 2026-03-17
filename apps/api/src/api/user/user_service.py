@@ -109,7 +109,7 @@ class UserService:
             try:
                 await self.session.flush()
                 await self.session.commit()
-            # What... again?
+            # Fail if it happens again
             except IntegrityError as e:
                 if isinstance(e.orig, UniqueViolation):
                     raise ConflictProblem(detail="User already exists") from e

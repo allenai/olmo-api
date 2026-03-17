@@ -46,11 +46,11 @@ async def test_user_upsert_retries_on_conflict():
         request, Token(client=ANONYMOUS_CLIENT, is_anonymous_user=True, token="client-token")
     )
 
-    assert result is not None  # this shouldnt happen any more
-
     assert mock_session.rollback.called
     # check that updated accept_date is from second request
+    assert result.terms_accepted_date == request.terms_accepted_date
     assert existing_user.terms_accepted_date == request.terms_accepted_date
+
 
 async def test_user_upsert_fails_on_second_conflict():
     mock_session = AsyncMock()
@@ -70,7 +70,6 @@ async def test_user_upsert_fails_on_second_conflict():
         media_collection_accepted_date=None,
     )
     second_scalar_result.one = Mock(return_value=existing_user)
-
 
     mock_session.scalars = AsyncMock(side_effect=[first_scalar_result, second_scalar_result])
 

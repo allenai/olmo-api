@@ -67,7 +67,7 @@ class UserService:
         self,
         request: UpsertUserRequest,
         token: Token,
-    ) -> UpsertUserResponse | None:
+    ) -> UpsertUserResponse:
         stmt = select(User).where(User.client == token.client)
         result = await self.session.scalars(stmt)
         user_to_update = result.one_or_none()

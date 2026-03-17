@@ -17,7 +17,9 @@ def parse_harness_overrides(harness_overrides: str) -> dict[str, str]:
     """Parse and validate harness overrides string.
 
     Args:
-        harness_overrides: Comma-separated key:value pairs (e.g., "metrics.enabled:true,limit:10").
+        harness_overrides: Semicolon-separated key:value pairs (e.g., "metrics.enabled:true;limit:10").
+            Semicolons are used as delimiters to avoid conflicts with gcloud --update-env-vars
+            which uses commas to separate environment variables.
 
     Returns:
         Dictionary of parsed overrides.
@@ -27,7 +29,7 @@ def parse_harness_overrides(harness_overrides: str) -> dict[str, str]:
     """
     parsed: dict[str, str] = {}
 
-    for override_item in harness_overrides.split(","):
+    for override_item in harness_overrides.split(";"):
         item = override_item.strip()
         if not item:
             continue
@@ -35,7 +37,7 @@ def parse_harness_overrides(harness_overrides: str) -> dict[str, str]:
         if ":" not in item:
             msg = (
                 f"Invalid harness override '{item}': missing ':' delimiter. "
-                f"Expected format 'key:value' (e.g., 'metrics.enabled:true,limit:10')"
+                f"Expected format 'key:value' (e.g., 'metrics.enabled:true;limit:10')"
             )
             raise ValueError(msg)
 
@@ -128,7 +130,7 @@ class ModelEval:
             model: Provider model path (e.g., "litellm_proxy/openai/Olmo-7B").
             tasks: Comma-separated task names (e.g., "humaneval:bpb,mbpp:bpb").
             provider_kind: Provider type (default: "litellm").
-            harness_overrides: Comma-separated key:value pairs (e.g., "metrics.enabled:true,limit:10").
+            harness_overrides: Semicolon-separated key:value pairs (e.g., "metrics.enabled:true;limit:10").
 
         Returns:
             A ModelEval configured for ad-hoc execution.

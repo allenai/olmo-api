@@ -262,7 +262,7 @@ gcloud run jobs execute eval --region us-west1 \
 | `AD_HOC_MODEL` | Provider model path (e.g., `litellm_proxy/openai/Olmo-7B`) | Yes |
 | `AD_HOC_TASKS` | Comma-separated task names (e.g., `humaneval:bpb,mbpp:bpb`) | Yes |
 | `AD_HOC_PROVIDER_KIND` | Provider type (default: `litellm`) | No |
-| `AD_HOC_HARNESS_OVERRIDES` | Comma-separated key:value pairs (e.g., `metrics.enabled:true,limit:10`) | No |
+| `AD_HOC_HARNESS_OVERRIDES` | Semicolon-separated key:value pairs (e.g., `metrics.enabled:true;limit:10`) | No |
 
 ## CLI Reference
 

@@ -162,7 +162,7 @@ You can also run Docker directly:
 ```bash
 # Build
 docker build --platform linux/amd64 \
-  --build-arg GITHUB_TOKEN=$GITHUB_TOKEN \
+  --secret id=GITHUB_TOKEN,env=GITHUB_TOKEN \
   -t evaluations -f Dockerfile .
 
 # Run tier (local mode)

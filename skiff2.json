@@ -8,7 +8,7 @@
             "deploy": false,
             "extraBuildArgs": [
                 "--platform", "linux/amd64",
-                "--build-arg", "GITHUB_TOKEN=${GITHUB_TOKEN}"
+                "--secret", "id=GITHUB_TOKEN,env=GITHUB_TOKEN"
             ]
         }
     ]

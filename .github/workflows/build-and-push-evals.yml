@@ -38,29 +38,26 @@ jobs:
       - name: Configure Docker
         run: gcloud auth configure-docker ${REGISTRY} --quiet
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       # Custom build step for evaluations (handles GITHUB_TOKEN for private repo)
       # Once olmo-eval-internal is public, this can be replaced with Skiff2 Build
       - name: Build and Push Evaluations Image
         id: build
-        env:
-          PROJECT_ID: ${{ vars.SKIFF2_PROJECT_ID }}
-          GITHUB_TOKEN: ${{ secrets.OLMO_EVAL_INTERNAL_TOKEN }}
-        run: |
-          IMAGE_TAG="${REGISTRY}/${PROJECT_ID}/${REPO}/${SERVICE_NAME}"
-
-          docker buildx build \
-            --platform linux/amd64 \
-            --push \
-            --cache-from "type=registry,ref=${IMAGE_TAG}:latest" \
-            --cache-to "type=inline" \
-            --build-arg BUILDKIT_INLINE_CACHE=1 \
-            --build-arg "GITHUB_TOKEN=${GITHUB_TOKEN}" \
-            --tag "${IMAGE_TAG}:latest" \
-            --tag "${IMAGE_TAG}:${{ github.sha }}" \
-            --file apps/evaluations/Dockerfile \
-            apps/evaluations
-
-          echo "image=${IMAGE_TAG}:${{ github.sha }}" >> $GITHUB_OUTPUT
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/evaluations
+          file: apps/evaluations/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ vars.SKIFF2_PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ vars.SKIFF2_PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          secrets: |
+            GITHUB_TOKEN=${{ secrets.OLMO_EVAL_INTERNAL_TOKEN }}
 
       # Setup uv for Python package management
       - name: Setup uv

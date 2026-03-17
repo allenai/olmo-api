@@ -4,10 +4,10 @@
 # and will run each individual model eval as it's own Google Cloud Job
 #
 # Build (requires GitHub token for private repo access):
-#   docker build --platform linux/amd64 --build-arg GITHUB_TOKEN=$GITHUB_TOKEN \
+#   docker build --platform linux/amd64 --secret id=GITHUB_TOKEN \
 #     -t evaluations -f apps/evaluations/Dockerfile apps/evaluations
 #
-# Once olmo-eval-internal is public, remove --build-arg GITHUB_TOKEN
+# Once olmo-eval-internal is public, remove --secret GITHUB_TOKEN
 #
 # Run tier (local mode, no storage):
 #   docker run -e EVAL_TIER=standard -e CLOUD_RUN_TASK_INDEX=0 -e LOCAL=true \
@@ -31,9 +31,9 @@ RUN apt-get update -qq && \
     apt-get install -y --no-install-recommends git && \
     rm -rf /var/lib/apt/lists/*
 
-# GitHub token for private repo access (pass with --build-arg GITHUB_TOKEN=xxx)
-ARG GITHUB_TOKEN
-RUN git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+# GitHub token for private repo access (mounted as secret)
+RUN --mount=type=secret,id=GITHUB_TOKEN \
+    git config --global url."https://$(cat /run/secrets/GITHUB_TOKEN)@github.com/".insteadOf "https://github.com/"
 
 WORKDIR /app
 

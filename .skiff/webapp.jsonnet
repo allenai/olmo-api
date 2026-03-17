@@ -581,7 +581,6 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
                                 } + gpuLimits # only the first container should have gpuLimits applied
                             },
                             volumeMounts: [
-                                volumeMounts: [
                                 {
                                     name: 'cfg',
                                     mountPath: '/secret/cfg',

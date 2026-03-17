@@ -12,6 +12,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8.0",
+    "pydantic-settings>=2.0",
 ]
 
 [project.scripts]

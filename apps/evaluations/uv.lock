@@ -346,6 +346,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "pydantic-settings" },
     { name = "pytest" },
 ]
 
@@ -356,7 +357,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=8.0" }]
+dev = [
+    { name = "pydantic-settings", specifier = ">=2.0" },
+    { name = "pytest", specifier = ">=8.0" },
+]
 
 [[package]]
 name = "fastuuid"

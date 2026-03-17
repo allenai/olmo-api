@@ -33,7 +33,7 @@ jobs:
 
       - name: Run Tests
         working-directory: apps/evaluations
-        run: uv run pytest -v
+        run: uv run --only-group dev pytest -v
 
   build-and-deploy:
     needs: test

@@ -158,8 +158,8 @@ python run_local.py --build --tier standard
 ### Running Tests
 
 ```bash
-# Run all tests
-uv run pytest
+# Run all tests (no private repo access needed)
+uv run --only-group dev pytest
 ```
 
 ### Docker Commands

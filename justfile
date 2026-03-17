@@ -5,7 +5,7 @@ install:
   uv sync --all-packages --all-groups
 
 test:
-  ENV=test FLASK_CONFIG_PATH="./test.config.json" uv run pytest --ignore ./apps/flask-api/e2e --ignore ./apps/api/e2e
+  ENV=test FLASK_CONFIG_PATH="./test.config.json" uv run pytest --ignore ./apps/flask-api/e2e --ignore ./apps/api/e2e  --ignore ./apps/evaluations
 
 test-e2e: test-e2e-flask test-e2e-api
   

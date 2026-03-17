@@ -2,10 +2,78 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from enum import Enum
 
+from evaluations.logging import logger
 from evaluations.settings import settings
+
+# Pattern for valid harness override keys (dotted config paths like "metrics.enabled", "limit")
+_VALID_KEY_PATTERN = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$")
+
+
+def parse_harness_overrides(harness_overrides: str) -> dict[str, str]:
+    """Parse and validate harness overrides string.
+
+    Args:
+        harness_overrides: Comma-separated key:value pairs (e.g., "metrics.enabled:true,limit:10").
+
+    Returns:
+        Dictionary of parsed overrides.
+
+    Raises:
+        ValueError: If format is invalid (missing colon, empty key/value).
+    """
+    parsed: dict[str, str] = {}
+
+    for item in harness_overrides.split(","):
+        item = item.strip()
+        if not item:
+            continue
+
+        if ":" not in item:
+            msg = (
+                f"Invalid harness override '{item}': missing ':' delimiter. "
+                f"Expected format 'key:value' (e.g., 'metrics.enabled:true,limit:10')"
+            )
+            raise ValueError(
+                msg
+            )
+
+        key, value = item.split(":", 1)
+        key, value = key.strip(), value.strip()
+
+        if not key:
+            msg = (
+                f"Invalid harness override '{item}': empty key. "
+                f"Expected format 'key:value'"
+            )
+            raise ValueError(
+                msg
+            )
+
+        if not value:
+            msg = (
+                f"Invalid harness override '{item}': empty value for key '{key}'. "
+                f"Expected format 'key:value'"
+            )
+            raise ValueError(
+                msg
+            )
+
+        # Warn if key doesn't look like a valid config path
+        if not _VALID_KEY_PATTERN.match(key):
+            logger.warning(
+                "Harness override key '%s' doesn't match expected pattern "
+                "(alphanumeric with dots, e.g., 'metrics.enabled'). "
+                "This may cause errors in olmo-eval.",
+                key,
+            )
+
+        parsed[key] = value
+
+    return parsed
 
 
 class TierName(Enum):
@@ -72,7 +140,7 @@ class ModelEval:
             model: Provider model path (e.g., "litellm_proxy/openai/Olmo-7B").
             tasks: Comma-separated task names (e.g., "humaneval:bpb,mbpp:bpb").
             provider_kind: Provider type (default: "litellm").
-            harness_overrides: Comma-separated key=value pairs (e.g., "metrics.enabled=true,limit=10").
+            harness_overrides: Comma-separated key:value pairs (e.g., "metrics.enabled:true,limit:10").
 
         Returns:
             A ModelEval configured for ad-hoc execution.
@@ -87,10 +155,7 @@ class ModelEval:
 
         parsed_harness_overrides: dict[str, str] = {}
         if harness_overrides:
-            for item in harness_overrides.split(","):
-                if "=" in item:
-                    key, value = item.split("=", 1)
-                    parsed_harness_overrides[key.strip()] = value.strip()
+            parsed_harness_overrides = parse_harness_overrides(harness_overrides)
 
         # Use model path as display name (last part)
         display_name = model.split("/")[-1] if "/" in model else model

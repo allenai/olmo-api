@@ -251,7 +251,7 @@ gcloud run jobs execute eval --region us-west1 \
 # With harness overrides
 gcloud run jobs execute eval --region us-west1 \
   --tasks 1 \
-  --update-env-vars "EVAL_MODE=ad-hoc,AD_HOC_MODEL=litellm_proxy/openai/Olmo-7B,AD_HOC_TASKS=humaneval:bpb,AD_HOC_HARNESS_OVERRIDES=metrics.enabled=true"
+  --update-env-vars "EVAL_MODE=ad-hoc,AD_HOC_MODEL=litellm_proxy/openai/Olmo-7B,AD_HOC_TASKS=humaneval:bpb,AD_HOC_HARNESS_OVERRIDES=metrics.enabled:true"
 ```
 
 ### Ad-Hoc Environment Variables
@@ -262,7 +262,7 @@ gcloud run jobs execute eval --region us-west1 \
 | `AD_HOC_MODEL` | Provider model path (e.g., `litellm_proxy/openai/Olmo-7B`) | Yes |
 | `AD_HOC_TASKS` | Comma-separated task names (e.g., `humaneval:bpb,mbpp:bpb`) | Yes |
 | `AD_HOC_PROVIDER_KIND` | Provider type (default: `litellm`) | No |
-| `AD_HOC_HARNESS_OVERRIDES` | Comma-separated key=value pairs | No |
+| `AD_HOC_HARNESS_OVERRIDES` | Comma-separated key:value pairs (e.g., `metrics.enabled:true,limit:10`) | No |
 
 ## CLI Reference
 

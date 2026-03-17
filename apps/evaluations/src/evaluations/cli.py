@@ -23,7 +23,7 @@ def run_ad_hoc(
         model: Provider model path (e.g., "litellm_proxy/openai/Olmo-7B").
         tasks: Comma-separated task names.
         provider_kind: Provider type (default: "litellm").
-        harness_overrides: Comma-separated key=value pairs.
+        harness_overrides: Comma-separated key:value pairs.
         local: Skip storage flags if True.
 
     Returns:
@@ -181,7 +181,7 @@ def main() -> None:
     )
     adhoc_parser.add_argument(
         "--harness-overrides",
-        help="Comma-separated key=value pairs (e.g., metrics.enabled=true)",
+        help="Comma-separated key:value pairs (e.g., metrics.enabled:true,limit:10)",
     )
     adhoc_parser.add_argument(
         "--local",

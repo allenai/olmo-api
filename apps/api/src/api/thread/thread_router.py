@@ -11,7 +11,6 @@ from api.logging.fastapi_logger import FastAPIStructLogger
 from api.service_errors import ForbiddenError, NotFoundError
 from api.thread.chat.chat_request import CHAT_REQUEST_DISCRIMINATOR
 from api.thread.chat.chat_service import ChatRequest, ChatServiceDependency
-from api.thread.chat.format_output import format_event
 from api.thread.models.thread import Thread, ThreadList
 from api.thread.thread_delete_service import ThreadDeleteServiceDependency
 from api.thread.thread_read_service import ThreadReadServiceDependency
@@ -68,7 +67,7 @@ async def delete_thread(
 
 async def jsonl_stream(stream: AsyncIterator[Chunk]) -> AsyncIterator[str]:
     async for chunk in stream:
-        yield format_event(chunk)
+        yield chunk.model_dump_json() + "\n"
 
 
 @thread_router.post(

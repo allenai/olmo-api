@@ -279,11 +279,6 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
                                     mountPath: '/secret',
                                     readOnly: true
                                 },
-                                {
-                                    name: 'env',
-                                    mountPath: '/secret/env',
-                                    readOnly: true
-                                }
                             ]
                         }
                     ]
@@ -595,6 +590,11 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
                                 {
                                     name: 'modal',
                                     mountPath: '/secret',
+                                    readOnly: true
+                                },
+                                {
+                                    name: 'env',
+                                    mountPath: '/secret/env',
                                     readOnly: true
                                 }
                             ]

@@ -1,6 +1,6 @@
 from collections.abc import AsyncIterator, Callable, Sequence
 from dataclasses import dataclass
-from typing import Annotated, assert_never
+from typing import Annotated, assert_never, cast
 
 from fastapi import Depends
 from fastapi_problem.error import ForbiddenProblem, UnprocessableProblem
@@ -24,6 +24,7 @@ from api.request_client import RequestClientDependency
 from api.thread.chat.chat_exceptions import InvalidParentError, ModelNotAvailableError, ModelNotFoundError
 from api.thread.chat.chat_file_upload_service import ChatFileUploadServiceDependency
 from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
+from api.thread.chat.format_output import format_event
 from api.thread.chat.playground_ui_adapter import stream_pending_tool_responses
 from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
 from api.thread.chat.playground_ui_adapter._util import RunInput
@@ -32,6 +33,8 @@ from api.thread.chat.pydantic_inference.pydantic_model_settings import pydantic_
 from api.thread.chat.safety.validate_message_safety_service import ValidateMessageSafetyServiceDependency
 from api.tools.mcp_service import McpServiceDependency
 from api.tools.tools_service import ToolsServiceDependency
+from core.message.flat_message import FlatMessage
+from core.message.message_chunk import AddMessageChunk, Chunk, ErrorChunk, FinalThreadChunk
 from core.message.role import Role
 from core.object_id import ID
 from core.tools.tool_source import ToolSource
@@ -96,7 +99,7 @@ def build_message_list_from_parent(messages: Sequence[Message], parent_message_i
     return message_list
 
 
-def has_pending_tool_calls(chain: list[Message]) -> bool:
+def has_pending_tool_calls(chain: Sequence[Message]) -> bool:
     # find the last assistant message in the list...
     # find the current tool responses...
     # if we haven't answered them all return true
@@ -113,7 +116,7 @@ def has_pending_tool_calls(chain: list[Message]) -> bool:
     )
 
 
-def find_last_matching(arr: list[Message], condition: Callable[[Message], bool]) -> Message | None:
+def find_last_matching(arr: Sequence[Message], condition: Callable[[Message], bool]) -> Message | None:
     for item in reversed(arr):
         if condition(item):
             return item
@@ -391,7 +394,9 @@ class ChatService:
 
         return [user_tool_toolset, filtered_mcp_toolset]
 
-    async def stream_chat_message(self, request: ChatRequest) -> AsyncIterator[str]:
+    async def initialize_stream_adapter(
+        self, request: ChatRequest
+    ) -> PlaygroundUIAdapter[None, DeferredToolRequests | str]:
         model = await self._get_model(request.model)
 
         validate_thread_result = await self._validate_thread(request, model)
@@ -430,6 +435,7 @@ class ChatService:
             output_type=[str, DeferredToolRequests],
             end_strategy="exhaustive",
             model_settings=model_settings,
+            retries=0,
         )
 
         run_input = RunInput(
@@ -448,12 +454,57 @@ class ChatService:
 
         adapter = PlaygroundUIAdapter(agent, run_input=run_input)
 
-        # short circuts the event steam when there are pending tool calls
-        # prevents the model responding before all user tool calls have been responded to
-        if has_pending_tool_calls(initialize_thread_result.all_messages):
-            return adapter.encode_stream(stream_pending_tool_responses(run_input))
+        return adapter
 
-        return adapter.encode_stream(adapter.run_stream())
+    async def stream_chat_message(
+        self, adapter: PlaygroundUIAdapter[None, DeferredToolRequests | str]
+    ) -> AsyncIterator[str]:
+        # short circuits the event steam when there are pending tool calls
+        # prevents the model responding before all user tool calls have been responded to
+        if has_pending_tool_calls(adapter.run_input.all_messages):
+            stream = adapter.encode_stream(stream_pending_tool_responses(adapter.run_input))
+
+        stream = adapter.encode_stream(adapter.run_stream())
+
+        new_messages: list[FlatMessage] = []
+        message_map: dict[ID, FlatMessage] = {}
+        errors: list[ErrorChunk] = []
+        chunks = []
+
+        async for chunk in stream:
+            chunk = cast(Chunk, chunk)
+            chunks.append(chunk)
+            yield format_event(chunk)
+
+            if isinstance(chunk, AddMessageChunk):
+                for message in chunk.messages:
+                    message_map[message.id] = message
+
+                new_messages.extend(chunk.messages)
+
+            if isinstance(chunk, ErrorChunk):
+                errors.append(chunk)
+
+        for error in errors:
+            if error.message in message_map:
+                message = message_map[error.message]
+
+                message.error_code = error.error_code
+                message.error_description = error.error_description
+                message.error_severity = error.error_severity
+
+        mapped_messages: list[Message] = [message.to_database_message() for message in message_map.values()]
+        first_new_message = await self.message_repository.finalize_thread([
+            *adapter.run_input.new_messages,
+            *mapped_messages,
+        ])
+        yield format_event(
+            FinalThreadChunk(
+                message=first_new_message.id,
+                id=first_new_message.id,
+                messages=FlatMessage.from_message_with_children(first_new_message),
+            )
+        )
 
 
 ChatServiceDependency = Annotated[ChatService, Depends()]

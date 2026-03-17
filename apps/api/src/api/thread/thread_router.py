@@ -78,9 +78,11 @@ async def stream_chat_message(
     logger.bind(model=request.model, user=token.client)
     trace.get_current_span().set_attributes({GEN_AI_REQUEST_MODEL: request.model, "user": token.client})
 
+    adapter = await chat_service.initialize_stream_adapter(request)
+
     # This needs to be assigned to a variable outside of StreamingResponse
     # Once StreamingResponse is returned you can't raise errors normally
-    stream = await chat_service.stream_chat_message(request=request)
+    stream = chat_service.stream_chat_message(adapter)
 
     return StreamingResponse(
         stream,

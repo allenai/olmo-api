@@ -23,6 +23,8 @@ from db.models.inference_opts import InferenceOpts
 from db.models.input_parts import InputPart
 from db.models.message import Message
 from db.models.model_config import ModelType
+from db.models.tool_call import ToolCall as DatabaseToolCall
+from db.models.tool_definitions import ToolDefinition as DatabaseToolDefinition
 
 
 class InferenceOptionsResponse(InferenceOpts, APIInterface): ...
@@ -114,6 +116,70 @@ class FlatMessage(APIInterface):
 
         message_list = [FlatMessage.model_validate(message) for message in messages]
         return message_list
+
+    def to_database_message(self) -> Message:
+        tool_definitions = (
+            [
+                DatabaseToolDefinition(
+                    name=tool_definition.name,
+                    description=tool_definition.description,
+                    parameters=tool_definition.parameters,
+                    tool_source=tool_definition.tool_source,
+                )
+                for tool_definition in self.tool_definitions
+            ]
+            if self.tool_definitions is not None
+            else None
+        )
+
+        tool_calls = (
+            [
+                DatabaseToolCall(
+                    tool_call_id=tool_call.tool_call_id,
+                    tool_name=tool_call.tool_name,
+                    tool_source=tool_call.tool_source,
+                    message_id=self.id,
+                )
+                for tool_call in self.tool_calls
+            ]
+            if self.tool_calls is not None
+            else None
+        )
+
+        mapped_message = Message(
+            id=self.id,
+            content=self.content,
+            input_parts=self.input_parts,
+            creator=self.creator,
+            role=self.role,
+            opts=self.opts,
+            root=self.root,
+            created=self.created,
+            final=self.final,
+            private=self.private,
+            model_id=self.model_id,
+            model_host=self.model_host,
+            agent_id=self.agent_id,
+            deleted=self.deleted,
+            parent=self.parent,
+            template=self.template,
+            completion=self.completion,
+            original=self.original,
+            model_type=self.model_type,
+            finish_reason=self.finish_reason,
+            harmful=self.harmful,
+            expiration_time=self.expiration_time,
+            file_urls=self.file_urls,
+            thinking=self.thinking,
+            tool_definitions=tool_definitions,
+            tool_calls=tool_calls,
+            error_code=self.error_code,
+            error_description=self.error_description,
+            error_severity=self.error_severity,
+            extra_parameters=self.extra_parameters,
+        )
+
+        return mapped_message
 
 
 def _map_messages(message: Message) -> list[FlatMessage]:

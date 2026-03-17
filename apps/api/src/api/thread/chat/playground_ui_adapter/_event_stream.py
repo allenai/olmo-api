@@ -1,8 +1,9 @@
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
+from typing import override
 
 from opentelemetry import trace
-from pydantic_ai import AgentRunResultEvent, UnexpectedModelBehavior
+from pydantic_ai import UnexpectedModelBehavior
 from pydantic_ai.messages import (
     BuiltinToolCallPart,
     FunctionToolResultEvent,
@@ -20,12 +21,10 @@ from pydantic_ai.ui import UIEventStream
 
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.thread.chat.chat_types import ChatStreamOutput
-from api.thread.chat.format_output import format_event
 from api.thread.chat.playground_ui_adapter._util import (
     Event,
     RunInput,
     create_message_from_run_input,
-    map_response_pydantic_messages_to_messages,
     tool_source_from_name,
 )
 from core.message.flat_message import FlatMessage
@@ -33,7 +32,6 @@ from core.message.message_chunk import (
     AddMessageChunk,
     ErrorChunk,
     ErrorCode,
-    FinalThreadChunk,
     ModelResponseChunk,
     StartThreadChunk,
     StreamEndChunk,
@@ -63,9 +61,10 @@ class PlaygroundUIEventStream(
         OutputDataT,
     ]
 ):
+    message_id: ID = field(default_factory=create_message_id)
+
     _message_ids: list[ID] = field(default_factory=list)
     parent_message_id: ID = field(default_factory=create_message_id)
-    message_id: ID = field(default_factory=create_message_id)
     message_map: dict[ID, Message] = field(default_factory=dict)
 
     def _has_message_been_sent(self, message_id: ID) -> bool:
@@ -80,6 +79,7 @@ class PlaygroundUIEventStream(
         self.message_map[id] = message
         return AddMessageChunk(message=id, id=id, messages=FlatMessage.from_message_with_children(message))
 
+    @override
     def new_message_id(self) -> str:
         self.parent_message_id = self.message_id
         self.message_id = create_message_id()
@@ -108,8 +108,8 @@ class PlaygroundUIEventStream(
     def content_type(self) -> str:
         return JSONL_CONTENT_TYPE
 
-    def encode_event(self, event: ChatStreamOutput) -> str:  # noqa: PLR6301
-        return format_event(event)
+    def encode_event(self, event: ChatStreamOutput) -> ChatStreamOutput:  # pyright: ignore[reportIncompatibleMethodOverride] # noqa: PLR6301
+        return event
 
     async def before_stream(self) -> AsyncIterator[ChatStreamOutput]:
         yield StreamStartChunk(message=self.run_input.root_message_id)
@@ -228,32 +228,32 @@ class PlaygroundUIEventStream(
 
         if isinstance(error, UnexpectedModelBehavior):
             yield ErrorChunk(
-                error_description=str(error), message=self.message_id, error_code=ErrorCode.TOOL_CALL_ERROR
+                error_description=error.message, message=self.message_id, error_code=ErrorCode.TOOL_CALL_ERROR
             )
 
         else:
             yield ErrorChunk(error_description=str(error), message=self.message_id, error_code=ErrorCode.OTHER_ERROR)
 
-    async def handle_run_result(self, event: AgentRunResultEvent) -> AsyncIterator[Event]:
-        try:
-            pydantic_reason = event.result.response.finish_reason  # noqa: F841
-            # if pydantic_reason:
-            #     self._finish_reason = _FINISH_REASON_MAP.get(pydantic_reason, "other")
+    # async def handle_run_result(self, event: AgentRunResultEvent) -> AsyncIterator[Event]:
+    #     try:
+    #         pydantic_reason = event.result.response.finish_reason
+    #         # if pydantic_reason:
+    #         #     self._finish_reason = _FINISH_REASON_MAP.get(pydantic_reason, "other")
 
-            new_messages = event.result.new_messages()
+    #         new_messages = event.result.new_messages()
 
-            mapped_new_messages = map_response_pydantic_messages_to_messages(
-                new_messages, message_ids=self._message_ids, run_input=self.run_input
-            )
+    #         mapped_new_messages = map_response_pydantic_messages_to_messages(
+    #             new_messages, message_ids=self._message_ids, run_input=self.run_input
+    #         )
 
-            first_new_message = await self.run_input.handle_final_messages([
-                *self.run_input.new_messages,
-                *mapped_new_messages,
-            ])
+    #         first_new_message = await self.run_input.handle_final_messages([
+    #             *self.run_input.new_messages,
+    #             *mapped_new_messages,
+    #         ])
 
-            messages = FlatMessage.from_message_with_children(first_new_message)
+    #         messages = FlatMessage.from_message_with_children(first_new_message)
 
-            yield FinalThreadChunk(message=messages[0].id, id=messages[0].id, messages=messages)
-        except Exception as e:  # noqa: BLE001
-            async for error_event in self.on_error(e):
-                yield error_event
+    #         yield FinalThreadChunk(message=messages[0].id, id=messages[0].id, messages=messages)
+    #     except Exception as e:
+    #         async for error_event in self.on_error(e):
+    #             yield error_event

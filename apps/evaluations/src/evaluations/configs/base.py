@@ -27,8 +27,8 @@ def parse_harness_overrides(harness_overrides: str) -> dict[str, str]:
     """
     parsed: dict[str, str] = {}
 
-    for item in harness_overrides.split(","):
-        item = item.strip()
+    for override_item in harness_overrides.split(","):
+        item = override_item.strip()
         if not item:
             continue
 
@@ -37,30 +37,18 @@ def parse_harness_overrides(harness_overrides: str) -> dict[str, str]:
                 f"Invalid harness override '{item}': missing ':' delimiter. "
                 f"Expected format 'key:value' (e.g., 'metrics.enabled:true,limit:10')"
             )
-            raise ValueError(
-                msg
-            )
+            raise ValueError(msg)
 
         key, value = item.split(":", 1)
         key, value = key.strip(), value.strip()
 
         if not key:
-            msg = (
-                f"Invalid harness override '{item}': empty key. "
-                f"Expected format 'key:value'"
-            )
-            raise ValueError(
-                msg
-            )
+            msg = f"Invalid harness override '{item}': empty key. Expected format 'key:value'"
+            raise ValueError(msg)
 
         if not value:
-            msg = (
-                f"Invalid harness override '{item}': empty value for key '{key}'. "
-                f"Expected format 'key:value'"
-            )
-            raise ValueError(
-                msg
-            )
+            msg = f"Invalid harness override '{item}': empty value for key '{key}'. Expected format 'key:value'"
+            raise ValueError(msg)
 
         # Warn if key doesn't look like a valid config path
         if not _VALID_KEY_PATTERN.match(key):

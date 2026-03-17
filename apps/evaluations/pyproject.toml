@@ -9,6 +9,11 @@ dependencies = [
     "pydantic-settings>=2.0",
 ]
 
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
 [project.scripts]
 evaluations = "evaluations.cli:main"
 generate-tfvars = "evaluations.generate_tfvars:main"
@@ -22,3 +27,8 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/evaluations"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+

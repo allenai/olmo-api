@@ -155,6 +155,13 @@ python run_local.py --with-storage
 python run_local.py --build --tier standard
 ```
 
+### Running Tests
+
+```bash
+# Run all tests
+uv run pytest
+```
+
 ### Docker Commands
 
 You can also run Docker directly:

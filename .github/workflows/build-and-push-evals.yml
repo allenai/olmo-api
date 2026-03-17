@@ -7,6 +7,10 @@ on:
     paths:
       - 'apps/evaluations/**'
       - '.github/workflows/build-and-push-evals.yml'
+  pull_request:
+    paths:
+      - 'apps/evaluations/**'
+      - '.github/workflows/build-and-push-evals.yml'
   workflow_dispatch:
 
 permissions:
@@ -19,7 +23,21 @@ env:
   REPO: model-evals
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Run Tests
+        working-directory: apps/evaluations
+        run: uv run pytest -v
+
   build-and-deploy:
+    needs: test
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.ref_name }}

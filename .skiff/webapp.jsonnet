@@ -443,6 +443,16 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
         }
     };
 
+    local apiSafetyWorkerHealthCheck = {
+        port: 9191, // Prometheus endpoint
+        scheme: 'HTTP'
+    };
+
+    local apiSafetyWorkerSelectorLabels = {
+        app: config.appName + '-api-safety-worker',
+        env: env
+    };
+
     local apiSafetyWorkerFQN = fullyQualifiedName + '-api-safety-worker';
     local apiSafetyWorkerPodLabels = podLabels + { app: config.appName + '-api-safety-worker', onlyOneOfPerNode: config.appName + '-api-safety-worker' + env };
 

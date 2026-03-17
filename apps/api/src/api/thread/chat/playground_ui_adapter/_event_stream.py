@@ -64,8 +64,15 @@ class PlaygroundUIEventStream(
     message_id: ID = field(default_factory=create_message_id)
 
     _message_ids: list[ID] = field(default_factory=list)
-    parent_message_id: ID = field(default_factory=create_message_id)
     message_map: dict[ID, Message] = field(default_factory=dict)
+
+    @property
+    def parent_message_id(self) -> ID:
+        if len(self._message_ids) > 1:
+            # This accounts for the latest message in the message IDs list being the current message's ID
+            return self._message_ids[-2]
+
+        return self.run_input.parent_message_id
 
     def _has_message_been_sent(self, message_id: ID) -> bool:
         """
@@ -81,7 +88,6 @@ class PlaygroundUIEventStream(
 
     @override
     def new_message_id(self) -> str:
-        self.parent_message_id = self.message_id
         self.message_id = create_message_id()
         self._message_ids.append(self.message_id)
         return self.message_id

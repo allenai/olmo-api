@@ -35,6 +35,7 @@ from api.tools.mcp_service import McpServiceDependency
 from api.tools.tools_service import ToolsServiceDependency
 from core.message.flat_message import FlatMessage
 from core.message.message_chunk import AddMessageChunk, Chunk, ErrorChunk, FinalThreadChunk
+from core.message.message_errors import ErrorCode
 from core.message.role import Role
 from core.object_id import ID
 from core.tools.tool_source import ToolSource
@@ -492,19 +493,34 @@ class ChatService:
                 message.error_code = error.error_code
                 message.error_description = error.error_description
                 message.error_severity = error.error_severity
+        try:
+            mapped_messages: list[Message] = [message.to_database_message() for message in message_map.values()]
+            first_new_message = await self.message_repository.finalize_thread([
+                *adapter.run_input.new_messages,
+                *mapped_messages,
+            ])
 
-        mapped_messages: list[Message] = [message.to_database_message() for message in message_map.values()]
-        first_new_message = await self.message_repository.finalize_thread([
-            *adapter.run_input.new_messages,
-            *mapped_messages,
-        ])
-        yield format_event(
-            FinalThreadChunk(
-                message=first_new_message.id,
-                id=first_new_message.id,
-                messages=FlatMessage.from_message_with_children(first_new_message),
+            yield format_event(
+                FinalThreadChunk(
+                    message=first_new_message.id,
+                    id=first_new_message.id,
+                    messages=FlatMessage.from_message_with_children(first_new_message),
+                )
             )
-        )
+        except Exception as e:
+            logger.exception("inference.finalize-error")
+            span = trace.get_current_span()
+            span.set_status(trace.StatusCode.ERROR)
+            span.record_exception(e)
+            span.add_event("inference.finalize-error")
+
+            yield format_event(
+                ErrorChunk(
+                    message=adapter.run_input.root_message_id,
+                    error_code=ErrorCode.OTHER_ERROR,
+                    error_description=str(e),
+                )
+            )
 
 
 ChatServiceDependency = Annotated[ChatService, Depends()]

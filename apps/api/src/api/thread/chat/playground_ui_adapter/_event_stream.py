@@ -114,6 +114,7 @@ class PlaygroundUIEventStream(
     def content_type(self) -> str:
         return JSONL_CONTENT_TYPE
 
+    # HACK: This usually outputs str, we're overriding it in an incompatible manner so we get nice chunks in chat_service
     def encode_event(self, event: ChatStreamOutput) -> ChatStreamOutput:  # pyright: ignore[reportIncompatibleMethodOverride] # noqa: PLR6301
         return event
 
@@ -231,6 +232,7 @@ class PlaygroundUIEventStream(
         span = trace.get_current_span()
         span.set_status(trace.StatusCode.ERROR)
         span.record_exception(error)
+        span.add_event("inference.stream-error")
 
         if isinstance(error, UnexpectedModelBehavior):
             yield ErrorChunk(

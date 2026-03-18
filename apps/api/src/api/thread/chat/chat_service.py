@@ -28,7 +28,6 @@ from api.thread.chat.chat_file_upload_service import ChatFileUploadServiceDepend
 from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
 from api.thread.chat.chat_types import ChatStreamOutput
 from api.thread.chat.mapping.pydantic_ai_mapping import map_messages_to_pydantic_ai_format
-from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
 from api.thread.chat.playground_ui_adapter._event_stream import PlaygroundUIEventStream
 from api.thread.chat.playground_ui_adapter._util import RunInput
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
@@ -398,7 +397,7 @@ class ChatService:
 
         return [user_tool_toolset, filtered_mcp_toolset]
 
-    async def initialize_stream_adapter(
+    async def validate_and_get_agent(
         self, request: ChatRequest
     ) -> tuple[Agent[None, DeferredToolRequests | str], RunInput]:
         model = await self._get_model(request.model)
@@ -456,10 +455,6 @@ class ChatService:
         )
 
         return agent, run_input
-
-        adapter = PlaygroundUIAdapter(agent, run_input=run_input)
-
-        return adapter
 
     @classmethod
     async def _get_stream_events(

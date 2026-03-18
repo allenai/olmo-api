@@ -198,7 +198,8 @@ def split_pydantic_messages(
                 request_without_tool_returns.parts = [
                     part for part in message.parts if not isinstance(part, ToolReturnPart)
                 ]
-                split_messages.append(request_without_tool_returns)
+                if request_without_tool_returns.parts:
+                    split_messages.append(request_without_tool_returns)
 
                 tool_return_parts = [part for part in message.parts if isinstance(part, ToolReturnPart)]
                 for tool_return_part in tool_return_parts:

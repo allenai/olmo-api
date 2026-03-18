@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import override
 
 from opentelemetry import trace
-from pydantic_ai import ModelRequestPart, ModelResponsePart, UnexpectedModelBehavior
+from pydantic_ai import UnexpectedModelBehavior
 from pydantic_ai.messages import (
     BuiltinToolCallPart,
     FunctionToolResultEvent,
@@ -63,7 +63,6 @@ class PlaygroundUIEventStream(
 
     _message_ids: list[ID] = field(default_factory=list)
     message_map: dict[ID, Message] = field(default_factory=dict)
-    message_part_map: dict[ID, ModelResponsePart | ModelRequestPart] = field(default_factory=dict)
 
     @property
     def parent_message_id(self) -> ID:
@@ -145,13 +144,9 @@ class PlaygroundUIEventStream(
     async def handle_text_start(self, part: TextPart, follows_text: bool = False) -> AsyncIterator[Event]:  # noqa: ARG002, FBT001, FBT002
         if self._has_message_been_sent(self.message_id):
             yield ModelResponseChunk(message=self.message_id, content=part.content)
-            part.id = self.message_id
-            self.message_part_map[self.message_id] = part
         else:
             message = self._create_message_with_defaults(content=part.content, role=Role.Assistant)
             yield self._get_add_message_chunk(message.id, message)
-            part.id = message.id
-            self.message_part_map[message.id] = part
 
     async def handle_text_delta(self, delta: TextPartDelta) -> AsyncIterator[Event]:
         if delta.content_delta:
@@ -164,11 +159,9 @@ class PlaygroundUIEventStream(
     ) -> AsyncIterator[Event]:
         if self._has_message_been_sent(self.message_id):
             yield ThinkingChunk(message=self.message_id, content=part.content)
-            part.id = self.message_id
         else:
             message = self._create_message_with_defaults(content="", role=Role.Assistant, thinking=part.content)
             yield self._get_add_message_chunk(message.id, message)
-            part.id = message.id
 
     async def handle_thinking_delta(self, delta: ThinkingPartDelta) -> AsyncIterator[Event]:
         if delta.content_delta:
@@ -188,7 +181,6 @@ class PlaygroundUIEventStream(
             args=part.args,
             tool_source=tool_source,
         )
-        part.id = self.message_id
 
     async def handle_tool_call_delta(self, delta: ToolCallPartDelta) -> AsyncIterator[Event]:
         tool_call_id = delta.tool_call_id or ""
@@ -232,7 +224,6 @@ class PlaygroundUIEventStream(
             )
 
             yield self._get_add_message_chunk(message.id, message)
-            result.metadata = {"message_id": message.id}
 
     async def on_error(self, error: Exception) -> AsyncIterator[Event]:
         self._finish_reason = "error"

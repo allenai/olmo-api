@@ -29,7 +29,7 @@ from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
 from api.thread.chat.chat_types import ChatStreamOutput
 from api.thread.chat.mapping.pydantic_ai_mapping import map_messages_to_pydantic_ai_format
 from api.thread.chat.playground_ui_adapter._event_stream import PlaygroundUIEventStream
-from api.thread.chat.playground_ui_adapter._util import RunInput
+from api.thread.chat.playground_ui_adapter._util import RunInput, map_response_pydantic_messages_to_messages
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
 from api.thread.chat.pydantic_inference.pydantic_model_settings import pydantic_model_settings
 from api.thread.chat.safety.validate_message_safety_service import ValidateMessageSafetyServiceDependency
@@ -479,11 +479,13 @@ class ChatService:
             events = []
             errors = []
             message_map = {}
+            message_ids = []
             async for event in event_stream.transform_stream(stream):
                 yield event
                 events.append(event)
                 if isinstance(event, AddMessageChunk):
                     for message in event.messages:
+                        message_ids.append(message.id)
                         message_map[message.id] = message
                 if isinstance(event, ErrorChunk):
                     errors.append(event)
@@ -497,7 +499,9 @@ class ChatService:
                     message.error_severity = error.error_severity
 
             try:
-                mapped_messages: list[Message] = [message.to_database_message() for message in message_map.values()]
+                mapped_messages = map_response_pydantic_messages_to_messages(
+                    agent_run.new_messages(), message_ids=message_ids, run_input=run_input, errors=errors
+                )
                 first_new_message = await self.message_repository.finalize_thread([
                     *run_input.new_messages,
                     *mapped_messages,
@@ -522,8 +526,7 @@ class ChatService:
                     error_description=type(e).__name__,
                 )
 
-            finally:
-                yield StreamEndChunk(message=run_input.root_message_id)
+        yield StreamEndChunk(message=run_input.root_message_id)
 
 
 ChatServiceDependency = Annotated[ChatService, Depends()]

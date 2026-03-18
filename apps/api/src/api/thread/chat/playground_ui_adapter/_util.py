@@ -16,7 +16,7 @@ from pydantic_ai import (
 
 from api.thread.chat.chat_types import ChatStreamOutput
 from core.message.flat_message import FlatMessage
-from core.message.message_chunk import AddMessageChunk, FinalThreadChunk, StreamEndChunk
+from core.message.message_chunk import AddMessageChunk, ErrorChunk, FinalThreadChunk, StreamEndChunk, StreamStartChunk
 from core.message.role import Role
 from core.object_id import ID
 from core.tools.tool_source import ToolSource
@@ -56,8 +56,9 @@ def create_message_from_run_input(
     parent: ID,
     tool_calls: list[ToolCall] | None,
     thinking: str | None,
+    error: ErrorChunk | None = None,
 ):
-    return Message(
+    message = Message(
         id=id,
         content=content,
         role=role,
@@ -72,6 +73,13 @@ def create_message_from_run_input(
         tool_definitions=run_input.tool_definitions or [],
         thinking=thinking,
     )
+
+    if error is not None:
+        message.error_code = error.error_code
+        message.error_description = error.error_description
+        message.error_severity = error.error_severity
+
+    return message
 
 
 def map_tool_return_part_to_message(
@@ -117,20 +125,21 @@ def map_tool_call_part_to_tool_call(part: BaseToolCallPart, message_id: ID, user
 
 
 def map_response_pydantic_messages_to_messages(
-    messages: Sequence[ModelMessage], message_ids: Sequence[ID], run_input: RunInput
+    messages: Sequence[ModelMessage], message_ids: Sequence[ID], run_input: RunInput, errors: Sequence[ErrorChunk]
 ) -> list[Message]:
     parent_message_id = run_input.parent_message_id
+    split_messages = split_pydantic_messages(messages)
 
     mapped_messages: list[Message] = []
-    msg_id_stack = list(reversed(message_ids))
-    for message in messages:
+    for i, message in enumerate(split_messages):
+        message_id = message_ids[i]
+        error: ErrorChunk | None = next(error for error in errors if error.message == message_id)
+
         match message:
             case ModelRequest():
                 for request_part in message.parts:
                     match request_part:
                         case ToolReturnPart():
-                            message_id = msg_id_stack.pop()
-
                             tool_return_message = map_tool_return_part_to_message(
                                 request_part,
                                 message_id=message_id,
@@ -147,8 +156,6 @@ def map_response_pydantic_messages_to_messages(
                 message_content = ""
                 message_thinking: str | None = None
                 message_tool_calls: list[ToolCall] = []
-
-                message_id = msg_id_stack.pop()
 
                 for response_part in message.parts:
                     match response_part:
@@ -176,6 +183,7 @@ def map_response_pydantic_messages_to_messages(
                     parent=parent_message_id,
                     tool_calls=message_tool_calls,
                     thinking=message_thinking,
+                    error=error,
                 )
 
                 mapped_messages.append(response_message)
@@ -201,6 +209,8 @@ def split_pydantic_messages(
                 if request_without_tool_returns.parts:
                     split_messages.append(request_without_tool_returns)
 
+                # Our Messages have a separate message for each tool return
+                # This breaks the tool returns into separate parts for us so we can map them more easily
                 tool_return_parts = [part for part in message.parts if isinstance(part, ToolReturnPart)]
                 for tool_return_part in tool_return_parts:
                     tool_return_model_request = ModelRequest(
@@ -219,8 +229,8 @@ def split_pydantic_messages(
 
 
 async def stream_pending_tool_responses(run_input: RunInput) -> AsyncIterator[Event]:
-    """Short circut the event stream and flush pending tool responses"""
-    # yield StreamStartChunk(message=run_input.root_message_id)
+    """Short circuit the event stream and flush pending tool responses"""
+    yield StreamStartChunk(message=run_input.root_message_id)
 
     new_flat = FlatMessage.from_message_seq(run_input.new_messages)
     yield AddMessageChunk(message=new_flat[0].id, id=new_flat[0].id, messages=new_flat)

@@ -13,6 +13,9 @@ def drop_color_message_key(_, __, event_dict: EventDict) -> EventDict:
     event_dict.pop("color_message", None)
     return event_dict
 
+def suppress_uvicorn_access_logs() -> None:
+    logging.getLogger("uvicorn.access").handlers.clear()
+    logging.getLogger("uvicorn.access").propagate = False
 
 def setup_logging(*, json_logs: bool = False, log_level: str = "INFO"):
     shared_processors: list[Processor] = [
@@ -67,6 +70,6 @@ def setup_logging(*, json_logs: bool = False, log_level: str = "INFO"):
         logging.getLogger(_log).handlers.clear()
         logging.getLogger(_log).propagate = True
 
-    # Uvicorn logs are re-emitted with more context. We effectively silence them here
-    logging.getLogger("uvicorn.access").handlers.clear()
-    logging.getLogger("uvicorn.access").propagate = False
+    # Uvicorn logs are re-emitted with more context.
+    # supress uvicorn access logging -- also called from fastapi lifecycle
+    suppress_uvicorn_access_logs()

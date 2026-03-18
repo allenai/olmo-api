@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import FastAPI
 from fastapi_problem.handler import add_exception_handler, new_exception_handler
@@ -9,16 +11,25 @@ from api.auth.auth_service import get_bearer_token_validator
 from api.config import settings
 from api.db.sqlalchemy_engine import get_sqlalchemy_engine
 from api.health import health_router
-from api.logging import StructLogMiddleware, setup_logging
+from api.logging import StructLogMiddleware, setup_logging, suppress_uvicorn_access_logs
 from api.otel.setup import setup_otel
 from api.safety_queue import setup_safety_queue
 from api.v5 import v5_router
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):  # noqa: RUF029
+    # uvicorn adds its logger after fastapi app creation
+    # resupress uvicorn logging in init (after uvicorn has added)
+    suppress_uvicorn_access_logs()
+    yield
 
 
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Playground API",
         version="0.1.0",
+        lifespan=lifespan,
     )
 
     add_exception_handler(app, new_exception_handler())
@@ -27,6 +38,7 @@ def create_app() -> FastAPI:
     app.include_router(v5_router)
 
     setup_logging(json_logs=settings.LOG_JSON_FORMAT, log_level=settings.LOG_LEVEL)
+
     app.add_middleware(StructLogMiddleware)
 
     app.add_middleware(CorrelationIdMiddleware)

@@ -1,3 +1,4 @@
+import copy
 import json
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
@@ -183,6 +184,37 @@ def map_response_pydantic_messages_to_messages(
                 assert_never(message)
 
     return mapped_messages
+
+
+def split_pydantic_messages(
+    messages: Sequence[ModelMessage],
+) -> list[ModelMessage]:
+    split_messages: list[ModelMessage] = []
+
+    for message in messages:
+        match message:
+            case ModelRequest():
+                request_without_tool_returns = copy.deepcopy(message)
+                request_without_tool_returns.parts = [
+                    part for part in message.parts if not isinstance(part, ToolReturnPart)
+                ]
+                split_messages.append(request_without_tool_returns)
+
+                tool_return_parts = [part for part in message.parts if isinstance(part, ToolReturnPart)]
+                for tool_return_part in tool_return_parts:
+                    tool_return_model_request = ModelRequest(
+                        parts=[tool_return_part],
+                        timestamp=message.timestamp,
+                        instructions=message.instructions,
+                        kind=message.kind,
+                        run_id=message.run_id,
+                        metadata=message.metadata,
+                    )
+                    split_messages.append(tool_return_model_request)
+            case _:
+                split_messages.append(message)
+
+    return split_messages
 
 
 async def stream_pending_tool_responses(run_input: RunInput) -> AsyncIterator[Event]:

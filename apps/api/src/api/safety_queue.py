@@ -6,6 +6,7 @@ from dramatiq.middleware.prometheus import Prometheus
 from typing_extensions import override
 
 from api.config import settings
+from api.logging.setup import setup_logging
 from api.otel.setup import setup_otel
 
 # Dramatiq requires a broker to be set before actors are declared.
@@ -21,6 +22,8 @@ class OtelMiddleware(dramatiq.Middleware):
 
 
 def setup_safety_queue() -> None:
+    setup_logging(json_logs=settings.LOG_JSON_FORMAT, log_level=settings.LOG_LEVEL)
+
     if settings.VIDEO_SAFETY_CHECK_WORKER_STRATEGY != "deferred":
         return
 

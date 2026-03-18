@@ -2,7 +2,10 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import Depends
+from fastapi_problem.error import ConflictProblem
+from psycopg.errors import UniqueViolation
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from api.db.sqlalchemy_engine import SessionDependency
 from api.user.hubspot_service import HubSpotServiceDependency
@@ -45,7 +48,7 @@ class UserService:
         self,
         request: UpsertUserRequest,
         token: Token,
-    ) -> UpsertUserResponse | None:
+    ) -> UpsertUserResponse:
         stmt = select(User).where(User.client == token.client)
         result = await self.session.scalars(stmt)
         user_to_update = result.one_or_none()
@@ -85,8 +88,14 @@ class UserService:
         )
 
         self.session.add(new_user)
-        await self.session.flush()
-        await self.session.commit()
+        try:
+            await self.session.flush()
+            await self.session.commit()
+        except IntegrityError as e:
+            if isinstance(e.orig, UniqueViolation):
+                raise ConflictProblem(detail="User already exists") from e
+            raise
+
         await self.session.refresh(new_user)
 
         # Create HubSpot contact for new non-anonymous users

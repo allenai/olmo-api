@@ -1155,5 +1155,25 @@ DROP TYPE "public"."modelhost_old";
 
 UPDATE alembic_version SET version_num='20c0085a0629' WHERE alembic_version.version_num = '4c886e3dd93c';
 
+-- Running upgrade 20c0085a0629 -> 8247ec761ef6
+
+DROP INDEX client_idx;
+
+CREATE UNIQUE INDEX client_idx ON olmo_user (client);
+
+UPDATE alembic_version SET version_num='8247ec761ef6' WHERE alembic_version.version_num = '20c0085a0629';
+
+-- Running upgrade 8247ec761ef6 -> 1d8905d13eeb
+
+ALTER TABLE olmo_user ADD COLUMN created TIMESTAMP WITH TIME ZONE;
+
+UPDATE olmo_user SET created = terms_accepted_date;
+
+ALTER TABLE olmo_user ALTER COLUMN created SET NOT NULL;
+
+ALTER TABLE olmo_user ALTER COLUMN created SET DEFAULT NOW();
+
+UPDATE alembic_version SET version_num='1d8905d13eeb' WHERE alembic_version.version_num = '8247ec761ef6';
+
 COMMIT;
 

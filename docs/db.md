@@ -36,5 +36,5 @@ If you can't connect to the database or don't have access to the 1Password vault
 
 ## Schema Migrations
 
-This repo is set up with `Alembic` to handle database migrations. See [the migrations readme](../db_migrations/README.md) for info on them.
+This repo is set up with `Alembic` to handle database migrations. See [the migrations readme](../apps/db-migrations/README.md) for info on them.
 

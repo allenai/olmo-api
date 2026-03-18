@@ -107,7 +107,7 @@ services:
   
   api-safety-worker:
     build:
-      dockerfile: apps/api-safety-worker/safety-worker.Dockerfile
+      dockerfile: apps/api-safety-worker/api-safety-worker.Dockerfile
       context: .
       target: dev
 

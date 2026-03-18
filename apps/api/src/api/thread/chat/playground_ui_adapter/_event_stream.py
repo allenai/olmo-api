@@ -34,7 +34,6 @@ from core.message.message_chunk import (
     ErrorCode,
     ModelResponseChunk,
     StartThreadChunk,
-    StreamEndChunk,
     StreamStartChunk,
     ThinkingChunk,
     ToolCallChunk,
@@ -116,7 +115,7 @@ class PlaygroundUIEventStream(
         return JSONL_CONTENT_TYPE
 
     # HACK: This usually outputs str, we're overriding it in an incompatible manner so we get nice chunks in chat_service
-    def encode_event(self, event: ChatStreamOutput) -> ChatStreamOutput:  # pyright: ignore[reportIncompatibleMethodOverride] # noqa: PLR6301
+    def encode_event(self, event: Event) -> Event:  # pyright: ignore[reportIncompatibleMethodOverride] # noqa: PLR6301
         return event
 
     async def before_stream(self) -> AsyncIterator[ChatStreamOutput]:
@@ -139,8 +138,8 @@ class PlaygroundUIEventStream(
         # we don't want to yield anything but still want the type to be right so we return then yield
         yield
 
-    async def after_stream(self) -> AsyncIterator[ChatStreamOutput]:
-        yield StreamEndChunk(message=self.message_id)
+    # async def after_stream(self) -> AsyncIterator[ChatStreamOutput]:
+    #     yield StreamEndChunk(message=self.message_id)
 
     async def handle_text_start(self, part: TextPart, follows_text: bool = False) -> AsyncIterator[ChatStreamOutput]:  # noqa: ARG002, FBT001, FBT002
         if self._has_message_been_sent(self.message_id):

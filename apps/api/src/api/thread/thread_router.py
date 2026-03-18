@@ -11,6 +11,7 @@ from api.logging.fastapi_logger import FastAPIStructLogger
 from api.service_errors import ForbiddenError, NotFoundError
 from api.thread.chat.chat_request import CHAT_REQUEST_DISCRIMINATOR
 from api.thread.chat.chat_service import ChatRequest, ChatServiceDependency
+from api.thread.chat.chat_types import ChatStreamOutput
 from api.thread.models.thread import Thread, ThreadList
 from api.thread.thread_delete_service import ThreadDeleteServiceDependency
 from api.thread.thread_read_service import ThreadReadServiceDependency
@@ -65,7 +66,7 @@ async def delete_thread(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
 
 
-async def jsonl_stream(stream: AsyncIterator[Chunk]) -> AsyncIterator[str]:
+async def jsonl_stream(stream: AsyncIterator[ChatStreamOutput]) -> AsyncIterator[str]:
     async for chunk in stream:
         yield chunk.model_dump_json() + "\n"
 
@@ -84,11 +85,11 @@ async def stream_chat_message(
     logger.bind(model=request.model, user=token.client)
     trace.get_current_span().set_attributes({GEN_AI_REQUEST_MODEL: request.model, "user": token.client})
 
-    adapter = await chat_service.initialize_stream_adapter(request)
+    agent, run_input = await chat_service.initialize_stream_adapter(request)
 
     # This needs to be assigned to a variable outside of StreamingResponse
     # Once StreamingResponse is returned you can't raise errors normally
-    stream = chat_service.stream_chat_message(adapter)
+    stream = chat_service.stream_chat_message(agent, run_input)
 
     return StreamingResponse(
         jsonl_stream(stream),

@@ -20,24 +20,20 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     """Upgrade schema."""
     op.drop_index("client_idx", table_name="olmo_user")
-    with op.get_context().autocommit_block():
-        op.create_index(
-            op.f("client_idx"),
-            "olmo_user",
-            ["client"],
-            unique=True,
-            postgresql_concurrently=True,
-        )
+    op.create_index(
+        op.f("client_idx"),
+        "olmo_user",
+        ["client"],
+        unique=True,
+    )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     op.drop_index(op.f("client_idx"), table_name="olmo_user")
-    with op.get_context().autocommit_block():
-        op.create_index(
-            "client_idx",
-            "olmo_user",
-            ["client"],
-            unique=False,
-            postgresql_concurrently=True,
-        )
+    op.create_index(
+        "client_idx",
+        "olmo_user",
+        ["client"],
+        unique=False,
+    )

@@ -1159,11 +1159,7 @@ UPDATE alembic_version SET version_num='20c0085a0629' WHERE alembic_version.vers
 
 DROP INDEX client_idx;
 
-COMMIT;
-
-CREATE UNIQUE INDEX CONCURRENTLY client_idx ON olmo_user (client);
-
-BEGIN;
+CREATE UNIQUE INDEX client_idx ON olmo_user (client);
 
 UPDATE alembic_version SET version_num='8247ec761ef6' WHERE alembic_version.version_num = '20c0085a0629';
 

@@ -13,9 +13,11 @@ def drop_color_message_key(_, __, event_dict: EventDict) -> EventDict:
     event_dict.pop("color_message", None)
     return event_dict
 
+
 def suppress_uvicorn_access_logs() -> None:
     logging.getLogger("uvicorn.access").handlers.clear()
     logging.getLogger("uvicorn.access").propagate = False
+
 
 def setup_logging(*, json_logs: bool = False, log_level: str = "INFO"):
     shared_processors: list[Processor] = [

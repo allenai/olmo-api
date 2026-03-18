@@ -58,6 +58,7 @@ def setup_logging(*, json_logs: bool = False, log_level: str = "INFO"):
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
     root_logger = logging.getLogger()
+    root_logger.handlers.clear()
     root_logger.addHandler(handler)
     root_logger.setLevel(log_level.upper())
 

@@ -462,16 +462,14 @@ class ChatService:
         return adapter
 
     @classmethod
-    async def node_stream(cls, run: AgentRun[None, DeferredToolRequests | str]) -> AsyncIterator[AgentStreamEvent]:
+    async def _get_stream_events(
+        cls, run: AgentRun[None, DeferredToolRequests | str]
+    ) -> AsyncIterator[AgentStreamEvent]:
         async for node in run:
-            if Agent.is_user_prompt_node(node):
-                ...
-            elif Agent.is_model_request_node(node) or Agent.is_call_tools_node(node):
+            if Agent.is_model_request_node(node) or Agent.is_call_tools_node(node):
                 async with node.stream(run.ctx) as request_stream:
                     async for event in request_stream:
                         yield event
-            elif Agent.is_end_node(node):
-                ...
 
     async def stream_chat_message(
         self, agent: Agent[None, DeferredToolRequests | str], run_input: RunInput
@@ -481,7 +479,7 @@ class ChatService:
         pydantic_messages = map_messages_to_pydantic_ai_format(run_input.all_messages)
 
         async with agent.iter(message_history=pydantic_messages) as agent_run:
-            stream = self.node_stream(agent_run)
+            stream = self._get_stream_events(agent_run)
 
             events = []
             errors = []

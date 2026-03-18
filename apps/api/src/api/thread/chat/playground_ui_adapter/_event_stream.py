@@ -20,7 +20,6 @@ from pydantic_ai.tools import AgentDepsT
 from pydantic_ai.ui import UIEventStream
 
 from api.logging.fastapi_logger import FastAPIStructLogger
-from api.thread.chat.chat_types import ChatStreamOutput
 from api.thread.chat.playground_ui_adapter._util import (
     Event,
     RunInput,
@@ -118,30 +117,32 @@ class PlaygroundUIEventStream(
     def encode_event(self, event: Event) -> Event:  # pyright: ignore[reportIncompatibleMethodOverride] # noqa: PLR6301
         return event
 
-    async def before_stream(self) -> AsyncIterator[ChatStreamOutput]:
+    async def before_stream(self) -> AsyncIterator[Event]:
         yield StreamStartChunk(message=self.run_input.root_message_id)
+
         messages = FlatMessage.from_message_seq(self.run_input.new_messages)
         if self.run_input.is_new_thread:
             yield StartThreadChunk(message=messages[0].id, id=messages[0].id, messages=messages)
         else:
             yield AddMessageChunk(message=messages[0].id, id=messages[0].id, messages=messages)
 
-    async def before_request(self) -> AsyncIterator[ChatStreamOutput]:
+    async def before_request(self) -> AsyncIterator[Event]:
         self.new_message_id()
         return
-        # we don't want to yield anything but still want the type to be right so we return then yield
-        yield
+        yield  # Make this an async generator
 
-    async def before_response(self) -> AsyncIterator[ChatStreamOutput]:
+    async def before_response(self) -> AsyncIterator[Event]:
         self.new_message_id()
         return
-        # we don't want to yield anything but still want the type to be right so we return then yield
-        yield
+        yield  # Make this an async generator
 
-    # async def after_stream(self) -> AsyncIterator[ChatStreamOutput]:
-    #     yield StreamEndChunk(message=self.message_id)
+    @override
+    async def after_stream(self) -> AsyncIterator[Event]:
+        # We're intentionally not emitting an event here so the caller can handle the final events. The caller is responsible for emitting end chunks
+        return
+        yield  # Make this an async generator
 
-    async def handle_text_start(self, part: TextPart, follows_text: bool = False) -> AsyncIterator[ChatStreamOutput]:  # noqa: ARG002, FBT001, FBT002
+    async def handle_text_start(self, part: TextPart, follows_text: bool = False) -> AsyncIterator[Event]:  # noqa: ARG002, FBT001, FBT002
         if self._has_message_been_sent(self.message_id):
             yield ModelResponseChunk(message=self.message_id, content=part.content)
             part.id = self.message_id
@@ -152,7 +153,7 @@ class PlaygroundUIEventStream(
             part.id = message.id
             self.message_part_map[message.id] = part
 
-    async def handle_text_delta(self, delta: TextPartDelta) -> AsyncIterator[ChatStreamOutput]:
+    async def handle_text_delta(self, delta: TextPartDelta) -> AsyncIterator[Event]:
         if delta.content_delta:
             yield ModelResponseChunk(message=self.message_id, content=delta.content_delta)
 
@@ -160,7 +161,7 @@ class PlaygroundUIEventStream(
         self,
         part: ThinkingPart,
         follows_thinking: bool = False,  # noqa: ARG002, FBT001, FBT002
-    ) -> AsyncIterator[ChatStreamOutput]:
+    ) -> AsyncIterator[Event]:
         if self._has_message_been_sent(self.message_id):
             yield ThinkingChunk(message=self.message_id, content=part.content)
             part.id = self.message_id
@@ -169,11 +170,11 @@ class PlaygroundUIEventStream(
             yield self._get_add_message_chunk(message.id, message)
             part.id = message.id
 
-    async def handle_thinking_delta(self, delta: ThinkingPartDelta) -> AsyncIterator[ChatStreamOutput]:
+    async def handle_thinking_delta(self, delta: ThinkingPartDelta) -> AsyncIterator[Event]:
         if delta.content_delta:
             yield ThinkingChunk(message=self.message_id, content=delta.content_delta)
 
-    async def handle_tool_call_start(self, part: ToolCallPart | BuiltinToolCallPart) -> AsyncIterator[ChatStreamOutput]:
+    async def handle_tool_call_start(self, part: ToolCallPart | BuiltinToolCallPart) -> AsyncIterator[Event]:
         if not self._has_message_been_sent(self.message_id):
             message = self._create_message_with_defaults(content="", role=Role.Assistant)
             yield self._get_add_message_chunk(message.id, message)
@@ -189,7 +190,7 @@ class PlaygroundUIEventStream(
         )
         part.id = self.message_id
 
-    async def handle_tool_call_delta(self, delta: ToolCallPartDelta) -> AsyncIterator[ChatStreamOutput]:
+    async def handle_tool_call_delta(self, delta: ToolCallPartDelta) -> AsyncIterator[Event]:
         tool_call_id = delta.tool_call_id or ""
         assert tool_call_id, "`ToolCallPartDelta.tool_call_id` must be set"  # noqa: S101
 
@@ -201,7 +202,7 @@ class PlaygroundUIEventStream(
             args=delta.args_delta,
         )
 
-    async def handle_function_tool_result(self, event: FunctionToolResultEvent) -> AsyncIterator[ChatStreamOutput]:
+    async def handle_function_tool_result(self, event: FunctionToolResultEvent) -> AsyncIterator[Event]:
         if self._has_message_been_sent(self.message_id):
             # Pydantic doesn't call before_response before each function tool. Since we need them in separate messages we need to make a new ID if we've already sent a message for this message_id
             self.new_message_id()

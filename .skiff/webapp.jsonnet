@@ -504,6 +504,12 @@ function(flaskApiImage, cause, sha, env='prod', branch='', repo='', buildId='', 
                             secret: {
                                 secretName: 'modal'
                             }
+                        },
+                        {
+                            name: "env",
+                            secret: {
+                                secretName: "env"
+                            }
                         }
                     ],
                     containers: [

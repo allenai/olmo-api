@@ -9,7 +9,7 @@ class TestFailureError(Exception): ...
 
 
 @test_toolset.tool()
-async def always_fails(ctx: RunContext) -> NoReturn:  # noqa: RUF029
+async def always_fails(ctx: RunContext) -> NoReturn:  # noqa: ARG001, RUF029
     raise ModelRetry("Always fails")  # noqa: EM101, TRY003
 
 

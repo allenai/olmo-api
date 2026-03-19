@@ -2,7 +2,7 @@ import asyncio
 from typing import Annotated
 
 from fastapi import Depends
-from fastapi_problem.error import ServerProblem, StatusProblem, UnprocessableProblem
+from fastapi_problem.error import ServerProblem, UnprocessableProblem
 from opentelemetry import trace
 
 from api.attribution.infini_gram_client import InfiniGramClientDependency
@@ -11,6 +11,7 @@ from api.attribution.models.response import AttributionResponse
 from api.attribution.process_attribution import process_attribution
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.model_config.admin.model_config_admin_read_service import ModelConfigAdminReadServiceDependency
+from api.problem import BadGatewayProblem, ServiceUnavailableProblem
 from api.service_errors import NotFoundError
 from infini_gram_api_client.api.default import get_document_attributions_index_attribution_post
 from infini_gram_api_client.errors import UnexpectedStatus
@@ -24,16 +25,6 @@ logger = FastAPIStructLogger()
 class UnavailableOlmoTraceIndexError(UnprocessableProblem):
     title = "This OlmoTrace index is unavailable"
     type_ = "unavailable-olmotrace-index"
-
-
-class BadGatewayProblem(StatusProblem):
-    type_ = "bad-gateway"
-    status = 502
-
-
-class ServiceUnavailableProblem(StatusProblem):
-    type_ = "service-unavailable"
-    status = 503
 
 
 tracer = trace.get_tracer(__name__)

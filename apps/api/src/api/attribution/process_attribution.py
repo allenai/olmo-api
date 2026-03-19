@@ -1,6 +1,7 @@
 from copy import deepcopy
 from typing import cast
 
+from opentelemetry import trace
 from rank_bm25 import BM25Okapi  # type: ignore
 
 from api.attribution.flatten_spans import flatten_spans
@@ -20,7 +21,10 @@ from infini_gram_api_client.models.available_infini_gram_index_id import (
     AvailableInfiniGramIndexId,
 )
 
+tracer = trace.get_tracer(__name__)
 
+
+@tracer.start_as_current_span("Attribution/process_attribution")
 def process_attribution(
     infini_gram_response: InfiniGramAttributionResponse,
     request: AttributionRequest,

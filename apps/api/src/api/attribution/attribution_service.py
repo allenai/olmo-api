@@ -1,7 +1,9 @@
 import asyncio
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
+from fastapi_problem.error import ServerProblem, StatusProblem, UnprocessableProblem
+from opentelemetry import trace
 
 from api.attribution.infini_gram_client import InfiniGramClientDependency
 from api.attribution.models.request import AttributionRequest
@@ -19,6 +21,24 @@ from infini_gram_api_client.models.request_validation_error import RequestValida
 logger = FastAPIStructLogger()
 
 
+class UnavailableOlmoTraceIndexError(UnprocessableProblem):
+    title = "This OlmoTrace index is unavailable"
+    type_ = "unavailable-olmotrace-index"
+
+
+class BadGatewayProblem(StatusProblem):
+    type_ = "bad-gateway"
+    status = 502
+
+
+class ServiceUnavailableProblem(StatusProblem):
+    type_ = "service-unavailable"
+    status = 503
+
+
+tracer = trace.get_tracer(__name__)
+
+
 class AttributionService:
     def __init__(
         self,
@@ -28,6 +48,7 @@ class AttributionService:
         self.infini_gram_client = infini_gram_client
         self.model_config_service = model_config_service
 
+    @tracer.start_as_current_span("AttributionService/get_attribution")
     async def get_attribution(self, request: AttributionRequest) -> AttributionResponse:
         config = await self.model_config_service.get_one(request.model_id)
         if config is None:
@@ -35,10 +56,12 @@ class AttributionService:
             raise NotFoundError(model_config_not_found)
 
         if config.root.infini_gram_index is None:
-            msg = f"Model {config.root.id} does not have an infini gram index configured"
-            raise ValueError(msg)
+            non_index_error_msg = f"Model {config.root.id} does not have an infini gram index configured"
+            raise ValueError(non_index_error_msg)
 
         index = config.root.infini_gram_index
+
+        trace.get_current_span().set_attributes({"model": config.root.name, "index": config.root.infini_gram_index})
 
         try:
             infini_gram_response = await get_document_attributions_index_attribution_post.asyncio(
@@ -59,8 +82,10 @@ class AttributionService:
                 ),
             )
         except UnexpectedStatus as e:
-            msg = f"Something went wrong when calling the infini-gram API: {e.status_code} {e.content.decode()}"
-            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=msg) from e
+            non_index_error_msg = (
+                f"Something went wrong when calling the infini-gram API: {e.status_code} {e.content.decode()}"
+            )
+            raise BadGatewayProblem(non_index_error_msg) from e
 
         # translated all errors from werkzeug to fastapi HTTPExceptions
         # we could add a layer here, but this seems fine for now
@@ -68,28 +93,26 @@ class AttributionService:
             logger.exception(
                 "infini-gram.api.validation_error", title=infini_gram_response.title, detail=infini_gram_response.errors
             )
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"infini-gram API reported a validation error: {infini_gram_response.title}\nThis is likely an error in olmo-api.",
-            )
+
+            if any(error.loc == "index" for error in infini_gram_response.errors):
+                raise UnavailableOlmoTraceIndexError
+
+            non_index_error_msg = f"infini-gram API reported a validation error: {infini_gram_response.title}\nThis is likely an error in olmo-api."
+            raise ServerProblem(non_index_error_msg)
 
         if isinstance(infini_gram_response, Problem):
             logger.error("infini-gram.problem", title=infini_gram_response.title, detail=infini_gram_response.detail)
 
             if infini_gram_response.type_ == "server-overloaded":
                 server_overloaded_msg = "OlmoTrace is currently overloaded. Please try again later."
-                raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=server_overloaded_msg)
+                raise ServiceUnavailableProblem(server_overloaded_msg)
 
             server_error = f"infini-gram API reported an error: {infini_gram_response.title}"
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=server_error)
+            raise ServerProblem(server_error)
 
         if infini_gram_response is None:
             bad_gateway_msg = "Something went wrong when calling the infini-gram API"
-            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=bad_gateway_msg)
-
-        if infini_gram_response.input_tokens is None:
-            invalid_version = "The version of infinigram-api we hit doesn't support or didn't return input_tokens"
-            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=invalid_version)
+            raise BadGatewayProblem(bad_gateway_msg)
 
         # off-load attribution processing, scoring/flattening to own thread
         return await asyncio.to_thread(

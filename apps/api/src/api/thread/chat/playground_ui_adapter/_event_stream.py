@@ -113,7 +113,7 @@ class PlaygroundUIEventStream(
         return JSONL_CONTENT_TYPE
 
     # HACK: This usually outputs str, we're overriding it in an incompatible manner so we get nice chunks in chat_service
-    def encode_event(self, event: Event) -> Event:  # pyright: ignore[reportIncompatibleMethodOverride] # noqa: PLR6301
+    def encode_event(self, event: Event) -> Event:  # type: ignore[override] # pyright: ignore[reportIncompatibleMethodOverride] # noqa: PLR6301
         return event
 
     async def before_stream(self) -> AsyncIterator[Event]:

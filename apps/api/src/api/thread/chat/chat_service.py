@@ -493,6 +493,7 @@ class ChatService:
             message_ids = []
             async for event in event_stream.transform_stream(stream):
                 yield event
+
                 if isinstance(event, AddMessageChunk):
                     for message in event.messages:
                         if message.id == run_input.parent_message_id:

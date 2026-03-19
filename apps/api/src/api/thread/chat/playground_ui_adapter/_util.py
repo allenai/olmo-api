@@ -131,8 +131,7 @@ def map_response_pydantic_messages_to_messages(
     split_messages = split_pydantic_messages(messages)
 
     mapped_messages: list[Message] = []
-    for i, message in enumerate(split_messages):
-        message_id = message_ids[i]
+    for message_id, message in zip(message_ids, split_messages, strict=True):
         error: ErrorChunk | None = next((error for error in errors if error.message == message_id), None)
 
         match message:

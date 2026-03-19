@@ -488,13 +488,11 @@ class ChatService:
         async with agent.iter(message_history=pydantic_messages) as agent_run:
             stream = self._get_stream_events(agent_run)
 
-            events = []
             errors = []
             message_map = {}
             message_ids = []
             async for event in event_stream.transform_stream(stream):
                 yield event
-                events.append(event)
                 if isinstance(event, AddMessageChunk):
                     for message in event.messages:
                         if message.id == run_input.parent_message_id:

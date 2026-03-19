@@ -1,4 +1,5 @@
 import asyncio
+import importlib
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING, Annotated
@@ -50,7 +51,14 @@ def _get_mcp_server(mcp_server_config: McpServer):
 
 @lru_cache
 def _get_general_mcp_servers():
-    return [_get_mcp_server(config) for config in MCP_SERVERS]
+    mcp_servers = [_get_mcp_server(config) for config in MCP_SERVERS]
+
+    if not settings.ENV.is_production and settings.INCLUDE_TEST_MCP_SERVERS:
+        fake_mcp_server_module = importlib.import_module("api.test_utils.fake_mcp_server")
+
+        mcp_servers.append(fake_mcp_server_module.test_toolset)
+
+    return mcp_servers
 
 
 class McpService:

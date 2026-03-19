@@ -3,11 +3,10 @@ from dataclasses import dataclass, field
 from typing import override
 
 from opentelemetry import trace
-from pydantic_ai import UnexpectedModelBehavior
+from pydantic_ai import ToolReturnPart, UnexpectedModelBehavior
 from pydantic_ai.messages import (
     BuiltinToolCallPart,
     FunctionToolResultEvent,
-    RetryPromptPart,
     TextPart,
     TextPartDelta,
     ThinkingPart,
@@ -211,13 +210,7 @@ class PlaygroundUIEventStream(
             self.new_message_id()
 
         result = event.result
-        if isinstance(result, RetryPromptPart):
-            yield ErrorChunk(
-                message=self.message_id,
-                error_code=ErrorCode.TOOL_CALL_ERROR,
-                error_description=result.model_response(),
-            )
-        else:
+        if isinstance(result, ToolReturnPart):
             tool_calls = [
                 ToolCall(
                     tool_call_id=result.tool_call_id,
@@ -247,9 +240,7 @@ class PlaygroundUIEventStream(
         span.add_event("inference.stream-error")
 
         if isinstance(error, UnexpectedModelBehavior):
-            yield ErrorChunk(
-                error_description=error.message, message=self.message_id, error_code=ErrorCode.TOOL_CALL_ERROR
-            )
+            yield ErrorChunk(error_description=error.message, message=self.message_id, error_code=ErrorCode.OTHER_ERROR)
 
         else:
             yield ErrorChunk(error_description=str(error), message=self.message_id, error_code=ErrorCode.OTHER_ERROR)

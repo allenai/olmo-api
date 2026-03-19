@@ -76,6 +76,10 @@ class Settings(BaseSettings):
     SAFTEY_GCS_UPLOAD_BUCKET: str = Field(init=False)
     VIDEO_SAFETY_CHECK_WORKER_STRATEGY: str = "deferred"
 
+    INCLUDE_TEST_MCP_SERVERS: bool = Field(
+        False, description="Used to enable/disable the fake MCP server in test_utils/fake_mcp_server"
+    )
+
     model_config = SettingsConfigDict(
         extra="ignore",
         env_file=(".env", f".env.{environment}", ".env.local", f".env.{environment}.local"),

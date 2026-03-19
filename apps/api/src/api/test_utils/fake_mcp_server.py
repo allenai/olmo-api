@@ -1,10 +1,20 @@
-from pydantic_ai import FunctionToolset
+from typing import NoReturn
+
+from pydantic_ai import FunctionToolset, ModelRetry, RunContext
 
 test_toolset = FunctionToolset()
 
 
+class TestFailureError(Exception): ...
+
+
 @test_toolset.tool()
-async def celsius_to_fahrenheit(celsius: float) -> float:  # noqa: RUF029
+async def always_fails(ctx: RunContext) -> NoReturn:  # noqa: RUF029
+    raise ModelRetry("Always fails")  # noqa: EM101, TRY003
+
+
+@test_toolset.tool()
+async def celsius_to_fahrenheit_fails_once(ctx: RunContext, celsius: float) -> float:  # noqa: RUF029
     """Convert Celsius to Fahrenheit.
 
     Args:
@@ -13,6 +23,10 @@ async def celsius_to_fahrenheit(celsius: float) -> float:  # noqa: RUF029
     Returns:
         Temperature in Fahrenheit
     """
+
+    if ctx.retry < 1:
+        raise ModelRetry("Testing tool retry")  # noqa: EM101, TRY003
+
     return (celsius * 9 / 5) + 32
 
 

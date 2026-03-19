@@ -183,7 +183,7 @@ async def test_calls_user_tools(client: AsyncClient, auth_user: AuthenticatedCli
 
 
 async def test_calls_mcp_tools(client: AsyncClient, auth_user: AuthenticatedClient, db_session: DatabaseSession):
-    tool_name = "get_weather_forecast"
+    tool_name = "celsius_to_fahrenheit_fails_once"
     chat_request = UserChatRequest(
         content="test tool calling",
         model="test-model",
@@ -196,6 +196,7 @@ async def test_calls_mcp_tools(client: AsyncClient, auth_user: AuthenticatedClie
     assert_ok_response(response=response)
 
     lines = [json.loads(line) for line in response.text.splitlines()]
+    lines_without_stream = [line for line in lines if line["type"] != "modelResponse"]
 
     StreamStartChunk.model_validate(lines[0])
     starting_thread = StartThreadChunk.model_validate(lines[1])

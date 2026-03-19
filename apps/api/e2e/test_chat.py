@@ -55,7 +55,7 @@ async def test_calls_user_tools(client: AsyncClient, auth_user: AuthenticatedCli
         parameters=ParameterDef(
             type="object",
             properties={
-                "city": ParameterDef(type="string", description="The user's city", default={"string-value": "Boston"}),
+                "city": ParameterDef(type="string", description="The user's city", default={"string_value": "Boston"}),
                 "state": ParameterDef(type="string", description="The user's state", default={"string_value": "MA"}),
             },
         ),

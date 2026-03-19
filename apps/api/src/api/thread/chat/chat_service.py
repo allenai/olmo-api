@@ -485,6 +485,9 @@ class ChatService:
                 events.append(event)
                 if isinstance(event, AddMessageChunk):
                     for message in event.messages:
+                        if message.id == run_input.parent_message_id:
+                            continue
+
                         message_ids.append(message.id)
                         message_map[message.id] = message
                 if isinstance(event, ErrorChunk):

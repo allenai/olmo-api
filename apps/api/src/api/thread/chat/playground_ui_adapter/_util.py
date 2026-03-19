@@ -133,7 +133,7 @@ def map_response_pydantic_messages_to_messages(
     mapped_messages: list[Message] = []
     for i, message in enumerate(split_messages):
         message_id = message_ids[i]
-        error: ErrorChunk | None = next(error for error in errors if error.message == message_id)
+        error: ErrorChunk | None = next((error for error in errors if error.message == message_id), None)
 
         match message:
             case ModelRequest():
@@ -149,7 +149,7 @@ def map_response_pydantic_messages_to_messages(
                             mapped_messages.append(tool_return_message)
                             parent_message_id = tool_return_message.id
                         case _:
-                            # We don't expect to have any other parts in the the messages the Pydantic-AI Agent made
+                            # We don't expect to have any other parts in the messages the Pydantic-AI Agent made
                             pass
 
             case ModelResponse():
@@ -190,6 +190,8 @@ def map_response_pydantic_messages_to_messages(
 
             case _:
                 assert_never(message)
+
+        parent_message_id = message_id
 
     return mapped_messages
 

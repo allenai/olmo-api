@@ -461,9 +461,13 @@ class ChatService:
         return agent, run_input
 
     @classmethod
-    async def _get_stream_events(
+    async def _get_stream_events_from_agent_run(
         cls, run: AgentRun[None, DeferredToolRequests | str]
     ) -> AsyncIterator[AgentStreamEvent]:
+        """
+        Yields events from an AgentRun that UIEventStream knows how to handle, like TextStartPart and ThinkingDeltaPart
+        """
+
         async for node in run:
             if Agent.is_model_request_node(node) or Agent.is_call_tools_node(node):
                 async with node.stream(run.ctx) as request_stream:
@@ -486,7 +490,7 @@ class ChatService:
         pydantic_messages = map_messages_to_pydantic_ai_format(run_input.all_messages)
 
         async with agent.iter(message_history=pydantic_messages) as agent_run:
-            stream = self._get_stream_events(agent_run)
+            stream = self._get_stream_events_from_agent_run(agent_run)
 
             errors = []
             message_map = {}

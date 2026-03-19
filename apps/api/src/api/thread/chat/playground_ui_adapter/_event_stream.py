@@ -108,14 +108,16 @@ class PlaygroundUIEventStream(
             thinking=thinking,
         )
 
+    @override
     @property
     def content_type(self) -> str:
         return JSONL_CONTENT_TYPE
 
-    # HACK: This usually outputs str, we're overriding it in an incompatible manner so we get nice chunks in chat_service
-    def encode_event(self, event: Event) -> Event:  # type: ignore[override] # pyright: ignore[reportIncompatibleMethodOverride] # noqa: PLR6301
-        return event
+    @override
+    def encode_event(self, event: Event) -> str:
+        return event.model_dump_json() + "\n"
 
+    @override
     async def before_stream(self) -> AsyncIterator[Event]:
         yield StreamStartChunk(message=self.run_input.root_message_id)
 
@@ -125,11 +127,13 @@ class PlaygroundUIEventStream(
         else:
             yield AddMessageChunk(message=messages[0].id, id=messages[0].id, messages=messages)
 
+    @override
     async def before_request(self) -> AsyncIterator[Event]:
         self.new_message_id()
         return
         yield  # Make this an async generator
 
+    @override
     async def before_response(self) -> AsyncIterator[Event]:
         self.new_message_id()
         return
@@ -141,21 +145,24 @@ class PlaygroundUIEventStream(
         return
         yield  # Make this an async generator
 
-    async def handle_text_start(self, part: TextPart, follows_text: bool = False) -> AsyncIterator[Event]:  # noqa: ARG002, FBT001, FBT002
+    @override
+    async def handle_text_start(self, part: TextPart, follows_text: bool = False) -> AsyncIterator[Event]:
         if self._has_message_been_sent(self.message_id):
             yield ModelResponseChunk(message=self.message_id, content=part.content)
         else:
             message = self._create_message_with_defaults(content=part.content, role=Role.Assistant)
             yield self._get_add_message_chunk(message.id, message)
 
+    @override
     async def handle_text_delta(self, delta: TextPartDelta) -> AsyncIterator[Event]:
         if delta.content_delta:
             yield ModelResponseChunk(message=self.message_id, content=delta.content_delta)
 
+    @override
     async def handle_thinking_start(
         self,
         part: ThinkingPart,
-        follows_thinking: bool = False,  # noqa: ARG002, FBT001, FBT002
+        follows_thinking: bool = False,
     ) -> AsyncIterator[Event]:
         if self._has_message_been_sent(self.message_id):
             yield ThinkingChunk(message=self.message_id, content=part.content)
@@ -163,10 +170,12 @@ class PlaygroundUIEventStream(
             message = self._create_message_with_defaults(content="", role=Role.Assistant, thinking=part.content)
             yield self._get_add_message_chunk(message.id, message)
 
+    @override
     async def handle_thinking_delta(self, delta: ThinkingPartDelta) -> AsyncIterator[Event]:
         if delta.content_delta:
             yield ThinkingChunk(message=self.message_id, content=delta.content_delta)
 
+    @override
     async def handle_tool_call_start(self, part: ToolCallPart | BuiltinToolCallPart) -> AsyncIterator[Event]:
         if not self._has_message_been_sent(self.message_id):
             message = self._create_message_with_defaults(content="", role=Role.Assistant)
@@ -182,6 +191,7 @@ class PlaygroundUIEventStream(
             tool_source=tool_source,
         )
 
+    @override
     async def handle_tool_call_delta(self, delta: ToolCallPartDelta) -> AsyncIterator[Event]:
         tool_call_id = delta.tool_call_id or ""
         assert tool_call_id, "`ToolCallPartDelta.tool_call_id` must be set"  # noqa: S101
@@ -194,6 +204,7 @@ class PlaygroundUIEventStream(
             args=delta.args_delta,
         )
 
+    @override
     async def handle_function_tool_result(self, event: FunctionToolResultEvent) -> AsyncIterator[Event]:
         if self._has_message_been_sent(self.message_id):
             # Pydantic doesn't call before_response before each function tool. Since we need them in separate messages we need to make a new ID if we've already sent a message for this message_id
@@ -225,6 +236,7 @@ class PlaygroundUIEventStream(
 
             yield self._get_add_message_chunk(message.id, message)
 
+    @override
     async def on_error(self, error: Exception) -> AsyncIterator[Event]:
         self._finish_reason = "error"
 

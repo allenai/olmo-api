@@ -1,6 +1,6 @@
 import copy
 import json
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from typing import TypeAlias, assert_never
 
@@ -230,14 +230,16 @@ def split_pydantic_messages(
     return split_messages
 
 
-async def stream_pending_tool_responses(run_input: RunInput) -> AsyncIterator[Event]:
+async def stream_pending_tool_responses(
+    run_input: RunInput, handle_final_messages: Callable[[Sequence[Message]], Awaitable[Message]]
+) -> AsyncIterator[Event]:
     """Short circuit the event stream and flush pending tool responses"""
     yield StreamStartChunk(message=run_input.root_message_id)
 
     new_flat = FlatMessage.from_message_seq(run_input.new_messages)
     yield AddMessageChunk(message=new_flat[0].id, id=new_flat[0].id, messages=new_flat)
 
-    first_message = await run_input.handle_final_messages(run_input.new_messages)
+    first_message = await handle_final_messages(run_input.new_messages)
     final_flat = FlatMessage.from_message_with_children(first_message)
     yield FinalThreadChunk(message=final_flat[0].id, id=final_flat[0].id, messages=final_flat)
 

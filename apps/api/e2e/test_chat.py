@@ -32,9 +32,9 @@ IS_CI = os.getenv("CI", "false") == "true"
 
 
 async def test_calls_user_tools(client: AsyncClient, auth_user: AuthenticatedClient, db_session: DatabaseSession):
-    tool_name = "get_current_weather"
-    tool_definition = CreateToolDefinition(
-        name=tool_name,
+    weather_tool_name = "get_current_weather"
+    weather_tool_definition = CreateToolDefinition(
+        name=weather_tool_name,
         description="Get the current weather in a given location",
         parameters=ParameterDef(
             type="object",
@@ -47,7 +47,21 @@ async def test_calls_user_tools(client: AsyncClient, auth_user: AuthenticatedCli
             },
         ),
     )
-    tool_definitions = f"[{tool_definition.model_dump_json()}]"
+
+    location_tool_name = "get_user_location"
+    location_tool_definition = CreateToolDefinition(
+        name=location_tool_name,
+        description="Get the user's location",
+        parameters=ParameterDef(
+            type="object",
+            properties={
+                "city": ParameterDef(type="string", description="The user's city", default={"string-value": "Boston"}),
+                "state": ParameterDef(type="string", description="The user's state", default={"string_value": "MA"}),
+            },
+        ),
+    )
+
+    tool_definitions = f"[{weather_tool_definition.model_dump_json()}, {location_tool_definition.model_dump_json()}]"
     chat_request = UserChatRequest(
         content="test tool calling",
         model="test-model",
@@ -62,15 +76,16 @@ async def test_calls_user_tools(client: AsyncClient, auth_user: AuthenticatedCli
 
     lines = [json.loads(line) for line in response.text.splitlines()]
 
-    assert len(lines) == 6
+    assert len(lines) == 7
     StreamStartChunk.model_validate(lines[0])
     starting_thread = StartThreadChunk.model_validate(lines[1])
     AddMessageChunk.model_validate(lines[2])
-    tool_call_chunk = ToolCallChunk.model_validate(lines[3])
+    weather_tool_call_chunk = ToolCallChunk.model_validate(lines[3])
+    location_tool_call_chunk = ToolCallChunk.model_validate(lines[4])
     finished_thread = FinalThreadChunk.model_validate(lines[-2])
     StreamEndChunk.model_validate(lines[-1])
 
-    assert tool_call_chunk.tool_name == tool_name
+    assert weather_tool_call_chunk.tool_name == weather_tool_name
     assert len(starting_thread.messages) == 2
     assert finished_thread.id == starting_thread.id
     assert len(finished_thread.messages) == 3
@@ -79,8 +94,8 @@ async def test_calls_user_tools(client: AsyncClient, auth_user: AuthenticatedCli
     assert finished_thread.messages[1].role == Role.User
     assert finished_thread.messages[2].role == Role.Assistant
     assert finished_thread.messages[2].tool_calls
-    assert len(finished_thread.messages[2].tool_calls) == 1
-    assert finished_thread.messages[2].tool_calls[0].tool_name == tool_name
+    assert len(finished_thread.messages[2].tool_calls) == 2
+    assert finished_thread.messages[2].tool_calls[0].tool_name == weather_tool_name
 
     async with db_session() as session, session.begin():
         message_query = (
@@ -105,7 +120,7 @@ async def test_calls_user_tools(client: AsyncClient, auth_user: AuthenticatedCli
         model="test-model",
         enable_tool_calling=True,
         parent=finished_thread.messages[2].id,
-        tool_call_id=tool_call_chunk.tool_call_id,
+        tool_call_id=weather_tool_call_chunk.tool_call_id,
     ).model_dump(exclude_none=True, exclude_computed_fields=True)
 
     tool_request["toolDefinitions"] = tool_definitions
@@ -117,21 +132,54 @@ async def test_calls_user_tools(client: AsyncClient, auth_user: AuthenticatedCli
     lines = [json.loads(line) for line in tool_response.text.splitlines()]
 
     StreamStartChunk.model_validate(lines[0])
-    tool_response_chunk = AddMessageChunk.model_validate(lines[1])
+    weather_tool_response_chunk = AddMessageChunk.model_validate(lines[1])
     # ...streaming response...
-    final_thread_chunk = FinalThreadChunk.model_validate(lines[-2])
+    final_thread_with_pending_tools_chunk = FinalThreadChunk.model_validate(lines[-2])
     StreamEndChunk.model_validate(lines[-1])
 
-    assert tool_response_chunk.messages[0].tool_calls, "There were no tool calls in the tool result response"
-    assert tool_response_chunk.messages[0].tool_calls[0].tool_call_id == tool_call_chunk.tool_call_id
-    assert tool_response_chunk.messages[0].content == "Sunny"
+    assert weather_tool_response_chunk.messages[0].tool_calls, "There were no tool calls in the tool result response"
+    assert weather_tool_response_chunk.messages[0].tool_calls[0].tool_call_id == weather_tool_call_chunk.tool_call_id
+    assert weather_tool_response_chunk.messages[0].content == "Sunny"
 
-    assert len(final_thread_chunk.messages) == 2
-    assert final_thread_chunk.messages[0].role == Role.ToolResponse
-    assert final_thread_chunk.messages[1].role == Role.Assistant
-    assert final_thread_chunk.messages[0].tool_calls
-    assert len(final_thread_chunk.messages[0].tool_calls) == 1
-    assert len(final_thread_chunk.messages[-1].content) > 0
+    assert len(final_thread_with_pending_tools_chunk.messages) == 1
+    assert final_thread_with_pending_tools_chunk.messages[0].role == Role.ToolResponse
+    assert final_thread_with_pending_tools_chunk.messages[0].tool_calls
+    assert len(final_thread_with_pending_tools_chunk.messages[0].tool_calls) == 1
+
+    tool_request = ToolResponseChatRequest(
+        content='{"city": "Boston", "state": "MA"}',
+        model="test-model",
+        enable_tool_calling=True,
+        parent=final_thread_with_pending_tools_chunk.messages[-1].id,
+        tool_call_id=location_tool_call_chunk.tool_call_id,
+    ).model_dump(exclude_none=True, exclude_computed_fields=True)
+
+    tool_request["toolDefinitions"] = tool_definitions
+
+    tool_response = await client.post(CHAT_ENDPOINT, data=tool_request, headers=auth_headers_for_user(auth_user))
+
+    assert_ok_response(response=tool_response)
+
+    lines = [json.loads(line) for line in tool_response.text.splitlines()]
+
+    StreamStartChunk.model_validate(lines[0])
+    location_tool_response_chunk = AddMessageChunk.model_validate(lines[1])
+    # ...streaming response...
+    final_thread_with_pending_tools_chunk = FinalThreadChunk.model_validate(lines[-2])
+    StreamEndChunk.model_validate(lines[-1])
+
+    assert location_tool_response_chunk.messages[0].tool_calls, "There were no tool calls in the tool result response"
+    assert location_tool_response_chunk.messages[0].tool_calls[0].tool_call_id == location_tool_call_chunk.tool_call_id
+    assert location_tool_response_chunk.messages[0].content == '{"city": "Boston", "state": "MA"}'
+
+    assert len(final_thread_with_pending_tools_chunk.messages) == 2
+    assert final_thread_with_pending_tools_chunk.messages[0].role == Role.ToolResponse
+    assert final_thread_with_pending_tools_chunk.messages[0].tool_calls
+    assert len(final_thread_with_pending_tools_chunk.messages[0].tool_calls) == 1
+    assert final_thread_with_pending_tools_chunk.messages[1].role == Role.Assistant
+    assert final_thread_with_pending_tools_chunk.messages[1].content, (
+        "The final response with all tool calls should have content"
+    )
 
 
 async def test_calls_mcp_tools(client: AsyncClient, auth_user: AuthenticatedClient, db_session: DatabaseSession):

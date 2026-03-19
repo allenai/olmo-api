@@ -29,7 +29,11 @@ from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
 from api.thread.chat.chat_types import ChatStreamOutput
 from api.thread.chat.mapping.pydantic_ai_mapping import map_messages_to_pydantic_ai_format
 from api.thread.chat.playground_ui_adapter._event_stream import PlaygroundUIEventStream
-from api.thread.chat.playground_ui_adapter._util import RunInput, map_response_pydantic_messages_to_messages
+from api.thread.chat.playground_ui_adapter._util import (
+    RunInput,
+    map_response_pydantic_messages_to_messages,
+    stream_pending_tool_responses,
+)
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
 from api.thread.chat.pydantic_inference.pydantic_model_settings import pydantic_model_settings
 from api.thread.chat.safety.validate_message_safety_service import ValidateMessageSafetyServiceDependency
@@ -469,6 +473,14 @@ class ChatService:
     async def stream_chat_message(
         self, agent: Agent[None, DeferredToolRequests | str], run_input: RunInput
     ) -> AsyncIterator[ChatStreamOutput]:
+        if has_pending_tool_calls(run_input.all_messages):
+            # short circuits the event steam when there are pending tool calls
+            # prevents the model responding before all user tool calls have been responded to
+            async for event in stream_pending_tool_responses(run_input, self.message_repository.finalize_thread):
+                yield event
+
+            return
+
         event_stream = PlaygroundUIEventStream(run_input=run_input, accept=None)
 
         pydantic_messages = map_messages_to_pydantic_ai_format(run_input.all_messages)

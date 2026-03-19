@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import PrimaryKeyConstraint, Text
+from sqlalchemy import PrimaryKeyConstraint, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.object_id import new_id_generator
@@ -20,3 +20,4 @@ class User(Base, kw_only=True):
     data_collection_acceptance_revoked_date: Mapped[datetime.datetime | None]
     media_collection_accepted_date: Mapped[datetime.datetime | None]
     media_collection_acceptance_revoked_date: Mapped[datetime.datetime | None]
+    created: Mapped[datetime.datetime] = mapped_column(server_default=func.now(), init=False)

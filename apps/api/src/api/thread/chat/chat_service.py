@@ -539,9 +539,9 @@ class ChatService:
                 span.add_event("inference.finalize-error")
 
                 yield ErrorChunk(
-                    message=run_input.root_message_id,
-                    error_code=ErrorCode.OTHER_ERROR,
-                    error_description=type(e).__name__,
+                    message=message_ids[-1],
+                    error_code=ErrorCode.FINALIZE_ERROR,
+                    error_description="Something went wrong when saving this thread",
                 )
 
         yield StreamEndChunk(message=run_input.root_message_id)

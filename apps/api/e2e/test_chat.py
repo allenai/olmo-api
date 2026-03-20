@@ -200,7 +200,7 @@ async def test_calls_user_tools(client: AsyncClient, auth_user: AuthenticatedCli
 
 
 async def test_calls_mcp_tools(client: AsyncClient, auth_user: AuthenticatedClient, db_session: DatabaseSession):
-    tool_name = "celsius_to_fahrenheit"
+    tool_name = "get_weather_forecast"
     chat_request = UserChatRequest(
         content="test tool calling",
         model="test-model",

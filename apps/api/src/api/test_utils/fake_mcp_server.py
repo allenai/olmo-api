@@ -5,16 +5,13 @@ from pydantic_ai import FunctionToolset, ModelRetry, RunContext
 test_toolset = FunctionToolset(max_retries=0)
 
 
-class TestFailureError(Exception): ...
-
-
 @test_toolset.tool()
 async def always_fails(ctx: RunContext) -> NoReturn:  # noqa: ARG001, RUF029
     raise ModelRetry("Always fails")  # noqa: EM101, TRY003
 
 
-@test_toolset.tool()
-async def celsius_to_fahrenheit(ctx: RunContext, celsius: float) -> float:  # noqa: RUF029
+@test_toolset.tool_plain()
+async def celsius_to_fahrenheit(celsius: float) -> float:  # noqa: RUF029
     """Convert Celsius to Fahrenheit.
 
     Args:

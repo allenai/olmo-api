@@ -14,12 +14,14 @@ from api.thread.models.thread import Thread
 from core.message.message_chunk import (
     AddMessageChunk,
     ChunkType,
+    ErrorChunk,
     FinalThreadChunk,
     StartThreadChunk,
     StreamEndChunk,
     StreamStartChunk,
     ToolCallChunk,
 )
+from core.message.message_errors import ErrorCode
 from core.message.role import Role
 from db.models.message import Message
 from e2e.conftest import AuthenticatedClient, DatabaseSession, auth_headers_for_user
@@ -254,6 +256,68 @@ async def test_calls_mcp_tools(client: AsyncClient, auth_user: AuthenticatedClie
         )
         assert message_in_db.children
         assert message_in_db.children[0].id == finished_thread.messages[2].id
+
+
+async def test_calls_a_failing_tool(client: AsyncClient, anon_user: AuthenticatedClient, db_session: DatabaseSession):
+    tool_name = "always_fails"
+    chat_request = UserChatRequest(
+        content="test failing tool calling",
+        model="test-model",
+        enable_tool_calling=True,
+        selected_tools=[tool_name],
+    ).model_dump(exclude_none=True, exclude_computed_fields=True)
+
+    response = await client.post(CHAT_ENDPOINT, data=chat_request, headers=auth_headers_for_user(anon_user))
+
+    assert_ok_response(response=response)
+
+    lines = _get_lines_without_deltas(response)
+
+    assert len(lines) == 7
+
+    StreamStartChunk.model_validate(lines[0])
+    starting_thread = StartThreadChunk.model_validate(lines[1])
+    tool_call_chunk = ToolCallChunk.model_validate(lines[3])
+    error_chunk = ErrorChunk.model_validate(lines[4])
+    finished_thread = FinalThreadChunk.model_validate(lines[-2])
+    StreamEndChunk.model_validate(lines[-1])
+
+    assert tool_call_chunk.tool_name == tool_name
+    assert error_chunk.error_code == ErrorCode.TOOL_CALL_ERROR
+    assert len(starting_thread.messages) == 2
+    assert finished_thread.id == starting_thread.id
+    assert len(finished_thread.messages) == 3
+
+    assert finished_thread.messages[0].role == Role.System
+    assert finished_thread.messages[1].role == Role.User
+
+    assistant_message = finished_thread.messages[2]
+    assert assistant_message.role == Role.Assistant
+
+    assert assistant_message.tool_calls
+    assert len(assistant_message.tool_calls) == 1, "There were no tool calls on the intended tool call message"
+    assert assistant_message.tool_calls[0].tool_name == tool_name
+    assert assistant_message.error_code == ErrorCode.TOOL_CALL_ERROR
+
+    async with db_session() as session, session.begin():
+        message_query = (
+            select(Message)
+            .where(Message.id == finished_thread.messages[1].id)
+            .options(
+                selectinload(Message.children),
+                selectinload(Message.parent_),
+            )
+        )
+        message_in_db_result = await session.scalars(message_query)
+        message_in_db = message_in_db_result.one()
+
+        assert message_in_db.parent_ is not None and message_in_db.parent_.id == finished_thread.messages[0].id, (  # noqa: PT018
+            "User message did not get its parent set correctly in the DB"
+        )
+        assert message_in_db.children
+        assert message_in_db.children[0].id == finished_thread.messages[2].id
+
+        assert message_in_db.children[0].error_code == ErrorCode.TOOL_CALL_ERROR
 
 
 async def test_does_not_call_tools(client: AsyncClient, anon_user: AuthenticatedClient):

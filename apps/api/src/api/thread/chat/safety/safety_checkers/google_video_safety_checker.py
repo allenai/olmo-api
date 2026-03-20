@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+import sys
 
 import dramatiq
 from google.api_core import operation_async
@@ -111,8 +112,8 @@ class GoogleVideoIntelligenceSafetyChecker(SafetyChecker):
         return SkippedSafetyCheckResponse()
 
 
-@dramatiq.actor  # type: ignore
-async def handle_retry_exhausted(failed_message: dict, retry_info: dict) -> None:
+@dramatiq.actor
+async def handle_retry_exhausted(failed_message: dict, retry_info: dict):
     kwargs: dict = failed_message.get("kwargs", {})
     operation_name: str = kwargs.get("operation_name", "unknown")
     file_url: str = kwargs.get("file_url", "unknown")
@@ -157,13 +158,13 @@ async def handle_retry_exhausted(failed_message: dict, retry_info: dict) -> None
                 await session.commit()
 
 
-@dramatiq.actor(  # type: ignore
+@dramatiq.actor(
     queue_name=SAFETY_QUEUE_NAME,
     max_retries=5,
     on_retry_exhausted=handle_retry_exhausted.actor_name,
 )
 @tracer.start_as_current_span("handle_video_safety_check")
-async def handle_video_safety_check(operation_name: str, file_url: str, message_id: str) -> None:
+async def handle_video_safety_check(operation_name: str, file_url: str, message_id: str):
     span = trace.get_current_span()
     span.set_attributes({
         "operation_name": operation_name,

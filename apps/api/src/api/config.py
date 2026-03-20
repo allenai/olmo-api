@@ -77,7 +77,8 @@ class Settings(BaseSettings):
     VIDEO_SAFETY_CHECK_WORKER_STRATEGY: str = "deferred"
 
     INCLUDE_TEST_MCP_SERVERS: bool = Field(
-        False, description="Used to enable/disable the fake MCP server in test_utils/fake_mcp_server"
+        default=False,
+        description="Used to enable/disable the fake MCP server in test_utils/fake_mcp_server",
     )
 
     model_config = SettingsConfigDict(

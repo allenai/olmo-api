@@ -4,7 +4,7 @@ from http import HTTPStatus
 from pathlib import Path
 
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, Response
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -13,6 +13,7 @@ from api.thread.chat.chat_request import CreateToolDefinition, ParameterDef, Too
 from api.thread.models.thread import Thread
 from core.message.message_chunk import (
     AddMessageChunk,
+    ChunkType,
     FinalThreadChunk,
     StartThreadChunk,
     StreamEndChunk,
@@ -29,6 +30,20 @@ from .create_test_thread import create_test_thread
 CHAT_ENDPOINT = "/v5/threads/chat"
 
 IS_CI = os.getenv("CI", "false") == "true"
+
+
+def _get_dict_lines_from_response(response: Response):
+    text_lines = response.text.splitlines()
+    lines = [json.loads(line) for line in text_lines]
+
+    return lines
+
+
+def _get_lines_without_deltas(response: Response):
+    lines = _get_dict_lines_from_response(response)
+    lines_without_stream = [line for line in lines if line["type"] != ChunkType.MODEL_RESPONSE.value]
+
+    return lines_without_stream
 
 
 async def test_calls_user_tools(client: AsyncClient, auth_user: AuthenticatedClient, db_session: DatabaseSession):
@@ -195,8 +210,9 @@ async def test_calls_mcp_tools(client: AsyncClient, auth_user: AuthenticatedClie
 
     assert_ok_response(response=response)
 
-    lines = [json.loads(line) for line in response.text.splitlines()]
-    lines_without_stream = [line for line in lines if line["type"] != "modelResponse"]
+    lines = _get_lines_without_deltas(response)
+
+    assert len(lines) == 8
 
     StreamStartChunk.model_validate(lines[0])
     starting_thread = StartThreadChunk.model_validate(lines[1])

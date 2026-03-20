@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import override
 
 from opentelemetry import trace
-from pydantic_ai import ToolReturnPart, UnexpectedModelBehavior
+from pydantic_ai import ModelRetry, ToolReturnPart, UnexpectedModelBehavior
 from pydantic_ai.messages import (
     BuiltinToolCallPart,
     FunctionToolResultEvent,
@@ -240,6 +240,14 @@ class PlaygroundUIEventStream(
         span.add_event("inference.stream-error")
 
         if isinstance(error, UnexpectedModelBehavior):
+            # Tool retry errors currently look like "Tool 'tool_name' exceeded max retries count of N"
+            if isinstance(error.__cause__, ModelRetry) and "Tool" in error.message:
+                yield ErrorChunk(
+                    error_description=error.message,
+                    message=self.parent_message_id,
+                    error_code=ErrorCode.TOOL_CALL_ERROR,
+                )
+
             yield ErrorChunk(error_description=error.message, message=self.message_id, error_code=ErrorCode.OTHER_ERROR)
 
         else:

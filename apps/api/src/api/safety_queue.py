@@ -3,6 +3,7 @@ from dramatiq.brokers.redis import RedisBroker
 from dramatiq.brokers.stub import StubBroker
 from dramatiq.middleware.asyncio import AsyncIO
 from dramatiq.middleware.prometheus import Prometheus
+from opentelemetry import context, propagate
 from typing_extensions import override
 
 from api.config import settings
@@ -19,6 +20,34 @@ class OtelMiddleware(dramatiq.Middleware):
     @override
     def after_worker_boot(self, broker: dramatiq.Broker, worker: dramatiq.Worker) -> None:
         setup_otel()
+
+    @override
+    def before_enqueue(self, broker: dramatiq.Broker, message: dramatiq.Message, delay: int) -> None:
+        if "otel_context" not in message.options:
+            carrier: dict = {}
+            propagate.inject(carrier)
+            message.options["otel_context"] = carrier
+
+    @override
+    def before_process_message(self, broker: dramatiq.Broker, message: dramatiq.MessageProxy) -> None:
+        carrier = message.options.get("otel_context", {})
+        ctx = propagate.extract(carrier)
+        token = context.attach(ctx)
+        message.options["_otel_token"] = token
+
+    @override
+    def after_process_message(
+        self, broker: dramatiq.Broker, message: dramatiq.MessageProxy, *, result=None, exception=None
+    ) -> None:
+        token = message.options.pop("_otel_token", None)
+        if token is not None:
+            context.detach(token)
+
+    @override
+    def after_skip_message(self, broker: dramatiq.Broker, message: dramatiq.MessageProxy) -> None:
+        token = message.options.pop("_otel_token", None)
+        if token is not None:
+            context.detach(token)
 
 
 def setup_safety_queue() -> None:

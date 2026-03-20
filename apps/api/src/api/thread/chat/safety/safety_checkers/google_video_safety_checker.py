@@ -11,7 +11,7 @@ from google.cloud.videointelligence_v1 import (
     Likelihood,
     VideoIntelligenceServiceAsyncClient,
 )
-from opentelemetry import trace
+from opentelemetry import propagate, trace
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 from typing_extensions import override
@@ -111,49 +111,50 @@ class GoogleVideoIntelligenceSafetyChecker(SafetyChecker):
         return SkippedSafetyCheckResponse()
 
 
-@dramatiq.actor
-@tracer.start_as_current_span("handle_retry_exhausted")
+@dramatiq.actor  # type: ignore
 async def handle_retry_exhausted(failed_message: dict, retry_info: dict) -> None:
     kwargs: dict = failed_message.get("kwargs", {})
     operation_name: str = kwargs.get("operation_name", "unknown")
     file_url: str = kwargs.get("file_url", "unknown")
     message_id: str = kwargs.get("message_id", "unknown")
 
-    span = trace.get_current_span()
-    span.set_attributes({
-        "operation_name": operation_name,
-        "file_url": file_url,
-        "message_id": message_id,
-        "retries": retry_info.get("retries", 0),
-    })
-    span.set_status(trace.StatusCode.ERROR, "video safety check retries exhausted")
+    carrier = failed_message.get("options", {}).get("otel_context", {})
+    ctx = propagate.extract(carrier)
+    with tracer.start_as_current_span("handle_retry_exhausted", context=ctx) as span:
+        span.set_attributes({
+            "operation_name": operation_name,
+            "file_url": file_url,
+            "message_id": message_id,
+            "retries": retry_info.get("retries", 0),
+        })
+        span.set_status(trace.StatusCode.ERROR, "video safety check retries exhausted")
 
-    logger.error(
-        "video_safety_worker.retry_exhausted",
-        operation_name=operation_name,
-        file_url=file_url,
-        message_id=message_id,
-        retries=retry_info.get("retries"),
-        max_retries=retry_info.get("max_retries"),
-        traceback=failed_message.get("options", {}).get("traceback"),
-    )
+        logger.error(
+            "video_safety_worker.retry_exhausted",
+            operation_name=operation_name,
+            file_url=file_url,
+            message_id=message_id,
+            retries=retry_info.get("retries"),
+            max_retries=retry_info.get("max_retries"),
+            traceback=failed_message.get("options", {}).get("traceback"),
+        )
 
-    storage_client = get_google_cloud_storage()
-    safety_file_name = Path(file_url).parts[-1]
+        storage_client = get_google_cloud_storage()
+        safety_file_name = Path(file_url).parts[-1]
 
-    await storage_client.delete_file(filename=safety_file_name, bucket_name=settings.SAFTEY_GCS_UPLOAD_BUCKET)
+        await storage_client.delete_file(filename=safety_file_name, bucket_name=settings.SAFTEY_GCS_UPLOAD_BUCKET)
 
-    await storage_client.delete_prefix(prefix=message_id, bucket_name=settings.USER_CONTENT_BUCKET)
+        await storage_client.delete_prefix(prefix=message_id, bucket_name=settings.USER_CONTENT_BUCKET)
 
-    Session = _make_worker_sessionmaker()  # noqa: N806
-    async with Session() as session:
-        message_repository = AsyncMessageRepository(session)
-        message = await message_repository.get_message_by_id(message_id)
-        if message is not None:
-            message.harmful = True
-            message.file_urls = None
-            await message_repository.update(message)
-            await session.commit()
+        Session = _make_worker_sessionmaker()  # noqa: N806
+        async with Session() as session:
+            message_repository = AsyncMessageRepository(session)
+            message = await message_repository.get_message_by_id(message_id)
+            if message is not None:
+                message.harmful = True
+                message.file_urls = None
+                await message_repository.update(message)
+                await session.commit()
 
 
 @dramatiq.actor(  # type: ignore

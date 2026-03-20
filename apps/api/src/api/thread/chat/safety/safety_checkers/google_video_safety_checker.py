@@ -1,6 +1,5 @@
 from functools import lru_cache
 from pathlib import Path
-import sys
 
 import dramatiq
 from google.api_core import operation_async

@@ -493,7 +493,6 @@ class ChatService:
             stream = self._get_stream_events_from_agent_run(agent_run)
 
             errors = []
-            message_map = {}
             message_ids = []
             async for event in event_stream.transform_stream(stream):
                 yield event
@@ -504,17 +503,8 @@ class ChatService:
                             continue
 
                         message_ids.append(message.id)
-                        message_map[message.id] = message
                 if isinstance(event, ErrorChunk):
                     errors.append(event)
-
-            for error in errors:
-                if error.message in message_map:
-                    message = message_map[error.message]
-
-                    message.error_code = error.error_code
-                    message.error_description = error.error_description
-                    message.error_severity = error.error_severity
 
             try:
                 mapped_messages = map_response_pydantic_messages_to_messages(

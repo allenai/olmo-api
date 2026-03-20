@@ -198,12 +198,9 @@ def map_response_pydantic_messages_to_messages(
 def split_pydantic_messages(
     messages: Sequence[ModelMessage],
 ) -> list[ModelMessage]:
-    messages_without_system_message = [
-        message for message in messages if not any(part.part_kind == "system-prompt" for part in message.parts)
-    ]
     split_messages: list[ModelMessage] = []
 
-    for message in messages_without_system_message:
+    for message in messages:
         match message:
             case ModelRequest():
                 request_without_tool_returns = copy.deepcopy(message)

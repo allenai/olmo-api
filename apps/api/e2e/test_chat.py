@@ -89,7 +89,7 @@ async def test_calls_user_tools(client: AsyncClient, auth_user: AuthenticatedCli
 
     assert_ok_response(response=response)
 
-    lines = [json.loads(line) for line in response.text.splitlines()]
+    lines = _get_dict_lines_from_response(response)
 
     assert len(lines) == 7
     StreamStartChunk.model_validate(lines[0])
@@ -285,7 +285,7 @@ async def test_does_not_call_tools(client: AsyncClient, anon_user: Authenticated
 
     assert_ok_response(response=response)
 
-    lines = [json.loads(line) for line in response.text.splitlines()]
+    lines = _get_dict_lines_from_response(response)
 
     for line in lines:
         with pytest.raises(ValidationError):
@@ -309,7 +309,7 @@ async def test_makes_a_thread_with_parent(
 
     assert_ok_response(response=response)
 
-    lines = [json.loads(line) for line in response.text.splitlines()]
+    lines = _get_dict_lines_from_response(response)
 
     assert len(lines) == 9
     StreamStartChunk.model_validate(lines[0])
@@ -439,7 +439,7 @@ async def test_uploads_a_file_to_a_multimodal_model(client: AsyncClient, anon_us
 
     assert_ok_response(response=response)
 
-    lines = [json.loads(line) for line in response.text.splitlines()]
+    lines = _get_dict_lines_from_response(response)
 
     assert len(lines) == 9
     finished_thread = Thread.model_validate(lines[-2])

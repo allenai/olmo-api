@@ -13,6 +13,7 @@ from pydantic_ai import (
     SystemPromptPart,
     TextPart,
     ThinkingPart,
+    ToolCallPart,
     ToolReturnPart,
     UserContent,
     UserPromptPart,
@@ -28,6 +29,7 @@ from api.thread.chat.chat_exceptions import UnhandledRoleError, UnsupportedMedia
 from api.thread.chat.mapping.input_parts import map_input_parts
 from core.message.role import Role
 from db.models.message import Message
+from db.models.tool_call import ToolCall
 
 
 def _map_part_from_file(file: str | UploadFile) -> MultiModalContent:
@@ -70,6 +72,10 @@ def _map_user_message(message: Message) -> ModelRequestPart:
     return user_prompt_part
 
 
+def _map_db_tool_to_pydantic_tool(tool: ToolCall):
+    return ToolCallPart(tool_name=tool.tool_name, tool_call_id=tool.tool_call_id, args=tool.args)
+
+
 def _map_assistant_message(message: Message) -> list[ModelResponsePart]:
     assistant_message_parts: list[ModelResponsePart] = []
 
@@ -78,8 +84,8 @@ def _map_assistant_message(message: Message) -> list[ModelResponsePart]:
 
     assistant_message_parts.append(TextPart(content=message.content))
 
-    # if message.tool_calls:
-    # assistant_message_parts.extend([_map_db_tool_to_pydantic_tool(tool) for tool in message.tool_calls])
+    if message.tool_calls:
+        assistant_message_parts.extend([_map_db_tool_to_pydantic_tool(tool) for tool in message.tool_calls])
 
     return assistant_message_parts
 

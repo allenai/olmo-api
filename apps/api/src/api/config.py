@@ -74,7 +74,6 @@ class Settings(BaseSettings):
 
     SAFETY_QUEUE_URL: str = Field(init=False)
     SAFTEY_GCS_UPLOAD_BUCKET: str = Field(init=False)
-    VIDEO_SAFETY_CHECK_WORKER_STRATEGY: str = "deferred"
 
     model_config = SettingsConfigDict(
         extra="ignore",

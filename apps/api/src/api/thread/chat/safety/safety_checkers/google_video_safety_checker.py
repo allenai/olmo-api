@@ -26,7 +26,6 @@ from .safety_checker_base import (
     SafetyChecker,
     SafetyCheckRequest,
     SafetyCheckResponse,
-    SafetyCheckUnsafeError,
     SkippedSafetyCheckResponse,
 )
 
@@ -108,19 +107,9 @@ class GoogleVideoIntelligenceSafetyChecker(SafetyChecker):
 
         span.set_attribute("operation_name", operation_name)
 
-        if settings.VIDEO_SAFETY_CHECK_WORKER_STRATEGY == "deferred":
-            handle_video_safety_check.send(
-                operation_name=operation_name, file_url=request.content, message_id=request.message_id
-            )
-
-        if settings.VIDEO_SAFETY_CHECK_WORKER_STRATEGY == "inline":
-            response = await _handle_video_safety_check_async(
-                operation_name=operation_name, file_url=request.content, message_id=request.message_id
-            )
-            if not response.is_safe() and throw:
-                raise SafetyCheckUnsafeError
-
-            return response
+        handle_video_safety_check.send(
+            operation_name=operation_name, file_url=request.content, message_id=request.message_id
+        )
 
         return SkippedSafetyCheckResponse()
 
@@ -140,14 +129,8 @@ def handle_retry_exhausted(*args, **kwargs) -> None:
     max_retries=5,
     on_retry_exhausted=handle_retry_exhausted.actor_name,
 )
-async def handle_video_safety_check(operation_name: str, file_url: str, message_id: str) -> None:
-    await _handle_video_safety_check_async(operation_name=operation_name, file_url=file_url, message_id=message_id)
-
-
 @tracer.start_as_current_span("handle_video_safety_check")
-async def _handle_video_safety_check_async(
-    operation_name: str, file_url: str, message_id: str
-) -> GoogleVideoIntelligenceResponse:
+async def handle_video_safety_check(operation_name: str, file_url: str, message_id: str) -> None:
     span = trace.get_current_span()
     span.set_attributes({
         "operation_name": operation_name,

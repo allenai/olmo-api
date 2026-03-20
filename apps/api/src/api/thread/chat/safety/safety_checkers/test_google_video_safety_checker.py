@@ -1,3 +1,4 @@
+import inspect
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
@@ -46,6 +47,14 @@ def mock_operation(mocker: MockerFixture, response: AnnotateVideoResponse):
     operation = AsyncMock()
     operation.result = AsyncMock(return_value=response)
     mocker.patch(f"{SAFETY_MODULE}.operation_async.from_gapic", return_value=operation)
+
+
+@pytest.fixture(autouse=True)
+def unwrap_handle_video_safety_check():
+    original = handle_video_safety_check.fn
+    handle_video_safety_check.fn = inspect.unwrap(original)
+    yield
+    handle_video_safety_check.fn = original
 
 
 @pytest.fixture(autouse=True)
@@ -104,7 +113,7 @@ async def test_safe_video(mocker: MockerFixture, mock_video_client, mock_repo, m
     mock_video_client.transport.operations_client.get_operation = AsyncMock(return_value=MagicMock())
     mock_operation(mocker, create_annotate_video_response(pornography_likelihood=Likelihood.UNLIKELY))
 
-    await handle_video_safety_check(operation_name=OPERATION_NAME, file_url=FILE_URL, message_id=MESSAGE_ID)
+    await handle_video_safety_check(operation_name=OPERATION_NAME, file_url=FILE_URL, message_id=MESSAGE_ID)  # type: ignore
 
     assert mock_message.harmful is False
     mock_repo.update.assert_awaited_once()
@@ -116,13 +125,11 @@ async def test_unsafe_video(mocker: MockerFixture, mock_video_client, mock_repo,
     mock_operation(mocker, create_annotate_video_response(pornography_likelihood=Likelihood.VERY_LIKELY))
     mock_message.file_urls = ["gs://public-bucket/video.mp4"]
 
-    await handle_video_safety_check(operation_name=OPERATION_NAME, file_url=FILE_URL, message_id=MESSAGE_ID)
+    await handle_video_safety_check(operation_name=OPERATION_NAME, file_url=FILE_URL, message_id=MESSAGE_ID)  # type: ignore
 
     assert mock_message.harmful is True
     mock_gcs.delete_file.assert_awaited_once()
-    mock_gcs.delete_multiple_files_by_url.assert_awaited_once_with(
-        file_urls=["gs://public-bucket/video.mp4"], bucket_name=ANY
-    )
+    mock_gcs.delete_prefix.assert_awaited_once_with(prefix=MESSAGE_ID, bucket_name=ANY)
     assert mock_message.file_urls is None
     mock_repo.update.assert_awaited_once()
 
@@ -132,6 +139,6 @@ async def test_already_harmful_message_stays_harmful(mocker: MockerFixture, mock
     mock_operation(mocker, create_annotate_video_response(pornography_likelihood=Likelihood.UNLIKELY))
     mock_message.harmful = True
 
-    await handle_video_safety_check(operation_name=OPERATION_NAME, file_url=FILE_URL, message_id=MESSAGE_ID)
+    await handle_video_safety_check(operation_name=OPERATION_NAME, file_url=FILE_URL, message_id=MESSAGE_ID)  # type: ignore
 
     assert mock_message.harmful is True

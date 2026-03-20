@@ -72,6 +72,7 @@ class Settings(BaseSettings):
     RECAPTCHA_KEY: str = Field(init=False)
     RECAPTCHA_MIN_SCORE_REQUIREMENT: float = 0.3
 
+    SAFETY_QUEUE_ENABLED: bool = True
     SAFETY_QUEUE_URL: str = Field(init=False)
     SAFTEY_GCS_UPLOAD_BUCKET: str = Field(init=False)
 

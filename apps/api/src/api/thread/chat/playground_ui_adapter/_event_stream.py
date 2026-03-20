@@ -244,11 +244,13 @@ class PlaygroundUIEventStream(
             if isinstance(error.__cause__, ModelRetry) and "Tool" in error.message:
                 yield ErrorChunk(
                     error_description=error.message,
-                    message=self.parent_message_id,
+                    message=self.parent_message_id,  # We don't emit the tool response so we need to say that this belongs to the parent message
                     error_code=ErrorCode.TOOL_CALL_ERROR,
                 )
-
-            yield ErrorChunk(error_description=error.message, message=self.message_id, error_code=ErrorCode.OTHER_ERROR)
+            else:
+                yield ErrorChunk(
+                    error_description=error.message, message=self.message_id, error_code=ErrorCode.OTHER_ERROR
+                )
 
         else:
             yield ErrorChunk(error_description=str(error), message=self.message_id, error_code=ErrorCode.OTHER_ERROR)

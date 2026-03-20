@@ -46,7 +46,8 @@ MCP_SERVERS: list[McpServer] = [
 
 
 def _get_mcp_server(mcp_server_config: McpServer):
-    return MCPServerStreamableHTTP(url=mcp_server_config.url, headers=mcp_server_config.headers)
+    # Handling retries in our message DB mapping is very difficult. Disabling them is a workaround for now.
+    return MCPServerStreamableHTTP(url=mcp_server_config.url, headers=mcp_server_config.headers, max_retries=0)
 
 
 @lru_cache

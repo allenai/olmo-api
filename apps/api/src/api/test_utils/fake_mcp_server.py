@@ -2,7 +2,7 @@ from typing import NoReturn
 
 from pydantic_ai import FunctionToolset, ModelRetry, RunContext
 
-test_toolset = FunctionToolset()
+test_toolset = FunctionToolset(max_retries=0)
 
 
 class TestFailureError(Exception): ...
@@ -14,7 +14,7 @@ async def always_fails(ctx: RunContext) -> NoReturn:  # noqa: ARG001, RUF029
 
 
 @test_toolset.tool()
-async def celsius_to_fahrenheit_fails_once(ctx: RunContext, celsius: float) -> float:  # noqa: RUF029
+async def celsius_to_fahrenheit(ctx: RunContext, celsius: float) -> float:  # noqa: RUF029
     """Convert Celsius to Fahrenheit.
 
     Args:
@@ -24,13 +24,10 @@ async def celsius_to_fahrenheit_fails_once(ctx: RunContext, celsius: float) -> f
         Temperature in Fahrenheit
     """
 
-    if ctx.retry < 1:
-        raise ModelRetry("Testing tool retry")  # noqa: EM101, TRY003
-
     return (celsius * 9 / 5) + 32
 
 
-@test_toolset.tool()
+@test_toolset.tool_plain()
 async def get_weather_forecast(location: str) -> str:  # noqa: RUF029
     """Get the weather forecast for a location.
 

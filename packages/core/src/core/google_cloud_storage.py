@@ -198,9 +198,7 @@ class GoogleCloudStorage:
 
         except Exception as e:
             span.record_exception(e)
-            logger.exception(
-                "gcs.update_file_deletion_time.error", filename=filename, bucket_name=bucket_name
-            )
+            logger.exception("gcs.update_file_deletion_time.error", filename=filename, bucket_name=bucket_name)
             if raise_exception_on_failure:
                 raise
 
@@ -223,9 +221,7 @@ class GoogleCloudStorage:
         )
 
     @tracer.start_as_current_span("GoogleCloudStorageService/delete_prefix")
-    async def delete_prefix(
-        self, prefix: str, bucket_name: str, *, raise_exception_on_failure: bool = False
-    ) -> None:
+    async def delete_prefix(self, prefix: str, bucket_name: str, *, raise_exception_on_failure: bool = False) -> None:
         start_ns = time_ns()
         file_names: list[str] = []
 
@@ -241,9 +237,10 @@ class GoogleCloudStorage:
                 file_names = await bucket.list_blobs(prefix=prefix)
                 span.set_attribute("file_names", file_names)
 
-                await asyncio.gather(*[
-                    client.delete(bucket=bucket_name, object_name=name) for name in file_names
-                ], return_exceptions=True)
+                await asyncio.gather(
+                    *[client.delete(bucket=bucket_name, object_name=name) for name in file_names],
+                    return_exceptions=True,
+                )
         except Exception as e:
             span.record_exception(e)
             logger.exception("gcs.delete_prefix.error", bucket=bucket_name, filenames=file_names)

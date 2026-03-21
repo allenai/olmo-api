@@ -18,6 +18,8 @@ from api.otel.setup import setup_otel
 dramatiq.set_broker(StubBroker())
 logger = FastAPIStructLogger()
 
+SAFETY_QUEUE_NAMESPACE = "playground_api_safety_queue"
+
 
 class OtelMiddleware(dramatiq.Middleware):
     @override
@@ -33,7 +35,12 @@ class OtelMiddleware(dramatiq.Middleware):
 
     @override
     def before_process_message(self, broker: dramatiq.Broker, message: dramatiq.MessageProxy) -> None:
-        carrier = message.options.get("otel_context", {})
+        # Context is in message.options for a regular dramatiq actor
+        # or in the message.kwargs.failed_message.options for retry_exhausted actor
+        carrier = message.options.get("otel_context") or (
+            message.kwargs.get("failed_message", {}).get("options", {}).get("otel_context", {})
+        )
+
         ctx = propagate.extract(carrier)
         token = context.attach(ctx)
         message.options["_otel_token"] = token
@@ -70,7 +77,7 @@ def setup_safety_queue() -> None:
     if not settings.SAFETY_QUEUE_ENABLED:
         return
 
-    redis_broker = RedisBroker(url=settings.SAFETY_QUEUE_URL, namespace="playground_safety_queue")
+    redis_broker = RedisBroker(url=settings.SAFETY_QUEUE_URL, namespace=SAFETY_QUEUE_NAMESPACE)
 
     old_broker = dramatiq.get_broker()
     for existing_actor_name in old_broker.get_declared_actors():

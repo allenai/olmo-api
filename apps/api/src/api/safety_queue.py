@@ -1,12 +1,14 @@
 import dramatiq
+import structlog
 from dramatiq.brokers.redis import RedisBroker
 from dramatiq.brokers.stub import StubBroker
 from dramatiq.middleware.asyncio import AsyncIO
 from dramatiq.middleware.prometheus import Prometheus
-from opentelemetry import context, propagate
+from opentelemetry import context, propagate, trace
 from typing_extensions import override
 
 from api.config import settings
+from api.logging.fastapi_logger import FastAPIStructLogger
 from api.logging.setup import setup_logging
 from api.otel.setup import setup_otel
 
@@ -14,6 +16,7 @@ from api.otel.setup import setup_otel
 # This sets a stub so actor modules can be imported safely before setup_safety_queue() is called.
 # https://github.com/Bogdanp/dramatiq/pull/762
 dramatiq.set_broker(StubBroker())
+logger = FastAPIStructLogger()
 
 
 class OtelMiddleware(dramatiq.Middleware):
@@ -35,6 +38,15 @@ class OtelMiddleware(dramatiq.Middleware):
         token = context.attach(ctx)
         message.options["_otel_token"] = token
 
+        structlog.contextvars.clear_contextvars()
+        span_ctx = trace.get_current_span().get_span_context()
+        if span_ctx.is_valid:
+            structlog.contextvars.bind_contextvars(
+                trace_id=format(span_ctx.trace_id, "032x"),
+                span_id=format(span_ctx.span_id, "016x"),
+                trace_flags=span_ctx.trace_flags,
+            )
+
     @override
     def after_process_message(
         self, broker: dramatiq.Broker, message: dramatiq.MessageProxy, *, result=None, exception=None
@@ -42,12 +54,14 @@ class OtelMiddleware(dramatiq.Middleware):
         token = message.options.pop("_otel_token", None)
         if token is not None:
             context.detach(token)
+        structlog.contextvars.clear_contextvars()
 
     @override
     def after_skip_message(self, broker: dramatiq.Broker, message: dramatiq.MessageProxy) -> None:
         token = message.options.pop("_otel_token", None)
         if token is not None:
             context.detach(token)
+        structlog.contextvars.clear_contextvars()
 
 
 def setup_safety_queue() -> None:
@@ -65,7 +79,7 @@ def setup_safety_queue() -> None:
         redis_broker.declare_actor(actor)
 
     redis_broker.add_middleware(Prometheus())
-    redis_broker.add_middleware(AsyncIO())
     redis_broker.add_middleware(OtelMiddleware())
+    redis_broker.add_middleware(AsyncIO())
 
     dramatiq.set_broker(redis_broker)

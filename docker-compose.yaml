@@ -58,7 +58,6 @@ services:
           # different platform in the container
           ignore:
             - apps/db-migrations/
-            - apps/flask-api/
             - apps/safety-worker/
 
         # Rebuild the image if dependencies change by checking uv.lock

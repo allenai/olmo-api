@@ -8,7 +8,6 @@ The HTTP API used by http://playground.allenai.org
 
 To start a local server, run:
 
-
     ```
     docker compose up --build --watch
     ```
@@ -90,9 +89,9 @@ On macOS, ensure you have `homebrew` installed then run `brew install ffmpeg`
 
 start the postgres container with `docker compose up db`
 
-make sure you're in the venv by running `.venv/bin/activate`
+Make sure you've installed packages and activated the environment with `just install`
 
-Start the server by running `ENV=development uv run fastapi dev apps/api/main.py`
+Start the server by running `just dev`
 
 ### Debugging the API in VSCode:
 

@@ -1,12 +1,69 @@
 """CLI for evaluations Cloud Run Jobs."""
 
 import argparse
+import json
+import os
 import subprocess
 import sys
+import urllib.request
+
+import boto3  # type: ignore[import-untyped]
 
 from evaluations.configs import ModelEval, TierName, get_tier
 from evaluations.logging import logger
 from evaluations.settings import settings
+
+
+def log_egress_ip() -> None:
+    """Log the external IP address for verifying VPC egress configuration.
+
+    This is a temporary diagnostic function to verify that Direct VPC Egress
+    is properly configured and traffic is routed through the expected network.
+    """
+    try:
+        with urllib.request.urlopen("https://api.ipify.org?format=json", timeout=10) as response:
+            data = json.loads(response.read().decode())
+            logger.info("Egress IP check: %s", data)
+    except Exception as e:
+        logger.warning("Failed to check egress IP: %s", e)
+
+
+def setup_db_credentials() -> None:
+    """Set up database credentials from AWS Secrets Manager or settings.
+
+    If DB_SECRET_ARN is set, fetches the password from AWS Secrets Manager.
+    Otherwise, uses PGPASSWORD from settings.
+
+    This supports automatically rotating database credentials when using AWS.
+    """
+    if not settings.DB_SECRET_ARN:
+        if settings.PGPASSWORD:
+            os.environ["PGPASSWORD"] = settings.PGPASSWORD
+        return
+
+    secret_arn = settings.DB_SECRET_ARN
+
+    logger.info("Fetching database password from AWS Secrets Manager")
+
+    # Extract region from ARN (format: arn:aws:secretsmanager:REGION:ACCOUNT:secret:NAME)
+    parts = secret_arn.split(":")
+    region = parts[3] if len(parts) >= 4 else "us-east-1"
+
+    try:
+        client = boto3.client("secretsmanager", region_name=region)
+        response = client.get_secret_value(SecretId=secret_arn)
+        secret_data = json.loads(response["SecretString"])
+
+        password = secret_data.get("password")
+        if password:
+            os.environ["PGPASSWORD"] = password
+            logger.info("Database password loaded from AWS Secrets Manager")
+        else:
+            logger.warning("Secret does not contain 'password' key")
+
+    except Exception as e:
+        logger.error("Failed to fetch database password from AWS: %s", e)
+        sys.exit(1)
 
 
 def run_ad_hoc(
@@ -99,6 +156,12 @@ def main() -> None:
     2. EVAL_TIER set: Run tier evaluation
     3. CLI arguments: Manual invocation
     """
+    # Fetch database credentials from AWS if DB_SECRET_ARN is set
+    setup_db_credentials()
+
+    # Log egress IP for debugging VPC configuration (temporary)
+    log_egress_ip()
+
     # Check for ad-hoc mode
     if settings.EVAL_MODE == "ad-hoc":
         if not settings.AD_HOC_MODEL or not settings.AD_HOC_TASKS:

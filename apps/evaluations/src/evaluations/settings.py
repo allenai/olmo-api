@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     PGPORT: str = "5432"
     PGDATABASE: str = "olmo_eval"
     PGUSER: str = "postgres"
-    PGPASSWORD: str = "postgres"
+    PGPASSWORD: str | None = None
     DB_SECRET_ARN: str | None = None
 
     # AWS credentials

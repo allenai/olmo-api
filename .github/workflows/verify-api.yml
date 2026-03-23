@@ -17,6 +17,8 @@ jobs:
         AUTH_AUDIENCE: ${{ vars.AUTH_AUDIENCE }}
         ENV: test
       steps:
+        - uses: actions/checkout@v6
+
         - name: Set up repo
           uses: ./.github/actions/set-up-repo
 
@@ -36,6 +38,8 @@ jobs:
     lint:
       runs-on: ubuntu-latest  
       steps:
+      - uses: actions/checkout@v6
+  
       - name: Set up repo
         uses: ./.github/actions/set-up-repo
 
@@ -44,7 +48,9 @@ jobs:
     format:
       runs-on: ubuntu-latest 
       steps:
-        - name: Set up repo 
+        - uses: actions/checkout@v6
+    
+        - name: Set up repo
           uses: ./.github/actions/set-up-repo
 
         - run: just format --check

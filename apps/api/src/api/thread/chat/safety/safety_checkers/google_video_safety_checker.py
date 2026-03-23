@@ -32,7 +32,7 @@ from .safety_checker_base import (
 logger = FastAPIStructLogger()
 tracer = trace.get_tracer(__name__)
 
-SAFETY_QUEUE_NAME = "safety-fastapi-test"
+SAFETY_QUEUE_NAME = "safety-fastapi"
 FEATURES = [Feature.EXPLICIT_CONTENT_DETECTION]
 
 

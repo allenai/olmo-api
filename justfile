@@ -25,7 +25,7 @@ type-check-apps:
 type-check-packages:
   uv run mypy packages
 
-type-check: type-check-api type-check-packages
+type-check: type-check-apps type-check-packages
 
 dev:
   ENV=development uv run fastapi dev ./apps/api/main.py --port 8888

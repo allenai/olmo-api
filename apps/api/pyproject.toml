@@ -48,9 +48,13 @@ build-backend = "uv_build"
 [tool.ruff]
 extend = "../../pyproject.toml"
 
+[tool.ruff.lint]
+extend-select = ["FAST"]
+
 [tool.ruff.lint.extend-per-file-ignores]
 "e2e/*" = ["S"]
 "e2e/fake_mcp_server.py" = ["PLW", "RUF", "SLF", "EM", "TRY", "FBT"]
+"test_*.py" = ["TC002"]
 
 [tool.uv.sources]
 db = { workspace = true }

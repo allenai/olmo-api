@@ -53,7 +53,7 @@ just test
 
 ### Type check
 
-To check types run separately for api and flask-api:
+To check types:
 
 ```bash
 just type-check

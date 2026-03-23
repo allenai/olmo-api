@@ -102,7 +102,7 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='', safet
     else
          { };
 
-    // The port the API (Python Flask application) is bound to.
+    // The port the API (Python FastAPI application) is bound to.
     local apiPort = 8000;
 
     // This is used to verify that the API is functional.

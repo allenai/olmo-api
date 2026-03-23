@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     LITELLM_PROXY_API_KEY: str | None = None
     HF_TOKEN: str | None = None
 
+    # Database configuration
     PGHOST: str | None = None
     PGPORT: str | None = None
     PGDATABASE: str | None = None
@@ -15,8 +16,24 @@ class Settings(BaseSettings):
     PGPASSWORD: str | None = None
     DB_SECRET_ARN: str | None = None
 
+    # AWS credentials
     AWS_ACCESS_KEY_ID: str | None = None
     AWS_SECRET_ACCESS_KEY: str | None = None
+
+    # Settings below are set at runtime and control evaluation behavior. They shouldn't
+    # be set in .env files, but are included here for validation and documentation.
+
+    # Runtime CLI parameters
+    LOCAL: bool = False
+    EVAL_MODE: str | None = None
+    EVAL_TIER: str | None = None
+    CLOUD_RUN_TASK_INDEX: int = 0
+
+    # Ad-hoc runtime evaluation parameters
+    AD_HOC_MODEL: str | None = None
+    AD_HOC_TASKS: str | None = None
+    AD_HOC_PROVIDER_KIND: str = "litellm"
+    AD_HOC_HARNESS_OVERRIDES: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env.local",

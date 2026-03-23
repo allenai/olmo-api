@@ -706,7 +706,6 @@ mark-parentheses = false
 "test_*.py" = ["PLC1901", "PLR2004", "PLR6301", "S", "TID252"]
 "apps/db-migrations/**/*.py" = ["INP001"]
 "__init__.py" = ["PLC0414"]
-"apps/evaluations/run_local.py" = ["T201"]
 
 [tool.ruff.format]
 preview = true

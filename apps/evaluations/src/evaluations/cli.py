@@ -1,12 +1,12 @@
 """CLI for evaluations Cloud Run Jobs."""
 
 import argparse
-import os
 import subprocess
 import sys
 
 from evaluations.configs import ModelEval, TierName, get_tier
 from evaluations.logging import logger
+from evaluations.settings import settings
 
 
 def run_ad_hoc(
@@ -99,36 +99,25 @@ def main() -> None:
     2. EVAL_TIER set: Run tier evaluation
     3. CLI arguments: Manual invocation
     """
-    local_mode = os.environ.get("LOCAL", "").lower() == "true"
-
     # Check for ad-hoc mode
-    eval_mode = os.environ.get("EVAL_MODE", "")
-    if eval_mode == "ad-hoc":
-        ad_hoc_model = os.environ.get("AD_HOC_MODEL")
-        ad_hoc_tasks = os.environ.get("AD_HOC_TASKS")
-
-        if not ad_hoc_model or not ad_hoc_tasks:
+    if settings.EVAL_MODE == "ad-hoc":
+        if not settings.AD_HOC_MODEL or not settings.AD_HOC_TASKS:
             logger.error("Ad-hoc mode requires AD_HOC_MODEL and AD_HOC_TASKS env vars")
             sys.exit(1)
 
-        provider_kind = os.environ.get("AD_HOC_PROVIDER_KIND", "litellm")
-        harness_overrides = os.environ.get("AD_HOC_HARNESS_OVERRIDES")
-
         sys.exit(
             run_ad_hoc(
-                model=ad_hoc_model,
-                tasks=ad_hoc_tasks,
-                provider_kind=provider_kind,
-                harness_overrides=harness_overrides,
-                local=local_mode,
+                model=settings.AD_HOC_MODEL,
+                tasks=settings.AD_HOC_TASKS,
+                provider_kind=settings.AD_HOC_PROVIDER_KIND,
+                harness_overrides=settings.AD_HOC_HARNESS_OVERRIDES,
+                local=settings.LOCAL,
             )
         )
 
     # Check for EVAL_TIER env var (Cloud Run Jobs tier mode)
-    eval_tier = os.environ.get("EVAL_TIER")
-    if eval_tier:
-        task_index = int(os.environ.get("CLOUD_RUN_TASK_INDEX", "0"))
-        sys.exit(run_tier(eval_tier, task_index, local=local_mode))
+    if settings.EVAL_TIER:
+        sys.exit(run_tier(settings.EVAL_TIER, settings.CLOUD_RUN_TASK_INDEX, local=settings.LOCAL))
 
     # CLI mode
     parser = argparse.ArgumentParser(

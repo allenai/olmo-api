@@ -20,7 +20,7 @@ inferd = { path = "vendor/inferd-0.5.9-0_v0.5.9-py3-none-any.whl" }
 
 [tool.uv.workspace]
 members = ["apps/*", "packages/*"]
-exclude = ["apps/safety-worker", "apps/api-safety-worker"]
+exclude = ["apps/safety-worker", "apps/api-safety-worker", "apps/evaluations"]
 
 [tool.pyright]
 pythonVersion = "3.11"

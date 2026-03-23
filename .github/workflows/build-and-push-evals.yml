@@ -1,0 +1,114 @@
+name: Build and Deploy Evaluations Cloud Run Jobs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/evaluations/**'
+      - '.github/workflows/build-and-push-evals.yml'
+  pull_request:
+    paths:
+      - 'apps/evaluations/**'
+      - '.github/workflows/build-and-push-evals.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  SERVICE_NAME: evaluations
+  REGISTRY: us-west1-docker.pkg.dev
+  REPO: model-evals
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Run Tests
+        working-directory: apps/evaluations
+        run: uv run --only-group dev pytest -v
+
+  build-and-deploy:
+    needs: test
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v6 # remove this when switching back to shared action
+
+      - name: Skiff2 Setup
+        id: setup
+        uses: ./.github/actions/skiff2/setup # temporary workaround until share action is available
+        with:
+          workload_identity_provider: ${{ vars.SKIFF2_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.SKIFF2_SERVICE_ACCOUNT }}
+          project_id: ${{ vars.SKIFF2_PROJECT_ID }}
+
+      # Configure Docker for Artifact Registry
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${REGISTRY} --quiet
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Custom build step for evaluations (handles GITHUB_TOKEN for private repo)
+      # Once olmo-eval-internal is public, this can be replaced with Skiff2 Build
+      - name: Build and Push Evaluations Image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/evaluations
+          file: apps/evaluations/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ vars.SKIFF2_PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ vars.SKIFF2_PROJECT_ID }}/${{ env.REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          secrets: |
+            GITHUB_TOKEN=${{ secrets.OLMO_EVAL_INTERNAL_TOKEN }}
+
+      # Setup uv for Python package management
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+
+      # Configure git to use token for private repo access
+      - name: Configure Git for Private Repos
+        run: git config --global url."https://${{ secrets.OLMO_EVAL_INTERNAL_TOKEN }}@github.com/".insteadOf "https://github.com/"
+
+      # Generate Terraform variables from Python tier configs
+      - name: Generate Terraform Variables
+        working-directory: apps/evaluations
+        run: uv run generate-tfvars -o terraform/terraform.tfvars.json
+
+      # Setup Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5"
+
+      # Deploy with Terraform
+      - name: Terraform Init
+        working-directory: apps/evaluations/terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: apps/evaluations/terraform
+        run: |
+          terraform plan \
+            -var="project_id=${{ vars.SKIFF2_PROJECT_ID }}" \
+            -var="image_tag=${{ github.sha }}" \
+            -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: apps/evaluations/terraform
+        run: terraform apply -auto-approve tfplan

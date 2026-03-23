@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Build artifacts
+dist/
+build/
+
+# Local environment
+.env.local

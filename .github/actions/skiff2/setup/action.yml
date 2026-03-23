@@ -1,0 +1,52 @@
+name: Setup GCP and Docker
+description: Sets up Google Cloud authentication, Cloud SDK, and Docker for GCR
+author: Skiff
+# This is a temp workaround until skiff2 shared actions are accessible from public repos
+# Please remove this file and switch to shared action when available.
+
+inputs:
+    workload_identity_provider:
+        description: "Workload Identity Provider resource name (e.g. projects/123/locations/global/workloadIdentityPools/my-pool/providers/my-provider)"
+        required: true
+    service_account:
+        description: "Service account email to impersonate"
+        required: true
+    project_id:
+        description: "GCP project ID"
+        required: true
+
+runs:
+    using: composite
+    steps:
+        - name: Check branch is main
+          shell: bash
+          run: |
+              if [ "${{ github.ref }}" != "refs/heads/main" ]; then
+                echo "This action can only run on the main branch. Current ref: ${{ github.ref }}"
+                exit 1
+              fi
+
+        - name: Checkout calling repository
+          uses: actions/checkout@v4
+
+        - name: Authenticate to Google Cloud
+          uses: google-github-actions/auth@v2
+          with:
+              workload_identity_provider: ${{ inputs.workload_identity_provider }}
+              service_account: ${{ inputs.service_account }}
+
+        - name: Set up Cloud SDK
+          uses: google-github-actions/setup-gcloud@v2
+          with:
+              project_id: ${{ inputs.project_id }}
+
+        - name: Configure Docker for GCR
+          shell: bash
+          run: gcloud auth configure-docker
+
+        - name: Set up Docker Buildx
+          uses: docker/setup-buildx-action@v3
+
+branding:
+    icon: cloud
+    color: blue

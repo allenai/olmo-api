@@ -1,0 +1,15 @@
+{
+    "projectName": "playground",
+    "services": [
+        {
+            "name": "evaluations",
+            "cwd": "./apps/evaluations",
+            "dockerFile": "Dockerfile",
+            "deploy": false,
+            "extraBuildArgs": [
+                "--platform", "linux/amd64",
+                "--secret", "id=GITHUB_TOKEN,env=GITHUB_TOKEN"
+            ]
+        }
+    ]
+}

@@ -17,8 +17,8 @@ jobs:
         AUTH_AUDIENCE: ${{ vars.AUTH_AUDIENCE }}
         ENV: test
       steps:
-        - name: Set up uv
-          uses: ./.github/actions/set-up-uv
+        - name: Set up repo
+          uses: ./.github/actions/set-up-repo
 
         - name: Test with pytest
           run: just test
@@ -36,19 +36,15 @@ jobs:
     lint:
       runs-on: ubuntu-latest  
       steps:
-      - uses: actions/checkout@v6
-  
-      - name: Set up uv
-        uses: ./.github/actions/set-up-uv
+      - name: Set up repo
+        uses: ./.github/actions/set-up-repo
 
       - run: just lint --output-format=github
       
     format:
       runs-on: ubuntu-latest 
       steps:
-        - uses: actions/checkout@v6
-    
-        - name: Set up uv
-          uses: ./.github/actions/set-up-uv
+        - name: Set up repo 
+          uses: ./.github/actions/set-up-repo
 
         - run: just format --check

@@ -32,7 +32,7 @@ class InternalToolService:
         if isinstance(args, str):
             try:
                 return json.loads(args)
-            except (json.JSONDecodeError, TypeError):
+            except json.JSONDecodeError, TypeError:
                 pass
 
         return args

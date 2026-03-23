@@ -1,5 +1,5 @@
 import base64
-from unittest.mock import MagicMock
+from typing import TYPE_CHECKING
 
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
@@ -12,6 +12,10 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pytest_mock import MockerFixture
 
 from .open_ai_chat_model_video import OpenAIChatModelVideo
+
+if TYPE_CHECKING:
+    from unittest.mock import MagicMock
+
 
 # Models hosted on vLLM always have this name
 VLLM_MODEL_NAME = "llm"

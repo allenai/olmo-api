@@ -1,6 +1,5 @@
-from collections.abc import Sequence
 from mimetypes import guess_type
-from typing import Annotated, Final
+from typing import TYPE_CHECKING, Annotated, Final
 
 from fastapi import Depends, UploadFile
 from fastapi_problem.error import ForbiddenProblem
@@ -20,6 +19,9 @@ from .image_safety_checker_service import ImageSafetyCheckerServiceDependency
 from .safety_checkers.safety_checker_base import SafetyCheckRequest
 from .text_safety_checker_service import TextSafetyCheckerServiceDependency
 from .video_safety_checker_service import VideoSafetyCheckerServiceDependency
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 logger = FastAPIStructLogger()
 

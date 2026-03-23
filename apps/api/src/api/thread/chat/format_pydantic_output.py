@@ -1,5 +1,4 @@
-from collections.abc import Sequence
-from typing import assert_never
+from typing import TYPE_CHECKING, assert_never
 
 from pydantic_ai import (
     AgentStreamEvent,
@@ -26,6 +25,9 @@ from core.message.message_chunk import (
 )
 from core.tools.tool_source import ToolSource
 from db.models.message import Message
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def find_tool_def_by_name(message: Message, tool_name: str):

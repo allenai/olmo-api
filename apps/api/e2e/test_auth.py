@@ -1,6 +1,9 @@
-from httpx import AsyncClient
+from typing import TYPE_CHECKING
 
 from e2e.conftest import AuthenticatedClient, auth_headers_for_user, make_user
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient
 
 WHOAMI_ENDPOINT = "/v5/user/whoami"
 

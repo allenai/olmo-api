@@ -22,14 +22,14 @@ class InferenceOpts(APIInterface):
     logprobs: int | None = Field(default=None, ge=0, le=10)
 
     @staticmethod
-    def from_message(message: "Message | None") -> "InferenceOpts | None":
+    def from_message(message: Message | None) -> InferenceOpts | None:
         if message is None:
             return None
 
         return message.opts
 
     @staticmethod
-    def from_model_config_defaults(model_config: "ModelConfig") -> "InferenceOpts":
+    def from_model_config_defaults(model_config: ModelConfig) -> InferenceOpts:
         return InferenceOpts.model_construct(
             max_tokens=model_config.max_tokens_default,
             temperature=model_config.temperature_default,

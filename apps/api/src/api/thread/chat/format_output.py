@@ -3,7 +3,6 @@ import datetime
 import functools
 import json
 import typing
-from collections.abc import AsyncGenerator
 from typing import Any
 
 from pydantic import BaseModel
@@ -11,6 +10,9 @@ from pydantic import BaseModel
 from api.logging.fastapi_logger import FastAPIStructLogger
 from api.thread.models.thread import Thread
 from db.models.message import Message
+
+if typing.TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 logger = FastAPIStructLogger()
 

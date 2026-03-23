@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from fastapi import status
-from httpx import AsyncClient
 
 from api.async_message_repository.async_message_repository import AsyncMessageRepository
 from api.message.label.label_create_service import LabelCreateRequest, LabelRequest
@@ -11,6 +11,9 @@ from core.object_id import new_id_generator
 from db.models.label import Label as LabelModel
 from e2e.conftest import AuthenticatedClient, DatabaseSession, auth_headers_for_user
 from e2e.create_test_thread import create_test_message
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient
 
 
 def label_request_url(message_id: str, label_id: str | None = None):

@@ -1,11 +1,13 @@
-from collections.abc import Iterable, Sequence
 from itertools import islice
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from api.attribution.models.intermediate import FlattenedSpan, FlattenedSpanDocument, IntermediateAttributionDocument
 from infini_gram_api_client.models.attribution_span import (
     AttributionSpan,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
 
 
 def flatten_spans(

@@ -1,7 +1,9 @@
-from collections.abc import Sequence
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from db.models.input_parts import InputPart, PointPartType
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 MOLMO_2_TRACKING_FRAME_RATE: Final[int] = 2
 

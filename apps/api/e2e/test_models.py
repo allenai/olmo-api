@@ -1,7 +1,11 @@
+from typing import TYPE_CHECKING
+
 import pytest
-from httpx import AsyncClient
 
 from e2e.conftest import AuthenticatedClient, auth_headers_for_user
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient
 
 PUBLIC_MODEL_ENDPOINT = "/v5/models/"
 ADMIN_MODEL_CONFIG_ENDPOINT = "/v5/admin/models/"

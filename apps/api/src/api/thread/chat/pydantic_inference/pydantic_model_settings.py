@@ -1,8 +1,11 @@
-from typing import Any
+from typing import TYPE_CHECKING
 
 from pydantic_ai.models.openai import OpenAIChatModelSettings
 
 from db.models.inference_opts import InferenceOpts
+
+if TYPE_CHECKING:
+    from typing import Any
 
 
 def pydantic_model_settings(

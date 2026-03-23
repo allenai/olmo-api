@@ -1,9 +1,10 @@
+from typing import override
+
 import dramatiq
 from dramatiq.brokers.redis import RedisBroker
 from dramatiq.brokers.stub import StubBroker
 from dramatiq.middleware.asyncio import AsyncIO
 from dramatiq.middleware.prometheus import Prometheus
-from typing_extensions import override
 
 from api.config import settings
 from api.logging.setup import setup_logging

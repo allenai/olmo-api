@@ -1,8 +1,11 @@
 """E2E tests for user migration from anonymous to authenticated users."""
 
-from httpx import AsyncClient
+from typing import TYPE_CHECKING
 
 from e2e.conftest import AuthenticatedClient, DatabaseSession, add_user_to_database, auth_headers_for_user
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient
 
 USER_MIGRATION_ENDPOINT = "/v5/user/migration"
 WHOAMI_ENDPOINT = "/v5/user/whoami"

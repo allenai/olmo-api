@@ -1,7 +1,6 @@
 import base64
-from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, Literal, Required, assert_never, cast
+from typing import TYPE_CHECKING, Any, Literal, Required, assert_never, cast
 
 from openai.types import chat
 from openai.types.chat import (
@@ -13,7 +12,6 @@ from openai.types.chat import (
 from openai.types.chat.chat_completion_content_part_image_param import ImageURL
 from openai.types.chat.chat_completion_content_part_input_audio_param import InputAudio
 from openai.types.chat.chat_completion_content_part_param import File, FileFile
-from pydantic_ai import RunContext
 from pydantic_ai.messages import (
     AudioUrl,
     BinaryContent,
@@ -31,8 +29,13 @@ from pydantic_ai.models import (
     download_item,
 )
 from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
-from pydantic_ai.settings import ModelSettings
 from typing_extensions import TypedDict
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+    from pydantic_ai import RunContext
+    from pydantic_ai.settings import ModelSettings
 
 
 class OpenAIChatModelVideo(OpenAIChatModel):

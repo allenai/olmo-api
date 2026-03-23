@@ -6,10 +6,13 @@ Create Date: 2025-04-18 17:12:32.296792
 
 """
 
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from alembic import op
 from alembic_postgresql_enum import TableReference
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 # revision identifiers, used by Alembic.
 revision: str = "9089586a14c3"

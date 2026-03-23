@@ -1,5 +1,5 @@
-from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from opentelemetry import trace
 from pydantic_ai import AgentRunResultEvent, UnexpectedModelBehavior
@@ -46,6 +46,9 @@ from core.object_id import ID
 from core.tools.tool_source import ToolSource
 from db.models.message import Message, create_message_id
 from db.models.tool_call import ToolCall
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 __all__ = ["PlaygroundUIEventStream"]
 

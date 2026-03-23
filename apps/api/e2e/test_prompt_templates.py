@@ -1,7 +1,10 @@
-from httpx import AsyncClient
+from typing import TYPE_CHECKING
 
 from api.prompt_template.prompt_template_service import PromptTemplateResponseList
 from e2e.conftest import AuthenticatedClient, auth_headers_for_user
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient
 
 PROMPT_TEMPLATES_ENDPOINT = "/v5/prompt-templates/"
 

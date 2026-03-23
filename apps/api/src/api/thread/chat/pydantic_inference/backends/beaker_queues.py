@@ -1,15 +1,13 @@
 import base64
-from collections.abc import AsyncIterable, AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, assert_never, cast
+from typing import TYPE_CHECKING, Any, assert_never, cast
 
 from beaker import Beaker
 from beaker.config import Config as BeakerConfig
 from google.protobuf import json_format
 from openai.types.chat import ChatCompletionChunk
-from pydantic_ai import RunContext
 from pydantic_ai.messages import (
     AudioUrl,
     BinaryContent,
@@ -33,11 +31,16 @@ from pydantic_ai.messages import (
 from pydantic_ai.models import Model, ModelRequestParameters, check_allow_model_requests
 from pydantic_ai.models.openai import OpenAIStreamedResponse
 from pydantic_ai.profiles import ModelProfile
-from pydantic_ai.settings import ModelSettings
-from pydantic_ai.tools import ToolDefinition
 
 from api.config import settings
 from db.models.model_config import ModelConfig
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterable, AsyncIterator
+
+    from pydantic_ai import RunContext
+    from pydantic_ai.settings import ModelSettings
+    from pydantic_ai.tools import ToolDefinition
 
 EXPIRES_IN = 60 * 60 * 24 * 30  # 30 days
 

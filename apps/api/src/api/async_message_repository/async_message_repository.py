@@ -1,12 +1,10 @@
 import abc
-from collections.abc import Sequence
 from itertools import groupby
-from typing import Annotated, cast
+from typing import TYPE_CHECKING, Annotated, cast
 
 from fastapi import Depends
 from opentelemetry import trace
 from sqlalchemy import CursorResult, delete, func, or_, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 import core.object_id as obj
@@ -17,6 +15,11 @@ from core.message.flat_message import FlatMessage
 from core.sort_options import SortDirection, SortOptions
 from db.models.label import Label
 from db.models.message import Message
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class BaseAsyncMessageRepository(abc.ABC):

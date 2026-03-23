@@ -1,7 +1,6 @@
 import json
-from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from dataclasses import dataclass
-from typing import TypeAlias, assert_never
+from typing import TYPE_CHECKING, assert_never
 
 from pydantic_ai import (
     BaseToolCallPart,
@@ -25,11 +24,14 @@ from db.models.model_config import ModelConfig
 from db.models.tool_call import ToolCall
 from db.models.tool_definitions import ToolDefinition
 
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+
 __all__ = ["Event", "InputMessage", "RunInput"]
 
 
-InputMessage: TypeAlias = Message
-Event: TypeAlias = ChatStreamOutput
+type InputMessage = Message
+type Event = ChatStreamOutput
 
 
 @dataclass

@@ -1,9 +1,11 @@
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
-from httpx import AsyncClient
-
 from e2e.conftest import AuthenticatedClient, auth_headers_for_user
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient
 
 USER_ENDPOINT = "/v5/user/"
 WHOAMI_ENDPOINT = "/v5/user/whoami"

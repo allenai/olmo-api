@@ -1,10 +1,10 @@
 from dataclasses import dataclass, field
 from functools import cached_property
 from time import time_ns
+from typing import override
 
 from google.cloud.language_v2 import Document, LanguageServiceAsyncClient, ModerateTextRequest, ModerateTextResponse
 from opentelemetry import trace
-from typing_extensions import override
 
 from api.logging.fastapi_logger import FastAPIStructLogger
 from core import APIInterface

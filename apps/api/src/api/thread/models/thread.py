@@ -1,9 +1,12 @@
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from core.api_interface import APIInterface
 from core.list_meta import ListMeta
 from core.message.flat_message import FlatMessage
 from db.models.message import Message
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 class Thread(APIInterface):
@@ -11,13 +14,13 @@ class Thread(APIInterface):
     messages: list[FlatMessage]
 
     @staticmethod
-    def from_message(message: Message) -> "Thread":
+    def from_message(message: Message) -> Thread:
         messages = FlatMessage.from_message_with_children(message)
 
         return Thread(id=message.id, messages=messages)
 
     @staticmethod
-    def from_messages(messages: Sequence[Message]) -> "Thread":
+    def from_messages(messages: Sequence[Message]) -> Thread:
         mapped_messages = [FlatMessage.model_validate(message) for message in messages]
         return Thread(id=messages[0].id, messages=mapped_messages)
 

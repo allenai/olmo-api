@@ -1,4 +1,5 @@
 from functools import cached_property
+from typing import override
 
 from google.cloud.vision import (
     AnnotateImageRequest,
@@ -9,7 +10,6 @@ from google.cloud.vision import (
     Likelihood,
 )
 from opentelemetry import trace
-from typing_extensions import override
 
 from .safety_checker_base import (
     SafetyChecker,

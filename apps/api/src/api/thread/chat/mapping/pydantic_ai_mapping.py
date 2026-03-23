@@ -1,5 +1,5 @@
-from collections.abc import Sequence
 from mimetypes import guess_type
+from typing import TYPE_CHECKING
 
 from pydantic_ai import (
     AudioUrl,
@@ -28,6 +28,9 @@ from api.thread.chat.chat_exceptions import UnhandledRoleError, UnsupportedMedia
 from api.thread.chat.mapping.input_parts import map_input_parts
 from core.message.role import Role
 from db.models.message import Message
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def _map_part_from_file(file: str | UploadFile) -> MultiModalContent:

@@ -1,8 +1,11 @@
 # adapted from https://wazaari.dev/blog/fastapi-structlog-integration#context-variables
 import re
-from typing import Any
+from typing import TYPE_CHECKING
 
 import structlog
+
+if TYPE_CHECKING:
+    from typing import Any
 
 
 class CoreLogger:

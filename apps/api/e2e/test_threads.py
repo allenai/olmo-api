@@ -1,8 +1,8 @@
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 import pytest
 from fastapi import status
-from httpx import AsyncClient
 from sqlalchemy import select, update
 
 from core.message.role import Role
@@ -10,6 +10,9 @@ from db.models.message import Message
 from db.models.model_config import ModelConfig
 from e2e.conftest import AuthenticatedClient, DatabaseSession, auth_headers_for_user
 from e2e.create_test_thread import create_test_message, create_test_thread
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient
 
 THREADS_ENDPOINT = "/v5/threads/"
 

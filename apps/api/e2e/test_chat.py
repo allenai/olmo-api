@@ -2,9 +2,9 @@ import json
 import os
 from http import HTTPStatus
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
-from httpx import AsyncClient
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -25,6 +25,9 @@ from e2e.conftest import AuthenticatedClient, DatabaseSession, auth_headers_for_
 
 from ._util import assert_ok_response
 from .create_test_thread import create_test_thread
+
+if TYPE_CHECKING:
+    from httpx import AsyncClient
 
 CHAT_ENDPOINT = "/v5/threads/chat"
 

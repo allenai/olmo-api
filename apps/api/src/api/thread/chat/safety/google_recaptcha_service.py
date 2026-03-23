@@ -20,7 +20,7 @@ tracer = trace.get_tracer(__name__)
 
 
 @lru_cache
-def get_default_recaptcha_service() -> "GoogleRecaptchaService":
+def get_default_recaptcha_service() -> GoogleRecaptchaService:
     return GoogleRecaptchaService(
         project_id=settings.RECAPTCHA_GCP_PROJECT_ID,
         recaptcha_key=settings.RECAPTCHA_KEY,

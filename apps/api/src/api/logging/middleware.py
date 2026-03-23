@@ -1,15 +1,17 @@
 # Adapted from https://wazaari.dev/blog/fastapi-structlog-integration#logging-middleware
 import time
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict
 
 import structlog
 from asgi_correlation_id import correlation_id
 from opentelemetry import trace
 from starlette.responses import JSONResponse
-from starlette.types import ASGIApp, Receive, Scope, Send
 from uvicorn.protocols.utils import get_path_with_query_string
 
 from api.config import settings
+
+if TYPE_CHECKING:
+    from starlette.types import ASGIApp, Receive, Scope, Send
 
 app_logger = structlog.stdlib.get_logger(settings.LOG_NAME)
 access_logger = structlog.stdlib.get_logger(settings.LOG_ACCESS_NAME)

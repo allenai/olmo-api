@@ -1,6 +1,5 @@
-from collections.abc import AsyncIterator, Callable, Sequence
 from dataclasses import dataclass
-from typing import Annotated, assert_never
+from typing import TYPE_CHECKING, Annotated, assert_never
 
 from fastapi import Depends
 from fastapi_problem.error import ForbiddenProblem, UnprocessableProblem
@@ -40,6 +39,9 @@ from db.models.message import Message, create_message_id
 from db.models.model_config import ModelConfig, PromptType
 from db.models.tool_call import clone_tool_call
 from db.models.tool_definitions import ToolDefinition as Ai2ToolDefinition
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Callable, Sequence
 
 logger = FastAPIStructLogger()
 

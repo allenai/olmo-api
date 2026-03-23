@@ -1,4 +1,4 @@
-from typing import Any
+from typing import TYPE_CHECKING
 
 from db.models.model_config import (
     FilesOnlyModelConfig,
@@ -6,6 +6,9 @@ from db.models.model_config import (
     MultiModalModelConfig,
     PromptType,
 )
+
+if TYPE_CHECKING:
+    from typing import Any
 
 
 def get_model_config_class(value: Any) -> type[ModelConfig | MultiModalModelConfig]:

@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-
-from typing_extensions import override
+from typing import override
 
 
 @dataclass(kw_only=True)

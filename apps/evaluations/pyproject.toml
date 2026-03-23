@@ -18,6 +18,7 @@ dev = [
 [project.scripts]
 evaluations = "evaluations.cli:main"
 generate-tfvars = "evaluations.generate_tfvars:main"
+run-local = "evaluations.run_local:main"
 
 [build-system]
 requires = ["hatchling"]

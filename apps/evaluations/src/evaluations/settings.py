@@ -7,13 +7,14 @@ class Settings(BaseSettings):
     LITELLM_API_BASE: str = "https://ai2-model-hub.allen.ai"
     LITELLM_PROXY_API_KEY: str | None = None
     HF_TOKEN: str | None = None
+    GITHUB_TOKEN: str | None = None
 
-    # Database configuration
-    PGHOST: str | None = None
-    PGPORT: str | None = None
-    PGDATABASE: str | None = None
-    PGUSER: str | None = None
-    PGPASSWORD: str | None = None
+    # Database configuration (defaults match olmo-eval)
+    PGHOST: str = "localhost"
+    PGPORT: str = "5432"
+    PGDATABASE: str = "olmo_eval"
+    PGUSER: str = "postgres"
+    PGPASSWORD: str = "postgres"
     DB_SECRET_ARN: str | None = None
 
     # AWS credentials

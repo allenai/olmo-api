@@ -14,8 +14,8 @@
 #     -e LITELLM_PROXY_API_KEY=$LITELLM_PROXY_API_KEY evaluations
 #
 # Run builds/evals locally with helper script:
-#   python run_local.py --tier standard --build
-#   python run_local.py --build-only
+#   uv run run-local --tier standard --build
+#   uv run run-local --build-only
 #
 
 # ============================================================================

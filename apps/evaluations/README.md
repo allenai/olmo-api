@@ -133,26 +133,26 @@ Job settings (timeout, task count, schedule) come from `TierConfig` in Python. R
 
 ### Running Locally
 
-Use `run_local.py` to build and run evaluations:
+Use `run-local` to build and run evaluations:
 
 ```bash
 # Build the Docker image
-python run_local.py --build-only
+uv run run-local --build-only
 
 # Run standard tier, task index 0 (local mode, no storage)
-python run_local.py
+uv run run-local
 
 # Run a specific tier (default is smoke)
-python run_local.py --tier smoke
+uv run run-local --tier smoke
 
 # Run a specific task index (for multi-model tiers)
-python run_local.py --task-index 1
+uv run run-local --task-index 1
 
 # Run with storage enabled (S3 + Postgres)
-python run_local.py --with-storage
+uv run run-local --with-storage
 
 # Build and run in one command
-python run_local.py --build --tier standard
+uv run run-local --build --tier standard
 ```
 
 ### Running Tests

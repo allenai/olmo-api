@@ -1,13 +1,12 @@
-#!/usr/bin/env python3
 """Run evaluations locally with Docker.
 
 Usage:
-    python run_local.py                      # Run standard tier, task 0, local mode
-    python run_local.py --tier smoke         # Run smoke tier
-    python run_local.py --task-index 1       # Run task index 1
-    python run_local.py --with-storage       # Enable S3/Postgres storage
-    python run_local.py --build              # Build image first
-    python run_local.py --build-only         # Build image and exit
+    uv run run-local                      # Run standard tier, task 0, local mode
+    uv run run-local --tier smoke         # Run smoke tier
+    uv run run-local --task-index 1       # Run task index 1
+    uv run run-local --with-storage       # Enable S3/Postgres storage
+    uv run run-local --build              # Build image first
+    uv run run-local --build-only         # Build image and exit
 
 Environment variables are loaded from .env.local
 """
@@ -18,21 +17,15 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Try to load .env.local
-APP_DIR = Path(__file__).parent
-ENV_FILE = APP_DIR / ".env.local"
+from evaluations.logging import logger
+from evaluations.settings import settings
 
-if ENV_FILE.exists():
-    print(f"Loading environment from {ENV_FILE}")
-    with open(ENV_FILE, encoding="utf-8") as f:
-        for raw_line in f:
-            line = raw_line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                key, _, value = line.partition("=")
-                os.environ.setdefault(key.strip(), value.strip())
+# App directory is two levels up from this file (src/evaluations/ -> apps/evaluations/)
+APP_DIR = Path(__file__).parent.parent.parent
 
 
 def main() -> int:
+    """Run evaluations locally with Docker."""
 
     parser = argparse.ArgumentParser(description="Run evaluations locally with Docker")
     parser.add_argument("--tier", default="standard", help="Tier to run (default: standard)")
@@ -45,12 +38,14 @@ def main() -> int:
 
     # Build if requested
     if args.build or args.build_only:
-        github_token = os.environ.get("GITHUB_TOKEN")
-        if not github_token:
-            print("Error: GITHUB_TOKEN is required for build", file=sys.stderr)
+        if not settings.GITHUB_TOKEN:
+            logger.error("GITHUB_TOKEN is required for build")
             return 1
 
-        print("Building Docker image...")
+        # Set env var for Docker secret mounting
+        os.environ["GITHUB_TOKEN"] = settings.GITHUB_TOKEN
+
+        logger.info("Building Docker image...")
         build_cmd = [
             "docker",
             "build",
@@ -69,7 +64,7 @@ def main() -> int:
             return result.returncode
 
         if args.build_only:
-            print(f"Build complete: {args.image}")
+            logger.info("Build complete: %s", args.image)
             return 0
 
     # Build docker run command
@@ -82,32 +77,31 @@ def main() -> int:
         "-e",
         f"CLOUD_RUN_TASK_INDEX={args.task_index}",
         "-e",
-        f"LITELLM_PROXY_API_KEY={os.environ.get('LITELLM_PROXY_API_KEY', '')}",
+        f"LITELLM_PROXY_API_KEY={settings.LITELLM_PROXY_API_KEY or ''}",
     ]
 
     if args.with_storage:
         docker_cmd.extend([
             "-e",
-            f"PGHOST={os.environ.get('PGHOST', '')}",
+            f"PGHOST={settings.PGHOST}",
             "-e",
-            f"PGPORT={os.environ.get('PGPORT', '5432')}",
+            f"PGPORT={settings.PGPORT}",
             "-e",
-            f"PGUSER={os.environ.get('PGUSER', '')}",
+            f"PGUSER={settings.PGUSER}",
             "-e",
-            f"PGPASSWORD={os.environ.get('PGPASSWORD', '')}",
+            f"PGPASSWORD={settings.PGPASSWORD}",
             "-e",
-            f"AWS_ACCESS_KEY_ID={os.environ.get('AWS_ACCESS_KEY_ID', '')}",
+            f"AWS_ACCESS_KEY_ID={settings.AWS_ACCESS_KEY_ID or ''}",
             "-e",
-            f"AWS_SECRET_ACCESS_KEY={os.environ.get('AWS_SECRET_ACCESS_KEY', '')}",
+            f"AWS_SECRET_ACCESS_KEY={settings.AWS_SECRET_ACCESS_KEY or ''}",
         ])
-        print(f"Running: tier={args.tier}, task_index={args.task_index} (with storage)")
+        logger.info("Running: tier=%s, task_index=%d (with storage)", args.tier, args.task_index)
     else:
         docker_cmd.extend(["-e", "LOCAL=true"])
-        print(f"Running: tier={args.tier}, task_index={args.task_index} (local mode, no storage)")
+        logger.info("Running: tier=%s, task_index=%d (local mode, no storage)", args.tier, args.task_index)
 
     docker_cmd.append(args.image)
 
-    print()
     result = subprocess.run(docker_cmd, check=False)
     return result.returncode
 

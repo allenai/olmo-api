@@ -28,43 +28,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./schema:/docker-entrypoint-initdb.d
 
-  flask-api:
-    build: 
-      context: .
-      dockerfile: apps/flask-api/Dockerfile
-      target: dev
-      
-    volumes:
-      - ./service_account.json:/secret/cfg/service_account.json
-      - ./.modal.toml:/secret/.modal.toml
-      
-    environment:
-      <<: *shared-env
-
-    develop:
-      # Create a `watch` configuration to update the app
-      # https://docs.docker.com/compose/file-watch/#compose-watch-versus-bind-mounts
-      watch:
-        # Sync the working directory with the `/app` directory in the container
-        - action: sync
-          path: .
-          target: /app
-          # Exclude the project virtual environment — it could be for a
-          # different platform in the container
-          ignore:
-            - .venv/
-
-        # Rebuild the image if dependencies change by checking uv.lock
-        - action: rebuild
-          path: ./uv.lock
-
-        - action: restart
-          path: ./config.json
-
-    ports:
-      - 8000:8000
-
-  fastapi:
+  api:
     build: 
       context: .
       dockerfile: apps/api/Dockerfile
@@ -105,7 +69,7 @@ services:
           path: ./config.json
 
   
-  api-safety-worker:
+  safety-worker:
     build:
       dockerfile: apps/api-safety-worker/api-safety-worker.Dockerfile
       context: .
@@ -127,52 +91,18 @@ services:
           target: /app
           ignore:
             - .venv/
-            - apps/flask-api/
-            - apps/safety-worker/
+            - apps/api/
+            - apps/api-safety-worker/
         - action: rebuild
           path: ./uv.lock
 
     ports:
       - 9192:9191
 
-  safety-worker:
-    build:
-      dockerfile: apps/safety-worker/safety-worker.Dockerfile
-      context: .
-      target: dev
-      
-    volumes:
-      - ./service_account.json:/secret/cfg/service_account.json
-      - ./.modal.toml:/secret/.modal.toml
-
-    environment:
-      <<: *shared-env
-
-    develop:
-      watch:
-        # Sync the working directory with the `/app` directory in the container
-        - action: sync
-          path: .
-          target: /app
-          # Exclude the project virtual environment — it could be for a
-          # different platform in the container
-          ignore:
-            - .venv/
-
-        # Rebuild the image if dependencies change by checking uv.lock
-        - action: rebuild
-          path: ./uv.lock
-
-        - action: restart
-          path: ./config.json
-
-    ports:
-      # We use the Prometheus middleware to check if a worker is healthy
-      - 9191:9191
-
     depends_on:
       redis:
         condition: service_started
+      
 
   redis:
     image: redis:7

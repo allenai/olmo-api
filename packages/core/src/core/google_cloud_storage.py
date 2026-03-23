@@ -2,7 +2,6 @@ import asyncio
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from time import time_ns
 from typing import BinaryIO
 
 from gcloud.aio.storage import Storage
@@ -50,8 +49,6 @@ class GoogleCloudStorage:
         make_file_public: bool = False,
         timeout: int = 60,  # default in sync GCS (google.aio.storage default is 30s)
     ) -> UploadResponse:
-        start_ns = time_ns()
-
         span = trace.get_current_span()
         span.set_attributes({
             "bucket": bucket_name,
@@ -70,15 +67,6 @@ class GoogleCloudStorage:
                 timeout=timeout,
             )
 
-        end_ns = time_ns()
-
-        logger.info(
-            "gcs.upload_content.complete",
-            bucket=bucket_name,
-            filename=filename,
-            duration_ms=(end_ns - start_ns) / 1_000_000,
-        )
-
         # Construct URLs
         public_url = f"https://storage.googleapis.com/{bucket_name}/{filename}"
         storage_path = f"gs://{bucket_name}/{filename}"
@@ -87,8 +75,6 @@ class GoogleCloudStorage:
 
     @tracer.start_as_current_span("GoogleCloudStorageService/delete_file")
     async def delete_file(self, filename: str, bucket_name: str, *, raise_exception_on_failure=False) -> None:
-        start_ns = time_ns()
-
         span = trace.get_current_span()
         span.set_attributes({
             "bucket": bucket_name,
@@ -106,21 +92,10 @@ class GoogleCloudStorage:
             if raise_exception_on_failure:
                 raise
 
-        end_ns = time_ns()
-
-        logger.info(
-            "gcs.delete_file.complete",
-            bucket=bucket_name,
-            filename=filename,
-            duration_ms=(end_ns - start_ns) / 1_000_000,
-        )
-
     @tracer.start_as_current_span("GoogleCloudStorageService/delete_multiple_files_by_url")
     async def delete_multiple_files_by_url(
         self, file_urls: list[str], bucket_name: str, *, raise_exception_on_failure=False
     ) -> None:
-        start_ns = time_ns()
-
         span = trace.get_current_span()
         span.set_attributes({
             "bucket": bucket_name,
@@ -142,15 +117,6 @@ class GoogleCloudStorage:
             if raise_exception_on_failure:
                 raise
 
-        end_ns = time_ns()
-
-        logger.info(
-            "gcs.delete_multiple_files_by_url.complete",
-            bucket=bucket_name,
-            filenames=file_names,
-            duration_ms=(end_ns - start_ns) / 1_000_000,
-        )
-
     @tracer.start_as_current_span("GoogleCloudStorageService/update_file_deletion_time")
     async def update_file_deletion_time(
         self, filename: str, new_time: datetime, bucket_name: str, *, raise_exception_on_failure=False
@@ -164,8 +130,6 @@ class GoogleCloudStorage:
             )
             msg = "Datetime exceeds GoogleCloudStorage maximum limit"
             raise ValueError(msg)
-
-        start_ns = time_ns()
 
         span = trace.get_current_span()
         span.set_attributes({
@@ -184,16 +148,6 @@ class GoogleCloudStorage:
                     metadata={
                         "customTime": new_time.isoformat(),
                     },
-                )
-
-                end_ns = time_ns()
-
-                logger.info(
-                    "gcs.update_file_deletion_time.complete",
-                    bucket=bucket_name,
-                    filename=filename,
-                    new_time=new_time,
-                    duration_ms=(end_ns - start_ns) / 1_000_000,
                 )
 
         except Exception as e:
@@ -222,7 +176,6 @@ class GoogleCloudStorage:
 
     @tracer.start_as_current_span("GoogleCloudStorageService/delete_prefix")
     async def delete_prefix(self, prefix: str, bucket_name: str, *, raise_exception_on_failure: bool = False) -> None:
-        start_ns = time_ns()
         file_names: list[str] = []
 
         span = trace.get_current_span()
@@ -246,12 +199,3 @@ class GoogleCloudStorage:
             logger.exception("gcs.delete_prefix.error", bucket=bucket_name, filenames=file_names)
             if raise_exception_on_failure:
                 raise
-
-        end_ns = time_ns()
-
-        logger.info(
-            "gcs.delete_prefix.complete",
-            bucket=bucket_name,
-            filenames=file_names,
-            duration_ms=(end_ns - start_ns) / 1_000_000,
-        )

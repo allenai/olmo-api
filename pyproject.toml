@@ -621,7 +621,6 @@ select = [
     "T100",
     "T201",
     "T203",
-    "TC001",
     "TC002",
     "TC003",
     "TC004",
@@ -696,6 +695,16 @@ select = [
     "YTT301",
     "YTT302",
     "YTT303",
+]
+
+[tool.ruff.lint.flake8-type-checking]
+runtime-evaluated-base-classes = [
+    "pydantic.BaseModel",
+    "sqlalchemy.orm.DeclarativeBase",
+    "db.models.base.Base",
+    "core.APIInterface",
+    "core.api_interface.APIInterface",
+
 ]
 
 [tool.ruff.lint.flake8-builtins]

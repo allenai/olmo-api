@@ -45,7 +45,7 @@ def create_app() -> FastAPI:
 
     setup_otel()
 
-    FastAPIInstrumentor.instrument_app(app, exclude_spans=["receive", "send"], excluded_urls="/v5/health,/v5/event")
+    FastAPIInstrumentor.instrument_app(app, exclude_spans=["receive", "send"], excluded_urls="/health,/v5/event")
     HTTPXClientInstrumentor().instrument()
     SQLAlchemyInstrumentor().instrument(
         engine=get_sqlalchemy_engine().sync_engine,  # "sync-style" engine for async SQLAlchemy

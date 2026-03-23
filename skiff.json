@@ -3,12 +3,9 @@
     "contact": "sams",
     "team": "oe-adoption",
     "replicas": {
-        "prod": 10
-    },
-    "workerReplicas": {
         "prod": 2
     },
-    "fastApiReplicas": {
+    "workerReplicas": {
         "prod": 2
     }
 }

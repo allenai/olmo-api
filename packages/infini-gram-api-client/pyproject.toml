@@ -2,7 +2,7 @@
 name = "infini-gram-api-client"
 version = "0.1.0"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = ["attrs>=21.3.0", "httpx~=0.28.0"]
 
 [build-system]

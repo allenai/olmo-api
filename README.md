@@ -6,7 +6,7 @@ The HTTP API used by http://playground.allenai.org
 
 ### Getting Started
 
-To start a local server, follow these steps:
+To start a local server, run:
 
     ```
     docker compose up --build --watch
@@ -15,7 +15,7 @@ To start a local server, follow these steps:
 #### Running without Docker
 This project uses [uv](https://docs.astral.sh/uv). To run it locally, follow their [installation guide](https://docs.astral.sh/uv/#installation).
 
-After uv is installed, run `uv sync --all-packages --all-groups` at the root of this project.
+After uv is installed, run `just install` at the root of this project.
 
 ### Adding a new package
 We use uv's workspaces to split code into larger chunks. 
@@ -45,16 +45,10 @@ docker compose down --volumes && docker compose up --build
 
 ### Tests
 
-To run the Flask tests, execute:
+To run the unit tests, run:
 
 ```bash
-FLASK_CONFIG_PATH="./test.config.json" uv run --python 3.11 pytest apps/flask-api -m "not integration"
-```
-
-To run the FastAPI tests, execute
-
-```bash
-uv run pytest apps/api
+just test
 ```
 
 ### Type check
@@ -62,8 +56,7 @@ uv run pytest apps/api
 To check types:
 
 ```bash
-uv run mypy apps/api packages
-uv run mypy apps/flask-api
+just type-check
 ```
 
 ### Formatting / Linting
@@ -71,7 +64,7 @@ uv run mypy apps/flask-api
 To run the formatter / linter:
 
 ```bash
-uv run ruff format
+just format
 ```
 
 To just check without making changes to the files:
@@ -82,7 +75,7 @@ uv run ruff format --check
 To check for linting issues in fastapi:
 
 ```bash
-uv run ruff check --exclude ./apps/flask-api
+just lint
 ```
 
 ## More Documentation
@@ -94,8 +87,6 @@ uv run ruff check --exclude ./apps/flask-api
 
 On macOS, ensure you have `homebrew` installed then run `brew install ffmpeg`
 
-Change `db.conninfo` in `config.json` to "postgres://app:llmz@127.0.0.1:5555/llmx?sslmode=disable"
-
 start the postgres container with `docker compose up db`
 
 Make sure you've installed packages and activated the environment with `just install`
@@ -106,7 +97,7 @@ Start the server by running `just dev`
 
 Ensure you have the [Python Extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python) installed.
 
-Instead of starting the server with the `python` command above, launch the `Python Debugger: Flask` debug task in VSCode's debug menu.
+Instead of starting the server with the `python` command above, launch the `Python Debugger: FastAPI` debug task in VSCode's debug menu.
 
 ## Regenerating infinigram-api-client
 

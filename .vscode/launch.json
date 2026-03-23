@@ -2,24 +2,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Flask",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "flask",
-            "env": {
-                "FLASK_APP": "apps/flask-api/app.py",
-                "FLASK_DEBUG": "1",
-                "FLASK_CONFIG_PATH": "config.json",
-                "MODAL_CONFIG_PATH": ".modal.toml",
-                "GOOGLE_APPLICATION_CREDENTIALS": "service_account.json",
-                "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4318",
-                "ENV": "development"
-            },
-            "args": ["run", "--no-debugger", "-p 8000"],
-            "jinja": true,
-            "justMyCode": false
-        },
-        {
             "name": "Python Debugger: FastAPI",
             "type": "debugpy",
             "request": "launch",

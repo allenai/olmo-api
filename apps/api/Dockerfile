@@ -31,7 +31,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Then, use a final image without uv
 FROM python:3.14-slim-bookworm AS runner
 # It is important to use the image that matches the builder, as the path to the
-# Python executable must be the same, e.g., using `python:3.11-slim-bookworm`
+# Python executable must be the same, e.g., using `python:3.14-slim-bookworm`
 # will fail.
 
 # Setup a non-root user

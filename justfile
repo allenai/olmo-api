@@ -13,8 +13,8 @@ test-e2e:
 # Formatting, linting, type checking
 verify: format lint type-check
 
-format:
-  uv run ruff format
+format *ARGS:
+  uv run ruff format {{ARGS}}
 
 lint *ARGS:
   uv run ruff check {{ARGS}}
@@ -25,7 +25,7 @@ type-check-apps:
 type-check-packages:
   uv run mypy packages
 
-type-check: type-check-api type-check-packages
+type-check: type-check-apps type-check-packages
 
 dev:
   ENV=development uv run fastapi dev ./apps/api/main.py --port 8888

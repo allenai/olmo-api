@@ -23,17 +23,17 @@ jobs:
           uses: ./.github/actions/set-up-uv
 
         - name: Test with pytest
-          run: uv run pytest --ignore ./apps/api/e2e
+          run: just test
 
     type-check:
       runs-on: ubuntu-latest
       steps:
         - uses: actions/checkout@v6
 
-        - name: Set up uv
-          uses: ./.github/actions/set-up-uv
+        - name: Set up repo
+          uses: ./.github/actions/set-up-repo
 
-        - run: uv run mypy apps/api packages
+        - run: just type-check
 
     lint:
       runs-on: ubuntu-latest  
@@ -43,7 +43,7 @@ jobs:
       - name: Set up uv
         uses: ./.github/actions/set-up-uv
 
-      - run: uv run ruff check --output-format=github
+      - run: just lint --output-format=github
       
     format:
       runs-on: ubuntu-latest 
@@ -53,4 +53,4 @@ jobs:
         - name: Set up uv
           uses: ./.github/actions/set-up-uv
 
-        - run: uv run ruff format --check
+        - run: just format --check

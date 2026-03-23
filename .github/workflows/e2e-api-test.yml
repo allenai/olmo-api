@@ -35,11 +35,11 @@ jobs:
         run: |
           echo $GOOGLE_SERVICE_ACCOUNT | base64 --decode > service_account.json
  
-      - name: Set up uv
-        uses: ./.github/actions/set-up-uv
+      - name: Set up repo
+        uses: ./.github/actions/set-up-repo
 
       - name: Test fastapi with pytest
         env:
           E2E_AUTH0_CLIENT_ID: ${{ secrets.E2E_AUTH0_CLIENT_ID }}
           E2E_AUTH0_CLIENT_SECRET: ${{ secrets.E2E_AUTH0_CLIENT_SECRET }}
-        run: uv run pytest ./apps/api/e2e
+        run: just test-e2e

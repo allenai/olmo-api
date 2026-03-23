@@ -13,8 +13,8 @@ test-e2e:
 # Formatting, linting, type checking
 verify: format lint type-check
 
-format:
-  uv run ruff format
+format *ARGS:
+  uv run ruff format {{ARGS}}
 
 lint *ARGS:
   uv run ruff check {{ARGS}}

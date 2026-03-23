@@ -8,7 +8,6 @@ x-shared-env: &shared-env
   MODAL_CONFIG_PATH: /secret/.modal.toml
   OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
   OTEL_SERVICE_NAME: olmo-api
-  FLASK_CONFIG_PATH: /app/config.json
 
 services:
   db:
@@ -58,7 +57,6 @@ services:
           # different platform in the container
           ignore:
             - apps/db-migrations/
-            - apps/flask-api/
             - apps/safety-worker/
 
         # Rebuild the image if dependencies change by checking uv.lock

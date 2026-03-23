@@ -102,7 +102,7 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='', safet
     else
          { };
 
-    // The port the API (Python Flask application) is bound to.
+    // The port the API (Python FastAPI application) is bound to.
     local apiPort = 8000;
 
     // This is used to verify that the API is functional.
@@ -300,7 +300,7 @@ function(apiImage, cause, sha, env='prod', branch='', repo='', buildId='', safet
         scheme: 'HTTP'
     };
     local fastApiPodLabels = podLabels + { app: fastApiAppName, onlyOneOfPerNode: fastApiAppName + '-' + env };
-    local numFastApiReplicas = if env == 'prod' then config.fastApiReplicas.prod else 1;
+    local numFastApiReplicas = if env == 'prod' then config.replicas.prod else 1;
 
     local fastApiDeployment = {
         apiVersion: 'apps/v1',

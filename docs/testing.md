@@ -20,15 +20,9 @@ This setup extends unit tests to also have access to the database. To run them y
 brew install postgresql
 ```
 
-In the python .venv you can run the flask tests with:
-
-```sh
-FLASK_CONFIG_PATH="test.config.json" uv run pytest --ignore e2e --ignore src/attribution apps/flask-api
-```
-
 To run the fast-api and package tests, execute:
 ```bash
-uv run pytest apps/api packages
+just test
 ```
 
 Integration Tests can be placed anywhere in the app.

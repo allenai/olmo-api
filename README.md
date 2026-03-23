@@ -8,14 +8,6 @@ The HTTP API used by http://playground.allenai.org
 
 To start a local server, follow these steps:
 
-1. Generate a local `config.json` file:
-
-    ```
-    ./bin/bootstrap
-    ```
-
-2. Next open another terminal and launch the application like so:
-
     ```
     docker compose up --build --watch
     ```
@@ -67,7 +59,7 @@ uv run pytest apps/api
 
 ### Type check
 
-To check types run separately for api and flask-api:
+To check types:
 
 ```bash
 uv run mypy apps/api packages
@@ -106,11 +98,9 @@ Change `db.conninfo` in `config.json` to "postgres://app:llmz@127.0.0.1:5555/llm
 
 start the postgres container with `docker compose up db`
 
-make sure you're in the venv by running `.venv/bin/activate`
+Make sure you've installed packages and activated the environment with `just install`
 
-Start the server by running `FLASK_APP=app.py python -m flask run -p 8000`
-
-Note: If you run e2e tests with a local server it's possible for the containers and local server to be out of sync. Make sure you run e2e tests in the docker-compose
+Start the server by running `just dev`
 
 ### Debugging the API in VSCode:
 

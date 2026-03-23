@@ -1,4 +1,4 @@
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator  # noqa: TC003 # Needed for FastAPI
 from functools import lru_cache
 from typing import Annotated, Any
 

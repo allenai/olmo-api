@@ -42,7 +42,7 @@ class ToolsService:
             else []
         )
 
-    async def get_available_tools(self, *, model: "ModelConfig | BaseModelResponse") -> list[Ai2ToolDefinition]:
+    async def get_available_tools(self, *, model: ModelConfig | BaseModelResponse) -> list[Ai2ToolDefinition]:
         if model.can_call_tools is False:
             return []
 

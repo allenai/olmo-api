@@ -1,4 +1,4 @@
-from typing import NoReturn
+from typing import NoReturn  # noqa: TC003
 
 from pydantic_ai import FunctionToolset, ModelRetry, RunContext
 

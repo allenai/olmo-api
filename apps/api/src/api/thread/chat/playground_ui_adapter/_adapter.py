@@ -1,10 +1,7 @@
-from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import cached_property
+from typing import TYPE_CHECKING
 
-from pydantic_ai.messages import (
-    ModelMessage,
-)
 from pydantic_ai.output import OutputDataT
 from pydantic_ai.tools import AgentDepsT
 from pydantic_ai.ui import UIAdapter, UIEventStream
@@ -14,6 +11,13 @@ from db.models.message import Message
 
 from ._event_stream import PlaygroundUIEventStream
 from ._util import Event, InputMessage, RunInput
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from pydantic_ai.messages import (
+        ModelMessage,
+    )
 
 __all__ = ["PlaygroundUIAdapter"]
 

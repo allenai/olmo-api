@@ -60,7 +60,9 @@ class Message(Base, kw_only=True):
     content: Mapped[str] = mapped_column(Text, nullable=False)
 
     input_parts: Mapped[list[InputPart] | None] = mapped_column(
-        ARRAY(PydanticType(InputPart)), nullable=True, default=None
+        ARRAY(PydanticType(InputPart)),  # type:ignore[arg-type] # pyright: ignore[reportArgumentType]
+        nullable=True,
+        default=None,
     )
 
     creator: Mapped[str] = mapped_column(Text, nullable=False)

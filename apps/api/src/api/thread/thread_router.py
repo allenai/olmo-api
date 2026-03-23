@@ -1,5 +1,4 @@
-from collections.abc import AsyncIterator
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Form, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
@@ -17,6 +16,9 @@ from api.thread.thread_delete_service import ThreadDeleteServiceDependency
 from api.thread.thread_read_service import ThreadReadServiceDependency
 from core.message.message_chunk import Chunk
 from core.sort_options import SortOptions
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 logger = FastAPIStructLogger()
 

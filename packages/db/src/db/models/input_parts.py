@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Literal, TypeAlias
+from typing import Literal
 
 from pydantic import Field
 
@@ -19,4 +19,4 @@ class Molmo2PointPart(APIInterface):
 
 
 # Will be a union of different parts in the future
-InputPart: TypeAlias = Molmo2PointPart
+type InputPart = Molmo2PointPart

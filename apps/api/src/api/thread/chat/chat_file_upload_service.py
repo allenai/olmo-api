@@ -1,6 +1,5 @@
 import asyncio
 import os
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends, UploadFile
@@ -12,6 +11,8 @@ from api.gcs_dependency import GoogleCloudStorageDependency
 from core.object_id import ID
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from core.google_cloud_storage import UploadResponse
 
 tracer = trace.get_tracer(__name__)

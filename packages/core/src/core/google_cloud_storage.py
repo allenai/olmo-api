@@ -2,7 +2,7 @@ import asyncio
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import BinaryIO
+from typing import BinaryIO  # noqa: TC003
 
 from gcloud.aio.storage import Storage
 from opentelemetry import trace

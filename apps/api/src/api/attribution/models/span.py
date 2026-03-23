@@ -14,7 +14,7 @@ class TopLevelAttributionSpan(ResponseAttributionSpan):
     nested_spans: list[ResponseAttributionSpan] = Field(default_factory=list)
 
     @classmethod
-    def from_flattened_span(cls, span: FlattenedSpan) -> "TopLevelAttributionSpan":
+    def from_flattened_span(cls, span: FlattenedSpan) -> TopLevelAttributionSpan:
         return TopLevelAttributionSpan(
             text=span.text,
             nested_spans=[

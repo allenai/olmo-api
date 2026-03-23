@@ -1,8 +1,11 @@
-from typing import Self
+from typing import TYPE_CHECKING
 
 from api.attribution.models.intermediate import FlattenedSpanDocument
 from api.attribution.sources import INFINI_GRAM_SOURCES
 from core import APIInterface
+
+if TYPE_CHECKING:
+    from typing import Self
 
 
 class AttributionDocumentSnippet(APIInterface):

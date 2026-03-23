@@ -1,6 +1,8 @@
 from http import HTTPStatus
+from typing import TYPE_CHECKING
 
-from httpx import Response
+if TYPE_CHECKING:
+    from httpx import Response
 
 
 def assert_ok_response(response: Response):

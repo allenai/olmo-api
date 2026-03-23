@@ -27,7 +27,7 @@ class LabelCreateRequest(APIInterface):
     labels: list[LabelRequest]
 
     @model_validator(mode="after")
-    def validate_binary_ratings(self) -> "LabelCreateRequest":
+    def validate_binary_ratings(self) -> LabelCreateRequest:
         request_exclusive_ratings = [label.rating for label in self.labels if label.rating in EXCLUSIVE_RATINGS]
         if len(request_exclusive_ratings) > 1:
             msg = "Cannot have more than one up or down rating in the same request"

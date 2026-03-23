@@ -1,19 +1,8 @@
-from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from opentelemetry import trace
 from pydantic_ai import ModelRetry, ToolReturnPart, UnexpectedModelBehavior
-from pydantic_ai.messages import (
-    BuiltinToolCallPart,
-    FunctionToolResultEvent,
-    TextPart,
-    TextPartDelta,
-    ThinkingPart,
-    ThinkingPartDelta,
-    ToolCallPart,
-    ToolCallPartDelta,
-)
 from pydantic_ai.output import OutputDataT
 from pydantic_ai.tools import AgentDepsT
 from pydantic_ai.ui import UIEventStream
@@ -41,6 +30,20 @@ from core.object_id import ID
 from core.tools.tool_source import ToolSource
 from db.models.message import Message, create_message_id
 from db.models.tool_call import ToolCall
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+    from pydantic_ai.messages import (
+        BuiltinToolCallPart,
+        FunctionToolResultEvent,
+        TextPart,
+        TextPartDelta,
+        ThinkingPart,
+        ThinkingPartDelta,
+        ToolCallPart,
+        ToolCallPartDelta,
+    )
 
 __all__ = ["PlaygroundUIEventStream"]
 

@@ -1,8 +1,7 @@
 import uuid
-from collections.abc import Sequence
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends, UploadFile
 from opentelemetry import trace
@@ -13,6 +12,9 @@ from api.logging.fastapi_logger import FastAPIStructLogger
 
 from .safety_checkers.google_video_safety_checker import GoogleVideoIntelligenceSafetyChecker
 from .safety_checkers.safety_checker_base import SafetyChecker, SafetyCheckRequest
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 logger = FastAPIStructLogger()
 tracer = trace.get_tracer(__name__)

@@ -1,10 +1,11 @@
-from typing import Any, final
+from typing import TYPE_CHECKING, Any, final, override
 
 from pydantic import BaseModel
 from sqlalchemy import JSON, Dialect, TypeDecorator
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.types import TypeEngine
-from typing_extensions import override
+
+if TYPE_CHECKING:
+    from sqlalchemy.types import TypeEngine
 
 
 # Taken from https://gist.github.com/pdmtt/a6dc62f051c5597a8cdeeb8271c1e079?permalink_comment_id=5761533#gistcomment-5761533

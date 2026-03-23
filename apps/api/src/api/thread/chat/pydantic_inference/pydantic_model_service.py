@@ -1,4 +1,4 @@
-from pydantic_ai.models import Model
+from typing import TYPE_CHECKING
 
 from db.models.model_config import ModelConfig, ModelHost
 
@@ -7,6 +7,9 @@ from .backends.beaker_queues import get_beaker_queues_model
 from .backends.cirrascale import get_cirrascale_model
 from .backends.modal_open_ai import get_modal_openai_model
 from .backends.pydantic_ai_test import get_test_model
+
+if TYPE_CHECKING:
+    from pydantic_ai.models import Model
 
 
 def get_pydantic_model(model: ModelConfig) -> Model:

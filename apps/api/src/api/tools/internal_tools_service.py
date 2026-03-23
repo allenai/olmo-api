@@ -1,13 +1,15 @@
 import json
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 from fastapi import Depends
-from pydantic_ai import Tool
 
 from api.logging.fastapi_logger import FastAPIStructLogger
 from db.models.tool_call import ToolCall
 from db.models.tool_definitions import ToolDefinition as Ai2ToolDefinition
 from db.models.tool_definitions import ToolSource
+
+if TYPE_CHECKING:
+    from pydantic_ai import Tool
 
 logger = FastAPIStructLogger()
 

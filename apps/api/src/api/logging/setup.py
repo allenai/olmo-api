@@ -1,8 +1,11 @@
 import logging
+from typing import TYPE_CHECKING
 
 import structlog
 import structlog_gcp
-from structlog.types import EventDict, Processor
+
+if TYPE_CHECKING:
+    from structlog.types import EventDict, Processor
 
 
 def drop_color_message_key(_, __, event_dict: EventDict) -> EventDict:

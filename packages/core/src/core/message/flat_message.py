@@ -1,6 +1,5 @@
-from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from pydantic import (
     AwareDatetime,
@@ -23,6 +22,9 @@ from db.models.inference_opts import InferenceOpts
 from db.models.input_parts import InputPart
 from db.models.message import Message
 from db.models.model_config import ModelType
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 class InferenceOptionsResponse(InferenceOpts, APIInterface): ...
@@ -97,17 +99,17 @@ class FlatMessage(APIInterface):
         return time_since_creation.days > 30  # noqa: PLR2004
 
     @staticmethod
-    def from_message(message: Message) -> "FlatMessage":
+    def from_message(message: Message) -> FlatMessage:
         return FlatMessage.model_validate(message)
 
     @staticmethod
     def from_message_with_children(
         message: Message,
-    ) -> list["FlatMessage"]:
+    ) -> list[FlatMessage]:
         return _map_messages(message)
 
     @staticmethod
-    def from_message_seq(messages: Sequence[Message]) -> list["FlatMessage"]:
+    def from_message_seq(messages: Sequence[Message]) -> list[FlatMessage]:
         for message in messages:
             children = [msg for msg in messages if msg.parent == message.id]
             orm.attributes.set_committed_value(message, "children", children)

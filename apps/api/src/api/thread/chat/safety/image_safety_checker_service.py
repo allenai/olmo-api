@@ -1,8 +1,7 @@
 import asyncio
 import base64
-from collections.abc import Sequence
 from functools import lru_cache
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends, UploadFile
 from opentelemetry import trace
@@ -16,6 +15,9 @@ from .safety_checkers.safety_checker_base import (
     SafetyCheckResponse,
     SafetyCheckUnsafeError,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 logger = FastAPIStructLogger()
 tracer = trace.get_tracer(__name__)

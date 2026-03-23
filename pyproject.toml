@@ -704,8 +704,10 @@ runtime-evaluated-base-classes = [
     "db.models.base.Base",
     "core.APIInterface",
     "core.api_interface.APIInterface",
-
 ]
+runtime-evaluated-decorators = ["pytest.fixture"]
+exempt-modules = ["pytest_mock"]
+
 
 [tool.ruff.lint.flake8-builtins]
 builtins-ignorelist = ["id"]

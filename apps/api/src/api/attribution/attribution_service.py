@@ -85,7 +85,7 @@ class AttributionService:
                 "infini-gram.api.validation_error", title=infini_gram_response.title, detail=infini_gram_response.errors
             )
 
-            if any(error.loc == "index" for error in infini_gram_response.errors):
+            if any("index" in error.loc for error in infini_gram_response.errors):
                 raise UnavailableOlmoTraceIndexError
 
             non_index_error_msg = f"infini-gram API reported a validation error: {infini_gram_response.title}\nThis is likely an error in olmo-api."

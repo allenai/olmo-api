@@ -26,7 +26,6 @@ from .safety_checker_base import (
     SafetyChecker,
     SafetyCheckRequest,
     SafetyCheckResponse,
-    SafetyCheckUnsafeError,
     SkippedSafetyCheckResponse,
 )
 
@@ -54,9 +53,6 @@ def _make_worker_sessionmaker():
 
 
 class VideoIntelligenceOperationNotAvailableError(Exception): ...
-
-
-class VideoIntelligenceOperationNotFinishedError(Exception): ...
 
 
 class VideoIntelligenceOperationMessageNotFoundError(Exception): ...
@@ -108,46 +104,65 @@ class GoogleVideoIntelligenceSafetyChecker(SafetyChecker):
 
         span.set_attribute("operation_name", operation_name)
 
-        if settings.VIDEO_SAFETY_CHECK_WORKER_STRATEGY == "deferred":
-            handle_video_safety_check.send(
-                operation_name=operation_name, file_url=request.content, message_id=request.message_id
-            )
-
-        if settings.VIDEO_SAFETY_CHECK_WORKER_STRATEGY == "inline":
-            response = await _handle_video_safety_check_async(
-                operation_name=operation_name, file_url=request.content, message_id=request.message_id
-            )
-            if not response.is_safe() and throw:
-                raise SafetyCheckUnsafeError
-
-            return response
+        handle_video_safety_check.send(
+            operation_name=operation_name, file_url=request.content, message_id=request.message_id
+        )
 
         return SkippedSafetyCheckResponse()
 
 
 @dramatiq.actor
-def handle_retry_exhausted(*args, **kwargs) -> None:
-    # Logs retry limits so we can alert of off them
+@tracer.start_as_current_span("handle_retry_exhausted")
+async def handle_retry_exhausted(failed_message: dict, retry_info: dict):
+    kwargs: dict = failed_message.get("kwargs", {})
+    operation_name: str = kwargs.get("operation_name", "unknown")
+    file_url: str = kwargs.get("file_url", "unknown")
+    message_id: str = kwargs.get("message_id", "unknown")
+
+    span = trace.get_current_span()
+    span.set_attributes({
+        "operation_name": operation_name,
+        "file_url": file_url,
+        "message_id": message_id,
+        "retries": retry_info.get("retries", 0),
+    })
+    span.set_status(trace.StatusCode.ERROR, "video safety check retries exhausted")
+
     logger.error(
         "video_safety_worker.retry_exhausted",
-        job_args=str(args),
-        job_kwargs=str(kwargs),
+        operation_name=operation_name,
+        file_url=file_url,
+        message_id=message_id,
+        retries=retry_info.get("retries"),
+        max_retries=retry_info.get("max_retries"),
+        traceback=failed_message.get("options", {}).get("traceback"),
     )
 
+    storage_client = get_google_cloud_storage()
+    safety_file_name = Path(file_url).parts[-1]
 
-@dramatiq.actor(  # type: ignore
+    await storage_client.delete_file(filename=safety_file_name, bucket_name=settings.SAFTEY_GCS_UPLOAD_BUCKET)
+
+    await storage_client.delete_prefix(prefix=message_id, bucket_name=settings.USER_CONTENT_BUCKET)
+
+    Session = _make_worker_sessionmaker()  # noqa: N806
+    async with Session() as session:
+        message_repository = AsyncMessageRepository(session)
+        message = await message_repository.get_message_by_id(message_id)
+        if message is not None:
+            message.harmful = True
+            message.file_urls = None
+            await message_repository.update(message)
+            await session.commit()
+
+
+@dramatiq.actor(
     queue_name=SAFETY_QUEUE_NAME,
     max_retries=5,
     on_retry_exhausted=handle_retry_exhausted.actor_name,
 )
-async def handle_video_safety_check(operation_name: str, file_url: str, message_id: str) -> None:
-    await _handle_video_safety_check_async(operation_name=operation_name, file_url=file_url, message_id=message_id)
-
-
 @tracer.start_as_current_span("handle_video_safety_check")
-async def _handle_video_safety_check_async(
-    operation_name: str, file_url: str, message_id: str
-) -> GoogleVideoIntelligenceResponse:
+async def handle_video_safety_check(operation_name: str, file_url: str, message_id: str):
     span = trace.get_current_span()
     span.set_attributes({
         "operation_name": operation_name,
@@ -168,6 +183,11 @@ async def _handle_video_safety_check_async(
                 trace.StatusCode.ERROR,
                 f"Operation {operation_name} not found. The Operation endpoint may not have the operation yet.",
             )
+            logger.warning(
+                "video_safety.operation_not_available",
+                operation_name=operation_name,
+                message_id=message_id,
+            )
             raise VideoIntelligenceOperationNotAvailableError
 
         try:
@@ -182,35 +202,30 @@ async def _handle_video_safety_check_async(
                 trace.StatusCode.ERROR,
                 f"Operation {operation_name} not found or not done. The Operation endpoint may not have the operation yet.",
             )
+            logger.warning(
+                "video_safety.operation_not_available",
+                operation_name=operation_name,
+                message_id=message_id,
+            )
             raise VideoIntelligenceOperationNotAvailableError from e
 
         result = await operation.result()
 
         if not isinstance(result, AnnotateVideoResponse):
             msg = "Unexpected result from google video checker"
+            span.set_status(trace.StatusCode.ERROR, msg)
             raise TypeError(msg)
 
         mapped_response = GoogleVideoIntelligenceResponse(result)
         span.set_attribute("is_safe", mapped_response.is_safe())
-
-        # if we are blocking mode -- the message doesn't exist yet and we will return
-        # a response to indicate its not safe back to the main event loop
-        if settings.VIDEO_SAFETY_CHECK_WORKER_STRATEGY == "inline":
-            logger.info(
-                "video_safety.blocking_mode.complete",
-                operation=operation_name,
-                is_safe=mapped_response.is_safe(),
-                message_id=message_id,
-            )
-
-            return mapped_response
 
         message_repository = AsyncMessageRepository(session)
         message = await message_repository.get_message_by_id(message_id)
 
         if message is None:
             not_found_message = f"Message {message_id} not found when evaluating a video safety check"
-            logger.error(
+            span.set_status(trace.StatusCode.ERROR, not_found_message)
+            logger.warning(
                 "video_safety.message_not_found",
                 operation=operation_name,
                 message_id=message_id,
@@ -228,7 +243,6 @@ async def _handle_video_safety_check_async(
             )
 
             storage_client = get_google_cloud_storage()
-
             safety_file_name = Path(file_url).parts[-1]
 
             await storage_client.delete_file(
@@ -236,21 +250,15 @@ async def _handle_video_safety_check_async(
                 bucket_name=settings.SAFTEY_GCS_UPLOAD_BUCKET,
             )
 
-            if message.file_urls:
-                await storage_client.delete_multiple_files_by_url(
-                    file_urls=message.file_urls,
-                    bucket_name=settings.USER_CONTENT_BUCKET,
-                )
-                message.file_urls = None
+            await storage_client.delete_prefix(prefix=message_id, bucket_name=settings.USER_CONTENT_BUCKET)
+            message.file_urls = None
 
         await message_repository.update(message)
         await session.commit()
 
         logger.info(
-            "video_safety.queue_mode.complete",
-            operation=operation_name,
+            "video_safety.complete",
+            operation_name=operation_name,
             is_safe=mapped_response.is_safe(),
             message_id=message_id,
         )
-
-        return mapped_response

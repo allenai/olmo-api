@@ -54,6 +54,25 @@
             "justMyCode": false
         },
         {
+            "name": "Python Debugger: API Safety Worker",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "dramatiq",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/apps/api/src",
+                "ENV": "development",
+                "GOOGLE_APPLICATION_CREDENTIALS": "${workspaceFolder}/service_account.json"
+            },
+            "args": [
+                "--processes", "1",
+                "--threads", "1",
+                "api.safety_queue:setup_safety_queue",
+                "api.thread.chat.safety.safety_checkers.google_video_safety_checker"
+            ],
+            "jinja": true,
+            "justMyCode": false
+        },
+        {
             "name": "Alembic Auto-generate Debug Migration",
             "type": "debugpy",
             "request": "launch",

@@ -70,7 +70,7 @@ steps:
     'webapp.yaml'
   ]
   dir: '.skiff'
-  waitFor: [ 'api.push', 'fastapi.push', 'api-safety-worker.push', 'safety-worker.push', 'config' ]
+  waitFor: [ 'fastapi.push', 'api-safety-worker.push', 'config' ]
 
 substitutions:
   _ENV: prod

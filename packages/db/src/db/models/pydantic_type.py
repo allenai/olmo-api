@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any, final, override
 
-from pydantic import BaseModel
+from pydantic import TypeAdapter
 from sqlalchemy import JSON, Dialect, TypeDecorator
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 # Taken from https://gist.github.com/pdmtt/a6dc62f051c5597a8cdeeb8271c1e079?permalink_comment_id=5761533#gistcomment-5761533
 @final
-class PydanticType(TypeDecorator[BaseModel]):
+class PydanticType(TypeDecorator[Any]):
     """Pydantic type.
 
     SAVING:
@@ -38,9 +38,10 @@ class PydanticType(TypeDecorator[BaseModel]):
     impl = JSONB
     cache_ok = True
 
-    def __init__(self, pydantic_type: type[BaseModel]) -> None:
+    def __init__(self, pydantic_type: Any) -> None:
         super().__init__()
         self.pydantic_type = pydantic_type
+        self._adapter: TypeAdapter[Any] = TypeAdapter(pydantic_type)
 
     @override
     def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[JSONB | JSON]:
@@ -55,31 +56,20 @@ class PydanticType(TypeDecorator[BaseModel]):
     @override
     def process_bind_param(
         self,
-        value: BaseModel | None,
+        value: Any | None,
         dialect: Dialect,
     ) -> dict[str, Any] | None:
         if value is None:
             return None
-
-        if not isinstance(value, BaseModel):  # dynamic typing.
-            msg = f'The value "{value!r}" is not a pydantic model'
-            raise TypeError(msg)
-
-        # Setting mode to "json" entails that you won't need to define a custom json
-        # serializer ahead.
-        return value.model_dump(mode="json")
+        return self._adapter.dump_python(value, mode="json")
 
     @override
     def process_result_value(
         self,
         value: dict[str, Any] | None,
         dialect: Dialect,
-    ) -> BaseModel | None:
-        # We're assuming that the value will be a dictionary here.
-        validate_on_load = True
-        if validate_on_load:
-            return self.pydantic_type.model_validate(value) if value else None
-        return self.pydantic_type.model_construct(**value) if value else None
+    ) -> Any | None:
+        return self._adapter.validate_python(value) if value else None
 
     def __repr__(self) -> str:
         # Used by alembic

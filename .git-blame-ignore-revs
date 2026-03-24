@@ -1,2 +1,4 @@
 # ruff format the whole repo
 8b09234a4f0e8c22f33d66134f29e77254db8ca0
+# ruff lint --fix after Python 3.14 upgrade
+c81793dcd86472a0420dcd8db21fa8786efd7c1c

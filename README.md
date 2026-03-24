@@ -8,7 +8,13 @@ The HTTP API used by http://playground.allenai.org
 
 To start a local server, run:
 
+    ```sh
+    sh ./bin/bootstrap
     ```
+
+then run:
+
+    ```sh
     docker compose up --build --watch
     ```
     

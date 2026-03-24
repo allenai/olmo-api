@@ -1,0 +1,13 @@
+#!/bin/bash
+set -euo pipefail
+
+dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+gcloud container clusters get-credentials --project ai2-reviz --zone us-west1-b skiff-prod
+prod=$(kubectl get secret/cfg --namespace olmo-api --output jsonpath="{.data.config\.json}" | base64 -D)
+
+kubectl get secret/cfg --namespace olmo-api --output jsonpath="{.data.service_account\.json}" | base64 -D > "$dir/../service_account.json"
+echo "wrote \"$dir/../service_account.json\""
+
+kubectl get secret/modal --namespace olmo-api --output jsonpath="{.data.\.modal\.toml}" | base64 -D > "$dir/../.modal.toml"
+echo "wrote \"$dir/../.modal.toml\""

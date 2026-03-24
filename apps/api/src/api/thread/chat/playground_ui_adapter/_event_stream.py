@@ -1,12 +1,12 @@
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
+from typing import override
 
 from opentelemetry import trace
-from pydantic_ai import AgentRunResultEvent, UnexpectedModelBehavior
+from pydantic_ai import ModelRetry, ToolReturnPart, UnexpectedModelBehavior
 from pydantic_ai.messages import (
     BuiltinToolCallPart,
     FunctionToolResultEvent,
-    RetryPromptPart,
     TextPart,
     TextPartDelta,
     ThinkingPart,
@@ -19,13 +19,10 @@ from pydantic_ai.tools import AgentDepsT
 from pydantic_ai.ui import UIEventStream
 
 from api.logging.fastapi_logger import FastAPIStructLogger
-from api.thread.chat.chat_types import ChatStreamOutput
-from api.thread.chat.format_output import format_event
 from api.thread.chat.playground_ui_adapter._util import (
     Event,
     RunInput,
     create_message_from_run_input,
-    map_response_pydantic_messages_to_messages,
     tool_source_from_name,
 )
 from core.message.flat_message import FlatMessage
@@ -33,10 +30,8 @@ from core.message.message_chunk import (
     AddMessageChunk,
     ErrorChunk,
     ErrorCode,
-    FinalThreadChunk,
     ModelResponseChunk,
     StartThreadChunk,
-    StreamEndChunk,
     StreamStartChunk,
     ThinkingChunk,
     ToolCallChunk,
@@ -63,10 +58,18 @@ class PlaygroundUIEventStream(
         OutputDataT,
     ]
 ):
-    _message_ids: list[ID] = field(default_factory=list)
-    parent_message_id: ID = field(default_factory=create_message_id)
     message_id: ID = field(default_factory=create_message_id)
+
+    _message_ids: list[ID] = field(default_factory=list)
     message_map: dict[ID, Message] = field(default_factory=dict)
+
+    @property
+    def parent_message_id(self) -> ID:
+        if len(self._message_ids) > 1:
+            # This accounts for the latest message in the message IDs list being the current message's ID
+            return self._message_ids[-2]
+
+        return self.run_input.parent_message_id
 
     def _has_message_been_sent(self, message_id: ID) -> bool:
         """
@@ -80,8 +83,8 @@ class PlaygroundUIEventStream(
         self.message_map[id] = message
         return AddMessageChunk(message=id, id=id, messages=FlatMessage.from_message_with_children(message))
 
+    @override
     def new_message_id(self) -> str:
-        self.parent_message_id = self.message_id
         self.message_id = create_message_id()
         self._message_ids.append(self.message_id)
         return self.message_id
@@ -104,63 +107,75 @@ class PlaygroundUIEventStream(
             thinking=thinking,
         )
 
+    @override
     @property
     def content_type(self) -> str:
         return JSONL_CONTENT_TYPE
 
-    def encode_event(self, event: ChatStreamOutput) -> str:  # noqa: PLR6301
-        return format_event(event)
+    @override
+    def encode_event(self, event: Event) -> str:
+        return event.model_dump_json() + "\n"
 
-    async def before_stream(self) -> AsyncIterator[ChatStreamOutput]:
+    @override
+    async def before_stream(self) -> AsyncIterator[Event]:
         yield StreamStartChunk(message=self.run_input.root_message_id)
+
         messages = FlatMessage.from_message_seq(self.run_input.new_messages)
         if self.run_input.is_new_thread:
             yield StartThreadChunk(message=messages[0].id, id=messages[0].id, messages=messages)
         else:
             yield AddMessageChunk(message=messages[0].id, id=messages[0].id, messages=messages)
 
-    async def before_request(self) -> AsyncIterator[ChatStreamOutput]:
+    @override
+    async def before_request(self) -> AsyncIterator[Event]:
         self.new_message_id()
         return
-        # we don't want to yield anything but still want the type to be right so we return then yield
-        yield
+        yield  # Make this an async generator
 
-    async def before_response(self) -> AsyncIterator[ChatStreamOutput]:
+    @override
+    async def before_response(self) -> AsyncIterator[Event]:
         self.new_message_id()
         return
-        # we don't want to yield anything but still want the type to be right so we return then yield
-        yield
+        yield  # Make this an async generator
 
-    async def after_stream(self) -> AsyncIterator[ChatStreamOutput]:
-        yield StreamEndChunk(message=self.message_id)
+    @override
+    async def after_stream(self) -> AsyncIterator[Event]:
+        # We're intentionally not emitting an event here so the caller can handle the final events. The caller is responsible for emitting end chunks
+        return
+        yield  # Make this an async generator
 
-    async def handle_text_start(self, part: TextPart, follows_text: bool = False) -> AsyncIterator[ChatStreamOutput]:  # noqa: ARG002, FBT001, FBT002
+    @override
+    async def handle_text_start(self, part: TextPart, follows_text: bool = False) -> AsyncIterator[Event]:
         if self._has_message_been_sent(self.message_id):
             yield ModelResponseChunk(message=self.message_id, content=part.content)
         else:
             message = self._create_message_with_defaults(content=part.content, role=Role.Assistant)
             yield self._get_add_message_chunk(message.id, message)
 
-    async def handle_text_delta(self, delta: TextPartDelta) -> AsyncIterator[ChatStreamOutput]:
+    @override
+    async def handle_text_delta(self, delta: TextPartDelta) -> AsyncIterator[Event]:
         if delta.content_delta:
             yield ModelResponseChunk(message=self.message_id, content=delta.content_delta)
 
+    @override
     async def handle_thinking_start(
         self,
         part: ThinkingPart,
-        follows_thinking: bool = False,  # noqa: ARG002, FBT001, FBT002
-    ) -> AsyncIterator[ChatStreamOutput]:
+        follows_thinking: bool = False,
+    ) -> AsyncIterator[Event]:
         if self._has_message_been_sent(self.message_id):
             yield ThinkingChunk(message=self.message_id, content=part.content)
         else:
             message = self._create_message_with_defaults(content="", role=Role.Assistant, thinking=part.content)
             yield self._get_add_message_chunk(message.id, message)
 
-    async def handle_thinking_delta(self, delta: ThinkingPartDelta) -> AsyncIterator[ChatStreamOutput]:
+    @override
+    async def handle_thinking_delta(self, delta: ThinkingPartDelta) -> AsyncIterator[Event]:
         if delta.content_delta:
             yield ThinkingChunk(message=self.message_id, content=delta.content_delta)
 
-    async def handle_tool_call_start(self, part: ToolCallPart | BuiltinToolCallPart) -> AsyncIterator[ChatStreamOutput]:
+    @override
+    async def handle_tool_call_start(self, part: ToolCallPart | BuiltinToolCallPart) -> AsyncIterator[Event]:
         if not self._has_message_been_sent(self.message_id):
             message = self._create_message_with_defaults(content="", role=Role.Assistant)
             yield self._get_add_message_chunk(message.id, message)
@@ -175,7 +190,8 @@ class PlaygroundUIEventStream(
             tool_source=tool_source,
         )
 
-    async def handle_tool_call_delta(self, delta: ToolCallPartDelta) -> AsyncIterator[ChatStreamOutput]:
+    @override
+    async def handle_tool_call_delta(self, delta: ToolCallPartDelta) -> AsyncIterator[Event]:
         tool_call_id = delta.tool_call_id or ""
         assert tool_call_id, "`ToolCallPartDelta.tool_call_id` must be set"  # noqa: S101
 
@@ -187,19 +203,14 @@ class PlaygroundUIEventStream(
             args=delta.args_delta,
         )
 
-    async def handle_function_tool_result(self, event: FunctionToolResultEvent) -> AsyncIterator[ChatStreamOutput]:
+    @override
+    async def handle_function_tool_result(self, event: FunctionToolResultEvent) -> AsyncIterator[Event]:
         if self._has_message_been_sent(self.message_id):
             # Pydantic doesn't call before_response before each function tool. Since we need them in separate messages we need to make a new ID if we've already sent a message for this message_id
             self.new_message_id()
 
         result = event.result
-        if isinstance(result, RetryPromptPart):
-            yield ErrorChunk(
-                message=self.message_id,
-                error_code=ErrorCode.TOOL_CALL_ERROR,
-                error_description=result.model_response(),
-            )
-        else:
+        if isinstance(result, ToolReturnPart):
             tool_calls = [
                 ToolCall(
                     tool_call_id=result.tool_call_id,
@@ -218,6 +229,7 @@ class PlaygroundUIEventStream(
 
             yield self._get_add_message_chunk(message.id, message)
 
+    @override
     async def on_error(self, error: Exception) -> AsyncIterator[Event]:
         self._finish_reason = "error"
 
@@ -225,35 +237,20 @@ class PlaygroundUIEventStream(
         span = trace.get_current_span()
         span.set_status(trace.StatusCode.ERROR)
         span.record_exception(error)
+        span.add_event("inference.stream-error")
 
         if isinstance(error, UnexpectedModelBehavior):
-            yield ErrorChunk(
-                error_description=str(error), message=self.message_id, error_code=ErrorCode.TOOL_CALL_ERROR
-            )
+            # Tool retry errors currently look like "Tool 'tool_name' exceeded max retries count of N"
+            if isinstance(error.__cause__, ModelRetry) and "Tool" in error.message:
+                yield ErrorChunk(
+                    error_description=error.message,
+                    message=self.parent_message_id,  # We don't emit the tool response so we need to say that this belongs to the parent message
+                    error_code=ErrorCode.TOOL_CALL_ERROR,
+                )
+            else:
+                yield ErrorChunk(
+                    error_description=error.message, message=self.message_id, error_code=ErrorCode.OTHER_ERROR
+                )
 
         else:
             yield ErrorChunk(error_description=str(error), message=self.message_id, error_code=ErrorCode.OTHER_ERROR)
-
-    async def handle_run_result(self, event: AgentRunResultEvent) -> AsyncIterator[Event]:
-        try:
-            pydantic_reason = event.result.response.finish_reason  # noqa: F841
-            # if pydantic_reason:
-            #     self._finish_reason = _FINISH_REASON_MAP.get(pydantic_reason, "other")
-
-            new_messages = event.result.new_messages()
-
-            mapped_new_messages = map_response_pydantic_messages_to_messages(
-                new_messages, message_ids=self._message_ids, run_input=self.run_input
-            )
-
-            first_new_message = await self.run_input.handle_final_messages([
-                *self.run_input.new_messages,
-                *mapped_new_messages,
-            ])
-
-            messages = FlatMessage.from_message_with_children(first_new_message)
-
-            yield FinalThreadChunk(message=messages[0].id, id=messages[0].id, messages=messages)
-        except Exception as e:  # noqa: BLE001
-            async for error_event in self.on_error(e):
-                yield error_event

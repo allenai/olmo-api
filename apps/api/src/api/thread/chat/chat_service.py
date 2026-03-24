@@ -8,6 +8,8 @@ from opentelemetry import trace
 from pydantic_ai import (
     AbstractToolset,
     Agent,
+    AgentRun,
+    AgentStreamEvent,
     CombinedToolset,
     DeferredToolRequests,
     ExternalToolset,
@@ -24,14 +26,22 @@ from api.request_client import RequestClientDependency
 from api.thread.chat.chat_exceptions import InvalidParentError, ModelNotAvailableError, ModelNotFoundError
 from api.thread.chat.chat_file_upload_service import ChatFileUploadServiceDependency
 from api.thread.chat.chat_request import ChatRequest, CreateToolDefinition
-from api.thread.chat.playground_ui_adapter import stream_pending_tool_responses
-from api.thread.chat.playground_ui_adapter._adapter import PlaygroundUIAdapter
-from api.thread.chat.playground_ui_adapter._util import RunInput
+from api.thread.chat.chat_types import ChatStreamOutput
+from api.thread.chat.mapping.pydantic_ai_mapping import map_messages_to_pydantic_ai_format
+from api.thread.chat.playground_ui_adapter._event_stream import PlaygroundUIEventStream
+from api.thread.chat.playground_ui_adapter._util import (
+    RunInput,
+    map_response_pydantic_messages_to_messages,
+    stream_pending_tool_responses,
+)
 from api.thread.chat.pydantic_inference.pydantic_model_service import get_pydantic_model
 from api.thread.chat.pydantic_inference.pydantic_model_settings import pydantic_model_settings
 from api.thread.chat.safety.validate_message_safety_service import ValidateMessageSafetyServiceDependency
 from api.tools.mcp_service import McpServiceDependency
 from api.tools.tools_service import ToolsServiceDependency
+from core.message.flat_message import FlatMessage
+from core.message.message_chunk import AddMessageChunk, ErrorChunk, FinalThreadChunk, StreamEndChunk
+from core.message.message_errors import ErrorCode
 from core.message.role import Role
 from core.object_id import ID
 from core.tools.tool_source import ToolSource
@@ -96,7 +106,7 @@ def build_message_list_from_parent(messages: Sequence[Message], parent_message_i
     return message_list
 
 
-def has_pending_tool_calls(chain: list[Message]) -> bool:
+def has_pending_tool_calls(chain: Sequence[Message]) -> bool:
     # find the last assistant message in the list...
     # find the current tool responses...
     # if we haven't answered them all return true
@@ -113,7 +123,7 @@ def has_pending_tool_calls(chain: list[Message]) -> bool:
     )
 
 
-def find_last_matching(arr: list[Message], condition: Callable[[Message], bool]) -> Message | None:
+def find_last_matching(arr: Sequence[Message], condition: Callable[[Message], bool]) -> Message | None:
     for item in reversed(arr):
         if condition(item):
             return item
@@ -391,7 +401,9 @@ class ChatService:
 
         return [user_tool_toolset, filtered_mcp_toolset]
 
-    async def stream_chat_message(self, request: ChatRequest) -> AsyncIterator[str]:
+    async def validate_and_get_agent(
+        self, request: ChatRequest
+    ) -> tuple[Agent[None, DeferredToolRequests | str], RunInput]:
         model = await self._get_model(request.model)
 
         validate_thread_result = await self._validate_thread(request, model)
@@ -430,6 +442,7 @@ class ChatService:
             output_type=[str, DeferredToolRequests],
             end_strategy="exhaustive",
             model_settings=model_settings,
+            retries=0,
         )
 
         run_input = RunInput(
@@ -442,18 +455,86 @@ class ChatService:
             inference_opts=validate_thread_result.inference_options,
             user_tool_names=[definition.name for definition in request.tool_definitions or []],
             tool_definitions=initialize_thread_result.tool_definitions,
-            handle_final_messages=self.message_repository.finalize_thread,
             is_new_thread=not request.parent,
         )
 
-        adapter = PlaygroundUIAdapter(agent, run_input=run_input)
+        return agent, run_input
 
-        # short circuts the event steam when there are pending tool calls
-        # prevents the model responding before all user tool calls have been responded to
-        if has_pending_tool_calls(initialize_thread_result.all_messages):
-            return adapter.encode_stream(stream_pending_tool_responses(run_input))
+    @classmethod
+    async def _get_stream_events_from_agent_run(
+        cls, run: AgentRun[None, DeferredToolRequests | str]
+    ) -> AsyncIterator[AgentStreamEvent]:
+        """
+        Yields events from an AgentRun that UIEventStream knows how to handle, like TextStartPart and ThinkingDeltaPart
+        """
 
-        return adapter.encode_stream(adapter.run_stream())
+        async for node in run:
+            if Agent.is_model_request_node(node) or Agent.is_call_tools_node(node):
+                async with node.stream(run.ctx) as request_stream:
+                    async for event in request_stream:
+                        yield event
+
+    async def stream_chat_message(
+        self, agent: Agent[None, DeferredToolRequests | str], run_input: RunInput
+    ) -> AsyncIterator[ChatStreamOutput]:
+        if has_pending_tool_calls(run_input.all_messages):
+            # short circuits the event steam when there are pending tool calls
+            # prevents the model responding before all user tool calls have been responded to
+            async for event in stream_pending_tool_responses(run_input, self.message_repository.finalize_thread):
+                yield event
+
+            return
+
+        event_stream = PlaygroundUIEventStream(run_input=run_input, accept=None)
+
+        pydantic_messages = map_messages_to_pydantic_ai_format(run_input.all_messages)
+
+        async with agent.iter(message_history=pydantic_messages) as agent_run:
+            stream = self._get_stream_events_from_agent_run(agent_run)
+
+            errors = []
+            message_ids = []
+            async for event in event_stream.transform_stream(stream):
+                yield event
+
+                if isinstance(event, AddMessageChunk):
+                    for message in event.messages:
+                        if message.id == run_input.parent_message_id:
+                            continue
+
+                        message_ids.append(message.id)
+                if isinstance(event, ErrorChunk):
+                    errors.append(event)
+
+            try:
+                mapped_messages = map_response_pydantic_messages_to_messages(
+                    agent_run.new_messages(), message_ids=message_ids, run_input=run_input, errors=errors
+                )
+                first_new_message = await self.message_repository.finalize_thread([
+                    *run_input.new_messages,
+                    *mapped_messages,
+                ])
+
+                yield FinalThreadChunk(
+                    message=first_new_message.id,
+                    id=first_new_message.id,
+                    messages=FlatMessage.from_message_with_children(first_new_message),
+                )
+
+            except Exception as e:
+                logger.exception("inference.finalize-error")
+                span = trace.get_current_span()
+                span.set_status(trace.StatusCode.ERROR)
+                span.record_exception(e)
+                span.add_event("inference.finalize-error")
+
+                yield ErrorChunk(
+                    message=message_ids[-1],
+                    error_code=ErrorCode.FINALIZE_ERROR,
+                    error_description="Something went wrong when saving this thread",
+                )
+
+        yield StreamEndChunk(message=run_input.root_message_id)
 
 
 ChatServiceDependency = Annotated[ChatService, Depends()]

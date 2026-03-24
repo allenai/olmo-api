@@ -1,9 +1,11 @@
 import asyncio
+import importlib
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, cast
 
 from fastapi import Depends
+from pydantic_ai import AbstractToolset, RunContext, RunUsage
 from pydantic_ai.mcp import MCPServerStreamableHTTP
 
 from api.config import settings
@@ -45,12 +47,20 @@ MCP_SERVERS: list[McpServer] = [
 
 
 def _get_mcp_server(mcp_server_config: McpServer):
-    return MCPServerStreamableHTTP(url=mcp_server_config.url, headers=mcp_server_config.headers)
+    # Handling retries in our message DB mapping is very difficult. Disabling them is a workaround for now.
+    return MCPServerStreamableHTTP(url=mcp_server_config.url, headers=mcp_server_config.headers, max_retries=0)
 
 
 @lru_cache
 def _get_general_mcp_servers():
-    return [_get_mcp_server(config) for config in MCP_SERVERS]
+    mcp_servers = [_get_mcp_server(config) for config in MCP_SERVERS]
+
+    if not settings.ENV.is_production and settings.INCLUDE_TEST_MCP_SERVERS:
+        fake_mcp_server_module = importlib.import_module("api.test_utils.fake_mcp_server")
+
+        mcp_servers.append(fake_mcp_server_module.test_toolset)
+
+    return mcp_servers
 
 
 class McpService:
@@ -117,7 +127,29 @@ class McpService:
         if not general_mcp_servers:
             return []
 
-        return await self._get_tools_for_servers(general_mcp_servers)
+        tools = await self._get_tools_for_servers(general_mcp_servers)
+
+        if not settings.ENV.is_production and settings.INCLUDE_TEST_MCP_SERVERS:
+            fake_mcp_server_module = importlib.import_module("api.test_utils.fake_mcp_server")
+            test_toolset = cast(AbstractToolset, fake_mcp_server_module.test_toolset)
+
+            test_model_module = importlib.import_module("pydantic_ai.models.test")
+
+            fake_tools = await test_toolset.get_tools(
+                RunContext(deps=None, model=test_model_module.TestModel(), usage=RunUsage())
+            )
+            fake_tool_definitions = [
+                Ai2ToolDefinition(
+                    name=tool.tool_def.name,
+                    description=tool.tool_def.description or "",
+                    parameters=tool.tool_def.parameters_json_schema,
+                    tool_source=ToolSource.MCP,
+                )
+                for tool in fake_tools.values()
+            ]
+            tools.extend(fake_tool_definitions)
+
+        return tools
 
     async def get_tools_from_mcp_servers(self, mcp_server_ids: set[str]) -> list[Ai2ToolDefinition]:
         matching_servers = [server for server in MCP_SERVERS if server.id in mcp_server_ids]

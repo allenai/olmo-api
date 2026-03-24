@@ -1,6 +1,13 @@
-from pydantic_ai import FunctionToolset
+from typing import NoReturn
 
-test_toolset = FunctionToolset()
+from pydantic_ai import FunctionToolset, ModelRetry, RunContext
+
+test_toolset = FunctionToolset(max_retries=0)
+
+
+@test_toolset.tool()
+async def always_fails(ctx: RunContext) -> NoReturn:  # noqa: ARG001, RUF029
+    raise ModelRetry("Always fails")  # noqa: EM101, TRY003
 
 
 @test_toolset.tool()
@@ -13,6 +20,7 @@ async def celsius_to_fahrenheit(celsius: float) -> float:  # noqa: RUF029
     Returns:
         Temperature in Fahrenheit
     """
+
     return (celsius * 9 / 5) + 32
 
 

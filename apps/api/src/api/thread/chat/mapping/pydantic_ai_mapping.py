@@ -7,18 +7,19 @@ from pydantic_ai import (
     DocumentUrl,
     ImageUrl,
     ModelMessage,
-    ModelRequest,
-    ModelResponse,
+    ModelRequestPart,
     ModelResponsePart,
     MultiModalContent,
     SystemPromptPart,
     TextPart,
     ThinkingPart,
+    ToolCallPart,
     ToolReturnPart,
     UserContent,
     UserPromptPart,
     VideoUrl,
 )
+from pydantic_ai.ui import MessagesBuilder
 
 # We need to use the starlette UploadFile because FastAPI's UploadFile and the actual UploadFile type we get from the request are different
 # https://github.com/fastapi/fastapi/discussions/13208
@@ -28,6 +29,7 @@ from api.thread.chat.chat_exceptions import UnhandledRoleError, UnsupportedMedia
 from api.thread.chat.mapping.input_parts import map_input_parts
 from core.message.role import Role
 from db.models.message import Message
+from db.models.tool_call import ToolCall
 
 
 def _map_part_from_file(file: str | UploadFile) -> MultiModalContent:
@@ -58,7 +60,7 @@ def _map_part_from_file(file: str | UploadFile) -> MultiModalContent:
     raise UnsupportedMediaTypeError(unsupported_media_type_msg)
 
 
-def _map_user_message(message: Message) -> ModelRequest:
+def _map_user_message(message: Message) -> ModelRequestPart:
     text_content = map_input_parts(message.input_parts, message.content)
     user_content: list[UserContent] = [text_content]
 
@@ -67,11 +69,14 @@ def _map_user_message(message: Message) -> ModelRequest:
         user_content += file_content
 
     user_prompt_part = UserPromptPart(user_content)
+    return user_prompt_part
 
-    return ModelRequest([user_prompt_part])
+
+def _map_db_tool_to_pydantic_tool(tool: ToolCall):
+    return ToolCallPart(tool_name=tool.tool_name, tool_call_id=tool.tool_call_id, args=tool.args)
 
 
-def _map_assistant_message(message: Message) -> ModelResponse:
+def _map_assistant_message(message: Message) -> list[ModelResponsePart]:
     assistant_message_parts: list[ModelResponsePart] = []
 
     if message.thinking is not None:
@@ -79,16 +84,14 @@ def _map_assistant_message(message: Message) -> ModelResponse:
 
     assistant_message_parts.append(TextPart(content=message.content))
 
-    # if message.tool_calls:
-    # assistant_message_parts.extend([_map_db_tool_to_pydantic_tool(tool) for tool in message.tool_calls])
+    if message.tool_calls:
+        assistant_message_parts.extend([_map_db_tool_to_pydantic_tool(tool) for tool in message.tool_calls])
 
-    return ModelResponse(
-        parts=assistant_message_parts,
-    )
+    return assistant_message_parts
 
 
-def _map_system_message(message: Message):
-    return ModelRequest([SystemPromptPart(message.content)])
+def _map_system_message(message: Message) -> ModelRequestPart:
+    return SystemPromptPart(message.content)
 
 
 def _map_tool_response_message(message: Message):
@@ -102,31 +105,44 @@ def _map_tool_response_message(message: Message):
 
     request_tool = message.tool_calls[0]
 
-    return ModelRequest(
-        parts=[
-            ToolReturnPart(
-                tool_name=request_tool.tool_name,
-                tool_call_id=request_tool.tool_call_id,
-                content=message.content,
-            )
-        ]
+    return ToolReturnPart(
+        tool_name=request_tool.tool_name,
+        tool_call_id=request_tool.tool_call_id,
+        content=message.content,
     )
 
 
-def map_message(message: Message) -> ModelMessage:
+def map_message_to_part(message: Message) -> list[ModelRequestPart] | list[ModelResponsePart]:
     match message.role:
         case Role.User:
-            return _map_user_message(message)
+            return [_map_user_message(message)]
         case Role.Assistant:
             return _map_assistant_message(message)
         case Role.System:
-            return _map_system_message(message)
+            return [_map_system_message(message)]
         case Role.ToolResponse:
-            return _map_tool_response_message(message)
+            return [_map_tool_response_message(message)]
         case _:
             unhandled_role_message = "Tried to map a message to Pydantic format for an unhandled role"
             raise UnhandledRoleError(unhandled_role_message)
 
 
 def map_messages_to_pydantic_ai_format(messages: Sequence[Message]) -> list[ModelMessage]:
-    return [map_message(message) for message in messages]
+    part_lists = [map_message_to_part(message) for message in messages]
+    parts = [part for parts in part_lists for part in parts]
+
+    builder = MessagesBuilder()
+
+    for part in parts:
+        builder.add(part)
+
+    mapped_messages = builder.messages
+
+    # There's a bug with Pydantic AI where they give messages a run ID if the run ID is None
+    # This causes issues when they're computing what messages in a run are new
+    # If there's only one message they'll assume it's part of this run and include it in the new messages
+    # To work around that, we give this a fake run_id
+    for mapped_message in mapped_messages:
+        mapped_message.run_id = messages[0].id
+
+    return mapped_messages

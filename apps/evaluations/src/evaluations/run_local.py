@@ -89,13 +89,20 @@ def main() -> int:
             "-e",
             f"PGUSER={settings.PGUSER}",
             "-e",
-            f"PGPASSWORD={settings.PGPASSWORD}",
-            "-e",
             f"AWS_ACCESS_KEY_ID={settings.AWS_ACCESS_KEY_ID or ''}",
             "-e",
             f"AWS_SECRET_ACCESS_KEY={settings.AWS_SECRET_ACCESS_KEY or ''}",
         ])
-        logger.info("Running: tier=%s, task_index=%d (with storage)", args.tier, args.task_index)
+        # Use DB_SECRET_ARN if set, otherwise pass PGPASSWORD directly
+        if settings.DB_SECRET_ARN:
+            docker_cmd.extend(["-e", f"DB_SECRET_ARN={settings.DB_SECRET_ARN}"])
+            logger.info("Running: tier=%s, task_index=%d (with storage, AWS secrets)", args.tier, args.task_index)
+        elif settings.PGPASSWORD:
+            docker_cmd.extend(["-e", f"PGPASSWORD={settings.PGPASSWORD}"])
+            logger.info("Running: tier=%s, task_index=%d (with storage)", args.tier, args.task_index)
+        else:
+            logger.warning("Neither DB_SECRET_ARN nor PGPASSWORD is set")
+            logger.info("Running: tier=%s, task_index=%d (with storage, no password)", args.tier, args.task_index)
     else:
         docker_cmd.extend(["-e", "LOCAL=true"])
         logger.info("Running: tier=%s, task_index=%d (local mode, no storage)", args.tier, args.task_index)

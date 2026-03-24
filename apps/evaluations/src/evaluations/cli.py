@@ -28,6 +28,30 @@ def log_egress_ip() -> None:
         logger.warning("Failed to check egress IP: %s", e)
 
 
+def get_aws_secret_value(secret_arn: str, key: str | None = None) -> str:
+    """Fetch a secret value from AWS Secrets Manager.
+
+    Args:
+        secret_arn: The ARN of the secret.
+        key: If provided, parse secret as JSON and extract this key.
+
+    Returns:
+        The secret value (or extracted key value).
+    """
+    # Extract region from ARN (format: arn:aws:secretsmanager:REGION:ACCOUNT:secret:NAME)
+    parts = secret_arn.split(":")
+    region = parts[3] if len(parts) >= 4 else "us-east-1"
+
+    client = boto3.client("secretsmanager", region_name=region)
+    response = client.get_secret_value(SecretId=secret_arn)
+    secret_string = response["SecretString"]
+
+    if key is None:
+        return secret_string
+
+    return json.loads(secret_string)[key]
+
+
 def setup_db_credentials() -> None:
     """Set up database credentials from AWS Secrets Manager or settings.
 
@@ -37,30 +61,16 @@ def setup_db_credentials() -> None:
     This supports automatically rotating database credentials when using AWS.
     """
     if not settings.DB_SECRET_ARN:
-        if settings.PGPASSWORD:
-            os.environ["PGPASSWORD"] = settings.PGPASSWORD
+        # Use PGPASSWORD as set in the environment
         return
-
-    secret_arn = settings.DB_SECRET_ARN
 
     logger.info("Fetching database password from AWS Secrets Manager")
 
-    # Extract region from ARN (format: arn:aws:secretsmanager:REGION:ACCOUNT:secret:NAME)
-    parts = secret_arn.split(":")
-    region = parts[3] if len(parts) >= 4 else "us-east-1"
-
     try:
-        client = boto3.client("secretsmanager", region_name=region)
-        response = client.get_secret_value(SecretId=secret_arn)
-        secret_data = json.loads(response["SecretString"])
-
-        password = secret_data.get("password")
-        if password:
-            os.environ["PGPASSWORD"] = password
-            logger.info("Database password loaded from AWS Secrets Manager")
-        else:
-            logger.warning("Secret does not contain 'password' key")
-
+        password = get_aws_secret_value(settings.DB_SECRET_ARN, key="password")
+        # override PGPASSWORD in the environment
+        os.environ["PGPASSWORD"] = password
+        logger.info("Database password loaded from AWS Secrets Manager")
     except Exception as e:
         logger.error("Failed to fetch database password from AWS: %s", e)
         sys.exit(1)

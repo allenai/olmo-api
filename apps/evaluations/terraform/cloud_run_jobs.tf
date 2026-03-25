@@ -85,6 +85,12 @@ resource "google_cloud_run_v2_job" "eval" {
           }
         }
 
+        # AWS region for Secrets Manager
+        env {
+          name  = "AWS_REGION"
+          value = "us-east-1"
+        }
+
         # AWS credentials for accessing Secrets Manager and S3
         env {
           name = "AWS_ACCESS_KEY_ID"

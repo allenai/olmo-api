@@ -95,7 +95,10 @@ def main() -> int:
         ])
         # Use DB_SECRET_ARN if set, otherwise pass PGPASSWORD directly
         if settings.DB_SECRET_ARN:
-            docker_cmd.extend(["-e", f"DB_SECRET_ARN={settings.DB_SECRET_ARN}"])
+            docker_cmd.extend([
+                "-e", f"DB_SECRET_ARN={settings.DB_SECRET_ARN}",
+                "-e", f"AWS_REGION={settings.AWS_REGION}",
+            ])
             logger.info("Running: tier=%s, task_index=%d (with storage, AWS secrets)", args.tier, args.task_index)
         elif settings.PGPASSWORD:
             docker_cmd.extend(["-e", f"PGPASSWORD={settings.PGPASSWORD}"])

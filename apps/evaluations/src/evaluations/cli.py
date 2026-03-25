@@ -13,25 +13,6 @@ from evaluations.configs import ModelEval, TierName, get_tier
 from evaluations.logging import logger
 from evaluations.settings import settings
 
-# ARN format: arn:aws:secretsmanager:REGION:ACCOUNT:secret:NAME
-# Region is at index 3, minimum 4 parts needed to extract it
-ARN_REGION_INDEX = 3
-ARN_MIN_PARTS_FOR_REGION = ARN_REGION_INDEX + 1
-
-
-def log_egress_ip() -> None:
-    """Log the external IP address for verifying VPC egress configuration.
-
-    This is a temporary diagnostic function to verify that Direct VPC Egress
-    is properly configured and traffic is routed through the expected network.
-    """
-    try:
-        with urllib.request.urlopen("https://api.ipify.org?format=json", timeout=10) as response:
-            data = json.loads(response.read().decode())
-            logger.info("Egress IP check: %s", data)
-    except (urllib.error.URLError, json.JSONDecodeError, OSError) as e:
-        logger.warning("Failed to check egress IP: %s", e)
-
 
 def get_aws_secret_value(secret_arn: str, key: str | None = None) -> str:
     """Fetch a secret value from AWS Secrets Manager.
@@ -43,10 +24,7 @@ def get_aws_secret_value(secret_arn: str, key: str | None = None) -> str:
     Returns:
         The secret value (or extracted key value).
     """
-    # Extract region from ARN (format: arn:aws:secretsmanager:REGION:ACCOUNT:secret:NAME)
-    parts = secret_arn.split(":")
-    region = parts[ARN_REGION_INDEX] if len(parts) >= ARN_MIN_PARTS_FOR_REGION else "us-east-1"
-
+    region = settings.AWS_REGION
     client = boto3.client("secretsmanager", region_name=region)
     response = client.get_secret_value(SecretId=secret_arn)
     secret_string = response["SecretString"]
@@ -173,9 +151,6 @@ def main() -> None:
     """
     # Fetch database credentials from AWS if DB_SECRET_ARN is set
     setup_db_credentials()
-
-    # Log egress IP for debugging VPC configuration (temporary)
-    log_egress_ip()
 
     # Check for ad-hoc mode
     if settings.EVAL_MODE == "ad-hoc":

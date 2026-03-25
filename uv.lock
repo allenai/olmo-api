@@ -8,6 +8,7 @@ members = [
     "core",
     "db",
     "db-migrations",
+    "evaluations",
     "infini-gram-api-client",
     "playground",
 ]
@@ -857,6 +858,35 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/fb/a3/cafafb4558fd638aadfe4121dc6cefb8d743368c085acb2f521df0f3d9d7/eval_type_backport-0.3.1.tar.gz", hash = "sha256:57e993f7b5b69d271e37482e62f74e76a0276c82490cf8e4f0dffeb6b332d5ed", size = 9445, upload-time = "2025-12-02T11:51:42.987Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cf/22/fdc2e30d43ff853720042fa15baa3e6122722be1a7950a98233ebb55cd71/eval_type_backport-0.3.1-py3-none-any.whl", hash = "sha256:279ab641905e9f11129f56a8a78f493518515b83402b860f6f06dd7c011fdfa8", size = 6063, upload-time = "2025-12-02T11:51:41.665Z" },
+]
+
+[[package]]
+name = "evaluations"
+version = "0.1.0"
+source = { editable = "apps/evaluations" }
+dependencies = [
+    { name = "boto3" },
+    { name = "pydantic-settings" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "boto3-stubs", extra = ["secretsmanager"] },
+    { name = "botocore-stubs" },
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "boto3", specifier = ">=1.35" },
+    { name = "pydantic-settings", specifier = ">=2.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "boto3-stubs", extras = ["secretsmanager"], specifier = ">=1.35" },
+    { name = "botocore-stubs", specifier = ">=1.35" },
+    { name = "pytest", specifier = ">=8.0" },
 ]
 
 [[package]]
@@ -2371,8 +2401,6 @@ source = { virtual = "." }
 
 [package.dev-dependencies]
 dev = [
-    { name = "boto3-stubs", extra = ["secretsmanager"] },
-    { name = "botocore-stubs" },
     { name = "mypy" },
     { name = "pytest-env" },
     { name = "ruff" },
@@ -2385,8 +2413,6 @@ test = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "boto3-stubs", extras = ["secretsmanager"], specifier = ">=1.42" },
-    { name = "botocore-stubs", specifier = ">=1.42" },
     { name = "mypy", specifier = ">=1.19.1" },
     { name = "pytest-env", specifier = ">=1.1.4" },
     { name = "ruff", specifier = ">=0.15.2" },

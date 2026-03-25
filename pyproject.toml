@@ -12,8 +12,6 @@ dev = [
     "mypy>=1.19.1",
     "pytest-env>=1.1.4",
     "ruff>=0.15.2",
-    "boto3-stubs[secretsmanager]>=1.42",
-    "botocore-stubs>=1.42",
 ]
 test = ["pytest-asyncio>=0.25.2"]
 
@@ -29,7 +27,7 @@ inferd = { path = "vendor/inferd-0.5.9-0_v0.5.9-py3-none-any.whl" }
 
 [tool.uv.workspace]
 members = ["apps/*", "packages/*"]
-exclude = ["apps/safety-worker", "apps/api-safety-worker", "apps/evaluations"]
+exclude = ["apps/api-safety-worker"]
 
 [tool.pyright]
 pythonVersion = "3.14"

@@ -37,11 +37,14 @@ RUN --mount=type=secret,id=GITHUB_TOKEN \
 
 WORKDIR /app
 
-# Copy evaluations package
+# Copy and install requirements (olmo-eval-internal from private repo)
+COPY requirements.txt /app/requirements.txt
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --system -r /app/requirements.txt
+
+# Copy and install evaluations package
 COPY src /app/src
 COPY pyproject.toml /app/pyproject.toml
-
-# Install evaluations package (pulls olmo-eval-internal from git)
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --system /app
 

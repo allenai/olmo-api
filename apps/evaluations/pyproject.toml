@@ -13,6 +13,7 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "pydantic-settings>=2.0",
+    "boto3-stubs[secretsmanager]>=1.35",
 ]
 
 [project.scripts]

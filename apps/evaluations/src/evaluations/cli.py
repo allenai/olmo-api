@@ -5,11 +5,9 @@ import json
 import os
 import subprocess
 import sys
-import urllib.error
-import urllib.request
 
-import boto3  # type: ignore[import-untyped]
-from botocore.exceptions import BotoCoreError, ClientError  # type: ignore[import-untyped]
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 
 from evaluations.configs import ModelEval, TierName, get_tier
 from evaluations.logging import logger

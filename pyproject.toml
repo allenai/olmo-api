@@ -17,7 +17,7 @@ test = ["pytest-asyncio>=0.25.2"]
 
 [tool.uv]
 required-version = ">=0.9.21"
-
+override-dependencies = ["sqlalchemy>=2"]
 
 [tool.uv.sources]
 infini-gram-api-client = { workspace = true }

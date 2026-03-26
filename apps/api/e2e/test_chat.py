@@ -320,7 +320,7 @@ async def test_calls_a_failing_tool(client: AsyncClient, anon_user: Authenticate
         assert message_in_db.children[0].error_code == ErrorCode.TOOL_CALL_ERROR
 
 
-async def test_does_not_call_tools(client: AsyncClient, anon_user: AuthenticatedClient):
+async def test_does_not_call_tools(client: AsyncClient, anon_user: AuthenticatedClient, db_session: DatabaseSession):
     tool_name = "get_current_weather"
     tool_definition = CreateToolDefinition(
         name=tool_name,
@@ -354,6 +354,29 @@ async def test_does_not_call_tools(client: AsyncClient, anon_user: Authenticated
     for line in lines:
         with pytest.raises(ValidationError):
             ToolCallChunk.model_validate(line)
+
+    finished_thread = FinalThreadChunk.model_validate(lines[-2])
+
+    async with db_session() as session, session.begin():
+        message_query = (
+            select(Message)
+            .where(Message.id == finished_thread.messages[1].id)
+            .options(
+                selectinload(Message.children),
+                selectinload(Message.parent_),
+                selectinload(Message.tool_definitions),
+                selectinload(Message.tool_calls),
+            )
+        )
+        message_in_db_result = await session.scalars(message_query)
+        message_in_db = message_in_db_result.one()
+
+        assert message_in_db.role == Role.User
+        assert message_in_db.content == "test tool calling"
+        assert message_in_db.tool_definitions
+        assert len(message_in_db.tool_definitions) == 1
+        assert message_in_db.tool_definitions[0].name == tool_name
+        assert not message_in_db.tool_calls
 
 
 async def test_makes_a_thread_with_parent(

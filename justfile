@@ -5,7 +5,7 @@ install:
   uv sync --all-packages --all-groups
 
 test:
-  ENV=test uv run pytest --ignore ./apps/api/e2e --ignore ./apps/evaluations
+  ENV=test uv run pytest --ignore ./apps/api/e2e
 
 test-e2e:
   ENV=test uv run pytest ./apps/api/e2e

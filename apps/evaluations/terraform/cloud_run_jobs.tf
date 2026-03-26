@@ -28,6 +28,15 @@ resource "google_cloud_run_v2_job" "eval" {
       # Retry failed tasks up to 3 times (Cloud Run default, made explicit)
       max_retries = 3
 
+      # Direct VPC Egress for private network access
+      vpc_access {
+        network_interfaces {
+          network    = "projects/${var.project_id}/global/networks/default"
+          subnetwork = "projects/${var.project_id}/regions/${var.region}/subnetworks/default"
+        }
+        egress = "ALL_TRAFFIC"
+      }
+
       containers {
         image = "us-west1-docker.pkg.dev/${var.project_id}/model-evals/evaluations:${var.image_tag}"
 
@@ -39,10 +48,9 @@ resource "google_cloud_run_v2_job" "eval" {
         }
 
         # No EVAL_TIER set here - passed at execution time
-        # LOCAL=false by default for Cloud Run
         env {
           name  = "LOCAL"
-          value = "true" # set to false when db access is working
+          value = "false" # set to false to persist to db and true to skip db persistance (for testing)
         }
 
         env {
@@ -65,11 +73,40 @@ resource "google_cloud_run_v2_job" "eval" {
           }
         }
 
+        # Database password fetched at runtime from AWS Secrets Manager
+        # using DB_SECRET_ARN (supports automatic credential rotation)
         env {
-          name = "PGPASSWORD"
+          name = "DB_SECRET_ARN"
           value_source {
             secret_key_ref {
-              secret  = "pgpassword"
+              secret  = "db-secret-arn"
+              version = "latest"
+            }
+          }
+        }
+
+        # AWS region for Secrets Manager
+        env {
+          name  = "AWS_REGION"
+          value = "us-east-1"
+        }
+
+        # AWS credentials for accessing Secrets Manager and S3
+        env {
+          name = "AWS_ACCESS_KEY_ID"
+          value_source {
+            secret_key_ref {
+              secret  = "aws-access-key-id"
+              version = "latest"
+            }
+          }
+        }
+
+        env {
+          name = "AWS_SECRET_ACCESS_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = "aws-secret-access-key"
               version = "latest"
             }
           }

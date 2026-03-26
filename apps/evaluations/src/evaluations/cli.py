@@ -1,12 +1,62 @@
 """CLI for evaluations Cloud Run Jobs."""
 
 import argparse
+import json
+import os
 import subprocess
 import sys
+
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 
 from evaluations.configs import ModelEval, TierName, get_tier
 from evaluations.logging import logger
 from evaluations.settings import settings
+
+
+def get_aws_secret_value(secret_arn: str, key: str | None = None) -> str:
+    """Fetch a secret value from AWS Secrets Manager.
+
+    Args:
+        secret_arn: The ARN of the secret.
+        key: If provided, parse secret as JSON and extract this key.
+
+    Returns:
+        The secret value (or extracted key value).
+    """
+    region = settings.AWS_REGION
+    client = boto3.client("secretsmanager", region_name=region)
+    response = client.get_secret_value(SecretId=secret_arn)
+    secret_string = response["SecretString"]
+
+    if key is None:
+        return secret_string
+
+    return json.loads(secret_string)[key]
+
+
+def setup_db_credentials() -> None:
+    """Set up database credentials from AWS Secrets Manager or settings.
+
+    If DB_SECRET_ARN is set, fetches the password from AWS Secrets Manager.
+    Otherwise, uses PGPASSWORD from settings.
+
+    This supports automatically rotating database credentials when using AWS.
+    """
+    if not settings.DB_SECRET_ARN:
+        # Use PGPASSWORD as set in the environment
+        return
+
+    logger.info("Fetching database password from AWS Secrets Manager")
+
+    try:
+        password = get_aws_secret_value(settings.DB_SECRET_ARN, key="password")
+        # override PGPASSWORD in the environment
+        os.environ["PGPASSWORD"] = password
+        logger.info("Database password loaded from AWS Secrets Manager")
+    except (BotoCoreError, ClientError, KeyError, json.JSONDecodeError) as e:
+        logger.error("Failed to fetch database password from AWS: %s", e)
+        sys.exit(1)
 
 
 def run_ad_hoc(
@@ -99,6 +149,9 @@ def main() -> None:
     2. EVAL_TIER set: Run tier evaluation
     3. CLI arguments: Manual invocation
     """
+    # Fetch database credentials from AWS if DB_SECRET_ARN is set
+    setup_db_credentials()
+
     # Check for ad-hoc mode
     if settings.EVAL_MODE == "ad-hoc":
         if not settings.AD_HOC_MODEL or not settings.AD_HOC_TASKS:

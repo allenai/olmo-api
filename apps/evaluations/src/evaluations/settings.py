@@ -14,12 +14,13 @@ class Settings(BaseSettings):
     PGPORT: str = "5432"
     PGDATABASE: str = "olmo_eval"
     PGUSER: str = "postgres"
-    PGPASSWORD: str = "postgres"
+    PGPASSWORD: str | None = None
     DB_SECRET_ARN: str | None = None
 
-    # AWS credentials
+    # AWS credentials and settings
     AWS_ACCESS_KEY_ID: str | None = None
     AWS_SECRET_ACCESS_KEY: str | None = None
+    AWS_REGION: str = "us-east-1"
 
     # Settings below are set at runtime and control evaluation behavior. They shouldn't
     # be set in .env files, but are included here for validation and documentation.

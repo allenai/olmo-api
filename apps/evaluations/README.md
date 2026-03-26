@@ -273,7 +273,16 @@ gcloud run jobs execute eval --region us-west1 \
 
 ## CLI Reference
 
-The `evaluations` CLI is available inside the container:
+The `evaluations` CLI requires `olmo-eval-internal` which is only installed inside the Docker container
+(not in the local dev environment). Use `run-local` to run evaluations locally via Docker:
+
+```bash
+# Run evaluations locally via Docker (recommended)
+uv run run-local --tier smoke --task-index 0
+uv run run-local --tier standard --task-index 0 --with-storage
+```
+
+Inside the container, you can use the CLI directly:
 
 ```bash
 # Auto-run tier from env vars (used by Cloud Run)

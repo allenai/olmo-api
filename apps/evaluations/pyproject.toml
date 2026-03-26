@@ -15,19 +15,15 @@ dev = [
     "boto3-stubs[secretsmanager]>=1.35",
 ]
 
+eval-runtime = [
+    "olmo-eval-internal[litellm,storage] @ git+https://github.com/allenai/olmo-eval-internal.git@main",
+]
+
 [project.scripts]
 evaluations = "evaluations.cli:main"
 generate-tfvars = "evaluations.generate_tfvars:main"
 run-local = "evaluations.run_local:main"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/evaluations"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["src"]
-
+requires = ["uv_build>=0.9.21,<0.10.0"]
+build-backend = "uv_build"

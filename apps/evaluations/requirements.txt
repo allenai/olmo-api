@@ -1,2 +1,0 @@
-# Runtime dependencies for Docker image (separate from evaluations package)
-olmo-eval-internal[litellm,storage] @ git+https://github.com/allenai/olmo-eval-internal.git@main

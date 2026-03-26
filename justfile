@@ -2,7 +2,7 @@ default:
   just --list
 
 install:
-  uv sync --all-packages --all-groups
+  uv sync --all-packages --all-groups --no-group eval-runtime
 
 test:
   ENV=test uv run pytest --ignore ./apps/api/e2e

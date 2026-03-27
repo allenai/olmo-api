@@ -8,16 +8,12 @@ license-files = ["LICENSE"]
 
 
 [dependency-groups]
-dev = [
-    "mypy>=1.19.1",
-    "pytest-env>=1.1.4",
-    "ruff>=0.15.2",
-]
+dev = ["mypy>=1.19.1", "pytest-env>=1.1.4", "ruff>=0.15.2"]
 test = ["pytest-asyncio>=0.25.2"]
 
 [tool.uv]
 required-version = ">=0.9.21"
-override-dependencies = ["sqlalchemy>=2"]
+override-dependencies = ["sqlalchemy[asyncio]>=2"]
 
 [tool.uv.sources]
 infini-gram-api-client = { workspace = true }

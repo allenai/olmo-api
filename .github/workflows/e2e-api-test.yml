@@ -6,7 +6,9 @@ on:
 
 jobs:
   e2e-test:
-    environment: test
+    environment: 
+      name: test
+      deployment: false
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: ${{ vars.DATABASE_URL }}

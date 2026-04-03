@@ -100,19 +100,19 @@ standard_tier = TierConfig(
             task_overrides={"limit": "10"},
         ),
 
-        # This config is for evaluation of new Olmo snapshot model on Modal when ready.
-        # ModelEval(
-        #     model="olmo-3.1-32b-think-modal-snapshot",  # display name
-        #     provider_overrides={
-        #         "kind": "litellm",
-        #         "model": "litellm_proxy/openai/ai2-release-partners/Olmo-3.1-32B-Think-snapshot",
-        #         "api_base": settings.LITELLM_API_BASE,
-        #     },
-        #     tasks=[
-        #         "humaneval:bpb",
-        #     ],
-        #     task_overrides={"limit": "10"},
-        # ),
+        # This config is for evaluation of new Olmo snapshot model on Modal
+        ModelEval(
+            model="olmo-3.1-32b-think-modal-snapshot",  # display name
+            provider_overrides={
+                "kind": "litellm",
+                "model": "litellm_proxy/openai/ai2-release-partners/Olmo-3.1-32B-Think-snapshot",
+                "api_base": settings.LITELLM_API_BASE,
+            },
+            tasks=[
+                "humaneval:bpb",
+            ],
+            task_overrides={"limit": "10"},
+        ),
 
         # Add more models as they are deployed...
     ],

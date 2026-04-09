@@ -239,10 +239,11 @@ class PlaygroundUIEventStream(
         span = trace.get_current_span()
         span.set_status(trace.StatusCode.ERROR)
         span.record_exception(error)
-        span.add_event("inference.stream-error")
 
         # Keying off of liteLLM error type https://docs.litellm.ai/docs/exception_mapping
         if isinstance(error, ModelHTTPError) and error.body and "ContextWindowExceededError" in str(error.body):
+            span.add_event("inference.user-stream-error")
+
             yield ErrorChunk(
                 error_description="Context window exceeded. Try shortening your conversation or starting a new thread.",
                 message=self.message_id,
@@ -250,6 +251,7 @@ class PlaygroundUIEventStream(
             )
             return
 
+        span.add_event("inference.stream-error")
         logger.exception("inference.stream-error")
 
         if isinstance(error, UnexpectedModelBehavior):

@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, override
 
 from opentelemetry import trace
 from pydantic_ai import ModelRetry, ToolReturnPart, UnexpectedModelBehavior
+from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.output import OutputDataT
 from pydantic_ai.tools import AgentDepsT
 from pydantic_ai.ui import UIEventStream
@@ -235,12 +236,23 @@ class PlaygroundUIEventStream(
     @override
     async def on_error(self, error: Exception) -> AsyncIterator[Event]:
         self._finish_reason = "error"
-
-        logger.exception("inference.stream-error")
         span = trace.get_current_span()
         span.set_status(trace.StatusCode.ERROR)
         span.record_exception(error)
+
+        # Keying off of liteLLM error type https://docs.litellm.ai/docs/exception_mapping
+        if isinstance(error, ModelHTTPError) and error.body and "ContextWindowExceededError" in str(error.body):
+            span.add_event("inference.user-stream-error")
+
+            yield ErrorChunk(
+                error_description="Context window exceeded. Try shortening your conversation or starting a new thread.",
+                message=self.message_id,
+                error_code=ErrorCode.FINALIZE_ERROR,
+            )
+            return
+
         span.add_event("inference.stream-error")
+        logger.exception("inference.stream-error")
 
         if isinstance(error, UnexpectedModelBehavior):
             # Tool retry errors currently look like "Tool 'tool_name' exceeded max retries count of N"

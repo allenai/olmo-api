@@ -91,8 +91,6 @@ just lint
 
 ## Running the API outside of Docker:
 
-On macOS, ensure you have `homebrew` installed then run `brew install ffmpeg`
-
 start the postgres container with `docker compose up db`
 
 Make sure you've installed packages and activated the environment with `just install`

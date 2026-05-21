@@ -7,7 +7,7 @@ requires-python = ">=3.14"
 dependencies = [
     "beautifulsoup4>=4.12.2",
     "gcloud-aio-storage>=9.6.1",
-    "pydantic-ai==1.63.0",
+    "pydantic-ai==1.99.0",
 ]
 
 [build-system]
